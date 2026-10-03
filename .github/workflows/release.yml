@@ -78,6 +78,40 @@ jobs:
         with:
           arch: x64
 
+      - name: Install reference tools (v6asm, v6emul)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V6ASM_TAG: v2026.07.22
+          V6EMUL_TAG: v1.0.0
+        run: |
+          # v6asm and v6emul are reference tools that V6C installs separately and
+          # does not bundle. The golden/benchmark suites and validate_dist.ps1
+          # require V6EMUL (and V6ASM for the golden suite). Pin the release tags
+          # so the workflow is reproducible.
+          $tools = Join-Path $env:RUNNER_TEMP 'v6c-tools'
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
+
+          gh release download $env:V6ASM_TAG  --repo parallelno/v6asm  --pattern '*windows-x86_64.zip' --dir $tools --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download v6asm release $env:V6ASM_TAG" }
+          gh release download $env:V6EMUL_TAG --repo parallelno/v6emul --pattern '*windows-x86_64.zip' --dir $tools --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download v6emul release $env:V6EMUL_TAG" }
+
+          Get-ChildItem $tools -Filter '*.zip' | ForEach-Object {
+            Expand-Archive $_.FullName -DestinationPath (Join-Path $tools $_.BaseName) -Force
+          }
+
+          $asm = (Get-ChildItem $tools -Recurse -Filter 'v6asm.exe'  | Select-Object -First 1).FullName
+          $emu = (Get-ChildItem $tools -Recurse -Filter 'v6emul.exe' | Select-Object -First 1).FullName
+          if (-not $asm) { throw 'v6asm.exe not found in the downloaded archive' }
+          if (-not $emu) { throw 'v6emul.exe not found in the downloaded archive' }
+
+          # Export for every subsequent step (release test gate + smoke test).
+          "V6ASM=$asm"  | Out-File -FilePath $env:GITHUB_ENV -Append
+          "V6EMUL=$emu" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "V6ASM=$asm"
+          Write-Host "V6EMUL=$emu"
+
       - name: Compute version
         id: ver
         shell: pwsh
