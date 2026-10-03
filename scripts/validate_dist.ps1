@@ -4,29 +4,46 @@
 
 .DESCRIPTION
     Compiles a tiny C program with the staged clang.exe (no -nostartfiles,
-    no -T override, no --defsym workaround), runs it through the staged
-    v6emul.exe, and asserts the expected output. This proves clang
+    no -T override, no --defsym workaround), runs it through the separately
+    installed v6emul, and asserts the expected output. This proves clang
     resolves v6c.ld + crt0.o + freestanding headers via the "Installed"
     branch of its driver lookup (ResourceDir-relative), not the dev-tree
     fallback, AND that crt0 auto-linkage delivers a working _start that
     calls main.
 
+    The emulator is a reference tool that is NOT part of the staged
+    distributable (see make_dist.ps1). It is resolved from the V6EMUL
+    environment variable, or from -V6EmulPath.
+
 .PARAMETER Stage
     Path to the staged distribution root (the directory containing bin/).
+
+.PARAMETER V6EmulPath
+    Path to the separately installed v6emul executable. Overrides V6EMUL.
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string]$Stage
+    [string]$Stage,
+
+    [string]$V6EmulPath
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$Clang  = Join-Path $Stage 'bin\clang.exe'
-$Emul   = Join-Path $Stage 'bin\v6emul.exe'
-foreach ($p in @($Clang, $Emul)) {
-    if (-not (Test-Path $p)) { throw "Missing in stage: $p" }
+$Clang = Join-Path $Stage 'bin\clang.exe'
+if (-not (Test-Path $Clang)) { throw "Missing in stage: $Clang" }
+
+# v6emul is a separately installed reference tool and is NOT shipped in the
+# staged tree (see make_dist.ps1). Resolve it from V6EMUL / -V6EmulPath.
+$Emul = if ($V6EmulPath) { $V6EmulPath } else { $env:V6EMUL }
+if (-not $Emul) {
+    throw 'V6EMUL is not set. Point it at the separately installed v6emul executable ' +
+          'or pass -V6EmulPath <path>.'
+}
+if (-not (Test-Path -LiteralPath $Emul -PathType Leaf)) {
+    throw "v6emul not found at: $Emul"
 }
 
 $StageDocs    = Join-Path $Stage 'docs'
@@ -63,7 +80,7 @@ int main(void) {
     if ($LASTEXITCODE -ne 0) { throw 'Staged clang failed to compile smoke.c' }
     if (-not (Test-Path $Rom)) { throw 'Staged clang did not produce smoke.rom' }
 
-    Write-Host "Running smoke.rom in staged v6emul ..."
+    Write-Host "Running smoke.rom in v6emul ($Emul) ..."
     $out = & $Emul --rom $Rom --load-addr 0x0100 --halt-exit --dump-cpu 2>&1 | Out-String
     Write-Host $out
 
