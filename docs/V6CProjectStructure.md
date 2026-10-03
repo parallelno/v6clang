@@ -8,7 +8,9 @@ v6llvmc/
 │   ├── include/llvm/TargetParser/ # Modified upstream: Triple.h
 │   └── lib/TargetParser/         # Modified upstream: Triple.cpp
 ├── llvm-build/                   # Build output directory (gitignored)
+├── .venv/                        # Project-local Python env: Python + Ninja (gitignored)
 ├── scripts/
+│   ├── setup_venv.ps1            # Provision .venv with Ninja + test tooling
 │   ├── sync_llvm_mirror.ps1      # llvm-project/ → mirrors (run after builds)
 │   └── populate_llvm_project.ps1  # mirrors → llvm-project/ (new contributor setup)
 ├── clang/lib/Basic/Targets/      # Clang frontend integration
@@ -34,6 +36,7 @@ v6llvmc/
 | `llvm-project/` | No | Full LLVM monorepo, pinned to `llvmorg-18.1.0`. Build reads from here. |
 | `llvm/` | Yes | Mirror of all V6C-related changes. Authoritative source for recovery. |
 | `llvm-build/` | No | CMake/Ninja build output. |
+| `.venv/` | No | Project-local Python environment (Python + Ninja) provisioned by `scripts/setup_venv.ps1`. |
 | `design/` | Yes | [design.md](../design/design.md) (architecture spec) and [plan.md](../design/plan.md) (milestones). |
 | `tests/` | Yes | All test suites. See [golden tests README](../tests/golden/README.md). |
 | `tools/` | Yes | No reference tools are bundled. Configure external tools through `V6ASM`, `V6EMUL`, `C8080`, and optional `Z88DK`. |

@@ -12,9 +12,10 @@ cutting, see [V6CRelease.md](V6CRelease.md).
 ## Prerequisites
 
 - CMake ≥ 3.20
-- Ninja build system
 - C++17 compiler (GCC 11+, Clang 14+, or MSVC 2022+)
-- Python 3.8+ (for test runner)
+- [uv](https://docs.astral.sh/uv/) — used only once to
+    bootstrap the project-local `.venv`. Ninja and Python themselves are
+    installed **into** `.venv`; the system Python is never used.
 - [v6asm](https://github.com/parallelno/v6asm) installed separately (for
     assembly-reference tests)
 - [v6emul](https://github.com/parallelno/v6emul) installed separately (for
@@ -49,6 +50,37 @@ and its benchmark submatrix is skipped if unset. The C compiler, linker, and
 packaged V6C release do not include or require these reference tools. Test
 scripts accept `--v6asm <path>` and `--v6emul <path>` one-off overrides, while
 `scripts\build.ps1` accepts `-V6AsmPath <path>` and `-V6EmulPath <path>`.
+
+## Python Environment (.venv)
+
+V6C builds must not depend on a system-wide Python installation: system
+interpreters can be upgraded, relocated, or removed, which leaves CMake
+pointing at a stale `ninja.exe` path and breaks `cmake -G Ninja`. Instead, all
+build and release scripts use a pinned, project-local environment under
+`.venv/`.
+
+`scripts/build.ps1` and `scripts/publish.ps1` provision it automatically by
+calling:
+
+```powershell
+pwsh scripts\setup_venv.ps1
+```
+
+`setup_venv.ps1` is idempotent and offline-friendly. It creates `.venv/` with
+`uv` when available (falling back to `python -m venv`) and installs the build
+tooling into it:
+
+| Package | Purpose |
+|---------|---------|
+| `ninja` | Build executor used by CMake's `-G Ninja` generator |
+| `pyyaml` | LLVM CMake feature detection and lit/test tooling |
+| `pygments` | lit/LLVM diagnostic reporting |
+
+The scripts then use `.venv\Scripts\ninja.exe` and
+`.venv\Scripts\python.exe` exclusively, and pass `-DCMAKE_MAKE_PROGRAM` /
+`-DPython3_EXECUTABLE` to CMake so a previously cached system path is
+overridden. `.venv/` is gitignored; recreate it at any time with
+`pwsh scripts\setup_venv.ps1 -Force`.
 
 ## Build LLVM with V6C Target
 

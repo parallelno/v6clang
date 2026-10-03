@@ -8,8 +8,9 @@ An LLVM compiler backend and Clang frontend targeting the **Vector 06c** home co
 
 ### Prerequisites
 
-- CMake ≥ 3.20, Ninja, MSVC 2022+ (or GCC 11+ / Clang 14+)
-- Python 3.8+
+- CMake ≥ 3.20, MSVC 2022+ (or GCC 11+ / Clang 14+)
+- [uv](https://docs.astral.sh/uv/) to bootstrap the local `.venv`
+    (Ninja and Python are installed into `.venv`; the system Python is not used)
 - [v6asm](https://github.com/parallelno/v6asm) installed separately (needed for assembly-reference tests)
 - [v6emul](https://github.com/parallelno/v6emul) installed separately (needed for execution tests)
 - [c8080](https://github.com/Aleksey-F-Morozov/c8080) installed separately (needed for benchmarks)

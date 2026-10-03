@@ -4,6 +4,9 @@
 
 .DESCRIPTION
     Automates the release procedure in docs/V6CRelease.md:
+        0. Provision the project-local Python environment (.venv) via
+           scripts/setup_venv.ps1. Ninja and Python are never taken from the
+           system; the build consumes .venv exclusively.
         1. Verify the working tree is clean and in sync with origin/main.
         2. Full build + tests via scripts/build.ps1.
         3. Stage and package via scripts/make_dist.ps1.
@@ -65,6 +68,13 @@ if ([int]$behind -gt 0) {
     throw "Local main is $behind commit(s) behind origin/main. Run: git pull --ff-only origin main"
 }
 Write-Host 'Working tree clean, in sync with origin/main.'
+
+# --- 2a. Project-local Python environment (.venv) ---
+# Guarantee the release uses the pinned local Python + Ninja, never a system
+# interpreter. .venv/ is gitignored, so this does not affect the clean check.
+Write-Host '--- Python environment (.venv) ---'
+& (Join-Path $PSScriptRoot 'setup_venv.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Python environment setup failed (scripts/setup_venv.ps1).' }
 
 # --- 2. Build + tests ---
 if (-not $SkipBuild) {

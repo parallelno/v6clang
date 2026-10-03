@@ -4,8 +4,13 @@
 
 .DESCRIPTION
     Day-to-day build script. Activates the MSVC toolchain environment on
-    Windows automatically (no Developer Shell required). Requires cmake,
-    ninja, python on PATH.
+    Windows automatically (no Developer Shell required). Requires cmake on
+    PATH.
+
+    Ninja and Python are NOT taken from the system: this script provisions a
+    project-local environment under <repo>/.venv (see scripts/setup_venv.ps1)
+    and uses its ninja.exe / python.exe exclusively. This keeps builds
+    reproducible and immune to system Python upgrades or removals.
 
     For cutting a release (packaging + git tag + push), use scripts/publish.ps1.
 
@@ -53,6 +58,23 @@ if (-not $env:VCINSTALLDIR -and (Test-Path $vsDevCmd)) {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# --- Project-local Python environment (.venv) ---
+# Never rely on a machine-wide Python: it can be upgraded, relocated, or
+# removed, which leaves CMake pointing at a stale Ninja path. setup_venv.ps1
+# provisions a pinned, local environment with Ninja + test tooling.
+Write-Host '--- Python environment (.venv) ---'
+& (Join-Path $PSScriptRoot 'setup_venv.ps1') -Quiet
+if ($LASTEXITCODE -ne 0) { throw 'Python environment setup failed (scripts/setup_venv.ps1).' }
+
+$VenvScripts = Join-Path $repoRoot '.venv\Scripts'
+$VenvPython  = Join-Path $VenvScripts 'python.exe'
+$VenvNinja   = Join-Path $VenvScripts 'ninja.exe'
+if (-not (Test-Path $VenvNinja))  { throw "Ninja not found in the local environment: $VenvNinja" }
+if (-not (Test-Path $VenvPython)) { throw "Python not found in the local environment: $VenvPython" }
+
+# Put the environment's tools first so `ninja`/`python` resolve inside .venv.
+$env:PATH = "$VenvScripts;$env:PATH"
+
 $BuildDir = Join-Path $repoRoot 'llvm-build'
 
 if ($V6AsmPath) {
@@ -83,18 +105,26 @@ if (-not $SkipBuild) {
     Write-Host '--- Sync llvm-project mirror ---'
     & (Join-Path $PSScriptRoot 'sync_llvm_mirror.ps1')
 
+    # Pass the local environment's tools explicitly. A previous configure may
+    # have cached CMAKE_MAKE_PROGRAM / Python3_EXECUTABLE pointing at a system
+    # Python that has since been removed; -D overrides those stale entries.
+    $VenvNinjaFwd  = $VenvNinja  -replace '\\', '/'
+    $VenvPythonFwd = $VenvPython -replace '\\', '/'
+
     Write-Host '--- CMake configure ---'
     cmake -G Ninja `
           -S (Join-Path $repoRoot 'llvm-project\llvm') `
           -B $BuildDir `
           -DCMAKE_BUILD_TYPE=Release `
+          "-DCMAKE_MAKE_PROGRAM=$VenvNinjaFwd" `
+          "-DPython3_EXECUTABLE=$VenvPythonFwd" `
           -DLLVM_TARGETS_TO_BUILD=X86 `
           -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6C `
           '-DLLVM_ENABLE_PROJECTS=clang;lld'
     if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
 
     Write-Host '--- Ninja build ---'
-    ninja -C $BuildDir `
+    & $VenvNinja -C $BuildDir `
         clang lld llc `
         llvm-objcopy llvm-readelf llvm-objdump llvm-ar llvm-mc llvm-nm `
         FileCheck not
@@ -110,6 +140,6 @@ if (-not $SkipBuild) {
 
 if (-not $SkipTests) {
     Write-Host '--- Tests ---'
-    python (Join-Path $repoRoot 'tests\run_all.py')
+    & $VenvPython (Join-Path $repoRoot 'tests\run_all.py')
     if ($LASTEXITCODE -ne 0) { throw 'tests/run_all.py FAILED' }
 }

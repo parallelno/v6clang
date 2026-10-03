@@ -20,8 +20,8 @@ This document translates the approved design into an ordered, test-driven implem
 | LLVM mirror | `llvm/` | Git-tracked mirror of all V6C-related changes (V6C target dir + modified upstream files) |
 | Mirror sync | `scripts/sync_llvm_mirror.ps1` | Copies changes from `llvm-project/` → `llvm/` after each build |
 | CMake ≥ 3.20 | System | Build system |
-| Ninja | System | Build executor |
-| Python 3 | System | LLVM lit test runner, test harness scripts |
+| Ninja | `.venv/Scripts/ninja.exe` | Build executor (provisioned by `scripts/setup_venv.ps1`) |
+| Python 3 | `.venv/Scripts/python.exe` | LLVM lit test runner, test harness scripts (provisioned by `scripts/setup_venv.ps1`) |
 
 ### 1.2.1 Source Mirror Workflow
 
