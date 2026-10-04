@@ -134,6 +134,19 @@ def probe_z88dk() -> str | None:
     return None
 
 
+def probe_c8080() -> str | None:
+    if not C8080:
+        return "C8080 is not configured; set it to the c8080 executable"
+    if not Path(C8080).is_file():
+        return f"{Path(C8080).name} not found"
+    try:
+        subprocess.run([str(C8080)], capture_output=True, text=True,
+                       stdin=subprocess.DEVNULL, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"unable to launch {Path(C8080).name}: {exc}"
+    return None
+
+
 def skipped_result(compiler: str, prog: str, flags: str, reason: str) -> Result:
     return Result(compiler, prog, 0, None, None, flags,
                   error=reason, skipped=True)
@@ -253,10 +266,11 @@ def fmt_row(r: Result, baseline_cycles: int | None, md: bool = False) -> str:
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     ASM.mkdir(exist_ok=True)
-    for name, tool in (("C8080", C8080), ("V6EMUL", V6EMUL)):
-        if not tool or not Path(tool).is_file():
-            print(f"ERROR: set {name} to the separately installed executable", file=sys.stderr)
-            return 2
+    # V6EMUL is required: it runs every ROM to collect cycle counts/checksums.
+    # C8080 and Z88DK are optional comparators (see probe_c8080/probe_z88dk).
+    if not V6EMUL or not Path(V6EMUL).is_file():
+        print("ERROR: set V6EMUL to the separately installed executable", file=sys.stderr)
+        return 2
     print("Building and running benchmark matrix...\n")
 
     results: dict[tuple[str, str], Result] = {}
@@ -268,10 +282,18 @@ def main() -> int:
             results[(f"v6llvmc-{opt}", prog)] = r
             print(f"  v6llvmc -{opt:3} {prog:8} -> {fmt_row(r, None)}")
 
-    for prog in PROGRAMS:
-        r = build_c8080(prog)
-        results[("c8080", prog)] = r
-        print(f"  c8080         {prog:8} -> {fmt_row(r, None)}")
+    c8080_issue = probe_c8080()
+    if c8080_issue is None:
+        for prog in PROGRAMS:
+            r = build_c8080(prog)
+            results[("c8080", prog)] = r
+            print(f"  c8080         {prog:8} -> {fmt_row(r, None)}")
+    else:
+        print(f"  c8080         skipped -> {c8080_issue}")
+        for prog in PROGRAMS:
+            r = skipped_result("c8080", prog, "-Ocpm", c8080_issue)
+            results[("c8080", prog)] = r
+            print(f"  c8080         {prog:8} -> {fmt_row(r, None)}")
 
     z88dk_issue = probe_z88dk()
     if z88dk_issue is None:

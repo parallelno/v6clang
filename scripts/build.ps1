@@ -127,6 +127,7 @@ if (-not $SkipBuild) {
     & $VenvNinja -C $BuildDir `
         clang lld llc `
         llvm-objcopy llvm-readelf llvm-objdump llvm-ar llvm-mc llvm-nm `
+        llvm-dwarfdump `
         FileCheck not
     if ($LASTEXITCODE -ne 0) { throw 'ninja build failed' }
 

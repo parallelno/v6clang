@@ -54,6 +54,11 @@ Write-Host "  [OK] BinaryFormat/ELF.h (EM_V6C)"
 xcopy /Y /I "$root\llvm\include\llvm\Object\ELFObjectFile.h" "$root\llvm-project\llvm\include\llvm\Object\" > $null
 Write-Host "  [OK] Object/ELFObjectFile.h (EM_V6C recognition)"
 
+# V6C relocation type names printed by llvm-readelf/llvm-readobj
+# (getELFRelocationTypeName: R_V6C_8/16/LO8/HI8/32)
+xcopy /Y /I "$root\llvm\lib\Object\ELF.cpp" "$root\llvm-project\llvm\lib\Object\" > $null
+Write-Host "  [OK] lib/Object/ELF.cpp (V6C relocation names)"
+
 # M9: Clang frontend integration
 # TargetInfo (Basic/Targets)
 xcopy /Y /I "$root\clang\lib\Basic\Targets\I8080.h" "$root\llvm-project\clang\lib\Basic\Targets\" > $null

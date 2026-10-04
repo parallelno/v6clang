@@ -147,6 +147,7 @@ jobs:
           ninja -C llvm-build `
             clang lld llc opt `
             llvm-objcopy llvm-readelf llvm-objdump llvm-ar llvm-mc llvm-nm `
+            llvm-dwarfdump `
             FileCheck not split-file
 
       - name: sccache stats
