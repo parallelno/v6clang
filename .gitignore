@@ -34,6 +34,9 @@ tests/golden/*.bin
 tests/golden/*.rom
 tests/golden/*.lst
 
+# lit scratch output directories (generated per test run)
+tests/lit/**/Output/
+
 # lit timing cache (used for parallel scheduling, not useful in VCS)
 **/.lit_test_times.txt
 
