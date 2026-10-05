@@ -1,4 +1,4 @@
-# V6C — LLVM Backend for Vector 06c
+# V6CLANG — LLVM Backend for Vector 06c
 
 An LLVM compiler backend and Clang frontend targeting the **Vector 06c** home computer (Intel 8080 / KR580VM80A CPU, 3 MHz, 64 KB RAM).
 
