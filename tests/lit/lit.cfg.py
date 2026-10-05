@@ -17,7 +17,12 @@ while d:
     d = parent
 
 build_bin = os.path.join(d, 'llvm-build', 'bin')
-config.environment['PATH'] = build_bin + os.pathsep + os.environ.get('PATH', '')
+# Prefer the project-local Python (.venv) over a system one: build.ps1 provisions
+# it, and it keeps a machine-wide or Windows-Store-stub `python` from being
+# picked up by tests that invoke `python` in their RUN lines.
+venv_scripts = os.path.join(d, '.venv', 'Scripts')
+config.environment['PATH'] = os.pathsep.join(
+    [build_bin, venv_scripts, os.environ.get('PATH', '')])
 
 # %scripts substitution — resolves to <workspace_root>/scripts/ regardless of test depth
 config.substitutions.append(('%scripts', os.path.join(d, 'scripts')))
