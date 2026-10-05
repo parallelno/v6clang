@@ -33,7 +33,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
 The script syncs:
-- `llvm-project/llvm/lib/Target/V6CLANG/` → `llvm/lib/Target/V6CLANG/` (full directory mirror)
+- `llvm-project/llvm/lib/Target/V6Clang/` → `llvm/lib/Target/V6Clang/` (full directory mirror)
 - Individual modified upstream files (e.g. `Triple.h`, `Triple.cpp`) → corresponding paths under `llvm/`
 
 When a milestone modifies new upstream files, add `xcopy` lines to `scripts\sync_llvm_mirror.ps1`.
@@ -267,7 +267,7 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 | 1 | Create `V6ClangTargetInfo.h/.cpp` in `TargetInfo/`. Register the target triple `i8080-unknown-v6clang` via `RegisterTarget`. | `[x]` |
 | 2 | Create `V6ClangTargetMachine.h/.cpp`. Implement a minimal `V6ClangTargetMachine` subclass returning the data layout string from design §2.2. | `[x]` |
 | 3 | Create `V6ClangSubtarget.h/.cpp`. Stub all accessors (`getInstrInfo()`, etc.) to return `nullptr` or assert. | `[x]` |
-| 4 | Create top-level `V6CLANG.td` with an empty target definition. Verify `llvm-tblgen` parses it. | `[x]` |
+| 4 | Create top-level `V6Clang.td` with an empty target definition. Verify `llvm-tblgen` parses it. | `[x]` |
 | 5 | Create `CMakeLists.txt` for the V6CLANG target. Wire into LLVM's build via `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD`. | `[x]` |
 | 6 | Build LLVM with V6CLANG enabled. Verify `llc -march=v6clang -version` lists the target. | `[x]` |
 
@@ -276,8 +276,8 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 | Test | Tool | Validates |
 |------|------|-----------|
 | `llc -march=v6clang -version` exits 0 and prints target name | `llc` | Target registration |
-| `llvm-tblgen V6CLANG.td` exits 0 | `llvm-tblgen` | TableGen skeleton valid |
-| CMake configure with `-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG` succeeds | `cmake` | Build integration |
+| `llvm-tblgen V6Clang.td` exits 0 | `llvm-tblgen` | TableGen skeleton valid |
+| CMake configure with `-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6Clang` succeeds | `cmake` | Build integration |
 
 #### M1.3 Verification
 
@@ -313,15 +313,15 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 
 | Test | Tool | Validates |
 |------|------|-----------|
-| `llvm-tblgen -gen-register-info V6CLANG.td` exits 0 | `llvm-tblgen` | Register descriptions parse |
-| `llvm-tblgen -gen-instr-info V6CLANG.td` exits 0 | `llvm-tblgen` | Instruction descriptions parse |
-| `llvm-tblgen -gen-subtarget V6CLANG.td` exits 0 | `llvm-tblgen` | Scheduling model parses |
+| `llvm-tblgen -gen-register-info V6Clang.td` exits 0 | `llvm-tblgen` | Register descriptions parse |
+| `llvm-tblgen -gen-instr-info V6Clang.td` exits 0 | `llvm-tblgen` | Instruction descriptions parse |
+| `llvm-tblgen -gen-subtarget V6Clang.td` exits 0 | `llvm-tblgen` | Scheduling model parses |
 | `llvm-tblgen --print-records` shows expected register classes and members | `llvm-tblgen` | Register class correctness |
 | Encoding reference test: compile list of all opcodes, diff against `v6asm`-produced bytes | `v6asm` + script | Opcode encoding correctness |
 
 #### M2.3 Tests — FileCheck (lit)
 
-Create `tests/lit/MC/V6CLANG/encoding.s`:
+Create `tests/lit/MC/V6Clang/encoding.s`:
 - One `CHECK` directive per instruction mnemonic verifying the encoded byte(s).
 - Covers all 256 possible opcodes (valid ones check encoding; undefined ones check for error).
 
@@ -362,7 +362,7 @@ Create `tests/lit/MC/V6CLANG/encoding.s`:
 | `llc -march=v6clang trivial.ll` produces `.s` file | `llc` | Assembly printer works |
 | Assemble `llc` output with `v6asm` — no syntax errors | `v6asm` | Output is valid assembly |
 | Assembly output contains `ORG` directive matching default start address | `FileCheck` | Start address config |
-| lit tests: `tests/lit/CodeGen/V6CLANG/trivial.ll` — verify `RET` instruction appears | `llc` + `FileCheck` | Basic emission |
+| lit tests: `tests/lit/CodeGen/V6Clang/trivial.ll` — verify `RET` instruction appears | `llc` + `FileCheck` | Basic emission |
 
 #### M3.3 Verification
 
@@ -399,7 +399,7 @@ Create `tests/lit/MC/V6CLANG/encoding.s`:
 
 #### M4.2 Tests — lit (FileCheck)
 
-One test per operation, in `tests/lit/CodeGen/V6CLANG/`:
+One test per operation, in `tests/lit/CodeGen/V6Clang/`:
 
 | Test File | Verifies |
 |-----------|----------|
@@ -434,7 +434,7 @@ Create `tests/unit/codegen/`:
 
 - `[x]` `docs/V6ClangArchitecture.md` — update with supported operations.
 
-**Implementation notes**: M4 also required implementing minimal frame lowering (V6ClangFrameLowering.cpp with prologue/epilogue via LXI+DAD+SPHL), spill/reload pseudos (V6CLANG_SPILL8/V6CLANG_RELOAD8), and eliminateFrameIndex — these are M5 tasks pulled forward to unblock the register allocator for SELECT_CC. Emulator round-trip tests (M4.3) deferred until v6asm integration is available. SRL/SRA lowering returns SDValue() for now (expand/libcall in M11).
+**Implementation notes**: M4 also required implementing minimal frame lowering (V6ClangFrameLowering.cpp with prologue/epilogue via LXI+DAD+SPHL), spill/reload pseudos (V6CLANG_SPILL8/V6Clang_RELOAD8), and eliminateFrameIndex — these are M5 tasks pulled forward to unblock the register allocator for SELECT_CC. Emulator round-trip tests (M4.3) deferred until v6asm integration is available. SRL/SRA lowering returns SDValue() for now (expand/libcall in M11).
 
 ---
 
@@ -542,7 +542,7 @@ Create `tests/unit/codegen/`:
 
 | Test | Purpose | Status |
 |------|---------|--------|
-| `tests/lit/MC/V6CLANG/encoding-*.ll` (6 tests) | Every encoding format produces correct bytes | `[x]` |
+| `tests/lit/MC/V6Clang/encoding-*.ll` (6 tests) | Every encoding format produces correct bytes | `[x]` |
 | Binary size = sum of instruction sizes (no padding, no headers) | Flat binary format compliance | `[x]` |
 | All 16 existing CodeGen lit tests pass with `-filetype=obj` | No regressions | `[x]` |
 
@@ -761,7 +761,7 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 **Goal**: Multiple `.c` / `.ll` files compile and link into a single flat binary. Symbol resolution across translation units works correctly.
 
-**Implementation notes**: Used ELF32 LE object format (via MC layer with `-filetype=obj`) instead of a custom format. Linker implemented as Python tool `scripts/v6clang_link.py` instead of C++ in `lld/V6CLANG/`. Custom ELF relocation types `R_V6CLANG_8` (1) and `R_V6CLANG_16` (2) defined in `V6ClangFixupKinds.h`. Clang driver updated to invoke the Python linker.
+**Implementation notes**: Used ELF32 LE object format (via MC layer with `-filetype=obj`) instead of a custom format. Linker implemented as Python tool `scripts/v6clang_link.py` instead of C++ in `lld/V6Clang/`. Custom ELF relocation types `R_V6CLANG_8` (1) and `R_V6CLANG_16` (2) defined in `V6ClangFixupKinds.h`. Clang driver updated to invoke the Python linker.
 
 #### M10.1 Steps
 
@@ -952,12 +952,12 @@ The following must hold for the milestone to be considered complete:
 | Category | Location | Tool Chain | When Run |
 |----------|----------|------------|----------|
 | Golden (emulator trust) | `tests/golden/` | `v6asm` → `v6emul` | M0, then every milestone |
-| TableGen validation | `tests/lit/MC/V6CLANG/` | `llvm-tblgen` | M2+ |
-| Instruction encoding | `tests/lit/MC/V6CLANG/encoding.s` | `llvm-mc` + `FileCheck` | M2+ |
-| ISel (FileCheck) | `tests/lit/CodeGen/V6CLANG/` | `llc` + `FileCheck` | M4+ |
-| Calling convention | `tests/lit/CodeGen/V6CLANG/call-conv*.ll` | `llc` + `FileCheck` | M5+ |
-| Binary encoding | `tests/lit/MC/V6CLANG/relocations.s` | `llc` + byte-diff vs `v6asm` | M6+ |
-| Optimization passes | `tests/lit/CodeGen/V6CLANG/<pass>.ll` | `llc` + `FileCheck` | M8+ |
+| TableGen validation | `tests/lit/MC/V6Clang/` | `llvm-tblgen` | M2+ |
+| Instruction encoding | `tests/lit/MC/V6Clang/encoding.s` | `llvm-mc` + `FileCheck` | M2+ |
+| ISel (FileCheck) | `tests/lit/CodeGen/V6Clang/` | `llc` + `FileCheck` | M4+ |
+| Calling convention | `tests/lit/CodeGen/V6Clang/call-conv*.ll` | `llc` + `FileCheck` | M5+ |
+| Binary encoding | `tests/lit/MC/V6Clang/relocations.s` | `llc` + byte-diff vs `v6asm` | M6+ |
+| Optimization passes | `tests/lit/CodeGen/V6Clang/<pass>.ll` | `llc` + `FileCheck` | M8+ |
 | Unit tests (C) | `tests/unit/` | `clang` → `v6asm` → `v6emul` | M4+ |
 | Runtime standalone | `tests/runtime/` | `v6asm` → `v6emul` | M11 |
 | Integration tests | `tests/integration/` | `clang` → `v6emul` | M9+ |

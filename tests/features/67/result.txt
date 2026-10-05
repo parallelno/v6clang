@@ -78,7 +78,7 @@ Code size: exit check shrinks from 5 instructions (INX+MVI+CMP+JNZ+CMP+JNZ)
 
 
 Regression tests:
-  tests/lit/CodeGen/V6CLANG/type-narrowing-iv-arith-users.ll  — PASS (5 test cases)
-  tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll         — PASS (updated for O85)
-  tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll   — PASS (updated for O85)
+  tests/lit/CodeGen/V6Clang/type-narrowing-iv-arith-users.ll  — PASS (5 test cases)
+  tests/lit/CodeGen/V6Clang/peephole-pop-push-elim.ll         — PASS (updated for O85)
+  tests/lit/CodeGen/V6Clang/peephole-inx-dcx-spill-fold.ll   — PASS (updated for O85)
   python tests/run_all.py                                  — 3/3 suites PASS

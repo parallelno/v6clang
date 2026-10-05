@@ -15,7 +15,7 @@ return std::tie(C1.NumRegs, C1.Insns, C1.NumBaseAdds, C1.NumIVMuls,
                 C1.AddRecCost, C1.ImmCost, C1.SetupCost, C1.ScaleCost) <
        std::tie(C2.NumRegs, C2.Insns, ...);
 ```
-([V6ClangTargetTransformInfo.cpp](../llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp#L50))
+([V6ClangTargetTransformInfo.cpp](../llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp#L50))
 
 For loops with three or more live pointers (≥4 IVs counting the
 counter, against 3 GP pairs BC/DE/HL), LSR collapses the per-pointer
@@ -71,7 +71,7 @@ then promoted to default if the data supports it.
 > See Step 3.7 Implementation Notes for the data and the rationale.
 
 1. Reuse the existing `V6ClangOptMode` enum from
-   [V6ClangInstrCost.h](../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h#L26)
+   [V6ClangInstrCost.h](../llvm/lib/Target/V6Clang/V6ClangInstrCost.h#L26)
    (Speed / Size / Balanced) — it already derives the mode from
    `Function::hasMinSize()/hasOptSize()` plus
    `TargetMachine::getOptLevel()`.
@@ -107,7 +107,7 @@ the same `LSRCost` fields, so neither can introduce illegal formulas;
 only the tie-breaking outcome changes.
 
 Keying on `V6ClangOptMode` is consistent with the rest of the backend
-([V6ClangInstrInfo.cpp lines 603, 652, 799](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L600)
+([V6ClangInstrInfo.cpp lines 603, 652, 799](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L600)
 already use the same hook for DAD/INX expansion), so a `-Os` build
 stays code-size-oriented end-to-end (LSR through post-RA peepholes)
 and a `-O2` build stays cycle-oriented end-to-end. The `cl::opt`
@@ -119,18 +119,18 @@ regresses for Speed mode.
 
 ### Summary of changes
 
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h` — add
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.h` — add
   `const Function &F` member so `isLSRCostLess` can derive the opt
   mode (TM is already accessible via `BaseT`).
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp` —
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp` —
   include `V6ClangInstrCost.h`, add `LSRStrategy` `cl::opt`,
   mode-keyed `isLSRCostLess` body. Update the docstring.
-* `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.{h,cpp}` — synced via
+* `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.{h,cpp}` — synced via
   `scripts/sync_llvm_mirror.ps1`.
-* `tests/lit/CodeGen/V6CLANG/lsr-strategy-speed.ll` — lit test that the
+* `tests/lit/CodeGen/V6Clang/lsr-strategy-speed.ll` — lit test that the
   Insns-first shape is emitted at `-O2` (and with
   `-v6clang-lsr-strategy=insns-first`).
-* `tests/lit/CodeGen/V6CLANG/lsr-strategy-size.ll` — lit test that the
+* `tests/lit/CodeGen/V6Clang/lsr-strategy-size.ll` — lit test that the
   NumRegs-first shape is emitted with `optsize`/`minsize` attribute
   (and with `-v6clang-lsr-strategy=regs-first`).
 * `tests/features/43/` — feature test (multi-stream axpy) with
@@ -144,7 +144,7 @@ No `.td`, no pass pipeline, no codegen lowering changes.
 
 ### Step 3.1 — Add `cl::opt` and the two field orderings [x]
 
-Edit `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`:
+Edit `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`:
 
 * Add includes:
   ```cpp
@@ -316,7 +316,7 @@ Insns-first is consistent across the two paths that select it.
 
 ### Step 3.4 — Lit test: `lsr-strategy-speed.ll` [x]
 
-Create `tests/lit/CodeGen/V6CLANG/lsr-strategy-speed.ll`. Source is the
+Create `tests/lit/CodeGen/V6Clang/lsr-strategy-speed.ll`. Source is the
 IR of the multi-pointer `axpy3` loop. Two RUN lines:
 
 ```
@@ -342,7 +342,7 @@ plus a positive `; CHECK: INX` count on the IV pairs.
 
 ### Step 3.5 — Lit test: `lsr-strategy-size.ll` [x]
 
-Create `tests/lit/CodeGen/V6CLANG/lsr-strategy-size.ll`. Same IR but the
+Create `tests/lit/CodeGen/V6Clang/lsr-strategy-size.ll`. Same IR but the
 function carries `optsize` IR attribute, plus an explicit
 `-v6clang-lsr-strategy=regs-first` RUN line:
 

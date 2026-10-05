@@ -61,7 +61,7 @@ it:
 ```bash
 llvm-build/bin/clang -target i8080-unknown-v6clang -O0 -g -c main.c -o main.o
 llvm-build/bin/ld.lld -m elf32v6clang \
-    -T clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld \
+    -T clang/lib/Driver/ToolChains/V6Clang/v6clang.ld \
     main.o -o game.elf
 llvm-build/bin/llvm-objcopy -O binary game.elf game.rom
 ```

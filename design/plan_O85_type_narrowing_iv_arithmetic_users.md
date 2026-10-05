@@ -112,7 +112,7 @@ insufficient and the case is rare in practice.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTypeNarrowing.cpp` | Extend `tryNarrowLoopIV`: add `ExtraPNUses`/`ExtraAddUses` collectors; add range guard; add zext substitution block |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangTypeNarrowing.cpp` | Extend `tryNarrowLoopIV`: add `ExtraPNUses`/`ExtraAddUses` collectors; add range guard; add zext substitution block |
 | `tests/features/67/v6clang.c` | New feature test (sum_indices, weighted_sum) |
 | `tests/features/67/c8080.c` | Reference implementation |
 
@@ -252,7 +252,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.7 — Lit test [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/type-narrowing-iv-arith-users.ll`
+Create `llvm-project/llvm/test/CodeGen/V6Clang/type-narrowing-iv-arith-users.ll`
 covering:
 
 - **Test A** (up-counter, PN extra use): `phi i16 [0], [add i16 phi, 1]`;
@@ -270,7 +270,7 @@ covering:
 
 Run:
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\type-narrowing-iv-arith-users.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6Clang\type-narrowing-iv-arith-users.ll -v
 ```
 
 > **Implementation Notes**:

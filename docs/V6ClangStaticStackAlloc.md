@@ -296,5 +296,5 @@ From the feature test ([tests/features/21/](../tests/features/21/)):
 - [V6ClangOptimization.md](V6ClangOptimization.md) — All optimization passes overview
 - [V6ClangIPRA.md](V6ClangIPRA.md) — IPRA reduces spill count, complementing O10
 - [Feature test](../tests/features/21/) — Source, assembly, and result.txt
-- [Lit test](../tests/lit/CodeGen/V6CLANG/static-stack-alloc.ll) — Automated regression test (mirror; source in `llvm-project/llvm/test/CodeGen/V6CLANG/`)
+- [Lit test](../tests/lit/CodeGen/V6Clang/static-stack-alloc.ll) — Automated regression test (mirror; source in `llvm-project/llvm/test/CodeGen/V6Clang/`)
 - [Implementation plan](../design/plan_static_stack_allocation.md) — Step-by-step plan

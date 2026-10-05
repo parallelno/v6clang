@@ -53,18 +53,18 @@ Register V6ClangFrameLowering::chooseDeadPair(const MachineBasicBlock &MBB,
   if (IsPrologue) {
     // At entry: a half is "live" iff it appears in the MBB live-in set.
     auto IsLive = [&](unsigned R) { return MBB.isLiveIn(R); };
-    bool ALive = IsLive(V6CLANG::A);
-    bool BLive = IsLive(V6CLANG::B) || IsLive(V6CLANG::BC);
-    bool CLive = IsLive(V6CLANG::C) || IsLive(V6CLANG::BC);
-    bool DLive = IsLive(V6CLANG::D) || IsLive(V6CLANG::DE);
-    bool ELive = IsLive(V6CLANG::E) || IsLive(V6CLANG::DE);
-    bool HLive = IsLive(V6CLANG::H) || IsLive(V6CLANG::HL);
-    bool LLive = IsLive(V6CLANG::L) || IsLive(V6CLANG::HL);
-    if (!ALive)               return V6CLANG::PSW;
-    if (!BLive && !CLive)     return V6CLANG::BC;
-    if (!DLive && !ELive)     return V6CLANG::DE;
-    if (!HLive && !LLive)     return V6CLANG::HL;
-    return V6CLANG::NoRegister;
+    bool ALive = IsLive(V6Clang::A);
+    bool BLive = IsLive(V6Clang::B) || IsLive(V6Clang::BC);
+    bool CLive = IsLive(V6Clang::C) || IsLive(V6Clang::BC);
+    bool DLive = IsLive(V6Clang::D) || IsLive(V6Clang::DE);
+    bool ELive = IsLive(V6Clang::E) || IsLive(V6Clang::DE);
+    bool HLive = IsLive(V6Clang::H) || IsLive(V6Clang::HL);
+    bool LLive = IsLive(V6Clang::L) || IsLive(V6Clang::HL);
+    if (!ALive)               return V6Clang::PSW;
+    if (!BLive && !CLive)     return V6Clang::BC;
+    if (!DLive && !ELive)     return V6Clang::DE;
+    if (!HLive && !LLive)     return V6Clang::HL;
+    return V6Clang::NoRegister;
   }
 
   // Epilogue: a half is "live" iff it is used by the terminating RET.
@@ -74,20 +74,20 @@ Register V6ClangFrameLowering::chooseDeadPair(const MachineBasicBlock &MBB,
     for (const MachineOperand &MO : MBBI->operands()) {
       if (!MO.isReg()) continue;
       Register R = MO.getReg();
-      if (R == V6CLANG::A)                          AUsed = true;
-      if (R == V6CLANG::B  || R == V6CLANG::BC)         BUsed = true;
-      if (R == V6CLANG::C  || R == V6CLANG::BC)         CUsed = true;
-      if (R == V6CLANG::D  || R == V6CLANG::DE)         DUsed = true;
-      if (R == V6CLANG::E  || R == V6CLANG::DE)         EUsed = true;
-      if (R == V6CLANG::H  || R == V6CLANG::HL)         HUsed = true;
-      if (R == V6CLANG::L  || R == V6CLANG::HL)         LUsed = true;
+      if (R == V6Clang::A)                          AUsed = true;
+      if (R == V6Clang::B  || R == V6Clang::BC)         BUsed = true;
+      if (R == V6Clang::C  || R == V6Clang::BC)         CUsed = true;
+      if (R == V6Clang::D  || R == V6Clang::DE)         DUsed = true;
+      if (R == V6Clang::E  || R == V6Clang::DE)         EUsed = true;
+      if (R == V6Clang::H  || R == V6Clang::HL)         HUsed = true;
+      if (R == V6Clang::L  || R == V6Clang::HL)         LUsed = true;
     }
   }
-  if (!AUsed)               return V6CLANG::PSW;
-  if (!BUsed && !CUsed)     return V6CLANG::BC;
-  if (!DUsed && !EUsed)     return V6CLANG::DE;
-  if (!HUsed && !LUsed)     return V6CLANG::HL;
-  return V6CLANG::NoRegister;
+  if (!AUsed)               return V6Clang::PSW;
+  if (!BUsed && !CUsed)     return V6Clang::BC;
+  if (!DUsed && !EUsed)     return V6Clang::DE;
+  if (!HUsed && !LUsed)     return V6Clang::HL;
+  return V6Clang::NoRegister;
 }
 
 void V6ClangFrameLowering::emitSPAdjustment(MachineBasicBlock &MBB,
@@ -109,16 +109,16 @@ void V6ClangFrameLowering::emitSPAdjustment(MachineBasicBlock &MBB,
        (AbsN == 6 && Mode == V6ClangOptMode::Size));
   if (PushPopEligible) {
     Register Pair = chooseDeadPair(MBB, MBBI, IsPrologue);
-    if (Pair != V6CLANG::NoRegister) {
+    if (Pair != V6Clang::NoRegister) {
       unsigned N = static_cast<unsigned>(AbsN / 2);
       for (unsigned I = 0; I < N; ++I) {
         if (IsPrologue) {
           // PUSH reads Pair; the value is undef (we just want SP-=2).
-          BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH))
+          BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH))
               .addReg(Pair, RegState::Undef);
         } else {
           // POP defines Pair; mark the def Dead.
-          BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::POP))
+          BuildMI(MBB, MBBI, DL, TII.get(V6Clang::POP))
               .addReg(Pair, RegState::Define | RegState::Dead);
         }
       }
@@ -130,11 +130,11 @@ void V6ClangFrameLowering::emitSPAdjustment(MachineBasicBlock &MBB,
   // for AbsN in {2, 4}; ties on bytes and loses on cycles at AbsN=6.
   // Used when PUSH/POP wasn't eligible OR no dead pair was available.
   if (AbsN == 2 || AbsN == 4) {
-    unsigned Op = IsPrologue ? V6CLANG::DCX : V6CLANG::INX;
+    unsigned Op = IsPrologue ? V6Clang::DCX : V6Clang::INX;
     for (unsigned I = 0; I < AbsN; ++I) {
       // INX/DCX have a tied $rp = $src constraint: pass SP as both
       // def and use.
-      BuildMI(MBB, MBBI, DL, TII.get(Op), V6CLANG::SP).addReg(V6CLANG::SP);
+      BuildMI(MBB, MBBI, DL, TII.get(Op), V6Clang::SP).addReg(V6Clang::SP);
     }
     return;
   }
@@ -144,11 +144,11 @@ void V6ClangFrameLowering::emitSPAdjustment(MachineBasicBlock &MBB,
   // is responsible for HL save/restore around this site if needed.
   int64_t LxiImm = IsPrologue ? -static_cast<int64_t>(AbsN)
                               :  static_cast<int64_t>(AbsN);
-  BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::LXI))
-      .addReg(V6CLANG::HL, RegState::Define)
+  BuildMI(MBB, MBBI, DL, TII.get(V6Clang::LXI))
+      .addReg(V6Clang::HL, RegState::Define)
       .addImm(LxiImm);
-  BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-  BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::SPHL));
+  BuildMI(MBB, MBBI, DL, TII.get(V6Clang::DAD)).addReg(V6Clang::SP);
+  BuildMI(MBB, MBBI, DL, TII.get(V6Clang::SPHL));
 }
 
 bool V6ClangFrameLowering::spAdjustClobbersHL(const MachineBasicBlock &MBB,
@@ -165,7 +165,7 @@ bool V6ClangFrameLowering::spAdjustClobbersHL(const MachineBasicBlock &MBB,
       (AbsN == 2 || AbsN == 4 ||
        (AbsN == 6 && Mode == V6ClangOptMode::Size));
   if (PushPopEligible &&
-      chooseDeadPair(MBB, MBBI, IsPrologue) != V6CLANG::NoRegister)
+      chooseDeadPair(MBB, MBBI, IsPrologue) != V6Clang::NoRegister)
     return false;
 
   // Tier 2 — DCX/INX SP x AbsN for AbsN in {2, 4}: does not touch HL.
@@ -207,17 +207,17 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
 
   // The prologue uses HL as scratch (LXI+DAD+SPHL) to adjust SP.
   // Determine which argument registers need saving.
-  bool HLIsLiveIn = MBB.isLiveIn(V6CLANG::HL) || MBB.isLiveIn(V6CLANG::H) ||
-                    MBB.isLiveIn(V6CLANG::L);
-  bool DEIsLiveIn = MBB.isLiveIn(V6CLANG::DE) || MBB.isLiveIn(V6CLANG::D) ||
-                    MBB.isLiveIn(V6CLANG::E);
+  bool HLIsLiveIn = MBB.isLiveIn(V6Clang::HL) || MBB.isLiveIn(V6Clang::H) ||
+                    MBB.isLiveIn(V6Clang::L);
+  bool DEIsLiveIn = MBB.isLiveIn(V6Clang::DE) || MBB.isLiveIn(V6Clang::D) ||
+                    MBB.isLiveIn(V6Clang::E);
   bool NeedSPAdjust = UseFP || StackSize > 0;
 
   // Case 1: Both HL and DE are live-in. Save via PUSH, reload after frame setup.
   if (HLIsLiveIn && DEIsLiveIn && NeedSPAdjust) {
     // Save both arg register pairs on the stack.
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::DE);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::DE);
     // Account for the 4 extra bytes in the total stack size so that
     // eliminateFrameIndex computes correct SP-relative offsets.
     uint64_t OrigStackSize = StackSize;
@@ -227,14 +227,14 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
 
     if (UseFP) {
       FuncInfo->setFrameCFAOffset(8);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::BC);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::LXI))
-          .addReg(V6CLANG::HL, RegState::Define).addImm(0);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::B, RegState::Define).addReg(V6CLANG::H);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::C, RegState::Define).addReg(V6CLANG::L);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::BC);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::LXI))
+          .addReg(V6Clang::HL, RegState::Define).addImm(0);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::DAD)).addReg(V6Clang::SP);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::B, RegState::Define).addReg(V6Clang::H);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::C, RegState::Define).addReg(V6Clang::L);
     }
 
     if (OrigStackSize > 0) {
@@ -243,15 +243,15 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
     }
 
     // Reload saved DE from stack: at SP + OrigStackSize.
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::LXI))
-        .addReg(V6CLANG::HL, RegState::Define)
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::LXI))
+        .addReg(V6Clang::HL, RegState::Define)
         .addImm(static_cast<int64_t>(OrigStackSize));
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrM))
-        .addReg(V6CLANG::E, RegState::Define);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::INX), V6CLANG::HL).addReg(V6CLANG::HL);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrM))
-        .addReg(V6CLANG::D, RegState::Define);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::DAD)).addReg(V6Clang::SP);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrM))
+        .addReg(V6Clang::E, RegState::Define);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::INX), V6Clang::HL).addReg(V6Clang::HL);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrM))
+        .addReg(V6Clang::D, RegState::Define);
     // Reload saved HL: at SP + OrigStackSize + 2 (next 2 bytes on stack).
     // We need a byte scratch register to hold the L byte while loading H
     // (because the MOVrM instruction uses HL itself as the address pointer).
@@ -263,19 +263,19 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
     // though E is semantically live), we unconditionally save/restore A
     // around the scratch use via PUSH/POP PSW. Cost is +1 byte / +21 cc,
     // only on functions hitting this Case 1 (rare).
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH))
-        .addReg(V6CLANG::PSW, RegState::Undef);  // preserve A (FLAGS undef at entry)
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::INX), V6CLANG::HL).addReg(V6CLANG::HL);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrM))
-        .addReg(V6CLANG::A, RegState::Define);   // A = saved L
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::INX), V6CLANG::HL).addReg(V6CLANG::HL);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrM))
-        .addReg(V6CLANG::H, RegState::Define);   // H = saved H (from [HL])
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::L, RegState::Define)
-        .addReg(V6CLANG::A);                     // L = saved L (from A)
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::POP))
-        .addReg(V6CLANG::PSW, RegState::Define | RegState::Dead);  // restore A
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH))
+        .addReg(V6Clang::PSW, RegState::Undef);  // preserve A (FLAGS undef at entry)
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::INX), V6Clang::HL).addReg(V6Clang::HL);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrM))
+        .addReg(V6Clang::A, RegState::Define);   // A = saved L
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::INX), V6Clang::HL).addReg(V6Clang::HL);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrM))
+        .addReg(V6Clang::H, RegState::Define);   // H = saved H (from [HL])
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::L, RegState::Define)
+        .addReg(V6Clang::A);                     // L = saved L (from A)
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::POP))
+        .addReg(V6Clang::PSW, RegState::Define | RegState::Dead);  // restore A
     return;
   }
 
@@ -289,30 +289,30 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
                          /*IsPrologue=*/true, Mode);
   bool DoSave = NeedHLSave && (UseFP || HLClobberedByAdjust);
   if (DoSave) {
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::D, RegState::Define).addReg(V6CLANG::H);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::E, RegState::Define).addReg(V6CLANG::L);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::D, RegState::Define).addReg(V6Clang::H);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::E, RegState::Define).addReg(V6Clang::L);
   }
 
   if (UseFP) {
     FuncInfo->setFrameCFAOffset(4);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::BC);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::LXI))
-        .addReg(V6CLANG::HL, RegState::Define).addImm(0);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::B, RegState::Define).addReg(V6CLANG::H);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::C, RegState::Define).addReg(V6CLANG::L);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::BC);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::LXI))
+        .addReg(V6Clang::HL, RegState::Define).addImm(0);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::DAD)).addReg(V6Clang::SP);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::B, RegState::Define).addReg(V6Clang::H);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::C, RegState::Define).addReg(V6Clang::L);
   }
 
   if (StackSize == 0) {
     if (DoSave) {
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::H, RegState::Define).addReg(V6CLANG::D);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::L, RegState::Define).addReg(V6CLANG::E);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::H, RegState::Define).addReg(V6Clang::D);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::L, RegState::Define).addReg(V6Clang::E);
     }
     return;
   }
@@ -321,10 +321,10 @@ void V6ClangFrameLowering::emitPrologue(MachineFunction &MF,
                    /*IsPrologue=*/true, Mode);
 
   if (DoSave) {
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::H, RegState::Define).addReg(V6CLANG::D);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::L, RegState::Define).addReg(V6CLANG::E);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::H, RegState::Define).addReg(V6Clang::D);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::L, RegState::Define).addReg(V6Clang::E);
   }
 }
 
@@ -361,11 +361,11 @@ void V6ClangFrameLowering::emitEpilogue(MachineFunction &MF,
   if (MBBI != MBB.end() && MBBI->isReturn()) {
     for (const MachineOperand &MO : MBBI->operands()) {
       if (!MO.isReg()) continue;
-      if (MO.getReg() == V6CLANG::HL || MO.getReg() == V6CLANG::H ||
-          MO.getReg() == V6CLANG::L)
+      if (MO.getReg() == V6Clang::HL || MO.getReg() == V6Clang::H ||
+          MO.getReg() == V6Clang::L)
         HLUsedByRet = true;
-      if (MO.getReg() == V6CLANG::DE || MO.getReg() == V6CLANG::D ||
-          MO.getReg() == V6CLANG::E)
+      if (MO.getReg() == V6Clang::DE || MO.getReg() == V6Clang::D ||
+          MO.getReg() == V6Clang::E)
         DEUsedByRet = true;
     }
   }
@@ -373,33 +373,33 @@ void V6ClangFrameLowering::emitEpilogue(MachineFunction &MF,
 
   if (UseFP) {
     if (NeedHLSave) {
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::D, RegState::Define)
-          .addReg(V6CLANG::H);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::E, RegState::Define)
-          .addReg(V6CLANG::L);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::D, RegState::Define)
+          .addReg(V6Clang::H);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::E, RegState::Define)
+          .addReg(V6Clang::L);
     }
     // Restore SP from frame pointer: HL = BC; SPHL; POP BC
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::H, RegState::Define)
-        .addReg(V6CLANG::B);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::L, RegState::Define)
-        .addReg(V6CLANG::C);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::SPHL));
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::POP))
-        .addReg(V6CLANG::BC, RegState::Define);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::H, RegState::Define)
+        .addReg(V6Clang::B);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::L, RegState::Define)
+        .addReg(V6Clang::C);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::SPHL));
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::POP))
+        .addReg(V6Clang::BC, RegState::Define);
     if (unsigned ArgSaveSize = FuncInfo->getPrologueArgSaveSize())
       emitSPAdjustment(MBB, MBBI, static_cast<int64_t>(ArgSaveSize), DL,
                        /*IsPrologue=*/false, Mode);
     if (NeedHLSave) {
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::H, RegState::Define)
-          .addReg(V6CLANG::D);
-      BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::L, RegState::Define)
-          .addReg(V6CLANG::E);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::H, RegState::Define)
+          .addReg(V6Clang::D);
+      BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::L, RegState::Define)
+          .addReg(V6Clang::E);
     }
     return;
   }
@@ -414,24 +414,24 @@ void V6ClangFrameLowering::emitEpilogue(MachineFunction &MF,
                                        /*IsPrologue=*/false, Mode);
   bool DoSave = NeedHLSave && ClobbersHL;
   if (DoSave) {
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::D, RegState::Define)
-        .addReg(V6CLANG::H);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::E, RegState::Define)
-        .addReg(V6CLANG::L);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::D, RegState::Define)
+        .addReg(V6Clang::H);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::E, RegState::Define)
+        .addReg(V6Clang::L);
   }
   // Adjust SP back: SP += StackSize. Helper picks PUSH/POP, DCX/INX SP,
   // or LXI+DAD+SPHL based on size, opt mode, and register pressure.
   emitSPAdjustment(MBB, MBBI, static_cast<int64_t>(StackSize), DL,
                    /*IsPrologue=*/false, Mode);
   if (DoSave) {
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::H, RegState::Define)
-        .addReg(V6CLANG::D);
-    BuildMI(MBB, MBBI, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::L, RegState::Define)
-        .addReg(V6CLANG::E);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::H, RegState::Define)
+        .addReg(V6Clang::D);
+    BuildMI(MBB, MBBI, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::L, RegState::Define)
+        .addReg(V6Clang::E);
   }
 }
 

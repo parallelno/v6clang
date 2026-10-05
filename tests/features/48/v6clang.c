@@ -1,7 +1,7 @@
 /* O69: Direct frame-index load/store pseudos.
  *
  * Goal: exercise stack-relative i8/i16 loads and stores that previously
- * lowered through V6CLANG_LEA_FI + V6CLANG_LOAD*_P/V6CLANG_STORE*_P address temporaries.
+ * lowered through V6CLANG_LEA_FI + V6CLANG_LOAD*_P/V6Clang_STORE*_P address temporaries.
  *
  * Compile for assembly verification:
  *   llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S \

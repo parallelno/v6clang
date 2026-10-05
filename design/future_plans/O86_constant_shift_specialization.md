@@ -7,7 +7,7 @@ constant-amount case.
 ## Problem
 
 The current `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` expansions
-([V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp), case
+([V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp), case
 `V6CLANG_SHL16` ~line 2255, `V6CLANG_SRL16` ~line 2311) handle two regimes:
 
 * **ShAmt 1..7** — per-bit unrolled loop in the A register
@@ -301,7 +301,7 @@ magnitude.
 
 1. **Selection point**: extend `LowerSHL_i16` / `LowerSRL_i16` /
    `LowerSRA_i16` in
-   [V6ClangISelLowering.cpp](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp)
+   [V6ClangISelLowering.cpp](../../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp)
    to emit a strategy-specific `V6ClangISD::*` node carrying `(Val, ShAmt)`.
    The strategy is chosen purely from the constant `ShAmt`.
 2. **Pseudo expansion**: implement each `V6CLANG_*` variant in

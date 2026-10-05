@@ -16,7 +16,7 @@ Target &getTheV6ClangTarget() {
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeV6ClangTargetInfo() {
   llvm::RegisterTarget<llvm::Triple::i8080> X(
-      llvm::getTheV6ClangTarget(), "v6clang", "Vector 06c (Intel 8080)", "V6CLANG");
+      llvm::getTheV6ClangTarget(), "v6clang", "Vector 06c (Intel 8080)", "V6Clang");
 }
 
 // LLVMInitializeV6ClangAsmParser is defined in AsmParser/V6ClangAsmParser.cpp.

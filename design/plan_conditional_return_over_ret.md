@@ -106,7 +106,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: conditional-return-over-ret.ll [x]
 
-Add `tests/lit/CodeGen/V6CLANG/conditional-return-over-ret.ll` with:
+Add `tests/lit/CodeGen/V6Clang/conditional-return-over-ret.ll` with:
 
 1. **test_jcc_over_ret** — basic pattern: `Jcc skip / RET / skip: JMP bar`
    should become `Rcc / JMP bar`.
@@ -119,7 +119,7 @@ Add `tests/lit/CodeGen/V6CLANG/conditional-return-over-ret.ll` with:
 ### Step 3.5 — Run lit test [x]
 
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\conditional-return-over-ret.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6Clang\conditional-return-over-ret.ll -v
 ```
 
 > **Implementation Notes**:

@@ -6,7 +6,7 @@
 
 `V6CLANG_SELECT_CC` (the i8 conditional-select pseudo) is expanded by
 `V6ClangTargetLowering::EmitInstrWithCustomInserter`
-([V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp))
+([V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp))
 into a 3-block diamond with a PHI node:
 
 ```
@@ -117,8 +117,8 @@ The static helper `isPhysRegDeadAtMI` is copied from `V6ClangInstrInfo.cpp`
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` | Add `isPhysRegDeadAtMI` static helper; add 4-block through-A path inside the `V6CLANG_SELECT_CC` case |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/select-cc-i8-acc-baseline.ll` | Already created; update `fillscreen_double` CHECK lines from `MVI C, 0` → `XRA A` after O81 is built |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` | Add `isPhysRegDeadAtMI` static helper; add 4-block through-A path inside the `V6CLANG_SELECT_CC` case |
+| `llvm-project/llvm/test/CodeGen/V6Clang/select-cc-i8-acc-baseline.ll` | Already created; update `fillscreen_double` CHECK lines from `MVI C, 0` → `XRA A` after O81 is built |
 | `tests/features/66/` | Feature regression test folder; baseline already compiled |
 | `design/future_plans/README.md` | Mark O81 ✅ |
 
@@ -128,7 +128,7 @@ The static helper `isPhysRegDeadAtMI` is copied from `V6ClangInstrInfo.cpp`
 
 ### Step 3.1 — Add `isPhysRegDeadAtMI` helper + 4-block diamond path [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 **3.1.1 — Static helper** (add before `EmitInstrWithCustomInserter`):
 
@@ -243,7 +243,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Update lit test `select-cc-i8-acc-baseline.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/select-cc-i8-acc-baseline.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/select-cc-i8-acc-baseline.ll`
 
 After O81 fires, `fillscreen_double` now produces `XRA A` / `MOV M, A`
 instead of `MVI C, 0` / `MOV M, C`. Update the CHECK lines accordingly.
@@ -253,7 +253,7 @@ Also add `select_through_a` positive case: verify that `JNZ` / `XRA A` /
 
 Verify:
 ```
-llvm-build\bin\llc -march=v6clang llvm-project\llvm\test\CodeGen\V6CLANG\select-cc-i8-acc-baseline.ll -o - | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6CLANG\select-cc-i8-acc-baseline.ll
+llvm-build\bin\llc -march=v6clang llvm-project\llvm\test\CodeGen\V6Clang\select-cc-i8-acc-baseline.ll -o - | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6Clang\select-cc-i8-acc-baseline.ll
 ```
 
 ### Step 3.4 — Run regression tests [x]

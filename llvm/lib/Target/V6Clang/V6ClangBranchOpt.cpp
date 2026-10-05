@@ -91,21 +91,21 @@ char V6ClangBranchOpt::ID = 0;
 
 unsigned V6ClangBranchOpt::getInvertedJcc(unsigned Opc) {
   switch (Opc) {
-  case V6CLANG::JNZ: return V6CLANG::JZ;
-  case V6CLANG::JZ:  return V6CLANG::JNZ;
-  case V6CLANG::JNC: return V6CLANG::JC;
-  case V6CLANG::JC:  return V6CLANG::JNC;
-  case V6CLANG::JPO: return V6CLANG::JPE;
-  case V6CLANG::JPE: return V6CLANG::JPO;
-  case V6CLANG::JP:  return V6CLANG::JM;
-  case V6CLANG::JM:  return V6CLANG::JP;
+  case V6Clang::JNZ: return V6Clang::JZ;
+  case V6Clang::JZ:  return V6Clang::JNZ;
+  case V6Clang::JNC: return V6Clang::JC;
+  case V6Clang::JC:  return V6Clang::JNC;
+  case V6Clang::JPO: return V6Clang::JPE;
+  case V6Clang::JPE: return V6Clang::JPO;
+  case V6Clang::JP:  return V6Clang::JM;
+  case V6Clang::JM:  return V6Clang::JP;
   default: return 0;
   }
 }
 
 /// Thread branches through JMP-only successor blocks.
 /// If a branch (Jcc or JMP) targets a block whose only non-debug
-/// instruction is JMP/V6CLANG_TAILJMP target, redirect the branch to
+/// instruction is JMP/V6Clang_TAILJMP target, redirect the branch to
 /// target directly.
 bool V6ClangBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
   bool Changed = false;
@@ -113,7 +113,7 @@ bool V6ClangBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF) {
     for (MachineInstr &MI : MBB.terminators()) {
       // Must be a branch to an MBB (Jcc or JMP).
-      if (MI.getOpcode() != V6CLANG::JMP && !getInvertedJcc(MI.getOpcode()))
+      if (MI.getOpcode() != V6Clang::JMP && !getInvertedJcc(MI.getOpcode()))
         continue;
       if (!MI.getOperand(0).isMBB())
         continue;
@@ -124,8 +124,8 @@ bool V6ClangBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
       auto FirstNonDbg = Target->getFirstNonDebugInstr();
       if (FirstNonDbg == Target->end())
         continue;
-      if (FirstNonDbg->getOpcode() != V6CLANG::JMP &&
-          FirstNonDbg->getOpcode() != V6CLANG::V6CLANG_TAILJMP)
+      if (FirstNonDbg->getOpcode() != V6Clang::JMP &&
+          FirstNonDbg->getOpcode() != V6Clang::V6CLANG_TAILJMP)
         continue;
       // Verify it's the only non-debug instruction.
       auto Next = std::next(FirstNonDbg);
@@ -176,7 +176,7 @@ bool V6ClangBranchOpt::removeRedundantJMP(MachineFunction &MF) {
       continue;
 
     MachineInstr &Last = MBB.back();
-    if (Last.getOpcode() != V6CLANG::JMP)
+    if (Last.getOpcode() != V6Clang::JMP)
       continue;
     if (!Last.getOperand(0).isMBB())
       continue;
@@ -208,8 +208,8 @@ bool V6ClangBranchOpt::invertConditionalBranch(MachineFunction &MF) {
     auto LastI = MBB.end();
     --LastI; // Points to last instruction.
     MachineInstr &Last = *LastI;
-    if (Last.getOpcode() != V6CLANG::JMP &&
-        Last.getOpcode() != V6CLANG::V6CLANG_TAILJMP)
+    if (Last.getOpcode() != V6Clang::JMP &&
+        Last.getOpcode() != V6Clang::V6CLANG_TAILJMP)
       continue;
 
     --LastI; // Points to second-to-last instruction.
@@ -226,7 +226,7 @@ bool V6ClangBranchOpt::invertConditionalBranch(MachineFunction &MF) {
     if (NextBB == MF.end() || &*NextBB != JccTarget)
       continue;
 
-    // Transform: invert the Jcc to jump to the JMP/V6CLANG_TAILJMP's target,
+    // Transform: invert the Jcc to jump to the JMP/V6Clang_TAILJMP's target,
     // remove the unconditional branch.
     const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
 
@@ -246,14 +246,14 @@ bool V6ClangBranchOpt::invertConditionalBranch(MachineFunction &MF) {
 /// Map Jcc opcode to corresponding Rcc opcode, or 0 if not a Jcc.
 static unsigned getConditionalReturn(unsigned JccOpc) {
   switch (JccOpc) {
-  case V6CLANG::JZ:  return V6CLANG::RZ;
-  case V6CLANG::JNZ: return V6CLANG::RNZ;
-  case V6CLANG::JC:  return V6CLANG::RC;
-  case V6CLANG::JNC: return V6CLANG::RNC;
-  case V6CLANG::JPE: return V6CLANG::RPE;
-  case V6CLANG::JPO: return V6CLANG::RPO;
-  case V6CLANG::JP:  return V6CLANG::RP;
-  case V6CLANG::JM:  return V6CLANG::RM;
+  case V6Clang::JZ:  return V6Clang::RZ;
+  case V6Clang::JNZ: return V6Clang::RNZ;
+  case V6Clang::JC:  return V6Clang::RC;
+  case V6Clang::JNC: return V6Clang::RNC;
+  case V6Clang::JPE: return V6Clang::RPE;
+  case V6Clang::JPO: return V6Clang::RPO;
+  case V6Clang::JP:  return V6Clang::RP;
+  case V6Clang::JM:  return V6Clang::RM;
   default: return 0;
   }
 }
@@ -263,7 +263,7 @@ static bool isReturnOnlyBlock(const MachineBasicBlock &MBB) {
   for (const MachineInstr &MI : MBB) {
     if (MI.isDebugInstr())
       continue;
-    return MI.getOpcode() == V6CLANG::RET;
+    return MI.getOpcode() == V6Clang::RET;
   }
   return false; // empty block
 }
@@ -295,7 +295,7 @@ bool V6ClangBranchOpt::invertConditionalOverRET(MachineFunction &MF) {
     if (getInvertedJcc(Last.getOpcode())) {
       // Pattern A: block ends with single Jcc.
       JccMI = &Last;
-    } else if (Last.getOpcode() == V6CLANG::JMP && Last.getOperand(0).isMBB()) {
+    } else if (Last.getOpcode() == V6Clang::JMP && Last.getOperand(0).isMBB()) {
       // Pattern B: block ends with Jcc + JMP.
       auto It = Last.getIterator();
       if (It != MBB.begin()) {
@@ -338,8 +338,8 @@ bool V6ClangBranchOpt::invertConditionalOverRET(MachineFunction &MF) {
     {
       auto FirstNonDbg = JccTarget->getFirstNonDebugInstr();
       if (FirstNonDbg != JccTarget->end() &&
-          (FirstNonDbg->getOpcode() == V6CLANG::JMP ||
-           FirstNonDbg->getOpcode() == V6CLANG::V6CLANG_TAILJMP)) {
+          (FirstNonDbg->getOpcode() == V6Clang::JMP ||
+           FirstNonDbg->getOpcode() == V6Clang::V6CLANG_TAILJMP)) {
         auto NextInst = std::next(FirstNonDbg);
         while (NextInst != JccTarget->end() && NextInst->isDebugInstr())
           ++NextInst;
@@ -408,7 +408,7 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
 
     // 1. Last instruction must be JNZ targeting a local MBB.
     MachineInstr &Jcc = MBB.back();
-    if (Jcc.getOpcode() != V6CLANG::JNZ || !Jcc.getOperand(0).isMBB())
+    if (Jcc.getOpcode() != V6Clang::JNZ || !Jcc.getOperand(0).isMBB())
       continue;
     MachineBasicBlock *SkipBB = Jcc.getOperand(0).getMBB();
 
@@ -419,7 +419,7 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
     --PrevIt;
     while (PrevIt != MBB.begin() && PrevIt->isDebugInstr())
       --PrevIt;
-    if (PrevIt->isDebugInstr() || PrevIt->getOpcode() != V6CLANG::CPI)
+    if (PrevIt->isDebugInstr() || PrevIt->getOpcode() != V6Clang::CPI)
       continue;
     if (!PrevIt->getOperand(1).isImm())
       continue;
@@ -441,14 +441,14 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
     if (FTI == FallthroughBB.end())
       continue;
     Register Rx;
-    if (FTI->getOpcode() == V6CLANG::MVIr) {
+    if (FTI->getOpcode() == V6Clang::MVIr) {
       if (!FTI->getOperand(1).isImm() ||
           (FTI->getOperand(1).getImm() & 0xFF) != CpiImm)
         continue;
       Rx = FTI->getOperand(0).getReg();
-    } else if (FTI->getOpcode() == V6CLANG::MOVrr) {
+    } else if (FTI->getOpcode() == V6Clang::MOVrr) {
       // MOV Rx, A — on Z fallthrough, A holds CpiImm.
-      if (FTI->getOperand(1).getReg() != V6CLANG::A)
+      if (FTI->getOperand(1).getReg() != V6Clang::A)
         continue;
       Rx = FTI->getOperand(0).getReg();
     } else {
@@ -469,16 +469,16 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
 
     // 5. SkipBB must have exactly: MOV A, Rx; RET.
     auto SI = SkipBB->getFirstNonDebugInstr();
-    if (SI == SkipBB->end() || SI->getOpcode() != V6CLANG::MOVrr)
+    if (SI == SkipBB->end() || SI->getOpcode() != V6Clang::MOVrr)
       continue;
-    if (SI->getOperand(0).getReg() != V6CLANG::A ||
+    if (SI->getOperand(0).getReg() != V6Clang::A ||
         SI->getOperand(1).getReg() != Rx)
       continue;
     {
       auto SI2 = std::next(SI);
       while (SI2 != SkipBB->end() && SI2->isDebugInstr())
         ++SI2;
-      if (SI2 == SkipBB->end() || SI2->getOpcode() != V6CLANG::RET)
+      if (SI2 == SkipBB->end() || SI2->getOpcode() != V6Clang::RET)
         continue;
       auto SI3 = std::next(SI2);
       while (SI3 != SkipBB->end() && SI3->isDebugInstr())
@@ -496,7 +496,7 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
       continue;
 
     // Transform: replace JNZ with RZ.
-    BuildMI(MBB, Jcc, Jcc.getDebugLoc(), TII.get(V6CLANG::RZ));
+    BuildMI(MBB, Jcc, Jcc.getDebugLoc(), TII.get(V6Clang::RZ));
     Jcc.eraseFromParent();
 
     // Update CFG: remove fallthrough edge to FallthroughBB,
@@ -523,14 +523,14 @@ bool V6ClangBranchOpt::foldZeroSelectReturn(MachineFunction &MF) {
 /// fused opcode tests the inverse predicate (e.g. JZ → CNZ).
 static unsigned getConditionalCall(unsigned JccOpc) {
   switch (JccOpc) {
-  case V6CLANG::JZ:  return V6CLANG::CNZ;
-  case V6CLANG::JNZ: return V6CLANG::CZ;
-  case V6CLANG::JC:  return V6CLANG::CNC;
-  case V6CLANG::JNC: return V6CLANG::CC;
-  case V6CLANG::JPE: return V6CLANG::CPO;
-  case V6CLANG::JPO: return V6CLANG::CPE;
-  case V6CLANG::JP:  return V6CLANG::CM;
-  case V6CLANG::JM:  return V6CLANG::CP;
+  case V6Clang::JZ:  return V6Clang::CNZ;
+  case V6Clang::JNZ: return V6Clang::CZ;
+  case V6Clang::JC:  return V6Clang::CNC;
+  case V6Clang::JNC: return V6Clang::CC;
+  case V6Clang::JPE: return V6Clang::CPO;
+  case V6Clang::JPO: return V6Clang::CPE;
+  case V6Clang::JP:  return V6Clang::CM;
+  case V6Clang::JM:  return V6Clang::CP;
   default: return 0;
   }
 }
@@ -602,7 +602,7 @@ bool V6ClangBranchOpt::foldConditionalCalls(MachineFunction &MF) {
     auto FirstNonDbg = CallBB.getFirstNonDebugInstr();
     if (FirstNonDbg == CallBB.end())
       continue;
-    if (FirstNonDbg->getOpcode() != V6CLANG::CALL)
+    if (FirstNonDbg->getOpcode() != V6Clang::CALL)
       continue;
     auto NextInst = std::next(FirstNonDbg);
     while (NextInst != CallBB.end() && NextInst->isDebugInstr())

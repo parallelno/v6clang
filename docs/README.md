@@ -35,7 +35,7 @@ Goal: **C source → Clang → LLVM IR → V6CLANG backend → flat binary → V
 
 - **Build instructions**: [V6ClangBuildGuide.md](V6ClangBuildGuide.md)
 - **Mirror sync**: [sync_llvm_mirror.ps1](../scripts/sync_llvm_mirror.ps1) — run after every build ([details](V6ClangBuildGuide.md#syncing-the-mirror))
-- **V6CLANG backend source**: [llvm/lib/Target/V6CLANG/](../llvm/lib/Target/V6CLANG/) — git-tracked mirror
+- **V6CLANG backend source**: [llvm/lib/Target/V6Clang/](../llvm/lib/Target/V6Clang/) — git-tracked mirror
 - **Golden tests**: [tests/golden/](../tests/golden/) — emulator trust baseline
 - **Vector 06c CPU timings**: [Vector_06c_instruction_timings.md](Vector_06c_instruction_timings.md)
 - **Benchmarks vs other 8080 C compilers**: [benchmarks.md](benchmarks.md) (driver: [tests/benchmarks_c/](../tests/benchmarks_c/README.md))

@@ -221,8 +221,8 @@ Path: A1-DE (DstReg=DE, one operand is HL, HL dead after → DAD DE; XCHG)
 
 ### New files:
 - tests/features/22/ (v6clang.c, c8080.c, c8080.asm, v6clang_old.asm, v6clang_new01.asm, result.txt)
-- tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll
+- tests/lit/CodeGen/V6Clang/add16-dad-expansion.ll
 - design/plan_add16_dad_expansion.md
 
 ### Modified files:
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp (V6CLANG_ADD16 expansion in expandPostRAPseudo)
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp (V6CLANG_ADD16 expansion in expandPostRAPseudo)

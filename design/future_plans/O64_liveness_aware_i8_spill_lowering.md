@@ -230,7 +230,7 @@ path O61 targets.
 
 ## Testing
 
-1. **Lit tests** under `llvm/test/CodeGen/V6CLANG/spill-reload-i8-*.ll`:
+1. **Lit tests** under `llvm/test/CodeGen/V6Clang/spill-reload-i8-*.ll`:
    one function per decision row, with `CHECK` lines asserting the
    exact sequence.
 2. **Regression** — all existing O42 / O43 / O61 lit tests must still
@@ -257,12 +257,12 @@ path O61 targets.
 ## References
 
 * Current lowering —
-  `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp` lines ~143–250
+  `llvm-project/llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp` lines ~143–250
   and `V6ClangSpillPatchedReload.cpp` non-winner i8 reload loop
   (lines ~474–534).
 * Liveness helper — `isRegDeadAfterMI` (currently duplicated in
   both files above; consolidated into the new `V6ClangSpillExpand.h`).
-* Pseudo defs — `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+* Pseudo defs — `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
   (`V6CLANG_SPILL8`, `V6CLANG_RELOAD8`). No changes needed unless O63 lands
   first.
 * Timings — `docs/V6ClangInstructionTimings.md`.

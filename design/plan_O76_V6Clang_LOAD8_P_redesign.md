@@ -117,7 +117,7 @@ Priority 3 (`A dead`) is unchanged.
 |------|-----------------------------------------------------------|------------------------------------------------|
 | Rewrite expander | Three-way dispatch in priority-4 arm           | V6ClangInstrInfo.cpp `case V6CLANG::V6CLANG_LOAD8_P:`      |
 | (No change) | `V6CLANG_LOAD8_P` td declaration unchanged              | V6ClangInstrInfo.td                                |
-| Test coverage | Lit test pinning each new shape + feature test    | tests/lit/CodeGen/V6CLANG/, tests/features/58/     |
+| Test coverage | Lit test pinning each new shape + feature test    | tests/lit/CodeGen/V6Clang/, tests/features/58/     |
 | Doc updates | Mark O76 done in `design/future_plans/README.md`    | design/future_plans/                           |
 
 ---
@@ -126,7 +126,7 @@ Priority 3 (`A dead`) is unchanged.
 
 ### Step 3.1 — Rewrite expander: priority-4 three-way dispatch [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_LOAD8_P:` (currently line ~2231).
 
 Replace the existing `else` (priority-4) branch with:
@@ -165,7 +165,7 @@ Replace the existing `else` (priority-4) branch with:
     // 6a — addr=BC, A live, SpareR available: dead-GR8 envelope.
     // Saves 12cc vs PUSH PSW / POP PSW. Same byte count.
     Register SpareR = findDeadGR8AtMI(MI, MBB, &RI,
-                                      /*Exclude1=*/V6CLANG::A,
+                                      /*Exclude1=*/V6Clang::A,
                                       /*Exclude2=*/DstReg);
     if (SpareR) {
       BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), SpareR).addReg(V6CLANG::A);
@@ -194,7 +194,7 @@ Replace the existing `else` (priority-4) branch with:
 ```
 
 > **Design Notes**: `findDeadGR8AtMI` already exists at
-> [V6ClangInstrInfo.cpp:506](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L506).
+> [V6ClangInstrInfo.cpp:506](../llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L506).
 > It excludes `A` and accepts up-to-two extra exclude registers.
 > The `Exclude2=DstReg` argument is essential: SpareR must survive
 > the entire envelope including the post-LDAX `MOV dst,A`, so it
@@ -217,7 +217,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.3 — Lit test: load8p-shape-redesign.ll [ ]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/load8p-shape-redesign.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/load8p-shape-redesign.ll`
 
 Pin each priority-4 sub-shape with IR + register-asm constraints.
 Coverage matrix:
@@ -248,7 +248,7 @@ empirically — see plan §1 root cause.)
 
 ```
 cd llvm-project
-llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6CLANG
+llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6Clang
 ```
 
 Diagnose and fix any failure. Pre-existing tests that pin

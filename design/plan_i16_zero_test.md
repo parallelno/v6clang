@@ -66,7 +66,7 @@ Since this is a single-block, three-instruction replacement:
 |------|------|-------|
 | 3.1 | Add zero-test fast path | `V6ClangInstrInfo.cpp` (expandPostRAPseudo) |
 | 3.2 | Build | ninja |
-| 3.3 | Lit test | `tests/lit/CodeGen/V6CLANG/br-cc16-zero.ll` |
+| 3.3 | Lit test | `tests/lit/CodeGen/V6Clang/br-cc16-zero.ll` |
 | 3.4 | Run regression tests | `python tests/run_all.py` |
 | 3.5 | Verification assembly | `tests/features/README.md` steps |
 | 3.6 | Create result.txt | `tests/features/README.md` |
@@ -78,7 +78,7 @@ Since this is a single-block, three-instruction replacement:
 
 ### Step 3.1 — Add zero-test fast path in V6CLANG_BR_CC16_IMM expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 In the `case V6CLANG::V6CLANG_BR_CC16_IMM:` block, after extracting operands and
 sub-registers, add a check before the existing MBB-splitting code:
@@ -115,7 +115,7 @@ Expected: clean build. Change is confined to one case in expandPostRAPseudo.
 
 ### Step 3.3 — Lit test: br-cc16-zero.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/br-cc16-zero.ll`
+**File**: `tests/lit/CodeGen/V6Clang/br-cc16-zero.ll`
 
 Test cases:
 - `@ne_zero`: `icmp ne i16 %x, 0` → expect `MOV A,` + `ORA` + `JNZ`

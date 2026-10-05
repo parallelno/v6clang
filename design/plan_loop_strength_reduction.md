@@ -82,7 +82,7 @@ Key TTI hooks to implement:
 
 ### Step 3.1 — Create V6ClangTargetTransformInfo.h [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.h`
 
 ```cpp
 #ifndef LLVM_LIB_TARGET_V6CLANG_V6ClangTARGETTRANSFORMINFO_H
@@ -136,7 +136,7 @@ public:
 
 ### Step 3.2 — Create V6ClangTargetTransformInfo.cpp [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`
 
 ```cpp
 #include "V6ClangTargetTransformInfo.h"
@@ -219,7 +219,7 @@ bool V6ClangTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
 
 ### Step 3.3 — Register TTI in V6ClangTargetMachine [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetMachine.h`
 
 Add override declaration:
 
@@ -227,7 +227,7 @@ Add override declaration:
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
 ```
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 Add include and implementation:
 
@@ -244,7 +244,7 @@ V6ClangTargetMachine::getTargetTransformInfo(const Function &F) const {
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm/lib/Target/V6CLANG/CMakeLists.txt`
+**File**: `llvm/lib/Target/V6Clang/CMakeLists.txt`
 
 Add `V6ClangTargetTransformInfo.cpp` to the source list in `V6ClangCodeGen`:
 
@@ -298,7 +298,7 @@ Expected in the loop body:
 
 ### Step 3.8 — Lit test for LSR behavior [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/loop-strength-reduce.ll`
+**File**: `tests/lit/CodeGen/V6Clang/loop-strength-reduce.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s

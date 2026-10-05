@@ -76,7 +76,7 @@ Three coordinated changes:
 
 ### Step 3.1 — Add `foldXraCmpZeroTest()` to V6ClangPeephole [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a new method `foldXraCmpZeroTest(MachineBasicBlock &MBB)` that:
 
@@ -111,7 +111,7 @@ Call from `runOnMachineFunction` alongside existing patterns.
 
 ### Step 3.2 — Reorder pipeline: Peephole before LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 In `addPreEmitPass()`, swap the order of `createV6ClangPeepholePass()` and
 `createV6ClangLoadImmCombinePass()` so Peephole runs first:
@@ -133,7 +133,7 @@ eliminate downstream `MVI A, 0`.
 
 ### Step 3.3 — Track XRA A → A=0 in LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 Before the ALU invalidation switch (~line 366), add a special case:
 
@@ -170,7 +170,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: xra-cmp-zero-test.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/xra-cmp-zero-test.ll`
+**File**: `tests/lit/CodeGen/V6Clang/xra-cmp-zero-test.ll`
 
 Test cases:
 1. Basic pattern: `MOV A, r; ORA A; JZ → XRA A; CMP r; JZ`
@@ -271,6 +271,6 @@ Cascade saving: eliminates MVI A,0 on both branch paths when A=0 from XRA.
 * [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
-* [V6ClangPeephole.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangPeephole.cpp)
-* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp)
-* [V6ClangTargetMachine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangTargetMachine.cpp)
+* [V6ClangPeephole.cpp](llvm-project\llvm\lib\Target\V6Clang\V6ClangPeephole.cpp)
+* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6Clang\V6ClangLoadImmCombine.cpp)
+* [V6ClangTargetMachine.cpp](llvm-project\llvm\lib\Target\V6Clang\V6ClangTargetMachine.cpp)

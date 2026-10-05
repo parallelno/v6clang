@@ -38,7 +38,7 @@ RET                ;      ← A = lo result, no hi work at all
 
 ### Root cause
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` the
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` the
 `V6CLANG_AND16` / `V6CLANG_OR16` / `V6CLANG_XOR16` expansion case has no liveness check
 before emitting the high-byte sequence:
 
@@ -75,8 +75,8 @@ before PEI) then observes that A still holds the lo result and removes the
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` | One `isRegDeadAfter` guard wrapping the 3 hi-byte `BuildMI` calls |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-dead-hi.ll` | New lit test covering all 3 ops × dead/live hi cases |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` | One `isRegDeadAfter` guard wrapping the 3 hi-byte `BuildMI` calls |
+| `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-dead-hi.ll` | New lit test covering all 3 ops × dead/live hi cases |
 | `tests/features/71/` | Feature test: C source, baseline, new asm, result.txt |
 | `design/future_plans/O89_dead_hi_byte_bitwise_ops.md` | Mark complete |
 | `design/future_plans/README.md` | ✅ O89 |
@@ -87,7 +87,7 @@ before PEI) then observes that A still holds the lo result and removes the
 
 ### Step 3.1 — Add dead-hi guard in V6ClangInstrInfo.cpp [x]
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `expandPostRAPseudo` case `V6CLANG_AND16`/`V6CLANG_OR16`/`V6CLANG_XOR16`:
 
 Before the hi-byte block, insert:
@@ -114,7 +114,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: bitwise16-dead-hi.ll [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-dead-hi.ll` covering:
+Create `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-dead-hi.ll` covering:
 
 - `xor16_dead_hi` — `trunc (xor i16, i16) to i8`: expect 2 insn, no hi-byte XRAr/MOVrr
 - `or16_dead_hi` — `trunc (or i16, i16) to i8`: expect 2 insn, no ORAr for hi
@@ -123,9 +123,9 @@ Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-dead-hi.ll` covering:
 - `xor_bytes` — `trunc (xor (lshr i16 by 8), i16) to i8`: checksum pattern
 
 Run: `llvm-build\bin\llc -march=i8080 -mtriple=i8080-unknown-v6clang -verify-machineinstrs
-      llvm-project\llvm\test\CodeGen\V6CLANG\bitwise16-dead-hi.ll -o - | FileCheck ...`
+      llvm-project\llvm\test\CodeGen\V6Clang\bitwise16-dead-hi.ll -o - | FileCheck ...`
 
-Or via lit: `llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\bitwise16-dead-hi.ll`
+Or via lit: `llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6Clang\bitwise16-dead-hi.ll`
 
 > **Implementation Notes**: Created `bitwise16-dead-hi.ll` with 8 functions (3 dead-hi, 2 cmp-zero dead-hi, 3 live-hi control). `CHECK-NOT: XRA {{[BCDEHL]}}` pattern used to avoid false positive from `XRA A` emitted by CMP8_ZERO shape 2. PASS.
 

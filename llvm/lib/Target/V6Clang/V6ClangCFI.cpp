@@ -93,9 +93,9 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
   const bool IsUnwindBoundary = F.hasFnAttribute(Attribute::Naked) ||
                                 F.hasFnAttribute("interrupt");
 
-  const unsigned DwarfSP = TRI->getDwarfRegNum(V6CLANG::SP, true);
-  const unsigned DwarfPC = TRI->getDwarfRegNum(V6CLANG::PC, true);
-  const unsigned DwarfBC = TRI->getDwarfRegNum(V6CLANG::BC, true);
+  const unsigned DwarfSP = TRI->getDwarfRegNum(V6Clang::SP, true);
+  const unsigned DwarfPC = TRI->getDwarfRegNum(V6Clang::PC, true);
+  const unsigned DwarfBC = TRI->getDwarfRegNum(V6Clang::BC, true);
   const int64_t BodyCFAOffset =
       UseFP ? FuncInfo->getFrameCFAOffset()
             : 2 + static_cast<int64_t>(MF.getFrameInfo().getStackSize());
@@ -142,8 +142,8 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
         emitAfter(MCCFIInstruction::cfiDefCfa(nullptr, Reg, Offset));
       };
 
-      if (MI.getOpcode() == V6CLANG::LXI && MI.getNumOperands() >= 2 &&
-          MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6CLANG::SP) {
+      if (MI.getOpcode() == V6Clang::LXI && MI.getNumOperands() >= 2 &&
+          MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6Clang::SP) {
         StateBeforeSPRepurpose = State;
         State.ReturnAddressAvailable = false;
         emitAfter(MCCFIInstruction::createUndefined(nullptr, DwarfPC));
@@ -151,9 +151,9 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
       }
 
       if (!State.ReturnAddressAvailable) {
-        if (MI.getOpcode() == V6CLANG::SPHL) {
+        if (MI.getOpcode() == V6Clang::SPHL) {
           MachineInstr *Prev = previousReal(MI);
-          if (Prev && Prev->getOpcode() == V6CLANG::XCHG &&
+          if (Prev && Prev->getOpcode() == V6Clang::XCHG &&
               StateBeforeSPRepurpose) {
             State = *StateBeforeSPRepurpose;
             setCFA(State.Reg, State.Offset);
@@ -166,8 +166,8 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
       }
 
       if (UseFP && !FPActivated && IsEntry &&
-          MI.getOpcode() == V6CLANG::PUSH && MI.getNumOperands() != 0 &&
-          MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6CLANG::BC) {
+          MI.getOpcode() == V6Clang::PUSH && MI.getNumOperands() != 0 &&
+          MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6Clang::BC) {
         if (State.Reg == DwarfSP)
           setCFAOffset(State.Offset + 2);
         emitAfter(MCCFIInstruction::createOffset(nullptr, DwarfBC,
@@ -175,13 +175,13 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
         continue;
       }
 
-      if (UseFP && !FPActivated && IsEntry && MI.getOpcode() == V6CLANG::MOVrr &&
-          MI.getNumOperands() >= 2 && MI.getOperand(0).getReg() == V6CLANG::C &&
-          MI.getOperand(1).getReg() == V6CLANG::L) {
+      if (UseFP && !FPActivated && IsEntry && MI.getOpcode() == V6Clang::MOVrr &&
+          MI.getNumOperands() >= 2 && MI.getOperand(0).getReg() == V6Clang::C &&
+          MI.getOperand(1).getReg() == V6Clang::L) {
         MachineInstr *Prev = previousReal(MI);
-        if (Prev && Prev->getOpcode() == V6CLANG::MOVrr &&
-            Prev->getNumOperands() >= 2 && Prev->getOperand(0).getReg() == V6CLANG::B &&
-            Prev->getOperand(1).getReg() == V6CLANG::H) {
+        if (Prev && Prev->getOpcode() == V6Clang::MOVrr &&
+            Prev->getNumOperands() >= 2 && Prev->getOperand(0).getReg() == V6Clang::B &&
+            Prev->getOperand(1).getReg() == V6Clang::H) {
           State.Reg = DwarfBC;
           emitAfter(MCCFIInstruction::createDefCfaRegister(nullptr, DwarfBC));
           FPActivated = true;
@@ -189,43 +189,43 @@ bool V6ClangCFI::runOnMachineFunction(MachineFunction &MF) {
         }
       }
 
-      if (UseFP && FPActivated && MI.getOpcode() == V6CLANG::POP &&
+      if (UseFP && FPActivated && MI.getOpcode() == V6Clang::POP &&
           MI.getNumOperands() != 0 && MI.getOperand(0).isReg() &&
-          MI.getOperand(0).getReg() == V6CLANG::BC) {
+          MI.getOperand(0).getReg() == V6Clang::BC) {
         setCFA(DwarfSP, 2 + FuncInfo->getPrologueArgSaveSize());
         emitAfter(MCCFIInstruction::createRestore(nullptr, DwarfBC));
         FPActivated = false;
         continue;
       }
 
-      if (MI.getOpcode() == V6CLANG::PUSH) {
+      if (MI.getOpcode() == V6Clang::PUSH) {
         if (State.Reg == DwarfSP)
           setCFAOffset(State.Offset + 2);
         continue;
       }
-      if (MI.getOpcode() == V6CLANG::POP) {
+      if (MI.getOpcode() == V6Clang::POP) {
         if (State.Reg == DwarfSP)
           setCFAOffset(State.Offset - 2);
         continue;
       }
 
-      if ((MI.getOpcode() == V6CLANG::INX || MI.getOpcode() == V6CLANG::DCX) &&
-          (MI.readsRegister(V6CLANG::SP, TRI) ||
-           MI.definesRegister(V6CLANG::SP, TRI))) {
+      if ((MI.getOpcode() == V6Clang::INX || MI.getOpcode() == V6Clang::DCX) &&
+          (MI.readsRegister(V6Clang::SP, TRI) ||
+           MI.definesRegister(V6Clang::SP, TRI))) {
         if (State.Reg == DwarfSP)
-          setCFAOffset(State.Offset + (MI.getOpcode() == V6CLANG::DCX ? 1 : -1));
+          setCFAOffset(State.Offset + (MI.getOpcode() == V6Clang::DCX ? 1 : -1));
         continue;
       }
 
-      if (MI.getOpcode() != V6CLANG::SPHL || State.Reg != DwarfSP)
+      if (MI.getOpcode() != V6Clang::SPHL || State.Reg != DwarfSP)
         continue;
 
       MachineInstr *Dad = previousReal(MI);
       MachineInstr *Lxi = Dad ? previousReal(*Dad) : nullptr;
-      if (Dad && Dad->getOpcode() == V6CLANG::DAD &&
-          Dad->readsRegister(V6CLANG::SP, TRI) && Lxi &&
-          Lxi->getOpcode() == V6CLANG::LXI && Lxi->getNumOperands() >= 2 &&
-          Lxi->getOperand(0).isReg() && Lxi->getOperand(0).getReg() == V6CLANG::HL &&
+      if (Dad && Dad->getOpcode() == V6Clang::DAD &&
+          Dad->readsRegister(V6Clang::SP, TRI) && Lxi &&
+          Lxi->getOpcode() == V6Clang::LXI && Lxi->getNumOperands() >= 2 &&
+          Lxi->getOperand(0).isReg() && Lxi->getOperand(0).getReg() == V6Clang::HL &&
           Lxi->getOperand(1).isImm()) {
         setCFAOffset(State.Offset - Lxi->getOperand(1).getImm());
       } else {

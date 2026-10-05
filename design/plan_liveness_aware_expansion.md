@@ -274,7 +274,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.10 — Lit test: liveness-aware-expansion.ll [ ]
 
-**File**: `tests/lit/CodeGen/V6CLANG/liveness-aware-expansion.ll`
+**File**: `tests/lit/CodeGen/V6Clang/liveness-aware-expansion.ll`
 
 Test cases:
 1. **reload16_bc_hl_dead**: RELOAD16 BC when HL is killed by preceding

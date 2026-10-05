@@ -245,7 +245,7 @@ or `Register()` if none exists.
 
 ## Verification plan
 
-- Lit test `tests/lit/CodeGen/V6CLANG/load8p-shape-redesign.ll` covering all 7
+- Lit test `tests/lit/CodeGen/V6Clang/load8p-shape-redesign.ll` covering all 7
   sub-shapes (1, 2, 3, 4, 5, 6a, 6b, 7). Use IR + inline-asm
   `register asm` pinning to materialise each
   `(addr, dst, A-liveness, spareR)` tuple. Pattern after

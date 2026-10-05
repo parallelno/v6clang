@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-[V6ClangLoadStoreOpt.cpp](llvm/lib/Target/V6CLANG/V6ClangLoadStoreOpt.cpp#L132-L205)
+[V6ClangLoadStoreOpt.cpp](llvm/lib/Target/V6Clang/V6ClangLoadStoreOpt.cpp#L132-L205)
 implements `mergeAdjacentAccess`: a rigid 4-instruction window matching
 `LXI H,N ; <load|store via M> ; LXI H,N+1 ; <load|store via M>` with both
 LXI operands as plain `imm`. It folds the second LXI into `INX H`. It
@@ -91,7 +91,7 @@ Update rules per instruction:
   loses 4cc, size wins 1B; treat as net-neutral, allow).
 
 The cost-driven threshold uses the existing `getV6ClangOptMode` helper
-(see [V6ClangInstrCost.h](llvm/lib/Target/V6CLANG/V6ClangInstrCost.h)).
+(see [V6ClangInstrCost.h](llvm/lib/Target/V6Clang/V6ClangInstrCost.h)).
 
 ### Why this works
 
@@ -109,8 +109,8 @@ The cost-driven threshold uses the existing `getV6ClangOptMode` helper
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadStoreOpt.cpp` | Rewrite `mergeAdjacentAccess` as a state-tracking forward scan; extend `isLXI_HL` to accept Imm/GA/ES/BA; widen the matching to handle GlobalAddress + offset and ExternalSymbol + offset; reuse `definesHL` for fail-safe reset. |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/loadstore-opt-chain.ll` | New lit test: 3-LXI immediate chain, GA chain, gap-with-LDA, XCHG-blocks-fold (negative), Δ=4 cost-gate (negative). |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadStoreOpt.cpp` | Rewrite `mergeAdjacentAccess` as a state-tracking forward scan; extend `isLXI_HL` to accept Imm/GA/ES/BA; widen the matching to handle GlobalAddress + offset and ExternalSymbol + offset; reuse `definesHL` for fail-safe reset. |
+| `llvm-project/llvm/test/CodeGen/V6Clang/loadstore-opt-chain.ll` | New lit test: 3-LXI immediate chain, GA chain, gap-with-LDA, XCHG-blocks-fold (negative), Δ=4 cost-gate (negative). |
 | `tests/features/50/` | Feature test (already prepared in Phase 1). |
 | `design/future_plans/README.md` | Mark O2 as `[x]`. |
 | `design/future_plans/O02_sequential_lxi_inx_folding.md` | Mark as IMPLEMENTED at top. |

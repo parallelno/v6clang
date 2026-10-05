@@ -71,7 +71,7 @@ before ISel, so `V6CLANG_AND16` is never generated; the result is `ANI 1`.
 
 ## Fix
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `expandPostRAPseudo` case `V6CLANG_AND16` / `V6CLANG_OR16` / `V6CLANG_XOR16`:
 
 ```cpp
@@ -145,9 +145,9 @@ the waste.
 
 ## Implementation checklist
 
-- [ ] Edit `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` — add
+- [ ] Edit `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` — add
       `HiDead` guard in the `V6CLANG_AND16`/`V6CLANG_OR16`/`V6CLANG_XOR16` case.
-- [ ] Add lit test `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-dead-hi.ll`
+- [ ] Add lit test `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-dead-hi.ll`
       covering XOR/OR/AND with i8-truncated result, with and without dead-hi.
 - [ ] Run `tests/run_all.py` — all golden + lit must pass.
 - [ ] Sync mirror: `pwsh scripts/sync_llvm_mirror.ps1`.

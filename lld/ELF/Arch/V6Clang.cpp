@@ -12,7 +12,7 @@
 // relocations are absolute. There is no GOT, no PLT, and no dynamic linking.
 //
 // V6CLANG ELF uses the private machine ID llvm::ELF::EM_V6Clang (0x8080) and the
-// following relocation types (see llvm/lib/Target/V6CLANG/MCTargetDesc/
+// following relocation types (see llvm/lib/Target/V6Clang/MCTargetDesc/
 // V6ClangFixupKinds.h):
 //
 //   R_V6CLANG_8   = 1   8-bit absolute value
@@ -37,7 +37,7 @@ using namespace lld;
 using namespace lld::elf;
 
 // V6CLANG relocation type values. These mirror the RelocType enum in
-// llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangFixupKinds.h. They are kept in sync
+// llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangFixupKinds.h. They are kept in sync
 // manually because lld must not depend on V6CLANG target backend headers.
 enum : uint32_t {
   R_V6CLANG_NONE = 0,

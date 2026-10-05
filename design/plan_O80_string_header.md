@@ -86,7 +86,7 @@ required.
 
 ### Phase 2 — Driver / toolchain plumbing (depends on Phase 1)
 
-1. Delete `clang/lib/Driver/ToolChains/V6CLANG/include/string.h` (stub).
+1. Delete `clang/lib/Driver/ToolChains/V6Clang/include/string.h` (stub).
    No driver code references it by path — the existing
    `findV6ClangHeader()` search order in
    `clang/lib/Driver/ToolChains/V6Clang.cpp` already includes
@@ -186,7 +186,7 @@ Keep:
   Phase 1 lands.
 * `compiler-rt/lib/builtins/v6clang/{divhi3,mulhi3,mulsi3,shift,udivhi3}.s` —
   **delete** in Phase 4 (dead code).
-* `clang/lib/Driver/ToolChains/V6CLANG/include/string.h` — **delete** in
+* `clang/lib/Driver/ToolChains/V6Clang/include/string.h` — **delete** in
   Phase 2 (stub superseded by new header).
 * `clang/lib/Driver/ToolChains/V6Clang.cpp` — verify `findV6ClangHeader` and
   `-internal-isystem` setup at ~lines 80, 209, 252 still cover the

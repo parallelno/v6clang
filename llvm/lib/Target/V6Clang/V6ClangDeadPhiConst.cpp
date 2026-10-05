@@ -74,7 +74,7 @@ bool V6ClangDeadPhiConst::runOnMachineFunction(MachineFunction &MF) {
 
     // Scan terminators for V6CLANG_BR_CC16_IMM.
     for (MachineInstr &MI : MBB.terminators()) {
-      if (MI.getOpcode() != V6CLANG::V6CLANG_BR_CC16_IMM)
+      if (MI.getOpcode() != V6Clang::V6CLANG_BR_CC16_IMM)
         continue;
 
       // Operand layout: 0=$lhs(GR16), 1=$rhs(imm16), 2=$cc, 3=$dst
@@ -119,7 +119,7 @@ bool V6ClangDeadPhiConst::runOnMachineFunction(MachineFunction &MF) {
             continue;
 
           MachineInstr *DefMI = MRI.getVRegDef(ValReg);
-          if (!DefMI || DefMI->getOpcode() != V6CLANG::LXI)
+          if (!DefMI || DefMI->getOpcode() != V6Clang::LXI)
             continue;
 
           // Check if LXI's immediate matches the branch RHS.

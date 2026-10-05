@@ -64,7 +64,7 @@ with `V6CLANG_TAILJMP` and remove the successor edge.
 | Step | What | Where |
 |------|------|-------|
 | Cross-block tail call | Check CALL → RET-only successor | V6ClangPeephole.cpp |
-| Lit test | New conditional-tail-call.ll | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | New conditional-tail-call.ll | tests/lit/CodeGen/V6Clang/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/07/ | tests/features/ |
 
@@ -74,7 +74,7 @@ with `V6CLANG_TAILJMP` and remove the successor edge.
 
 ### Step 3.1 — Extend `eliminateTailCall` with cross-block pattern [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 After the existing same-block `CALL; RET` check, add a new pattern:
 
@@ -104,7 +104,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: conditional-tail-call.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/conditional-tail-call.ll`
+**File**: `tests/lit/CodeGen/V6Clang/conditional-tail-call.ll`
 
 Test cases:
 1. Pattern A: `if (x) return bar(x); return 0;` → CALL→JMP in conditional block
@@ -206,4 +206,4 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 * [Future Improvements](design\future_plans\README.md)
 * [O23 Feature Description](design\future_plans\O23_conditional_tail_call.md)
 * [O14 Plan](design\plan_tail_call_optimization.md)
-* [Existing tail call lit test](tests\lit\CodeGen\V6CLANG\tail-call-opt.ll)
+* [Existing tail call lit test](tests\lit\CodeGen\V6Clang\tail-call-opt.ll)

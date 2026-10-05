@@ -120,7 +120,7 @@ and for the GR8 set, then pick preservation in cheap-first order:
 
 ### Step 3.1 — Add `findDeadGR8AtMI` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a static helper near `isRegDeadAtMI` (line 474) that scans the
 seven GR8 registers and returns the first one dead at the pseudo's
@@ -157,7 +157,7 @@ register that aliases `ExcludeReg`); return the first one that
 
 ### Step 3.2 — Rewrite expander: case 2 (`addr=HL, dst∈{BC,DE}`) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_LOAD16_P:` (currently line ~1372).
 
 Start with the simplest case to anchor the new structure:
@@ -188,7 +188,7 @@ Emit `DCX H` iff `!isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI)`.
     MOV  L, Spare
 ```
 
-`Spare = findDeadGR8AtMI(MI, MBB, &RI, /*ExcludeReg=*/V6CLANG::HL)`.
+`Spare = findDeadGR8AtMI(MI, MBB, &RI, /*ExcludeReg=*/V6Clang::HL)`.
 If `Spare == 0`, set `Spare = V6CLANG::A` and wrap with
 `PUSH PSW` / `POP PSW` iff `!isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)`.
 
@@ -365,7 +365,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.8 — Lit test: load16p-shapes (case 1 + case 4) [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/load16p-shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/load16p-shapes.ll`
 
 Consolidated into a single lit file pinning the two highest-value
 shapes:
@@ -643,7 +643,7 @@ intentionally redefined.
 
 ### Step 4.5 — Lit test coverage [x]
 
-Added two tests to `llvm-project/llvm/test/CodeGen/V6CLANG/load16p-shapes.ll`:
+Added two tests to `llvm-project/llvm/test/CodeGen/V6Clang/load16p-shapes.ll`:
 
 * `case6_bc_hl_simple` — 3-arg function (`ptr` in BC by ABI),
   returns the loaded value (dst=HL, A dead, BC dead). Pins the

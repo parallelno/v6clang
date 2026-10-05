@@ -130,8 +130,8 @@ pwsh scripts\sync_llvm_mirror.ps1
 
 The script handles three categories:
 
-1. **V6CLANG target directory** (`llvm-project/llvm/lib/Target/V6CLANG/` → `llvm/lib/Target/V6CLANG/`) — full directory mirror via `robocopy /MIR`.
-2. **Lit tests** (`llvm-project/{llvm,clang}/test/.../V6CLANG/` → `tests/lit/`) — full directory mirror excluding `Output/`.
+1. **V6CLANG target directory** (`llvm-project/llvm/lib/Target/V6Clang/` → `llvm/lib/Target/V6Clang/`) — full directory mirror via `robocopy /MIR`.
+2. **Lit tests** (`llvm-project/{llvm,clang}/test/.../V6Clang/` → `tests/lit/`) — full directory mirror excluding `Output/`.
 3. **Modified upstream LLVM files** (e.g. `Triple.h`, `Triple.cpp`) — individual file copies via `xcopy`.
 
 > **Warning — `tests/lit/` is a read-only mirror.**
@@ -169,10 +169,10 @@ python tests/run_golden_tests.py -v
 
 | Test category | Source of truth (write here) | Mirror (do not write here) |
 |---|---|---|
-| CodeGen | `llvm-project/llvm/test/CodeGen/V6CLANG/` | `tests/lit/CodeGen/V6CLANG/` |
-| MC | `llvm-project/llvm/test/MC/V6CLANG/` | `tests/lit/MC/V6CLANG/` |
-| Linker | `llvm-project/llvm/test/Linker/V6CLANG/` | `tests/lit/Linker/V6CLANG/` |
-| Clang CodeGen | `llvm-project/clang/test/CodeGen/V6CLANG/` | `tests/lit/Clang/V6CLANG/` |
+| CodeGen | `llvm-project/llvm/test/CodeGen/V6Clang/` | `tests/lit/CodeGen/V6Clang/` |
+| MC | `llvm-project/llvm/test/MC/V6Clang/` | `tests/lit/MC/V6Clang/` |
+| Linker | `llvm-project/llvm/test/Linker/V6Clang/` | `tests/lit/Linker/V6Clang/` |
+| Clang CodeGen | `llvm-project/clang/test/CodeGen/V6Clang/` | `tests/lit/Clang/V6Clang/` |
 
 After adding a test in `llvm-project/`, the mirror updates automatically on the next `build.ps1` run. To sync immediately without a full build:
 
@@ -251,7 +251,7 @@ llvm-build/bin/clang -target i8080-unknown-v6clang -O2 -c b.c -o b.o
 
 # Step 2: Link with ld.lld using the V6CLANG linker script
 llvm-build/bin/ld.lld -m elf32v6clang \
-    -T clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld \
+    -T clang/lib/Driver/ToolChains/V6Clang/v6clang.ld \
     a.o b.o -o out.elf
 
 # Step 3: Convert to flat binary

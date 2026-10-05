@@ -3,16 +3,16 @@
 Status: implemented and validated 2026-04-22. See
 [tests/features/32/result.txt](../tests/features/32/result.txt) for the
 before/after assembly diff and metrics. Lit coverage:
-[shift-i16-byte-aligned.ll](../llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll)
+[shift-i16-byte-aligned.ll](../llvm-project/llvm/test/CodeGen/V6Clang/shift-i16-byte-aligned.ll)
 (new) and updated `srl10_i16` expectation in
-[shift-i16.ll](../llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll).
+[shift-i16.ll](../llvm-project/llvm/test/CodeGen/V6Clang/shift-i16.ll).
 
 ## 1. Problem
 
 ### Current behavior
 
 `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` in
-[V6ClangInstrInfo.cpp](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) expand with
+[V6ClangInstrInfo.cpp](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp) expand with
 an unconditional full 16-bit copy whenever `DstReg != SrcReg`:
 
 ```cpp
@@ -54,7 +54,7 @@ the per-bit cost for shift amounts 9..15.
 (only `DstHi` is shifted, since `DstLo == 0`); only its dead-copy needs
 fixing.
 
-### i8 shift coverage (verified against [V6ClangISelLowering.cpp](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp) lines 601-770)
+### i8 shift coverage (verified against [V6ClangISelLowering.cpp](../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp) lines 601-770)
 
 The i8 shift paths today, and how O62 affects each:
 
@@ -83,7 +83,7 @@ leading 2-MOV copy followed by a byte-lane move — only exists for
 `ShAmt >= 8`, and only i16 constant shifts can reach that branch.
 O62 leaves the i8 paths bit-for-bit identical (verified by the
 unchanged `srl1_i16` / `sra1_i16` / `srl3_i16` / `sra3_i16` lit
-checks in [shift-i16.ll](../tests/lit/CodeGen/V6CLANG/shift-i16.ll), all
+checks in [shift-i16.ll](../tests/lit/CodeGen/V6Clang/shift-i16.ll), all
 of which exercise `ShAmt < 8`).
 
 A separate, future optimization — independent of O62 — could
@@ -139,7 +139,7 @@ every pair uses distinct 8-bit registers, so `DstHi`, `DstLo`, `SrcHi`,
 | Rewrite `V6CLANG_SHL16` `>=8` branch | Skip leading copy, byte-move directly from `SrcLo` | V6ClangInstrInfo.cpp |
 | Rewrite `V6CLANG_SRL16` `>=8` branch | Skip leading copy, byte-move from `SrcHi`, half-width loop | V6ClangInstrInfo.cpp |
 | Rewrite `V6CLANG_SRA16` `>=8` branch | Skip leading copy, sign-extend from `SrcHi`, half-width loop | V6ClangInstrInfo.cpp |
-| Lit test | New `shift-i16-byte-aligned.ll` exercising `dst != src` cases | tests/lit/CodeGen/V6CLANG |
+| Lit test | New `shift-i16-byte-aligned.ll` exercising `dst != src` cases | tests/lit/CodeGen/V6Clang |
 | Feature test | C test under `tests/features/32` | tests/features/32 |
 
 ---
@@ -148,7 +148,7 @@ every pair uses distinct 8-bit registers, so `DstHi`, `DstLo`, `SrcHi`,
 
 ### Step 3.1 — Rewrite `V6CLANG_SHL16` `ShAmt >= 8` path [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (case `V6CLANG::V6CLANG_SHL16`)
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` (case `V6CLANG::V6CLANG_SHL16`)
 
 Hoist the `ShAmt >= 8` test above the `DstReg != SrcReg` copy. Inside
 the byte-aligned branch:
@@ -227,7 +227,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: shift-i16-byte-aligned [ ]
 
-**File**: `tests/lit/CodeGen/V6CLANG/shift-i16-byte-aligned.ll`
+**File**: `tests/lit/CodeGen/V6Clang/shift-i16-byte-aligned.ll`
 
 Force `dst != src` by storing the original through a pointer kept live
 across the shift:
@@ -248,7 +248,7 @@ is gone and `CHECK` for the optimal byte-move sequence.
 ### Step 3.6 — Run lit subset [ ]
 
 ```
-llvm-build\bin\llvm-lit -v tests\lit\CodeGen\V6CLANG\shift-i16.ll tests\lit\CodeGen\V6CLANG\shift-i16-byte-aligned.ll
+llvm-build\bin\llvm-lit -v tests\lit\CodeGen\V6Clang\shift-i16.ll tests\lit\CodeGen\V6Clang\shift-i16-byte-aligned.ll
 ```
 
 ### Step 3.7 — Run regression tests [ ]
@@ -356,7 +356,7 @@ These reach `V6CLANG_SRL16` / `V6CLANG_SRA16` with `ShAmt = 3` — the unchanged
 * Apply the same byte-aligned fast path to `V6CLANG_SHL/SRL/SRA` i32 (when
   added).
 * **Direct i8 right-shift lowering.** Today
-  [LowerSRL](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp) and
+  [LowerSRL](../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp) and
   `LowerSRA` for i8 zero/sign-extend to i16 and route through
   `V6CLANG_SRL16` / `V6CLANG_SRA16` with `ShAmt` 1..7. The high byte is
   known constant (0 for SRL, sign for SRA) but that information is

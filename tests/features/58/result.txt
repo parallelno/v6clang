@@ -252,12 +252,12 @@ Benchmark checksums ..... bsort 0x98, sieve 0xEC, fib_crc 0x2B,
 
 Files changed
 -------------
-  llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp
+  llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp
     case V6CLANG::V6CLANG_LOAD8_P: priority-4 arm rewritten (~70 lines).
     Reuses isRegDeadAtMI, findDeadGR8AtMI; no new helpers.
 
-  llvm-project/llvm/test/CodeGen/V6CLANG/load8p-shape-redesign.ll  (new)
-  tests/lit/CodeGen/V6CLANG/load8p-shape-redesign.ll               (new, mirror)
+  llvm-project/llvm/test/CodeGen/V6Clang/load8p-shape-redesign.ll  (new)
+  tests/lit/CodeGen/V6Clang/load8p-shape-redesign.ll               (new, mirror)
 
   tests/features/58/{v6clang.c, c8080.c, *.asm, result.txt}    (new)
 

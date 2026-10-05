@@ -112,8 +112,8 @@ uint64_t V6ClangMCCodeEmitter::getMachineOpValue(const MCInst &MI,
   if (auto *V6ClangExpr = dyn_cast<V6ClangMCExpr>(Expr)) {
     assert(Size == 2 && "V6ClangMCExpr in non-MVI instruction");
     Kind = static_cast<MCFixupKind>(
-        V6ClangExpr->getKind() == V6ClangMCExpr::VK_V6CLANG_LO8 ? V6CLANG::fixup_v6clang_lo8
-                                                      : V6CLANG::fixup_v6clang_hi8);
+        V6ClangExpr->getKind() == V6ClangMCExpr::VK_V6CLANG_LO8 ? V6Clang::fixup_v6clang_lo8
+                                                      : V6Clang::fixup_v6clang_hi8);
     Offset = 1;
   } else if (Size == 3) {
     Kind = FK_Data_2;

@@ -238,7 +238,7 @@ lit checks on the emitted assembly.
 ## Dependencies
 
 - Existing `V6CLANG_LOAD16_G` post-RA expansion entry point in
-  [`V6ClangInstrInfo.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp)
+  [`V6ClangInstrInfo.cpp`](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp)
   (around line 1883).
 - Existing `isRegDeadAtMI` helper from O42.
 

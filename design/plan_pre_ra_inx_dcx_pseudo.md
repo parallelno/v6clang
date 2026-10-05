@@ -67,7 +67,7 @@ Post-RA expansion trivially emits N copies of physical `INX rp` or
 | Add pseudos | V6CLANG_INX16, V6CLANG_DCX16 | V6ClangInstrInfo.td |
 | DAG combine | Intercept ISD::ADD/SUB with ±1..±3 | V6ClangISelLowering.cpp |
 | Post-RA expand | N copies of INX/DCX | V6ClangInstrInfo.cpp |
-| Lit test | pre-ra-inx-dcx.ll | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | pre-ra-inx-dcx.ll | tests/lit/CodeGen/V6Clang/ |
 
 ---
 
@@ -75,7 +75,7 @@ Post-RA expansion trivially emits N copies of physical `INX rp` or
 
 ### Step 3.1 — Add V6ClangISD::INX16 and DCX16 node types [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
 
 Add two new entries to the `V6ClangISD::NodeType` enum, after `DAD`:
 ```cpp
@@ -83,7 +83,7 @@ Add two new entries to the `V6ClangISD::NodeType` enum, after `DAD`:
   DCX16,      // 16-bit decrement by immediate count (1..3), no flag set.
 ```
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Add `getTargetNodeName` entries:
 ```cpp
@@ -95,7 +95,7 @@ Add `getTargetNodeName` entries:
 
 ### Step 3.2 — Add TableGen SDNode and pseudo definitions [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add SDNode type profile and nodes (near existing V6Clangdad definition):
 ```tablegen
@@ -129,11 +129,11 @@ def V6CLANG_DCX16 : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i8imm:$count
 > **Design Note**: No `Defs` — INX/DCX set neither A nor FLAGS. This
 > is the key benefit: RA sees minimal clobber pressure from these pseudos.
 
-> **Implementation Notes**: Added SDT_V6ClangInxDcx16, V6Clanginx16/V6Clangdcx16 nodes, V6CLANG_INX16/V6CLANG_DCX16 pseudos. No Defs (no A/FLAGS clobber).
+> **Implementation Notes**: Added SDT_V6ClangInxDcx16, V6Clanginx16/V6Clangdcx16 nodes, V6CLANG_INX16/V6Clang_DCX16 pseudos. No Defs (no A/FLAGS clobber).
 
 ### Step 3.3 — DAG Combine: intercept small-constant ADD/SUB [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 In `PerformDAGCombine`, add small-constant checks **before** the existing
 `UsedAsPointer` → DAD conversion in the `ISD::ADD` case. Also add an
@@ -189,7 +189,7 @@ In `PerformDAGCombine`, add small-constant checks **before** the existing
 
 ### Step 3.4 — Post-RA expansion: V6CLANG_INX16, V6CLANG_DCX16 [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add two expansion cases in `expandPostRAPseudo()`:
 ```cpp
@@ -223,7 +223,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: pre-ra-inx-dcx.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/pre-ra-inx-dcx.ll`
+**File**: `tests/lit/CodeGen/V6Clang/pre-ra-inx-dcx.ll`
 
 Test cases:
 1. `add i16 %x, 1` → INX (general context, not pointer)
@@ -342,4 +342,4 @@ None planned.
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O41 Design](design\future_plans\O41_pre_ra_inx_dcx_pseudo.md)
-* [Cost Model Lit Test](tests\lit\CodeGen\V6CLANG\cost-model-inx-threshold.ll)
+* [Cost Model Lit Test](tests\lit\CodeGen\V6Clang\cost-model-inx-threshold.ll)

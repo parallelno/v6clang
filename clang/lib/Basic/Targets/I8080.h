@@ -1,4 +1,4 @@
-//===--- I8080.h - Declare I8080/V6CLANG target feature support -------*- C++ -*-===//
+//===--- I8080.h - Declare I8080/V6Clang target feature support -------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.

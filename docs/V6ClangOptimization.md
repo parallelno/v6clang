@@ -453,7 +453,7 @@ assumes code is RAM-resident and writable — true on Vector-06c but
 not on ROM/EPROM targets, hence the `-mv6clang-no-spill-patched-reload`
 opt-out. Test assets live under `tests/features/37/` (i8 scope),
 `tests/features/39/` (Stage 5 DE/BC), and
-`llvm/test/CodeGen/V6CLANG/spill-patched-reload-*.ll`.
+`llvm/test/CodeGen/V6Clang/spill-patched-reload-*.ll`.
 
 ---
 

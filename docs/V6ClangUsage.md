@@ -18,7 +18,7 @@ To build Clang alongside the V6CLANG backend, add `-DLLVM_ENABLE_PROJECTS=clang`
 cmake -G Ninja -S llvm-project\llvm -B llvm-build ^
   -DCMAKE_BUILD_TYPE=Release ^
   -DLLVM_TARGETS_TO_BUILD=X86 ^
-  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG ^
+  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6Clang ^
   -DLLVM_ENABLE_PROJECTS=clang;lld
 
 ninja -C llvm-build clang llc ld.lld llvm-objcopy

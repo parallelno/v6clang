@@ -17,7 +17,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
 - Register the V6CLANG `e_machine` value in lld and confirm the same
   value is used by `V6ClangELFObjectWriter`.
 - Provide a default V6CLANG linker script
-  (`clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`) that:
+  (`clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`) that:
   - sets `ENTRY(_start)`,
   - places sections at `0x0100`,
   - emits `__bss_start`, `__bss_end`, `__stack_top` (= `0x0000`,
@@ -55,7 +55,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
 
 ### Phase 2 — V6CLANG lld backend *(parallel with Phase 3 once Phase 1 is done)*
 3. Confirm the V6CLANG `e_machine` value used by
-   `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangELFObjectWriter.cpp`. If
+   `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangELFObjectWriter.cpp`. If
    it's a private/unassigned ID, document it in
    `docs/V6ClangArchitecture.md` and use the same constant in lld.
 4. Create `llvm-project/lld/ELF/Arch/V6Clang.cpp` modelled on
@@ -74,7 +74,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
    `lld/ELF/Arch/V6Clang.cpp`, the `Target.cpp` patch, and the
    `CMakeLists.txt` patch back to the git-tracked `lld/ELF/`
    mirror (matches upstream lld layout). Remove the empty
-   `lld/V6CLANG/` placeholder folder.
+   `lld/V6Clang/` placeholder folder.
 
 ### Phase 3 — Linker script + canonical crt0 *(parallel with Phase 2)*
 7. Move/rewrite `compiler-rt/lib/builtins/v6clang/crt0.s` to be the
@@ -86,7 +86,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
    - Export `_start` as the entry symbol.
 8. Delete `lib/v6clang/crt0.s` (the 6-line skeleton) so there's only
    one crt0 to maintain.
-9. Create `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`. The driver
+9. Create `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`. The driver
    will reference it via the resource directory, like other
    toolchains do for their default scripts:
    ```
@@ -126,7 +126,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
       the stack without editing the script.
     - Honor `-T <script>` to override the default linker script.
 11. Build crt0 and the V6CLANG builtins into a static archive
-    (`libv6clang-builtins.a`) as part of the `compiler-rt/V6CLANG` build,
+    (`libv6clang-builtins.a`) as part of the `compiler-rt/V6Clang` build,
     so the driver can pass it to `ld.lld` like a normal libgcc.
     *(Depends on whatever build system already produces those
     objects; reuse it.)*
@@ -163,7 +163,7 @@ correct, runnable Vector-06c ROM whose entry point is `_start`
     `.text`/`.data`/`.bss` sizes for regression tracking.
 
 ### Phase 6 — Tests & docs
-16. Add `tests/lit/Linker/V6CLANG/basic-link.test`: `clang -c` two
+16. Add `tests/lit/Linker/V6Clang/basic-link.test`: `clang -c` two
     objects, link with `ld.lld -T v6clang.ld`, FileCheck the entry
     point and a relocation in the resulting ELF.
 17. Add a small end-to-end test under `tests/features/`: multi-`.c`
@@ -186,12 +186,12 @@ Phase 2 — V6CLANG lld backend
 - [x] 3. Confirm / document `EM_V6Clang` machine ID (= `0x8080`)
 - [x] 4. Create `lld/ELF/Arch/V6Clang.cpp` (`getRelExpr`, `relocate`)
 - [x] 5. Wire into `lld/ELF/Target.cpp` + `CMakeLists.txt`
-- [x] 6. Update `sync_llvm_mirror.ps1`; remove `lld/V6CLANG/` placeholder
+- [x] 6. Update `sync_llvm_mirror.ps1`; remove `lld/V6Clang/` placeholder
 
 Phase 3 — Linker script + canonical crt0
 - [x] 7. Promote `compiler-rt/.../crt0.s` (SP, .bss zero, CALL main, HLT)
 - [x] 8. Delete `lib/v6clang/crt0.s`
-- [x] 9. Create `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`
+- [x] 9. Create `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`
 
 Phase 4 — Driver integration
 - [x] 10. `V6Clang.cpp` driver: `ld.lld -T … | llvm-objcopy -O binary`
@@ -204,7 +204,7 @@ Phase 5 — Migration & cleanup
 - [x] 15. Convert `tests/features/43/` to the new flow *(handled via fresh `tests/features/o_lld_bsort.*`; legacy `43/` artifacts left in place as historical reference)*
 
 Phase 6 — Tests & docs
-- [x] 16. Add `tests/lit/Linker/V6CLANG/basic-link.test`
+- [x] 16. Add `tests/lit/Linker/V6Clang/basic-link.test`
 - [x] 17. Add multi-`.c` end-to-end feature test *(`tests/features/o_lld_multifile/`)*
 - [x] 18. Update `V6ClangBuildGuide.md` and `V6ClangArchitecture.md`
 - [x] 19. Mark plan complete in `design/future_plans/README.md`
@@ -214,7 +214,7 @@ Verification gates
 - [x] V2. `clang … o_lld_bsort.c -o o_lld_bsort.rom` produces a runnable ROM
 - [x] V3. `o_lld_bsort.rom` in `v6emul` emits the expected byte stream on port `0xED`
 - [x] V4. `python tests/run_all.py` — full suite passes (golden 15/15 + lit 112/112)
-- [x] V5. New lit test passes (`tests/lit/Linker/V6CLANG/basic-link.test`)
+- [x] V5. New lit test passes (`tests/lit/Linker/V6Clang/basic-link.test`)
 - [x] V6. `sync_llvm_mirror.ps1` runs cleanly (extra `.lit_test_times.txt` is the only diff)
 - [x] V7. Mirror round-trip rebuilds a byte-identical `o_lld_bsort.rom` (SHA-256 match)
 
@@ -240,17 +240,17 @@ file.rom` produces a runnable ROM with no `--defsym=_start=main` /
 - `llvm-project/lld/ELF/Target.cpp` — add `case EM_V6Clang` in
   `getTarget()`.
 - `llvm-project/lld/ELF/CMakeLists.txt` — list `Arch/V6Clang.cpp`.
-- `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangELFObjectWriter.cpp` —
+- `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangELFObjectWriter.cpp` —
   reference for the `EM_V6Clang` machine ID and the relocation
   emission rules.
-- `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangFixupKinds.h` — reference
+- `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangFixupKinds.h` — reference
   for the four fixup → R_V6Clang mappings.
 - `compiler-rt/lib/builtins/v6clang/crt0.s` — promote to canonical;
   add `.section .text._start`.
 - `lib/v6clang/crt0.s` — **delete**.
-- `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` — **new**, default
+- `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld` — **new**, default
   linker script.
-- `lld/V6CLANG/` — **delete** (empty placeholder folder; the V6CLANG
+- `lld/V6Clang/` — **delete** (empty placeholder folder; the V6CLANG
   backend lives at `lld/ELF/Arch/V6Clang.cpp` matching upstream).
 - `clang/lib/Driver/ToolChains/V6Clang.cpp` — replace Python linker
   invocation with `ld.lld` + `llvm-objcopy` chain.
@@ -262,7 +262,7 @@ file.rom` produces a runnable ROM with no `--defsym=_start=main` /
 - `tests/features/o_lld_bsort.c` — **new**, end-to-end test with
   statically-initialized array (already created); add
   `result.txt` documenting expected port-`0xED` output.
-- `tests/lit/Linker/V6CLANG/basic-link.test` — **new**.
+- `tests/lit/Linker/V6Clang/basic-link.test` — **new**.
 - `design/future_plans/README.md` — register / mark this plan.
 
 ## Verification
@@ -282,7 +282,7 @@ file.rom` produces a runnable ROM with no `--defsym=_start=main` /
    array sorted ascending).
 4. `python tests/run_all.py` — all golden + lit + feature tests
    pass under the new linker flow.
-5. New lit test `tests/lit/Linker/V6CLANG/basic-link.test` passes
+5. New lit test `tests/lit/Linker/V6Clang/basic-link.test` passes
    (links two objects, checks symbols + relocs in output ELF).
 6. `scripts/sync_llvm_mirror.ps1` reports no diffs after running
    on a clean tree.
@@ -304,12 +304,12 @@ file.rom` produces a runnable ROM with no `--defsym=_start=main` /
   full implementation with `.bss` zeroing). The skeleton at
   `lib/v6clang/crt0.s` is deleted.
 - **Linker script lives in
-  `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`**: shipped alongside
+  `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`**: shipped alongside
   the driver in the clang resource directory, like other
   toolchains' default scripts; the driver locates it
   programmatically rather than via a hard-coded path.
 - **Mirror the upstream lld layout**: V6CLANG backend at
-  `lld/ELF/Arch/V6Clang.cpp`; the empty placeholder `lld/V6CLANG/`
+  `lld/ELF/Arch/V6Clang.cpp`; the empty placeholder `lld/V6Clang/`
   folder is removed. Easier to follow upstream lld conventions
   and to merge upstream lld changes.
 - **Same `EM_V6Clang` machine ID** is used in lld and

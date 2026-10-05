@@ -210,7 +210,7 @@ case V6CLANG::V6CLANG_STORE8_P: {
       // addr=BC. Try SpareR-A first; fall back to PSW-wrap.
       // SpareR must survive the body unchanged — exclude A and SrcReg.
       Register SpareR = findDeadGR8AtMI(MI, MBB, &RI,
-                                        /*Exclude1=*/V6CLANG::A,
+                                        /*Exclude1=*/V6Clang::A,
                                         /*Exclude2=*/SrcReg);
       if (SpareR) {
         // 6a: MOV sR,A; MOV A,src; STAX B; MOV A,sR.
@@ -243,7 +243,7 @@ is universal because the body does not write to any register.
 
 ## Verification plan
 
-- Lit test `tests/lit/CodeGen/V6CLANG/store8p-shape-redesign.ll` covering all
+- Lit test `tests/lit/CodeGen/V6Clang/store8p-shape-redesign.ll` covering all
   sub-shapes (1, 2, 3, 4, 5, 6a, 6b, 7). Use IR + inline-asm
   `register asm` pinning to materialise each `(addr, src, A-liveness,
   spareR)` tuple. Pattern after `temp/load8p_de_b.c` from O76 — invert

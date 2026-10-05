@@ -137,9 +137,9 @@ benchmark regresses on size.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll` | New lit test: all 3 ops × {generic, 0x00 byte, 0xFF byte, dead-hi} |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
+| `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-imm.ll` | New lit test: all 3 ops × {generic, 0x00 byte, 0xFF byte, dead-hi} |
 | `tests/features/NN/` | Feature test: C source, baseline, new asm, result.txt |
 | `design/future_plans/O93_bitwise16_immediate_pseudos.md` | This plan; mark complete when done |
 | `design/future_plans/README.md` | Add ✅ O93 entry |

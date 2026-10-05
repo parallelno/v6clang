@@ -1,7 +1,7 @@
 ; crt0.s - V6CLANG C runtime startup
 ;
 ; Canonical V6CLANG startup. Linked in by ld.lld via the default linker script
-; (clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld).
+; (clang/lib/Driver/ToolChains/V6Clang/v6clang.ld).
 ;
 ; Responsibilities:
 ;   1. Set SP = __stack_top

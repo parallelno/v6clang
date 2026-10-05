@@ -701,6 +701,6 @@ Validation
 - Focused backend build: `ninja -C llvm-build llc` - PASS
 - Driver refresh for feature asm: `ninja -C llvm-build clang` - PASS
 - Focused shift lit tests:
-  - `llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll` - PASS
-  - `llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll` - PASS
+  - `llvm-project/llvm/test/CodeGen/V6Clang/shift-i16.ll` - PASS
+  - `llvm-project/llvm/test/CodeGen/V6Clang/shift-i16-byte-aligned.ll` - PASS
 - Full regression: `python tests/run_all.py` - PASS (16/16 golden, 145/145 lit, 3/3 benchmark suites)

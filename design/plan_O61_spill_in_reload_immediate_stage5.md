@@ -211,7 +211,7 @@ pass.
 
 ### Step 3.1 — Widen the i16 spill-source filter [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the HL-only `all_of`:
 
@@ -235,12 +235,12 @@ if (!AllAcceptedSources)
 ```
 
 > **Implementation Notes**: Landed in
-> `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp` around
+> `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp` around
 > the i16 slot loop. The reload-target `all_of` check is unchanged.
 
 ### Step 3.2 — Per-source spill emitter (HL/DE/BC) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the body of the `for (MachineInstr *Spill : E.Spills)` loop in
 the i16 path with a per-source switch. The HL branch is the verbatim
@@ -271,7 +271,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: DE-source patched spill [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-stage5-de.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-stage5-de.ll`
 (new)
 
 Three cases:
@@ -290,7 +290,7 @@ Three cases:
 
 ### Step 3.5 — Lit test: BC-source patched spill [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-stage5-bc.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-stage5-bc.ll`
 (new)
 
 Two cases:
@@ -364,7 +364,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 > **Implementation Notes**: Mirror sync complete —
 > `V6ClangSpillPatchedReload.cpp` plus the four lit tests
 > (`spill-patched-reload-{hl,de-bc,k2,stage5}.ll`) are mirrored to
-> `llvm/lib/Target/V6CLANG/` and `tests/lit/CodeGen/V6CLANG/` respectively.
+> `llvm/lib/Target/V6Clang/` and `tests/lit/CodeGen/V6Clang/` respectively.
 
 ---
 

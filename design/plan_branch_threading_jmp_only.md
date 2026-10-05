@@ -87,7 +87,7 @@ removal may become applicable.
 |------|------|-------|
 | Add threadJMPOnlyBlocks | Redirect branches past JMP-only blocks | V6ClangBranchOpt.cpp |
 | Wire into runOnMachineFunction | Call before invertConditionalBranch | V6ClangBranchOpt.cpp |
-| Lit test | branch-threading.ll | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | branch-threading.ll | tests/lit/CodeGen/V6Clang/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/13/ | tests/features/ |
 
@@ -97,7 +97,7 @@ removal may become applicable.
 
 ### Step 3.1 — Add `threadJMPOnlyBlocks()` to V6ClangBranchOpt.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp`
 
 Add `threadJMPOnlyBlocks` method declaration to the class and implement it.
 Update `runOnMachineFunction` to call it before `invertConditionalBranch`.
@@ -174,7 +174,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: branch-threading.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/branch-threading.ll`
+**File**: `tests/lit/CodeGen/V6Clang/branch-threading.ll`
 
 Test cases:
 1. Conditional branch to JMP-only block → redirected to final target
@@ -311,4 +311,4 @@ Savings: **3B, 12cc** when the intermediate block is eliminated.
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O28 Design](design\future_plans\O28_branch_threading_jmp_only.md)
-* [V6ClangBranchOpt.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangBranchOpt.cpp)
+* [V6ClangBranchOpt.cpp](llvm-project\llvm\lib\Target\V6Clang\V6ClangBranchOpt.cpp)

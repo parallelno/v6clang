@@ -64,8 +64,8 @@ original `MVI X, Imm`.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `MVIr`-producer loop in `collapseMovChain` |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-through-mov.ll` | New lit test |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp` | Add `MVIr`-producer loop in `collapseMovChain` |
+| `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-through-mov.ll` | New lit test |
 | `tests/features/70/` | New feature test with C source and baseline/new asm |
 
 ---
@@ -74,7 +74,7 @@ original `MVI X, Imm`.
 
 ### Step 3.1 — Extend `collapseMovChain` with `MVIr`-producer case [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 After the existing `MOVrr`-producer loop (ends before the `return Changed;`
 statement), add a second loop:
@@ -164,7 +164,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Create and run lit test: `peephole-mvi-through-mov.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-through-mov.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-through-mov.ll`
 
 Test cases:
 1. `sin8`-like: `zext i8 → i16`, pointer lookup — should produce `MVI H, 0`
@@ -176,12 +176,12 @@ Test cases:
 
 Run:
 ```
-llvm-build\bin\llc -march=v6clang llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll
+llvm-build\bin\llc -march=v6clang llvm-project\llvm\test\CodeGen\V6Clang\peephole-mvi-through-mov.ll | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6Clang\peephole-mvi-through-mov.ll
 ```
 
 Or via lit:
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6Clang\peephole-mvi-through-mov.ll -v
 ```
 
 ### Step 3.4 — Run regression tests [x]

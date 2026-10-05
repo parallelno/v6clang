@@ -36,7 +36,7 @@ bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
 /// pair register are dead after MI. Use this at expansion sites that
 /// want to clobber the whole pair without restoring it.
 ///
-/// `isRegDeadAfterMI(V6CLANG::HL, ...)` is unsafe at such sites: it treats
+/// `isRegDeadAfterMI(V6Clang::HL, ...)` is unsafe at such sites: it treats
 /// the pair as a single value, so a later instruction that defines just
 /// L (or just H) makes it report dead even when the other half is still
 /// read downstream. See `plan_O81_pair_deadness_fix.md`.

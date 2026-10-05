@@ -84,11 +84,11 @@ or `MVI r, imm`) in a block ending with a conditional branch:
 
 | Step | What | Where |
 |------|------|-------|
-| New pass file | V6ClangConstantSinking.cpp | llvm-project/llvm/lib/Target/V6CLANG/ |
+| New pass file | V6ClangConstantSinking.cpp | llvm-project/llvm/lib/Target/V6Clang/ |
 | Declare factory | createV6ClangConstantSinkingPass() | V6Clang.h |
 | Register in pipeline | addPreRegAlloc() before DeadPhiConst | V6ClangTargetMachine.cpp |
-| Add to build | CMakeLists.txt | llvm-project/llvm/lib/Target/V6CLANG/ |
-| Lit test | constant-sinking.ll | tests/lit/CodeGen/V6CLANG/ |
+| Add to build | CMakeLists.txt | llvm-project/llvm/lib/Target/V6Clang/ |
+| Lit test | constant-sinking.ll | tests/lit/CodeGen/V6Clang/ |
 | Pass toggle | -v6clang-disable-constant-sinking | CLI option |
 
 ---
@@ -97,7 +97,7 @@ or `MVI r, imm`) in a block ending with a conditional branch:
 
 ### Step 3.1 — Create V6ClangConstantSinking.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangConstantSinking.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangConstantSinking.cpp`
 
 Create the pre-RA constant sinking pass. Key logic:
 
@@ -130,9 +130,9 @@ Pass structure:
 ### Step 3.2 — Register pass in pipeline and build system [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h` — add declaration
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` — add to `addPreRegAlloc()`
-- `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add source file
+- `llvm-project/llvm/lib/Target/V6Clang/V6Clang.h` — add declaration
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp` — add to `addPreRegAlloc()`
+- `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt` — add source file
 
 Add `createV6ClangConstantSinkingPass()` to `addPreRegAlloc()` **after**
 `createV6ClangDeadPhiConstPass()` — DeadPhiConst must run first to
@@ -153,7 +153,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: constant-sinking.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/constant-sinking.ll`
+**File**: `tests/lit/CodeGen/V6Clang/constant-sinking.ll`
 
 Test cases:
 1. **LXI sinking (both paths use zero)** — `if (x==0) call(0); return 0;`

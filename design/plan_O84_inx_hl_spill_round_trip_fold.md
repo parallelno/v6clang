@@ -119,7 +119,7 @@ Replace:
 | File | Change |
 |------|--------|
 | `V6ClangPeephole.cpp` | Add `DisableInxDcxSpillFold` flag, `foldInxDcxSpillRoundTrip()` method, call site after `eliminateDeadPopPush()` |
-| `tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll` | New lit test covering Pattern A (INX, DCX, BC pair, DE pair), Pattern B, disabled-flag case |
+| `tests/lit/CodeGen/V6Clang/peephole-inx-dcx-spill-fold.ll` | New lit test covering Pattern A (INX, DCX, BC pair, DE pair), Pattern B, disabled-flag case |
 
 ---
 
@@ -220,7 +220,7 @@ Changed |= foldInxDcxSpillRoundTrip(MBB);  // O84: must follow O83
 cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"" -arch=amd64 >nul 2>&1 && ninja -C llvm-build clang llc 2>&1"
 ```
 
-### Step 3.7 — Create lit test `tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll` [ ]
+### Step 3.7 — Create lit test `tests/lit/CodeGen/V6Clang/peephole-inx-dcx-spill-fold.ll` [ ]
 
 Cases to cover:
 - Pattern A (INX): BC pair, `SHLD addr` — verify 4 MOVs gone, `INX H` present.

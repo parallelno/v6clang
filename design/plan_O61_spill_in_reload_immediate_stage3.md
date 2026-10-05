@@ -223,7 +223,7 @@ the pass; Stage 3 just expands what the gated pass does.
 
 ### Step 3.1 — Extract `pickBestReload` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Anonymous-namespace helper that encapsulates the chooser scan used
 for both the 1st and 2nd winner picks. Signature:
@@ -265,7 +265,7 @@ if (E.Spills.size() == 1) {
 
 ### Step 3.2 — Allocate one Sym per winner [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the single-symbol allocation with:
 
@@ -280,7 +280,7 @@ for (size_t i = 0; i < Winners.size(); ++i)
 
 ### Step 3.3 — Rewrite spills to write every Sym [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the single `SHLD Sym+1` rewrite with a loop that handles
 K = 1 and K = 2 uniformly and preserves the kill flag only on the
@@ -310,7 +310,7 @@ for (MachineInstr *Spill : E.Spills) {
 
 ### Step 3.4 — Patch each winner [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the single winner rewrite with a loop:
 
@@ -334,7 +334,7 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
 
 ### Step 3.5 — Unpatched reload emitter reads from Syms[0] [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the Stage 2 single-Sym capture with a reference to
 `Syms[0]` in the unpatched-reload emitter. Also change the
@@ -369,7 +369,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.7 — Lit test: K=2 and multi-source [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-k2.ll`
+`llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-k2.ll`
 (new)
 
 Three cases:

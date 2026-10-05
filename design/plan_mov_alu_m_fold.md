@@ -15,7 +15,7 @@ XRA   L           ; 4cc, 1B — A ^= L, L dead after
 The 8080 has direct memory-operand ALU instructions
 (`ADD M`, `ADC M`, `SUB M`, `SBB M`, `ANA M`, `XRA M`, `ORA M`, `CMP M`)
 that read the operand straight from `[HL]`. They already exist in
-[V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L293) (lines
+[V6ClangInstrInfo.td](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L293) (lines
 294–303) as `ADDM/ADCM/SUBM/SBBM/ANAM/XRAM/ORAM/CMPM` with empty ISel
 pattern lists. They are never selected today — every `[HL]`-operand ALU
 is materialized through a scratch register.
@@ -64,7 +64,7 @@ ISel entirely.
 ### Approach: post-RA peephole in `V6ClangPeephole.cpp`, three stages
 
 Add a new pattern method `foldMovAluM()` to the existing
-[V6ClangPeephole.cpp](../llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp#L1). Single
+[V6ClangPeephole.cpp](../llvm/lib/Target/V6Clang/V6ClangPeephole.cpp#L1). Single
 linear scan per MBB, implemented in three progressively more powerful
 stages:
 
@@ -130,10 +130,10 @@ Gated by the same `scanBetweenSafe()` walk plus `A` dead after `MOV M, A`.
 
 | File | Change |
 |------|--------|
-| llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp | Add `foldMovAluM()` (stages 1–2) + `foldIncDecMviM()` (stage 3) methods, `scanBetweenSafe()` helper, opcode maps, call in `runOnMachineFunction` |
-| llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp | Mirror (via `sync_llvm_mirror.ps1`) |
-| tests/lit/CodeGen/V6CLANG/mov-alu-m-fold.ll | Lit test covering all eight ALU kinds + negative cases + non-adjacent cases |
-| tests/lit/CodeGen/V6CLANG/inc-dec-mvi-m-fold.ll | Lit test covering `INR M` / `DCR M` / `MVI M, imm8` folds + negative cases |
+| llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp | Add `foldMovAluM()` (stages 1–2) + `foldIncDecMviM()` (stage 3) methods, `scanBetweenSafe()` helper, opcode maps, call in `runOnMachineFunction` |
+| llvm/lib/Target/V6Clang/V6ClangPeephole.cpp | Mirror (via `sync_llvm_mirror.ps1`) |
+| tests/lit/CodeGen/V6Clang/mov-alu-m-fold.ll | Lit test covering all eight ALU kinds + negative cases + non-adjacent cases |
+| tests/lit/CodeGen/V6Clang/inc-dec-mvi-m-fold.ll | Lit test covering `INR M` / `DCR M` / `MVI M, imm8` folds + negative cases |
 | tests/features/42/ | New feature test folder (XRA M + INR M + MVI M reproduction) |
 
 No TableGen changes are required — the target `ADDM/…/CMPM` instructions
@@ -145,11 +145,11 @@ already exist.
 
 ### Step 3.1 — Stage 1: add `foldMovAluM()` (strict adjacency) [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a private method `foldMovAluM(MachineBasicBlock &MBB)` and a small
 opcode-mapping helper. Reuse the existing
-[`isRegDeadAfter()`](../llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp#L186) helper
+[`isRegDeadAfter()`](../llvm/lib/Target/V6Clang/V6ClangPeephole.cpp#L186) helper
 already in the file.
 
 ```cpp
@@ -240,7 +240,7 @@ Also add `foldMovAluM` to the private-method declarations in the class
 body.
 
 > **Design Notes**: The memory-form ALU instructions are declared with
-> `Defs = [FLAGS], Uses = [HL], mayLoad = 1` ([V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L291)),
+> `Defs = [FLAGS], Uses = [HL], mayLoad = 1` ([V6ClangInstrInfo.td](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L291)),
 > so the MachineInstr receives the correct implicit operands automatically
 > through `TII.get(MemOpc)`. No manual `implicit use HL` / `implicit def FLAGS` needed.
 >
@@ -265,7 +265,7 @@ the quick-verification gate before building stages 2 and 3.
 
 ### Step 3.3 — Stage 1 lit test: mov-alu-m-fold.ll [ ]
 
-**File**: `tests/lit/CodeGen/V6CLANG/mov-alu-m-fold.ll`
+**File**: `tests/lit/CodeGen/V6Clang/mov-alu-m-fold.ll`
 
 Minimal IR with:
 1. Eight positive cases (one per ALU kind) loading a global byte, OPing
@@ -285,7 +285,7 @@ MOV\t[BCDEHL], M` to lock down the fold.
 
 ### Step 3.4 — Stage 2: non-adjacent fold + `scanBetweenSafe()` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Extend `foldMovAluM()` to look forward beyond the immediate successor of
 `MOVrM`, using a new helper:
@@ -333,7 +333,7 @@ Rebuild and extend `mov-alu-m-fold.ll` with:
 
 ### Step 3.6 — Stage 3: add `foldIncDecMviM()` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 New private method recognizing two shapes:
 
@@ -377,7 +377,7 @@ static unsigned incDecRegToMemOpcode(unsigned Opc) {
 
 ### Step 3.7 — Stage 3: Build & lit test inc-dec-mvi-m-fold.ll [ ]
 
-**File**: `tests/lit/CodeGen/V6CLANG/inc-dec-mvi-m-fold.ll`
+**File**: `tests/lit/CodeGen/V6Clang/inc-dec-mvi-m-fold.ll`
 
 IR cases:
 1. Positive: `++global_byte` → `INR M`.
@@ -558,5 +558,5 @@ comparisons.
 * [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](future_plans/README.md)
-* [Peephole pass source](../llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp)
-* [M-form ALU instruction definitions](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L291)
+* [Peephole pass source](../llvm/lib/Target/V6Clang/V6ClangPeephole.cpp)
+* [M-form ALU instruction definitions](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L291)

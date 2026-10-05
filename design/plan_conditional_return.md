@@ -81,7 +81,7 @@ removeDeadBlocks         — removes RET block if now unreachable
 | Add foldConditionalReturns | Replace Jcc→RET with Rcc | V6ClangBranchOpt.cpp |
 | Add helper functions | getConditionalReturn, isReturnOnlyBlock | V6ClangBranchOpt.cpp |
 | Wire into runOnMachineFunction | Call after removeRedundantJMP | V6ClangBranchOpt.cpp |
-| Lit test | conditional-return.ll | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | conditional-return.ll | tests/lit/CodeGen/V6Clang/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/10/ | tests/features/ |
 
@@ -91,7 +91,7 @@ removeDeadBlocks         — removes RET block if now unreachable
 
 ### Step 3.1 — Add helper functions and `foldConditionalReturns()` to V6ClangBranchOpt.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp`
 
 Add two static helpers:
 
@@ -197,7 +197,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: conditional-return.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/conditional-return.ll`
+**File**: `tests/lit/CodeGen/V6Clang/conditional-return.ll`
 
 Test cases:
 1. `JZ .Lret; .Lret: RET` → `RZ` (zero condition)
@@ -316,4 +316,4 @@ Same savings apply. `JZ .Lret` → `RZ` when the RET block is the target.
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O30 Feature Description](design\future_plans\O30_conditional_return.md)
-* [V6ClangBranchOpt.cpp](llvm\lib\Target\V6CLANG\V6ClangBranchOpt.cpp)
+* [V6ClangBranchOpt.cpp](llvm\lib\Target\V6Clang\V6ClangBranchOpt.cpp)

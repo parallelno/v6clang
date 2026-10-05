@@ -12,5 +12,5 @@ add_llvm_component_library(LLVMV6ClangDesc
     V6ClangInfo
 
   ADD_TO_COMPONENT
-    V6CLANG
+    V6Clang
 )

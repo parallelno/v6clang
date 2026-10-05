@@ -123,5 +123,5 @@ V6CLANG output to parity with c8080 on this pattern.
 
 Lit coverage
 ------------
-llvm-project/llvm/test/CodeGen/V6CLANG/conditional-call.ll covers all six
+llvm-project/llvm/test/CodeGen/V6Clang/conditional-call.ll covers all six
 condition codes plus the value-used negative case.

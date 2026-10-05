@@ -155,9 +155,9 @@ redundancy elimination, not register-pressure reduction.
 | `V6ClangTargetMachine.cpp` | Register pass in `addPreEmitPass`; CLI toggle |
 | `V6ClangAccumulatorPlanning.cpp` | Remove `eliminateRedundantAccMoves` (folded in) |
 | `V6ClangPeephole.cpp` | Remove `eliminateRedundantMov` (folded in); expose `isO61PatchedImm` |
-| `scripts/sync_llvm_mirror.ps1`, `scripts/populate_llvm_project.ps1` | (full-dir mirror already covers V6CLANG/; verify) |
+| `scripts/sync_llvm_mirror.ps1`, `scripts/populate_llvm_project.ps1` | (full-dir mirror already covers V6Clang/; verify) |
 | `tests/features/76/` | Feature test |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll` | Lit test |
+| `llvm-project/llvm/test/CodeGen/V6Clang/reg-value-forwarding-cross-bb.ll` | Lit test |
 
 ---
 
@@ -165,7 +165,7 @@ redundancy elimination, not register-pressure reduction.
 
 ### Step 3.1 — Skeleton pass + registration + CLI toggle [x]
 
-Create `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp`: a
+Create `llvm-project/llvm/lib/Target/V6Clang/V6ClangRegValueForwarding.cpp`: a
 `MachineFunctionPass` named "V6CLANG Register Value Forwarding" with
 `-v6clang-disable-reg-value-forwarding` (default off = enabled). Initially a
 no-op returning `false`. Declare `createV6ClangRegValueForwardingPass()` in
@@ -215,7 +215,7 @@ change. Then a final erase pass using the converged In-states.
 
 ### Step 3.6 — Lit test: reg-value-forwarding-cross-bb.ll [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll`.
+Create `llvm-project/llvm/test/CodeGen/V6Clang/reg-value-forwarding-cross-bb.ll`.
 This is the **deterministic non-A / register-agnostic coverage** for the pass
 (C codegen reliably forces redundancy only on `A`, since RA reuses the GP
 registers between blocks — see note below). Hand-written MIR / IR covers:

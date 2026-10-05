@@ -112,7 +112,7 @@ Implemented lowering for the direct FI pseudo family:
 2. Add `V6CLANG_LOAD8_FI : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>`.
 3. Add `V6CLANG_STORE8_FI : V6ClangPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>`.
 4. Add `V6CLANG_STORE16_FI : V6ClangPseudo<(outs), (ins GR16:$src, i16imm:$fi), ...>`.
-5. During address selection, recognize loads/stores whose base is a `FrameIndex` and select the direct FI pseudo instead of `V6CLANG_LEA_FI + V6CLANG_LOAD*_P/V6CLANG_STORE*_P`.
+5. During address selection, recognize loads/stores whose base is a `FrameIndex` and select the direct FI pseudo instead of `V6CLANG_LEA_FI + V6CLANG_LOAD*_P/V6Clang_STORE*_P`.
 6. Expand the direct FI pseudo in `V6ClangRegisterInfo::eliminateFrameIndex` after computing the normal frame-index `Offset`.
 7. For `V6CLANG_LOAD16_FI dst=HL`, emit `LXI H, Offset; DAD SP; MOV A,M; INX H; MOV H,M; MOV L,A`.
 8. For `V6CLANG_LOAD16_FI dst!=HL`, emit `LXI H, Offset; DAD SP; MOV DstLo,M; INX H; MOV DstHi,M`.
@@ -153,7 +153,7 @@ For `V6CLANG_STORE8_FI` and `V6CLANG_STORE16_FI`, the direct FI forms remove the
 
 ## Tests
 
-Added `llvm-project/llvm/test/CodeGen/V6CLANG/frame-index-direct-fi.ll` with coverage for all four direct FI pseudos:
+Added `llvm-project/llvm/test/CodeGen/V6Clang/frame-index-direct-fi.ll` with coverage for all four direct FI pseudos:
 
 - `V6CLANG_LOAD8_FI` for stack-passed i8 arguments.
 - `V6CLANG_LOAD16_FI` for stack-passed i16 arguments.

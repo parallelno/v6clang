@@ -183,7 +183,7 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 === References ===
 
   - Plan: design/plan_efficient_shift_expansion.md
-  - Implementation: llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp
+  - Implementation: llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp
     cases V6CLANG_SHL16, V6CLANG_SRL16, V6CLANG_SRA16 in expandPostRAPseudo
-  - Lit tests: llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll
-              llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll
+  - Lit tests: llvm-project/llvm/test/CodeGen/V6Clang/shift-i16.ll
+              llvm-project/llvm/test/CodeGen/V6Clang/shift-i16-byte-aligned.ll

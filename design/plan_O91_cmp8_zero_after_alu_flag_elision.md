@@ -100,8 +100,8 @@ Guards against false firing:
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp` | Add `AValueRegs` / `AValueSrc`; new elimination rule for `XRA A` + `CMP R` pattern |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll` | New lit test: three ops × dead/live hi; control cases |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangRedundantFlagElim.cpp` | Add `AValueRegs` / `AValueSrc`; new elimination rule for `XRA A` + `CMP R` pattern |
+| `llvm-project/llvm/test/CodeGen/V6Clang/cmp8-zero-redundant-after-alu.ll` | New lit test: three ops × dead/live hi; control cases |
 | `tests/features/73/` | Feature test: C source, baseline, new asm, result.txt |
 
 ---
@@ -110,7 +110,7 @@ Guards against false firing:
 
 ### Step 3.1 — Add `AValueRegs` / `AValueSrc` trackers to `V6ClangRedundantFlagElim` [ ]
 
-**File:** `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
+**File:** `llvm-project/llvm/lib/Target/V6Clang/V6ClangRedundantFlagElim.cpp`
 
 Inside `runOnMachineFunction`, alongside `bool ZFlagValid`, declare:
 
@@ -262,7 +262,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — New lit test `cmp8-zero-redundant-after-alu.ll` [ ]
 
-**File:** `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll`
+**File:** `llvm-project/llvm/test/CodeGen/V6Clang/cmp8-zero-redundant-after-alu.ll`
 
 Cover the following cases:
 
@@ -294,7 +294,7 @@ Key FileCheck directives:
 ### Step 3.4 — Run lit test [ ]
 
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\cmp8-zero-redundant-after-alu.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6Clang\cmp8-zero-redundant-after-alu.ll -v
 ```
 
 > **Implementation Notes:** (fill after completion)
@@ -352,8 +352,8 @@ Create `tests/features/73/result.txt` with:
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-Verify that `llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp` and
-`tests/lit/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll` reflect the changes.
+Verify that `llvm/lib/Target/V6Clang/V6ClangRedundantFlagElim.cpp` and
+`tests/lit/CodeGen/V6Clang/cmp8-zero-redundant-after-alu.ll` reflect the changes.
 
 > **Implementation Notes:** (fill after completion)
 
@@ -450,4 +450,4 @@ Same saving.
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [Design doc](design\future_plans\O91_cmp8_zero_after_alu_flag_elision.md)
-* [V6ClangRedundantFlagElim.cpp](llvm\lib\Target\V6CLANG\V6ClangRedundantFlagElim.cpp)
+* [V6ClangRedundantFlagElim.cpp](llvm\lib\Target\V6Clang\V6ClangRedundantFlagElim.cpp)

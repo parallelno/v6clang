@@ -3,9 +3,9 @@
 ## 1. Problem
 
 `V6CLANG_SELECT_CC` (the i8 conditional-select pseudo, defined in
-[V6ClangInstrInfo.td](llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L652)) is
+[V6ClangInstrInfo.td](llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L652)) is
 expanded by `V6ClangTargetLowering::EmitInstrWithCustomInserter`
-([V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L1415))
+([V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp#L1415))
 into a diamond CFG:
 
 ```
@@ -109,7 +109,7 @@ Restructure the `V6CLANG_SELECT_CC` (i8) inserter to materialize the result
 **through physreg `$a`** instead of through a vreg PHI, when it is
 profitable and safe. The 16-bit `V6CLANG_SELECT_CC16` is left untouched — it
 has no analogous A-routing benefit and its current diamond is consumed by
-[V6ClangBranchOpt::foldZeroSelectReturn](llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp#L383).
+[V6ClangBranchOpt::foldZeroSelectReturn](llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp#L383).
 
 ### 3.1. Eligibility predicate
 

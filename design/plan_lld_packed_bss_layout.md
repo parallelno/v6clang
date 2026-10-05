@@ -32,8 +32,8 @@ they are not durable until synchronized to the git-tracked mirrors:
 | Build-tree path | Git-tracked mirror | Sync policy |
 |---|---|---|
 | `llvm-project/lld/ELF/...` | `lld/ELF/...` | Individual `xcopy` entries for every modified or new upstream LLD file. |
-| `llvm-project/clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | Existing individual `xcopy` entry. |
-| `llvm-project/llvm/test/Linker/V6CLANG/...` | `tests/lit/Linker/V6CLANG/...` | Existing full `robocopy /MIR`, excluding `Output/`. |
+| `llvm-project/clang/lib/Driver/ToolChains/V6Clang/v6clang.ld` | `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld` | Existing individual `xcopy` entry. |
+| `llvm-project/llvm/test/Linker/V6Clang/...` | `tests/lit/Linker/V6Clang/...` | Existing full `robocopy /MIR`, excluding `Output/`. |
 
 `scripts/build.ps1` runs `scripts/sync_llvm_mirror.ps1` at the start of every
 build. Therefore the implementation workflow is:
@@ -340,7 +340,7 @@ non-packed links.
 ### Phase 4 - Update the default V6CLANG script and runtime bounds
 
 1. Add the dedicated `.bss.pack` output section before ordinary `.bss` in
-   `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`.
+   `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`.
 2. Place `__bss_start` before `.bss.pack` and `__bss_end` after ordinary
    `.bss`.
 3. Verify an empty packed arena does not create an address gap or alter existing
@@ -360,16 +360,16 @@ produces a runnable image.
    - `lld/ELF/V6ClangPackedSections.cpp`
    - `lld/ELF/LinkerScript.cpp`
    - `lld/ELF/CMakeLists.txt`
-   - `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`
-   - all new tests under `tests/lit/Linker/V6CLANG/`
+   - `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`
+   - all new tests under `tests/lit/Linker/V6Clang/`
 2. Add individual, symmetric `xcopy` entries for both new packed-section files
    and the newly modified upstream `LinkerScript.cpp`. Keep the existing
    `CMakeLists.txt` and `v6clang.ld` entries. Update both scripts:
    - `scripts/sync_llvm_mirror.ps1`
    - `scripts/populate_llvm_project.ps1`
 3. Author linker tests only under
-   `llvm-project/llvm/test/Linker/V6CLANG/`. Rely on the existing full-directory
-   mirror to populate `tests/lit/Linker/V6CLANG/`; do not add individual test
+   `llvm-project/llvm/test/Linker/V6Clang/`. Rely on the existing full-directory
+   mirror to populate `tests/lit/Linker/V6Clang/`; do not add individual test
    `xcopy` commands and do not edit the tracked test mirror directly.
 4. Ensure the updated V6CLANG linker script is copied into the staged clang
    resource tree by the existing packaging flow.
@@ -397,9 +397,9 @@ come from `ld.lld`.
 
 ## Test Plan
 
-Add canonical project tests under `llvm-project/llvm/test/Linker/V6CLANG/`. The
+Add canonical project tests under `llvm-project/llvm/test/Linker/V6Clang/`. The
 existing `robocopy /MIR` rule synchronizes them to the durable
-`tests/lit/Linker/V6CLANG/` mirror. Do not add the feature only under
+`tests/lit/Linker/V6Clang/` mirror. Do not add the feature only under
 `llvm-project/lld/test/ELF/`: that directory is gitignored and currently has no
 tracked mirror in this repository. Relevant upstream LLD ELF tests may still be
 run as non-persistent compatibility checks.
@@ -473,7 +473,7 @@ python tests\run_all.py
 During development, use the narrow linker suite first:
 
 ```powershell
-llvm-build\bin\llvm-lit.exe -sv llvm-project\llvm\test\Linker\V6CLANG\v6clang-pack-*.s
+llvm-build\bin\llvm-lit.exe -sv llvm-project\llvm\test\Linker\V6Clang\v6clang-pack-*.s
 ```
 
 Inspect representative outputs with:
@@ -576,7 +576,7 @@ Phase 4 - Default script/runtime
 
 Phase 5 - Mirroring/distribution
 - [x] Add symmetric copies for both new files and `LinkerScript.cpp`
-- [x] Sync canonical Linker/V6CLANG tests into the read-only tracked test mirror
+- [x] Sync canonical Linker/V6Clang tests into the read-only tracked test mirror
 - [x] Inspect and retain all resulting tracked `lld/`, `clang/`, and test diffs
 - [x] Verify staged toolchain contains the updated script/linker
 - [x] Complete clean mirror round-trip rebuild
@@ -597,7 +597,7 @@ tracked 23-block fixture links to a zero-waste `0xCA0` arena.
 Validated results:
 
 - 5/5 direct packed allocator tests pass.
-- 7/7 `Linker/V6CLANG` tests pass after a mirror sync/reverse-populate rebuild.
+- 7/7 `Linker/V6Clang` tests pass after a mirror sync/reverse-populate rebuild.
 - The packed-BSS driver/emulator test passes and emits success byte `0x5A`.
 - The external 23-block v6asm object contains 4 anchor, 4 window, and 15 filler
    sections totaling 3232 bytes; LLD produces a `0xCA0` NOBITS arena and a

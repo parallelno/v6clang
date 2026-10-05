@@ -209,7 +209,7 @@ unsigned my_helper(unsigned hl_arg, unsigned de_arg) {
 
 For non-naked functions, use standard GCC inline-asm constraints
 (currently a small subset is supported — see
-`tests/lit/Clang/V6CLANG/inline-asm.c` for the recognized list).
+`tests/lit/Clang/V6Clang/inline-asm.c` for the recognized list).
 
 ## See also
 
@@ -217,5 +217,5 @@ For non-naked functions, use standard GCC inline-asm constraints
 - `design/plan_O80_string_header.md` — `<string.h>` design rationale.
 - `tests/v6clang_lib/linkage_smoke.c` — exercises every operator.
 - `tests/v6clang_lib/divmod_combined.c` — fused divmod runtime check.
-- `tests/lit/CodeGen/V6CLANG/i8_mul_libcall.ll` — i8 MUL → __mulqi3.
-- `tests/lit/CodeGen/V6CLANG/divmod-fusion.ll` — udiv+urem fusion.
+- `tests/lit/CodeGen/V6Clang/i8_mul_libcall.ll` — i8 MUL → __mulqi3.
+- `tests/lit/CodeGen/V6Clang/divmod-fusion.ll` — udiv+urem fusion.

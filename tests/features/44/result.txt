@@ -142,7 +142,7 @@ SHL chain and the OR-of-halves. ~50+ instructions for one rotate.
 
 ## Verification
 
-- New lit test: `llvm-project/llvm/test/CodeGen/V6CLANG/rotate-i8.ll` --
+- New lit test: `llvm-project/llvm/test/CodeGen/V6Clang/rotate-i8.ll` --
   6 cases (rotl/rotr by 1/3, rotl by 4 and 7) all pass.
 - Full lit suite: 118/118 PASS.
 - Golden trust baseline + lit suite: 2/2 suites PASS via run_all.py.

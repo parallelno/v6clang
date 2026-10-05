@@ -356,7 +356,7 @@ and a one-line isel pattern repoint. The main risks are:
 ## Dependencies
 
 - Existing `V6CLANG_STORE16_G` post-RA expansion entry point in
-  [`V6ClangInstrInfo.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp)
+  [`V6ClangInstrInfo.cpp`](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp)
   (around line 1968).
 - Existing `isRegDeadAtMI` helper from O42.
 - Address-operand-plus-1 helper introduced for O73's case 3b

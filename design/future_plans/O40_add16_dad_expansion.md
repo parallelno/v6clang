@@ -231,7 +231,7 @@ if (DstReg == V6CLANG::HL && LhsReg != V6CLANG::HL && RhsReg != V6CLANG::HL) {
 
 ### Lit test
 
-File: `tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll`
+File: `tests/lit/CodeGen/V6Clang/add16-dad-expansion.ll`
 
 ```llvm
 ; RUN: llc -march=v6clang -O2 < %s | FileCheck %s

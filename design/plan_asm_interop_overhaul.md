@@ -20,7 +20,7 @@ inlining + per-routine `.o` files for non-inlinable helpers, picked up by
 - Phase 2: rewrite argument lowering in `V6ClangISelLowering.cpp` to a free-list
   allocator with i8 list `(A, B, C, D, E, L, H)` and i16 list `(HL, DE, BC)`
   and overlap blocking. Returns unchanged.
-- Phase 3: implement `V6ClangAsmParser` (new `llvm/lib/Target/V6CLANG/AsmParser/`)
+- Phase 3: implement `V6ClangAsmParser` (new `llvm/lib/Target/V6Clang/AsmParser/`)
   using MSP430AsmParser as the template. Accept **only** proper i8080 asm
   syntax (`PUSH H`, `POP D`, `DAD B`, `INX SP`, `LXI SP, NNNN`,
   `POP PSW`, etc.). The pair-letter forms (`H`, `D`, `B`) and `SP`/`PSW`
@@ -29,7 +29,7 @@ inlining + per-routine `.o` files for non-inlinable helpers, picked up by
 - Phase 4: lit-test that inline-asm clobber lists are honored (no over-spill)
   for Style A (inlined body), Style B (CALL extern), and the empty-clobber
   case. Extend `getGCCRegNames` to recognize pair names if needed.
-- Phase 5: add `clang/lib/Driver/ToolChains/V6CLANG/include/{string.h, stdlib.h,
+- Phase 5: add `clang/lib/Driver/ToolChains/V6Clang/include/{string.h, stdlib.h,
   v6clang.h}` containing standard prototypes plus `static inline __asm__`
   wrappers around `__builtin_v6clang_*` / hand-rolled sequences. Install rule
   copies them to `<resource-dir>/lib/v6clang/include/`.
@@ -55,7 +55,7 @@ inlining + per-routine `.o` files for non-inlinable helpers, picked up by
 ### Phase 1 — InstPrinter: i8080-canonical pair mnemonics
 *(prerequisite for Phase 3 — the parser must accept what the printer emits)*
 
-1. In `llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.td`:
+1. In `llvm/lib/Target/V6Clang/V6ClangRegisterInfo.td`:
    - Add `def Pair8080 : RegAltNameIndex;`.
    - Set `AltNames` under `Pair8080` for every register that can appear as a
      pair operand: `BC="B"`, `DE="D"`, `HL="H"`, `SP="SP"`, `PSW="PSW"`.
@@ -63,11 +63,11 @@ inlining + per-routine `.o` files for non-inlinable helpers, picked up by
      canonical name.)
    - This single AltName index drives all pair-context printing — no
      instruction emits the long form (`HL`/`DE`/`BC`) anywhere.
-2. In `llvm/lib/Target/V6CLANG/V6ClangInstPrinter.cpp`, add `printRegPair8080(MI, OpNo,
+2. In `llvm/lib/Target/V6Clang/V6ClangInstPrinter.cpp`, add `printRegPair8080(MI, OpNo,
    O)` that calls `getRegisterName(Reg, V6CLANG::Pair8080)`. Default
    `printOperand` stays untouched (still prints canonical names for non-pair
    contexts like sub-register access).
-3. In `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`, define **one** printing-only
+3. In `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`, define **one** printing-only
    operand class used uniformly by every pair-using mnemonic:
    ```
    def GR16Pair8080AsmOperand : AsmOperandClass { let Name = "GR16Pair8080"; }
@@ -82,13 +82,13 @@ inlining + per-routine `.o` files for non-inlinable helpers, picked up by
    gives each its proper i8080 spelling. (`LDAX`/`STAX` already use the
    narrower `GR16Idx` register class, which restricts matches to `B`/`D` —
    no separate operand class is needed.)
-4. Update CodeGen lit tests under `tests/lit/CodeGen/V6CLANG/**` to expect
+4. Update CodeGen lit tests under `tests/lit/CodeGen/V6Clang/**` to expect
    `PUSH H`, `INX D`, `DAD B`, etc. wherever current FileCheck patterns
    expect `PUSH HL`, `INX DE`, `DAD BC`. Inventory pre-edit:
    ```
    grep -rE "(PUSH|POP|DAD|INX|DCX|LDAX|STAX)\s+(HL|DE|BC)" tests/lit
    ```
-5. Mirror to `llvm-project/llvm/test/CodeGen/V6CLANG/**` and re-run
+5. Mirror to `llvm-project/llvm/test/CodeGen/V6Clang/**` and re-run
    `scripts/sync_llvm_mirror.ps1`.
 
 ### Phase 2 — Calling Convention: register-class free list
@@ -114,7 +114,7 @@ free-list allocator.
 8. Mirror the same allocator usage in `LowerCall` (lines ~919–1049).
 9. Verify `LowerReturn` (~859–909) is **not** modified — return CC is
    independent.
-10. Add `tests/lit/CodeGen/V6CLANG/call-conv-overlap.ll` covering the four
+10. Add `tests/lit/CodeGen/V6Clang/call-conv-overlap.ll` covering the four
     locked decision examples (these are the spec; the allocator must
     produce these register assignments exactly):
 
@@ -143,7 +143,7 @@ free-list allocator.
     | `(i8,i16,i8,i16)`    | A, HL, B, DE |
     | `(i16,i16,i8,i8)`    | HL, DE, A, B |
     Plus exhaustion cases (5+ args spilling to stack).
-11. Update existing `tests/lit/CodeGen/V6CLANG/call-conv.ll` and
+11. Update existing `tests/lit/CodeGen/V6Clang/call-conv.ll` and
     `call-conv-ret.ll` only where the old positional table produced
     different regs (the common 3-arg cases are unchanged).
 12. Update `docs/V6ClangCallingConvention.md` to describe the free-list
@@ -157,7 +157,7 @@ free-list allocator.
 Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
 (~536 LOC — closest small-target analogue).
 
-14. Create `llvm/lib/Target/V6CLANG/AsmParser/CMakeLists.txt`:
+14. Create `llvm/lib/Target/V6Clang/AsmParser/CMakeLists.txt`:
     ```
     add_llvm_component_library(LLVMV6ClangAsmParser
       V6ClangAsmParser.cpp
@@ -165,7 +165,7 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
       ADD_TO_COMPONENT V6CLANG
     )
     ```
-15. Create `llvm/lib/Target/V6CLANG/AsmParser/V6ClangAsmParser.cpp`:
+15. Create `llvm/lib/Target/V6Clang/AsmParser/V6ClangAsmParser.cpp`:
     - `class V6ClangOperand : public MCParsedAsmOperand` with kinds `k_Tok`,
       `k_Reg`, `k_Imm`, `k_Mem` (the `M` operand for MOVrM/MOVMr).
     - `class V6ClangAsmParser : public MCTargetAsmParser` overriding
@@ -181,28 +181,28 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
     - Standard directive handling inherited from the base class;
       `.byte` / `.word` already covered.
 16. Add `tablegen(LLVM V6ClangGenAsmMatcher.inc -gen-asm-matcher)` to
-    `llvm/lib/Target/V6CLANG/CMakeLists.txt`.
-17. In `llvm/lib/Target/V6CLANG/V6CLANG.td`, add `def V6ClangAsmParser : AsmParser;`
+    `llvm/lib/Target/V6Clang/CMakeLists.txt`.
+17. In `llvm/lib/Target/V6Clang/V6Clang.td`, add `def V6ClangAsmParser : AsmParser;`
     (mirror of existing `V6ClangAsmWriter`).
-18. In `llvm/lib/Target/V6CLANG/V6Clang.h`, declare
+18. In `llvm/lib/Target/V6Clang/V6Clang.h`, declare
     `extern "C" void LLVMInitializeV6ClangAsmParser();`.
-19. In `llvm/lib/Target/V6CLANG/TargetInfo/V6ClangTargetInfo.cpp` (or wherever
+19. In `llvm/lib/Target/V6Clang/TargetInfo/V6ClangTargetInfo.cpp` (or wherever
     `LLVMInitializeV6ClangTargetInfo` lives), implement
     `LLVMInitializeV6ClangAsmParser` calling
     `RegisterMCAsmParser<V6ClangAsmParser> X(getTheV6ClangTarget());`.
 20. Add `add_subdirectory(AsmParser)` to
-    `llvm/lib/Target/V6CLANG/CMakeLists.txt`.
+    `llvm/lib/Target/V6Clang/CMakeLists.txt`.
 21. Update **both** mirror scripts for the new `AsmParser/` subtree
     (the entire directory tree is brand-new and target-owned, so use a
     full `robocopy /MIR` like the existing V6CLANG target dir, NOT a
     file-by-file `xcopy`):
     - `scripts/sync_llvm_mirror.ps1` — add
-      `robocopy "$root\llvm-project\llvm\lib\Target\V6CLANG\AsmParser" "$root\llvm\lib\Target\V6CLANG\AsmParser" /MIR ...`
-      (note: the existing `/MIR` on `Target\V6CLANG` already covers this if
+      `robocopy "$root\llvm-project\llvm\lib\Target\V6Clang\AsmParser" "$root\llvm\lib\Target\V6Clang\AsmParser" /MIR ...`
+      (note: the existing `/MIR` on `Target\V6Clang` already covers this if
       we rely on it; verify by running the script and confirming the new
       AsmParser/ dir appears in the mirror after a build).
     - `scripts/populate_llvm_project.ps1` — symmetric reverse mirror.
-22. Add new lit suite `tests/lit/MC/V6CLANG/AsmParser/` covering:
+22. Add new lit suite `tests/lit/MC/V6Clang/AsmParser/` covering:
     - All 80+ instructions accepted by their canonical i8080 form.
     - Pair-form acceptance (single-letter pair name in every pair op):
       `PUSH H`, `POP D`, `PUSH PSW`, `POP PSW`, `INX B`, `INX H`,
@@ -213,7 +213,7 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
       (negative tests with `// expected-error`).
     - Round-trip: `clang -c foo.s -o foo.o; llvm-objdump -d foo.o`
       reproduces text identical to what `llc -filetype=asm` would emit.
-23. Mirror tests to `llvm-project/llvm/test/MC/V6CLANG/AsmParser/`.
+23. Mirror tests to `llvm-project/llvm/test/MC/V6Clang/AsmParser/`.
 24. End-to-end smoke: assemble both
     `compiler-rt/lib/builtins/v6clang/crt0.s` and `memory.s` directly with
     `clang -c`, confirm symbols + relocations via `llvm-readelf -a`.
@@ -224,7 +224,7 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
     LLVM handling should suffice. Read the existing constraint code in
     `V6ClangISelLowering.cpp` lines 1131–1165 (already maps `'a'`/`'r'`/`'p'`
     to register classes).
-26. Add three lit tests under `tests/lit/CodeGen/V6CLANG/inline-asm/`:
+26. Add three lit tests under `tests/lit/CodeGen/V6Clang/inline-asm/`:
     - `clobber-style-a.ll` — Style A, body inlined: `__asm__ volatile
       ("MVI A,%1\nOUT %0\n" : : "i"(0xED), "r"(v) : "a")`. FileCheck
       asserts BC/DE not pushed across the asm block.
@@ -276,7 +276,7 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
 
 ### Phase 5 — V6CLANG resource-dir include directory
 
-29. Create `clang/lib/Driver/ToolChains/V6CLANG/include/`:
+29. Create `clang/lib/Driver/ToolChains/V6Clang/include/`:
     - `string.h` — prototypes for `memcpy`, `memset`, `memmove`,
       `strlen`, `strcmp`, `strcpy`. Each gets a `static inline
       __attribute__((always_inline))` wrapper that issues an inline-asm
@@ -288,22 +288,22 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
     - `v6clang.h` — `__v6clang_in(port)`, `__v6clang_out(port, val)`, `__v6clang_di()`,
       `__v6clang_ei()`, `__v6clang_hlt()`, `__v6clang_nop()` thin wrappers around
       the existing `__builtin_v6clang_*` family from
-      `clang/include/clang/Basic/BuiltinsV6CLANG.def`.
+      `clang/include/clang/Basic/BuiltinsV6Clang.def`.
 30. Add a CMake `install(DIRECTORY ...)` rule in
-    `clang/lib/Driver/ToolChains/V6CLANG/CMakeLists.txt` (or wherever
+    `clang/lib/Driver/ToolChains/V6Clang/CMakeLists.txt` (or wherever
     the V6CLANG driver files are wired) that copies
-    `clang/lib/Driver/ToolChains/V6CLANG/include/` to
+    `clang/lib/Driver/ToolChains/V6Clang/include/` to
     `<install-prefix>/lib/clang/<ver>/lib/v6clang/include/` at install time.
     Also add the same files to the on-build directory
     `llvm-build/lib/clang/18/lib/v6clang/include/` so a non-installed
     development build works.
 31. Update **both** mirror scripts. Source-of-truth-for-edits is the
-    git-tracked mirror at `clang/lib/Driver/ToolChains/V6CLANG/include/`;
-    builds happen out of `llvm-project/clang/lib/Driver/ToolChains/V6CLANG/include/`
+    git-tracked mirror at `clang/lib/Driver/ToolChains/V6Clang/include/`;
+    builds happen out of `llvm-project/clang/lib/Driver/ToolChains/V6Clang/include/`
     (gitignored). Add explicit lines so the new include directory survives
     round-trip, mirroring how `v6clang.ld` is already handled:
     - `scripts/sync_llvm_mirror.ps1` — add
-      `robocopy "$root\llvm-project\clang\lib\Driver\ToolChains\V6CLANG\include" "$root\clang\lib\Driver\ToolChains\V6CLANG\include" /MIR /NFL /NDL /NJH /NJS`
+      `robocopy "$root\llvm-project\clang\lib\Driver\ToolChains\V6Clang\include" "$root\clang\lib\Driver\ToolChains\V6Clang\include" /MIR /NFL /NDL /NJH /NJS`
     - `scripts/populate_llvm_project.ps1` — symmetric reverse line.
 32. **Do not** modify Clang's stock freestanding headers
     (`<resource-dir>/include/stdint.h`, `stddef.h`, `limits.h`,
@@ -336,7 +336,7 @@ Template: `llvm-project/llvm/lib/Target/MSP430/AsmParser/MSP430AsmParser.cpp`
       and LLD `--gc-sections` (already passed by the V6CLANG driver per
       O-LLD) can prune unreachable helpers transitively. User-passed
       `-fno-function-sections` overrides.
-35. Add `tests/lit/Clang/V6CLANG/include-path.c`:
+35. Add `tests/lit/Clang/V6Clang/include-path.c`:
     ```c
     // RUN: %clang -target i8080-unknown-v6clang -E -xc - < %s | FileCheck %s
     #include <string.h>
@@ -399,12 +399,12 @@ Phase 3 — `V6ClangAsmParser`
 - [x] 14. Add `AsmParser/CMakeLists.txt`
 - [x] 15. Implement `V6ClangAsmParser.cpp` (~500-700 LOC)
 - [x] 16. Add `-gen-asm-matcher` tablegen rule
-- [x] 17. Add `V6ClangAsmParser` def to `V6CLANG.td`
+- [x] 17. Add `V6ClangAsmParser` def to `V6Clang.td`
 - [x] 18. Declare `LLVMInitializeV6ClangAsmParser` in `V6Clang.h`
 - [x] 19. Register in `V6ClangTargetInfo.cpp`
 - [x] 20. `add_subdirectory(AsmParser)` in V6CLANG `CMakeLists.txt`
 - [x] 21. Mirror scripts updated for AsmParser/
-- [x] 22. Add `tests/lit/MC/V6CLANG/AsmParser/` suite
+- [x] 22. Add `tests/lit/MC/V6Clang/AsmParser/` suite
 - [x] 23. Mirror tests
 - [x] 24. Smoke: `clang -c crt0.s` + `clang -c memory.s` produce valid ELF
 
@@ -415,7 +415,7 @@ Phase 4 — Inline-asm clobber verification
 - [x] 28. Add `tests/features/inline_asm_clobber/` end-to-end (main.c + external.h inline asm + external.s with func1\u2192func2 reachable, func3\u2192func4 dropped; expected stdout "12"; verify func3/func4 absent via `llvm-nm`)
 
 Phase 5 — V6CLANG resource headers
-- [x] 29. Create `clang/lib/Driver/ToolChains/V6CLANG/include/{string.h, stdlib.h, v6clang.h}`
+- [x] 29. Create `clang/lib/Driver/ToolChains/V6Clang/include/{string.h, stdlib.h, v6clang.h}`
 - [x] 30. CMake install rule for `<resource-dir>/lib/v6clang/include/`  *(headers and `v6clang.ld` still rely on dev-tree path lookup in the driver; install rules to be added when `ninja install` becomes part of the workflow. **Note:** `compiler-rt/lib/builtins/v6clang/crt0.s` is now auto-assembled into `<resource-dir>/lib/v6clang/crt0.o` by `clang/lib/Driver/CMakeLists.txt` on every clang build, with a matching `install(FILES ...)` rule.)*
 - [x] 31. Mirror scripts updated for new include dir
 - [x] 32. Verify Clang stock `stdint.h` produces correct V6CLANG macros (no override needed)
@@ -423,7 +423,7 @@ Phase 5 — V6CLANG resource headers
 Phase 6 — Driver include-path injection
 - [x] 33. Declare `AddClangSystemIncludeArgs` override in `V6Clang.h`
 - [x] 34. Implement it in `V6Clang.cpp` (V6CLANG dir first, base after, honor `-nostdinc`); also add `-ffunction-sections` default in `addClangTargetOptions`
-- [x] 35. Add `tests/lit/Clang/V6CLANG/include-path.c`
+- [x] 35. Add `tests/lit/Clang/V6Clang/include-path.c`
 - [x] 36. Cross-platform safety check (x86 target unaffected)  *(verified by construction — `AddClangSystemIncludeArgs` is a member of `V6ClangToolChain` only; non-V6CLANG toolchains never call it. Live x86 build sample deferred until cross-host CI exists.)*
 
 Phase 7 — Cleanup & docs
@@ -442,7 +442,7 @@ Verification gates
 - [x] V5. `clang -c crt0.s -o crt0.o` produces ELF with `_start` global symbol; `llvm-readelf -s` shows correct relocs
 - [x] V6. End-to-end: `clang -target i8080-unknown-v6clang -O2 main.c crt0.s -o out.rom` builds and runs correctly in v6emul WITHOUT the `--defsym=_start=main` workaround  *(verified via `tests/features/inline_asm_clobber/`: driver auto-picks crt0.o, runs ld.lld, prints "12".)*
 - [x] V7. Inline-asm clobber lit tests show exact expected spill counts (no over-spill on narrow clobbers)
-- [x] V8. `#include <string.h>` works on V6CLANG; same source compiled for x86 still uses MSVC's header  *(V6CLANG side covered by `tests/lit/Clang/V6CLANG/include-path.c`; x86 side guaranteed by construction — the V6CLANG include directory is injected only by `V6ClangToolChain::AddClangSystemIncludeArgs`.)*
+- [x] V8. `#include <string.h>` works on V6CLANG; same source compiled for x86 still uses MSVC's header  *(V6CLANG side covered by `tests/lit/Clang/V6Clang/include-path.c`; x86 side guaranteed by construction — the V6CLANG include directory is injected only by `V6ClangToolChain::AddClangSystemIncludeArgs`.)*
 - [x] V9. `sync_llvm_mirror.ps1` reports zero diffs after both halves of every change are touched
 - [x] V10. Mirror round-trip rebuilds byte-identical V6CLANG ROMs
 
@@ -459,40 +459,40 @@ entirely in favor of header-only inline-asm wrappers under
 ## Relevant files
 
 ### Phase 1 (InstPrinter)
-- `llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.td` — add `Pair8080` index + `AltNames`
-- `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` — operand swaps on lines ~170, 176, 218, 224, 347, 353, 359
-- `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangInstPrinter.{cpp,h}` — `printRegPair8080`
-- `tests/lit/CodeGen/V6CLANG/**` — many FileCheck pattern updates
+- `llvm/lib/Target/V6Clang/V6ClangRegisterInfo.td` — add `Pair8080` index + `AltNames`
+- `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` — operand swaps on lines ~170, 176, 218, 224, 347, 353, 359
+- `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangInstPrinter.{cpp,h}` — `printRegPair8080`
+- `tests/lit/CodeGen/V6Clang/**` — many FileCheck pattern updates
 
 ### Phase 2 (CC)
-- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` — replace `ArgIdx` table at ~816 + ~919 with `V6ClangArgAllocator`
-- `tests/lit/CodeGen/V6CLANG/call-conv.ll`, `call-conv-ret.ll` — updates
-- `tests/lit/CodeGen/V6CLANG/call-conv-overlap.ll` — **new**
+- `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` — replace `ArgIdx` table at ~816 + ~919 with `V6ClangArgAllocator`
+- `tests/lit/CodeGen/V6Clang/call-conv.ll`, `call-conv-ret.ll` — updates
+- `tests/lit/CodeGen/V6Clang/call-conv-overlap.ll` — **new**
 - `docs/V6ClangCallingConvention.md` — algorithm description rewrite
 
 ### Phase 3 (AsmParser)
-- `llvm/lib/Target/V6CLANG/AsmParser/CMakeLists.txt` — **new**
-- `llvm/lib/Target/V6CLANG/AsmParser/V6ClangAsmParser.cpp` — **new**, ~500-700 LOC
-- `llvm/lib/Target/V6CLANG/V6Clang.h`, `V6CLANG.td`, `CMakeLists.txt`, `TargetInfo/V6ClangTargetInfo.cpp` — registration
-- `tests/lit/MC/V6CLANG/AsmParser/*.s` — **new** suite
+- `llvm/lib/Target/V6Clang/AsmParser/CMakeLists.txt` — **new**
+- `llvm/lib/Target/V6Clang/AsmParser/V6ClangAsmParser.cpp` — **new**, ~500-700 LOC
+- `llvm/lib/Target/V6Clang/V6Clang.h`, `V6Clang.td`, `CMakeLists.txt`, `TargetInfo/V6ClangTargetInfo.cpp` — registration
+- `tests/lit/MC/V6Clang/AsmParser/*.s` — **new** suite
 - `scripts/sync_llvm_mirror.ps1`, `populate_llvm_project.ps1` — mirror entries
 
 ### Phase 4 (inline-asm clobbers)
-- `tests/lit/CodeGen/V6CLANG/inline-asm/clobber-{style-a,style-b,empty}.ll` — **new**
+- `tests/lit/CodeGen/V6Clang/inline-asm/clobber-{style-a,style-b,empty}.ll` — **new**
 - `tests/features/inline_asm_clobber/` — **new** end-to-end
 - `clang/lib/Basic/Targets/I8080.{h,cpp}` — possibly extend `getGCCRegNames`
 
 ### Phase 5 (resource headers)
-- `clang/lib/Driver/ToolChains/V6CLANG/include/string.h` — **new**
-- `clang/lib/Driver/ToolChains/V6CLANG/include/stdlib.h` — **new**
-- `clang/lib/Driver/ToolChains/V6CLANG/include/v6clang.h` — **new**
-- `clang/lib/Driver/ToolChains/V6CLANG/CMakeLists.txt` — install rule (or wherever the existing `v6clang.ld` install lives)
+- `clang/lib/Driver/ToolChains/V6Clang/include/string.h` — **new**
+- `clang/lib/Driver/ToolChains/V6Clang/include/stdlib.h` — **new**
+- `clang/lib/Driver/ToolChains/V6Clang/include/v6clang.h` — **new**
+- `clang/lib/Driver/ToolChains/V6Clang/CMakeLists.txt` — install rule (or wherever the existing `v6clang.ld` install lives)
 - `scripts/sync_llvm_mirror.ps1`, `populate_llvm_project.ps1` — mirror entries
 
 ### Phase 6 (driver include path)
 - `clang/lib/Driver/ToolChains/V6Clang.h` — declare override
 - `clang/lib/Driver/ToolChains/V6Clang.cpp` — implement
-- `tests/lit/Clang/V6CLANG/include-path.c` — **new**
+- `tests/lit/Clang/V6Clang/include-path.c` — **new**
 
 ### Phase 7 (cleanup)
 - `clang/lib/Driver/ToolChains/V6Clang.cpp` — remove `findV6ClangRuntimeFile(TC, "libv6clang-builtins.a")` block

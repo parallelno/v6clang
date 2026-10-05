@@ -76,24 +76,24 @@ namespace {
 static int deltaForReload(unsigned DstReg, bool HLLive) {
   switch (DstReg) {
   // i16 (Stage 2/3).
-  case V6CLANG::HL: return 8;              // LHLD (20) -> LXI HL (12)
-  case V6CLANG::DE: return HLLive ? 16 : 12;
-  case V6CLANG::BC: return HLLive ? 52 : 24;
+  case V6Clang::HL: return 8;              // LHLD (20) -> LXI HL (12)
+  case V6Clang::DE: return HLLive ? 16 : 12;
+  case V6Clang::BC: return HLLive ? 52 : 24;
   // i8 (Stage 4).
-  case V6CLANG::A:  return 8;              // LDA (16) -> MVI A (8)
-  case V6CLANG::B:
-  case V6CLANG::C:
-  case V6CLANG::D:
-  case V6CLANG::E:
-  case V6CLANG::H:
-  case V6CLANG::L:  return HLLive ? 44 : 20;
+  case V6Clang::A:  return 8;              // LDA (16) -> MVI A (8)
+  case V6Clang::B:
+  case V6Clang::C:
+  case V6Clang::D:
+  case V6Clang::E:
+  case V6Clang::H:
+  case V6Clang::L:  return HLLive ? 44 : 20;
   default:      return 0;
   }
 }
 
 /// True if Reg overlaps HL (either the pair itself or its 8-bit halves).
 static bool isHLRelated(unsigned Reg) {
-  return Reg == V6CLANG::HL || Reg == V6CLANG::H || Reg == V6CLANG::L;
+  return Reg == V6Clang::HL || Reg == V6Clang::H || Reg == V6Clang::L;
 }
 
 /// Return true when Reg can be read at I without an undef annotation. O61 uses
@@ -163,24 +163,24 @@ static uint64_t scoreReload(const MachineInstr &R, unsigned Width,
                             const TargetRegisterInfo *TRI) {
   Register Dst = R.getOperand(0).getReg();
   if (Width == 16) {
-    if (Dst == V6CLANG::HL) {
+    if (Dst == V6Clang::HL) {
       if (!AllowHL) return 0;
-    } else if (Dst != V6CLANG::DE && Dst != V6CLANG::BC) {
+    } else if (Dst != V6Clang::DE && Dst != V6Clang::BC) {
       return 0;
     }
   } else {
     assert(Width == 8 && "Width must be 8 or 16");
-    if (Dst == V6CLANG::A) {
+    if (Dst == V6Clang::A) {
       if (!AllowA) return 0;
-    } else if (Dst == V6CLANG::H || Dst == V6CLANG::L) {
+    } else if (Dst == V6Clang::H || Dst == V6Clang::L) {
       if (!AllowHL) return 0;
-    } else if (Dst != V6CLANG::B && Dst != V6CLANG::C &&
-               Dst != V6CLANG::D && Dst != V6CLANG::E) {
+    } else if (Dst != V6Clang::B && Dst != V6Clang::C &&
+               Dst != V6Clang::D && Dst != V6Clang::E) {
       return 0;
     }
   }
   MachineBasicBlock *MBB = const_cast<MachineBasicBlock *>(R.getParent());
-  bool HLLive = !isPairDeadAfterMI(V6CLANG::HL, R, *MBB, TRI);
+  bool HLLive = !isPairDeadAfterMI(V6Clang::HL, R, *MBB, TRI);
   int D = deltaForReload(Dst, HLLive);
   if (D <= 0)
     return 0;
@@ -258,13 +258,13 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
   for (auto &MBB : MF) {
     for (auto &MI : MBB) {
       unsigned Opc = MI.getOpcode();
-      if (Opc == V6CLANG::V6CLANG_SPILL16)
+      if (Opc == V6Clang::V6CLANG_SPILL16)
         Slots16[MI.getOperand(1).getIndex()].Spills.push_back(&MI);
-      else if (Opc == V6CLANG::V6CLANG_RELOAD16)
+      else if (Opc == V6Clang::V6CLANG_RELOAD16)
         Slots16[MI.getOperand(1).getIndex()].Reloads.push_back(&MI);
-      else if (Opc == V6CLANG::V6CLANG_SPILL8)
+      else if (Opc == V6Clang::V6CLANG_SPILL8)
         Slots8[MI.getOperand(1).getIndex()].Spills.push_back(&MI);
-      else if (Opc == V6CLANG::V6CLANG_RELOAD8)
+      else if (Opc == V6Clang::V6CLANG_RELOAD8)
         Slots8[MI.getOperand(1).getIndex()].Reloads.push_back(&MI);
     }
   }
@@ -278,7 +278,7 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
                       MachineBasicBlock::iterator It,
                       const DebugLoc &DL, unsigned OrigOpc) {
     if (getV6ClangAnnotatePseudosEnabled())
-      BuildMI(MBB, It, DL, TII.get(V6CLANG::V6CLANG_PSEUDO_COMMENT))
+      BuildMI(MBB, It, DL, TII.get(V6Clang::V6CLANG_PSEUDO_COMMENT))
           .addImm(OrigOpc);
   };
 
@@ -291,14 +291,14 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       continue;
     bool AllAcceptedSources = llvm::all_of(E.Spills, [](MachineInstr *S) {
       Register Src = S->getOperand(0).getReg();
-      return Src == V6CLANG::HL || Src == V6CLANG::DE || Src == V6CLANG::BC;
+      return Src == V6Clang::HL || Src == V6Clang::DE || Src == V6Clang::BC;
     });
     if (!AllAcceptedSources)
       continue;
     bool AllSupported =
         llvm::all_of(E.Reloads, [](MachineInstr *R) {
           Register D = R->getOperand(0).getReg();
-          return D == V6CLANG::HL || D == V6CLANG::DE || D == V6CLANG::BC;
+          return D == V6Clang::HL || D == V6Clang::DE || D == V6Clang::BC;
         });
     if (!AllSupported)
       continue;
@@ -347,63 +347,63 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       DebugLoc DL = Spill->getDebugLoc();
       Register SrcReg = Spill->getOperand(0).getReg();
       bool IsKill = Spill->getOperand(0).isKill();
-      bool HLDead = isPairDeadAfterMI(V6CLANG::HL, *Spill, *MBB, TRI);
-      annotate(*MBB, Spill, DL, V6CLANG::V6CLANG_SPILL16);
+      bool HLDead = isPairDeadAfterMI(V6Clang::HL, *Spill, *MBB, TRI);
+      annotate(*MBB, Spill, DL, V6Clang::V6CLANG_SPILL16);
 
-      if (SrcReg == V6CLANG::HL) {
+      if (SrcReg == V6Clang::HL) {
         // SHLD <Sym[i], MO_PATCH_IMM> per winner. Kill HL only on the
         // last SHLD (HL must remain live across earlier SHLDs).
         for (size_t si = 0; si < Syms.size(); ++si) {
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::SHLD))
-              .addReg(V6CLANG::HL)
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::SHLD))
+              .addReg(V6Clang::HL)
               .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
         }
-      } else if (SrcReg == V6CLANG::DE) {
+      } else if (SrcReg == V6Clang::DE) {
         // XCHG; SHLD ... ; [XCHG]. Trailing XCHG is skipped iff DE is
         // killed by the spill AND HL is dead after — exactly the O42
         // rule used by the classical DE spill in
         // V6ClangRegisterInfo::eliminateFrameIndex.
         bool SkipTrailing = IsKill && HLDead;
         bool HLLiveBefore = isRegLiveBefore(*MBB, Spill->getIterator(),
-                                            V6CLANG::HL, TRI);
+                                            V6Clang::HL, TRI);
         MachineInstr *FirstXchg =
-            BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::XCHG)).getInstr();
+            BuildMI(*MBB, Spill, DL, TII.get(V6Clang::XCHG)).getInstr();
         if (!HLLiveBefore)
-          markXchgUseUndef(FirstXchg, V6CLANG::HL);
+          markXchgUseUndef(FirstXchg, V6Clang::HL);
         for (size_t si = 0; si < Syms.size(); ++si) {
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::SHLD))
-              .addReg(V6CLANG::HL)
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::SHLD))
+              .addReg(V6Clang::HL)
               .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
         }
         if (!SkipTrailing) {
           MachineInstr *SecondXchg =
-              BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::XCHG)).getInstr();
+              BuildMI(*MBB, Spill, DL, TII.get(V6Clang::XCHG)).getInstr();
           if (!HLLiveBefore)
-            markXchgUseUndef(SecondXchg, V6CLANG::DE);
+            markXchgUseUndef(SecondXchg, V6Clang::DE);
         }
       } else {
-        assert(SrcReg == V6CLANG::BC && "Stage 5 src must be HL/DE/BC");
+        assert(SrcReg == V6Clang::BC && "Stage 5 src must be HL/DE/BC");
         // [PUSH H;] MOV L,C; MOV H,B; SHLD ... ; [POP H]. PUSH/POP HL
         // is gated by HL liveness across the spill — same rule the
         // classical BC spill in V6ClangRegisterInfo uses (O42).
         if (!HLDead)
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-        BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::MOVrr))
-            .addReg(V6CLANG::L, RegState::Define)
-            .addReg(V6CLANG::C, getKillRegState(IsKill));
-        BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::MOVrr))
-            .addReg(V6CLANG::H, RegState::Define)
-            .addReg(V6CLANG::B, getKillRegState(IsKill));
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::HL);
+        BuildMI(*MBB, Spill, DL, TII.get(V6Clang::MOVrr))
+            .addReg(V6Clang::L, RegState::Define)
+            .addReg(V6Clang::C, getKillRegState(IsKill));
+        BuildMI(*MBB, Spill, DL, TII.get(V6Clang::MOVrr))
+            .addReg(V6Clang::H, RegState::Define)
+            .addReg(V6Clang::B, getKillRegState(IsKill));
         for (size_t si = 0; si < Syms.size(); ++si) {
           // HL is restored by the trailing POP H (when emitted) or
           // dead after the last SHLD (when HLDead skipped PUSH/POP).
           // Kill on the last SHLD only when no POP follows.
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::SHLD))
-            .addReg(V6CLANG::HL)
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::SHLD))
+            .addReg(V6Clang::HL)
               .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
         }
         if (!HLDead)
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::POP), V6CLANG::HL);
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::POP), V6Clang::HL);
       }
       Spill->eraseFromParent();
     }
@@ -415,9 +415,9 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       MachineBasicBlock *MBB = PR->getParent();
       DebugLoc DL = PR->getDebugLoc();
       Register WinnerDst = PR->getOperand(0).getReg();
-      annotate(*MBB, PR, DL, V6CLANG::V6CLANG_RELOAD16);
+      annotate(*MBB, PR, DL, V6Clang::V6CLANG_RELOAD16);
       MachineInstrBuilder NewLxi =
-          BuildMI(*MBB, PR, DL, TII.get(V6CLANG::LXI))
+          BuildMI(*MBB, PR, DL, TII.get(V6Clang::LXI))
               .addReg(WinnerDst, RegState::Define)
               .addImm(0);
       NewLxi->getOperand(1).setTargetFlags(V6ClangII::MO_PATCH_IMM);
@@ -445,55 +445,55 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       // half is live as an individual byte after the reload.  If LHLD is used
       // without PUSH/POP, it clobbers both H and L, so we must preserve HL
       // whenever either sub-register is still live.
-      bool HLLive = !isRegDeadAfterMI(V6CLANG::H, *R, *MBB, TRI) ||
-                    !isRegDeadAfterMI(V6CLANG::L, *R, *MBB, TRI);
-      annotate(*MBB, R, DL, V6CLANG::V6CLANG_RELOAD16);
+      bool HLLive = !isRegDeadAfterMI(V6Clang::H, *R, *MBB, TRI) ||
+                    !isRegDeadAfterMI(V6Clang::L, *R, *MBB, TRI);
+      annotate(*MBB, R, DL, V6Clang::V6CLANG_RELOAD16);
 
-      if (Dst == V6CLANG::HL) {
+      if (Dst == V6Clang::HL) {
         // LHLD <Syms[0], MO_PATCH_IMM>   (20cc, 3B)
-        BuildMI(*MBB, R, DL, TII.get(V6CLANG::LHLD), V6CLANG::HL)
+        BuildMI(*MBB, R, DL, TII.get(V6Clang::LHLD), V6Clang::HL)
             .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
-      } else if (Dst == V6CLANG::DE) {
+      } else if (Dst == V6Clang::DE) {
         if (HLLive) {
           // XCHG; LHLD ... ; XCHG  (28cc, 5B)
           MachineInstr *FirstXchg =
-              BuildMI(*MBB, R, DL, TII.get(V6CLANG::XCHG)).getInstr();
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::LHLD), V6CLANG::HL)
+              BuildMI(*MBB, R, DL, TII.get(V6Clang::XCHG)).getInstr();
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::LHLD), V6Clang::HL)
               .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::XCHG));
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::XCHG));
           if (MachineOperand *MO = FirstXchg->findRegisterUseOperand(
-                  V6CLANG::DE, /*isKill=*/false))
+                  V6Clang::DE, /*isKill=*/false))
             MO->setIsUndef(true);
         } else {
           // LHLD ... ; XCHG        (24cc, 4B)
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::LHLD), V6CLANG::HL)
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::LHLD), V6Clang::HL)
               .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
           MachineInstr *XchgMI =
-            BuildMI(*MBB, R, DL, TII.get(V6CLANG::XCHG)).getInstr();
+            BuildMI(*MBB, R, DL, TII.get(V6Clang::XCHG)).getInstr();
           if (MachineOperand *MO = XchgMI->findRegisterUseOperand(
-              V6CLANG::DE, /*isKill=*/false))
+              V6Clang::DE, /*isKill=*/false))
           MO->setIsUndef(true);
         }
       } else {
-        assert(Dst == V6CLANG::BC && "Stage 3 reload dst must be HL/DE/BC");
+        assert(Dst == V6Clang::BC && "Stage 3 reload dst must be HL/DE/BC");
         if (HLLive) {
           // PUSH HL; LHLD ... ; MOV C,L; MOV B,H; POP HL  (64cc, 7B)
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::LHLD), V6CLANG::HL)
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::HL);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::LHLD), V6Clang::HL)
               .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::C, RegState::Define).addReg(V6CLANG::L);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::B, RegState::Define).addReg(V6CLANG::H);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::POP), V6CLANG::HL);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::MOVrr))
+              .addReg(V6Clang::C, RegState::Define).addReg(V6Clang::L);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::MOVrr))
+              .addReg(V6Clang::B, RegState::Define).addReg(V6Clang::H);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::POP), V6Clang::HL);
         } else {
           // LHLD ... ; MOV C,L; MOV B,H  (36cc, 5B)
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::LHLD), V6CLANG::HL)
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::LHLD), V6Clang::HL)
               .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::C, RegState::Define).addReg(V6CLANG::L);
-          BuildMI(*MBB, R, DL, TII.get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::B, RegState::Define).addReg(V6CLANG::H);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::MOVrr))
+              .addReg(V6Clang::C, RegState::Define).addReg(V6Clang::L);
+          BuildMI(*MBB, R, DL, TII.get(V6Clang::MOVrr))
+              .addReg(V6Clang::B, RegState::Define).addReg(V6Clang::H);
         }
       }
       R->eraseFromParent();
@@ -512,14 +512,14 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
     if (E.Spills.empty() || E.Reloads.empty())
       continue;
     bool AllASources = llvm::all_of(E.Spills, [](MachineInstr *S) {
-      return S->getOperand(0).getReg() == V6CLANG::A;
+      return S->getOperand(0).getReg() == V6Clang::A;
     });
     bool AllSupportedR8 =
         llvm::all_of(E.Reloads, [](MachineInstr *R) {
           Register D = R->getOperand(0).getReg();
-          return D == V6CLANG::A || D == V6CLANG::B || D == V6CLANG::C ||
-                 D == V6CLANG::D || D == V6CLANG::E || D == V6CLANG::H ||
-                 D == V6CLANG::L;
+          return D == V6Clang::A || D == V6Clang::B || D == V6Clang::C ||
+                 D == V6Clang::D || D == V6Clang::E || D == V6Clang::H ||
+                 D == V6Clang::L;
         });
     if (!AllSupportedR8)
       continue;
@@ -564,13 +564,13 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       DebugLoc DL = Spill->getDebugLoc();
       Register SrcReg = Spill->getOperand(0).getReg();
       bool IsKill = Spill->getOperand(0).isKill();
-      annotate(*MBB, Spill, DL, V6CLANG::V6CLANG_SPILL8);
+      annotate(*MBB, Spill, DL, V6Clang::V6CLANG_SPILL8);
 
-      if (SrcReg == V6CLANG::A) {
+      if (SrcReg == V6Clang::A) {
         for (size_t si = 0; si < Syms.size(); ++si) {
           bool Kill = IsKill && (si + 1 == Syms.size());
-          BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::STA))
-              .addReg(V6CLANG::A, getKillRegState(Kill))
+          BuildMI(*MBB, Spill, DL, TII.get(V6Clang::STA))
+              .addReg(V6Clang::A, getKillRegState(Kill))
               .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
         }
       } else {
@@ -590,9 +590,9 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       MachineBasicBlock *MBB = PR->getParent();
       DebugLoc DL = PR->getDebugLoc();
       Register WinnerDst = PR->getOperand(0).getReg();
-      annotate(*MBB, PR, DL, V6CLANG::V6CLANG_RELOAD8);
+      annotate(*MBB, PR, DL, V6Clang::V6CLANG_RELOAD8);
       MachineInstrBuilder NewMvi =
-          BuildMI(*MBB, PR, DL, TII.get(V6CLANG::MVIr))
+          BuildMI(*MBB, PR, DL, TII.get(V6Clang::MVIr))
               .addReg(WinnerDst, RegState::Define)
               .addImm(0);
       NewMvi->getOperand(1).setTargetFlags(V6ClangII::MO_PATCH_IMM);
@@ -614,11 +614,11 @@ bool V6ClangSpillPatchedReload::runOnMachineFunction(MachineFunction &MF) {
       MachineBasicBlock *MBB = R->getParent();
       DebugLoc DL = R->getDebugLoc();
       Register Dst = R->getOperand(0).getReg();
-      annotate(*MBB, R, DL, V6CLANG::V6CLANG_RELOAD8);
+      annotate(*MBB, R, DL, V6Clang::V6CLANG_RELOAD8);
 
-      if (Dst == V6CLANG::A) {
+      if (Dst == V6Clang::A) {
         // LDA <Syms[0], MO_PATCH_IMM>   (16cc, 3B)
-        BuildMI(*MBB, R, DL, TII.get(V6CLANG::LDA), V6CLANG::A)
+        BuildMI(*MBB, R, DL, TII.get(V6Clang::LDA), V6Clang::A)
             .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
       } else {
         // O64 ladder handles Shape B and Shape C.

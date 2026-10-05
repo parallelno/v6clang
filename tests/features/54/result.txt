@@ -3,8 +3,8 @@ O72 — V6CLANG_STORE16_P redesign, post-implementation results
 
 Plan:     design/plan_O72_V6CLANG_STORE16_P_redesign.md
 Design:   design/future_plans/O72_V6CLANG_STORE16_P_redesign.md
-Lit test: llvm-project/llvm/test/CodeGen/V6CLANG/store16p-shapes.ll
-          (mirrored to tests/lit/CodeGen/V6CLANG/store16p-shapes.ll)
+Lit test: llvm-project/llvm/test/CodeGen/V6Clang/store16p-shapes.ll
+          (mirrored to tests/lit/CodeGen/V6Clang/store16p-shapes.ll)
 
 Goal
 ----
@@ -256,12 +256,12 @@ Regression
 ----------
 Two pre-existing lit tests pinned the old `MOV A, L / STAX D`
 shape and had to be updated to the XCHG-wrapped body:
-    llvm-project/llvm/test/CodeGen/V6CLANG/load-store-i16.ll          (store_ptr)
-    llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll  (srl8_i16)
-Mirror at tests/lit/CodeGen/V6CLANG/ kept in sync via
+    llvm-project/llvm/test/CodeGen/V6Clang/load-store-i16.ll          (store_ptr)
+    llvm-project/llvm/test/CodeGen/V6Clang/shift-i16-byte-aligned.ll  (srl8_i16)
+Mirror at tests/lit/CodeGen/V6Clang/ kept in sync via
 scripts/sync_llvm_mirror.ps1 (verified: identical size + mtime).
 
 New lit test added: store16p-shapes.ll (rows 1, 4, 6a) — present
-in both llvm-project/llvm/test/CodeGen/V6CLANG/ and tests/lit/CodeGen/V6CLANG/.
+in both llvm-project/llvm/test/CodeGen/V6Clang/ and tests/lit/CodeGen/V6Clang/.
 
 Full regression suite: 130 / 130 PASS (lit + golden).

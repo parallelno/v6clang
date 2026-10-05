@@ -3,7 +3,7 @@
  * When source has both `q = a/b` and `r = a%b` of the same operands and the
  * mid-level optimizer keeps them as udiv+urem (rather than rewriting `r` as
  * `a - q*b`), ISel fuses to a single CALL __udivmodhi4. Verified at the
- * SDAG level by tests/lit/CodeGen/V6CLANG/divmod-fusion.ll. This file is the
+ * SDAG level by tests/lit/CodeGen/V6Clang/divmod-fusion.ll. This file is the
  * runtime correctness witness.
  *
  * Build / run:

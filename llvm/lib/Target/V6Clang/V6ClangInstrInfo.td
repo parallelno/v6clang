@@ -51,7 +51,7 @@ def SDT_V6ClangCall    : SDTypeProfile<0, 1, [SDTCisVT<0, iPTR>]>;
 
 // O75 Phase A: FLAGS travels as an SSA-typed i8 value, not glue. The i8
 // "flags" output is bound to the physical FLAGS register at TableGen
-// pattern level (see CMPr/CPI/V6CLANG_CMP16/V6CLANG_BRCOND/V6CLANG_SELECT_CC).
+// pattern level (see CMPr/CPI/V6Clang_CMP16/V6Clang_BRCOND/V6Clang_SELECT_CC).
 //
 // V6Clangcmp:     (i8 flags) = cmp(T lhs, T rhs)   ; T is i8 or i16
 def SDT_V6ClangCmp     : SDTypeProfile<1, 2, [SDTCisVT<0, i8>,

@@ -72,7 +72,7 @@ private:
   // Tracked registers: A, B, C, D, E, H, L (indices 0-6).
   static constexpr unsigned NumTracked = 7;
   static constexpr MCRegister TrackedRegs[NumTracked] = {
-      V6CLANG::A, V6CLANG::B, V6CLANG::C, V6CLANG::D, V6CLANG::E, V6CLANG::H, V6CLANG::L};
+      V6Clang::A, V6Clang::B, V6Clang::C, V6Clang::D, V6Clang::E, V6Clang::H, V6Clang::L};
 
   std::optional<int64_t> KnownVal[NumTracked];
 
@@ -117,9 +117,9 @@ private:
   void invalidateWithSubSuper(MCRegister Reg) {
     invalidate(Reg);
     // If a 16-bit pair is written, invalidate both halves.
-    if (Reg == V6CLANG::BC) { invalidate(V6CLANG::B); invalidate(V6CLANG::C); }
-    if (Reg == V6CLANG::DE) { invalidate(V6CLANG::D); invalidate(V6CLANG::E); }
-    if (Reg == V6CLANG::HL) { invalidate(V6CLANG::H); invalidate(V6CLANG::L); }
+    if (Reg == V6Clang::BC) { invalidate(V6Clang::B); invalidate(V6Clang::C); }
+    if (Reg == V6Clang::DE) { invalidate(V6Clang::D); invalidate(V6Clang::E); }
+    if (Reg == V6Clang::HL) { invalidate(V6Clang::H); invalidate(V6Clang::L); }
     // If an 8-bit register is written, no pair invalidation needed
     // (the pair "value" is just both halves).
   }
@@ -180,13 +180,13 @@ char V6ClangLoadImmCombine::ID = 0;
 /// Check whether Opc is a NZ-branch terminator (JNZ or RNZ).
 /// Fallthrough of an NZ-branch means the Z flag was set (zero/equal).
 static bool isNZBranchTerminator(unsigned Opc) {
-  return Opc == V6CLANG::JNZ || Opc == V6CLANG::RNZ;
+  return Opc == V6Clang::JNZ || Opc == V6Clang::RNZ;
 }
 
 /// Check whether Opc is a Z-branch terminator (JZ only — RZ has no target).
 /// The taken path of a Z-branch receives the Z=1 (zero/equal) condition.
 static bool isZBranchTerminator(unsigned Opc) {
-  return Opc == V6CLANG::JZ;
+  return Opc == V6Clang::JZ;
 }
 
 bool V6ClangLoadImmCombine::seedPredecessorValues(MachineBasicBlock &MBB) {
@@ -208,19 +208,19 @@ bool V6ClangLoadImmCombine::seedPredecessorValues(MachineBasicBlock &MBB) {
 
   // --- Pattern D: XRA A; CMP r; branch — A=0 on ALL paths (XRA sets A=0,
   //     CMP doesn't modify A). No need for ZeroProvenPath check. ---
-  if (TermOpc == V6CLANG::JZ || TermOpc == V6CLANG::JNZ) {
+  if (TermOpc == V6Clang::JZ || TermOpc == V6Clang::JNZ) {
     // Look at the two instructions before the terminator.
     auto It2 = It;  // points at terminator
     if (It2 != Pred->begin()) {
       --It2; // instruction before terminator (CMP?)
       MachineInstr &PreTerm = *It2;
-      if (PreTerm.getOpcode() == V6CLANG::CMPr && It2 != Pred->begin()) {
+      if (PreTerm.getOpcode() == V6Clang::CMPr && It2 != Pred->begin()) {
         --It2; // instruction before CMP (XRA?)
         MachineInstr &PreCmp = *It2;
-        if (PreCmp.getOpcode() == V6CLANG::XRAr &&
-            PreCmp.getOperand(0).getReg() == V6CLANG::A &&
-            PreCmp.getOperand(2).getReg() == V6CLANG::A) {
-          int AIdx = regIndex(V6CLANG::A);
+        if (PreCmp.getOpcode() == V6Clang::XRAr &&
+            PreCmp.getOperand(0).getReg() == V6Clang::A &&
+            PreCmp.getOperand(2).getReg() == V6Clang::A) {
+          int AIdx = regIndex(V6Clang::A);
           KnownVal[AIdx] = 0;
           return true;
         }
@@ -251,32 +251,32 @@ bool V6ClangLoadImmCombine::seedPredecessorValues(MachineBasicBlock &MBB) {
   unsigned FSOpc = FlagSetter.getOpcode();
 
   // --- Pattern B: ORA A / ANA A; Z-path proves A=0 ---
-  if ((FSOpc == V6CLANG::ORAr || FSOpc == V6CLANG::ANAr) &&
-      FlagSetter.getOperand(2).getReg() == V6CLANG::A) {
+  if ((FSOpc == V6Clang::ORAr || FSOpc == V6Clang::ANAr) &&
+      FlagSetter.getOperand(2).getReg() == V6Clang::A) {
     // ORA A with $rs == A → testing A itself.
-    int AIdx = regIndex(V6CLANG::A);
+    int AIdx = regIndex(V6Clang::A);
     KnownVal[AIdx] = 0;
     return true;
   }
 
   // --- Pattern A: MOV A,rHi; ORA rLo; Z-path proves rHi=0,rLo=0,A=0 ---
-  if (FSOpc == V6CLANG::ORAr) {
+  if (FSOpc == V6Clang::ORAr) {
     MCRegister LoReg = FlagSetter.getOperand(2).getReg();
     // ORA rLo with rLo != A  — check for preceding MOV A, rHi.
     if (It == Pred->begin())
       return false;
     --It;
     MachineInstr &MovInstr = *It;
-    if (MovInstr.getOpcode() == V6CLANG::MOVrr &&
-        MovInstr.getOperand(0).getReg() == V6CLANG::A) {
+    if (MovInstr.getOpcode() == V6Clang::MOVrr &&
+        MovInstr.getOperand(0).getReg() == V6Clang::A) {
       MCRegister HiReg = MovInstr.getOperand(1).getReg();
       // Verify it forms a valid register pair (H/L or D/E).
-      if ((HiReg == V6CLANG::H && LoReg == V6CLANG::L) ||
-          (HiReg == V6CLANG::D && LoReg == V6CLANG::E) ||
-          (HiReg == V6CLANG::B && LoReg == V6CLANG::C)) {
+      if ((HiReg == V6Clang::H && LoReg == V6Clang::L) ||
+          (HiReg == V6Clang::D && LoReg == V6Clang::E) ||
+          (HiReg == V6Clang::B && LoReg == V6Clang::C)) {
         int HiIdx = regIndex(HiReg);
         int LoIdx = regIndex(LoReg);
-        int AIdx = regIndex(V6CLANG::A);
+        int AIdx = regIndex(V6Clang::A);
         if (HiIdx >= 0) KnownVal[HiIdx] = 0;
         if (LoIdx >= 0) KnownVal[LoIdx] = 0;
         KnownVal[AIdx] = 0;
@@ -287,10 +287,10 @@ bool V6ClangLoadImmCombine::seedPredecessorValues(MachineBasicBlock &MBB) {
   }
 
   // --- Pattern C: CPI imm; Z-path proves A=imm ---
-  if (FSOpc == V6CLANG::CPI) {
+  if (FSOpc == V6Clang::CPI) {
     if (FlagSetter.getOperand(1).isImm()) {
       int64_t Imm = FlagSetter.getOperand(1).getImm() & 0xFF;
-      int AIdx = regIndex(V6CLANG::A);
+      int AIdx = regIndex(V6Clang::A);
       KnownVal[AIdx] = Imm;
       return true;
     }
@@ -312,7 +312,7 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
     invalidateUndefUses(MI);
     unsigned Opc = MI.getOpcode();
 
-    if (Opc == V6CLANG::MVIr) {
+    if (Opc == V6Clang::MVIr) {
       MCRegister DstReg = MI.getOperand(0).getReg();
       if (isPlainImm(MI.getOperand(1))) {
         int Idx = regIndex(DstReg);
@@ -324,7 +324,7 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::MOVrr) {
+    if (Opc == V6Clang::MOVrr) {
       MCRegister DstReg = MI.getOperand(0).getReg();
       MCRegister SrcReg = MI.getOperand(1).getReg();
       int DstIdx = regIndex(DstReg);
@@ -337,22 +337,22 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
                         invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::MOVrM) {
+    if (Opc == V6Clang::MOVrM) {
       invalidate(MI.getOperand(0).getReg());
                         invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::LXI) {
+    if (Opc == V6Clang::LXI) {
       MCRegister PairReg = MI.getOperand(0).getReg();
       if (isPlainImm(MI.getOperand(1))) {
         int64_t Imm16 = MI.getOperand(1).getImm() & 0xFFFF;
         int HiIdx = -1, LoIdx = -1;
-        if (PairReg == V6CLANG::BC) {
-          HiIdx = regIndex(V6CLANG::B); LoIdx = regIndex(V6CLANG::C);
-        } else if (PairReg == V6CLANG::DE) {
-          HiIdx = regIndex(V6CLANG::D); LoIdx = regIndex(V6CLANG::E);
-        } else if (PairReg == V6CLANG::HL) {
-          HiIdx = regIndex(V6CLANG::H); LoIdx = regIndex(V6CLANG::L);
+        if (PairReg == V6Clang::BC) {
+          HiIdx = regIndex(V6Clang::B); LoIdx = regIndex(V6Clang::C);
+        } else if (PairReg == V6Clang::DE) {
+          HiIdx = regIndex(V6Clang::D); LoIdx = regIndex(V6Clang::E);
+        } else if (PairReg == V6Clang::HL) {
+          HiIdx = regIndex(V6Clang::H); LoIdx = regIndex(V6Clang::L);
         }
         if (HiIdx >= 0) KnownVal[HiIdx] = (Imm16 >> 8) & 0xFF;
         if (LoIdx >= 0) KnownVal[LoIdx] = Imm16 & 0xFF;
@@ -362,7 +362,7 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::INRr) {
+    if (Opc == V6Clang::INRr) {
       int Idx = regIndex(MI.getOperand(0).getReg());
       if (Idx >= 0) {
         if (KnownVal[Idx])
@@ -373,7 +373,7 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::DCRr) {
+    if (Opc == V6Clang::DCRr) {
       int Idx = regIndex(MI.getOperand(0).getReg());
       if (Idx >= 0) {
         if (KnownVal[Idx])
@@ -384,46 +384,46 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::XRAr && MI.getOperand(2).getReg() == V6CLANG::A) {
-      KnownVal[regIndex(V6CLANG::A)] = 0;
+    if (Opc == V6Clang::XRAr && MI.getOperand(2).getReg() == V6Clang::A) {
+      KnownVal[regIndex(V6Clang::A)] = 0;
       invalidateKilledUses(MI);
       continue;
     }
     switch (Opc) {
-    case V6CLANG::ADDr: case V6CLANG::ADCr: case V6CLANG::SUBr: case V6CLANG::SBBr:
-    case V6CLANG::ANAr: case V6CLANG::XRAr: case V6CLANG::ORAr:
-    case V6CLANG::ADDM: case V6CLANG::ADCM: case V6CLANG::SUBM: case V6CLANG::SBBM:
-    case V6CLANG::ANAM: case V6CLANG::XRAM: case V6CLANG::ORAM:
-    case V6CLANG::ADI: case V6CLANG::ACI: case V6CLANG::SUI: case V6CLANG::SBI:
-    case V6CLANG::ANI: case V6CLANG::XRI: case V6CLANG::ORI:
-    case V6CLANG::RLC: case V6CLANG::RRC: case V6CLANG::RAL: case V6CLANG::RAR:
-    case V6CLANG::CMA: case V6CLANG::DAA:
-      invalidate(V6CLANG::A);
+    case V6Clang::ADDr: case V6Clang::ADCr: case V6Clang::SUBr: case V6Clang::SBBr:
+    case V6Clang::ANAr: case V6Clang::XRAr: case V6Clang::ORAr:
+    case V6Clang::ADDM: case V6Clang::ADCM: case V6Clang::SUBM: case V6Clang::SBBM:
+    case V6Clang::ANAM: case V6Clang::XRAM: case V6Clang::ORAM:
+    case V6Clang::ADI: case V6Clang::ACI: case V6Clang::SUI: case V6Clang::SBI:
+    case V6Clang::ANI: case V6Clang::XRI: case V6Clang::ORI:
+    case V6Clang::RLC: case V6Clang::RRC: case V6Clang::RAL: case V6Clang::RAR:
+    case V6Clang::CMA: case V6Clang::DAA:
+      invalidate(V6Clang::A);
       invalidateKilledUses(MI);
       continue;
     default:
       break;
     }
-    if (Opc == V6CLANG::LDA || Opc == V6CLANG::LDAX) {
-      invalidate(V6CLANG::A);
+    if (Opc == V6Clang::LDA || Opc == V6Clang::LDAX) {
+      invalidate(V6Clang::A);
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::POP) {
+    if (Opc == V6Clang::POP) {
       MCRegister Reg = MI.getOperand(0).getReg();
       invalidateWithSubSuper(Reg);
-      if (Reg == V6CLANG::PSW) invalidate(V6CLANG::A);
+      if (Reg == V6Clang::PSW) invalidate(V6Clang::A);
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::INX || Opc == V6CLANG::DCX) {
+    if (Opc == V6Clang::INX || Opc == V6Clang::DCX) {
       invalidateWithSubSuper(MI.getOperand(0).getReg());
       invalidateKilledUses(MI);
       continue;
     }
-    if (Opc == V6CLANG::XCHG) {
-      int DIdx = regIndex(V6CLANG::D), EIdx = regIndex(V6CLANG::E);
-      int HIdx = regIndex(V6CLANG::H), LIdx = regIndex(V6CLANG::L);
+    if (Opc == V6Clang::XCHG) {
+      int DIdx = regIndex(V6Clang::D), EIdx = regIndex(V6Clang::E);
+      int HIdx = regIndex(V6Clang::H), LIdx = regIndex(V6Clang::L);
       std::swap(KnownVal[DIdx], KnownVal[HIdx]);
       std::swap(KnownVal[EIdx], KnownVal[LIdx]);
       invalidateKilledUses(MI);
@@ -439,8 +439,8 @@ void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
         invalidateWithSubSuper(MO.getReg());
     }
     if (const MCInstrDesc &Desc = MI.getDesc();
-        Desc.hasImplicitDefOfPhysReg(V6CLANG::A))
-      invalidate(V6CLANG::A);
+        Desc.hasImplicitDefOfPhysReg(V6Clang::A))
+      invalidate(V6Clang::A);
     invalidateKilledUses(MI);
   }
 }
@@ -460,7 +460,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     unsigned Opc = MI.getOpcode();
 
     // --- MVI r, imm: main optimization target ---
-    if (Opc == V6CLANG::MVIr) {
+    if (Opc == V6Clang::MVIr) {
       MCRegister DstReg = MI.getOperand(0).getReg();
       // MVI can have non-immediate operands (e.g., global lo8/hi8 exprs)
       // or carry MO_PATCH_IMM (O61: runtime-patched imm byte). Both
@@ -483,7 +483,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
       // Try 1: Another register holds the same value → MOV r, r'
       MCRegister SrcReg = findRegWithValue(Imm, DstReg);
       if (SrcReg.isValid()) {
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6CLANG::MOVrr), DstReg)
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6Clang::MOVrr), DstReg)
             .addReg(SrcReg);
         MI.eraseFromParent();
         if (DstIdx >= 0)
@@ -495,7 +495,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
       // Try 2: Same register holds imm-1 → INR r
       if (DstIdx >= 0 && KnownVal[DstIdx] &&
           ((*KnownVal[DstIdx]) & 0xFF) == ((Imm - 1) & 0xFF)) {
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6CLANG::INRr), DstReg)
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6Clang::INRr), DstReg)
             .addReg(DstReg);
         MI.eraseFromParent();
         KnownVal[DstIdx] = Imm;
@@ -506,7 +506,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
       // Try 3: Same register holds imm+1 → DCR r
       if (DstIdx >= 0 && KnownVal[DstIdx] &&
           ((*KnownVal[DstIdx]) & 0xFF) == ((Imm + 1) & 0xFF)) {
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6CLANG::DCRr), DstReg)
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6Clang::DCRr), DstReg)
             .addReg(DstReg);
         MI.eraseFromParent();
         KnownVal[DstIdx] = Imm;
@@ -521,7 +521,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     }
 
     // --- MOV r, r': propagate known value ---
-    if (Opc == V6CLANG::MOVrr) {
+    if (Opc == V6Clang::MOVrr) {
       MCRegister DstReg = MI.getOperand(0).getReg();
       MCRegister SrcReg = MI.getOperand(1).getReg();
       int DstIdx = regIndex(DstReg);
@@ -536,26 +536,26 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     }
 
     // --- MOV r, M: load from memory invalidates dst ---
-    if (Opc == V6CLANG::MOVrM) {
+    if (Opc == V6Clang::MOVrM) {
       MCRegister DstReg = MI.getOperand(0).getReg();
       invalidate(DstReg);
       continue;
     }
 
     // --- LXI rp, imm16: eliminate if both halves already hold the value ---
-    if (Opc == V6CLANG::LXI) {
+    if (Opc == V6Clang::LXI) {
       MCRegister PairReg = MI.getOperand(0).getReg();
       if (isPlainImm(MI.getOperand(1))) {
         int64_t Imm16 = MI.getOperand(1).getImm() & 0xFFFF;
         int64_t Lo = Imm16 & 0xFF;
         int64_t Hi = (Imm16 >> 8) & 0xFF;
         int HiIdx = -1, LoIdx = -1;
-        if (PairReg == V6CLANG::BC) {
-          HiIdx = regIndex(V6CLANG::B); LoIdx = regIndex(V6CLANG::C);
-        } else if (PairReg == V6CLANG::DE) {
-          HiIdx = regIndex(V6CLANG::D); LoIdx = regIndex(V6CLANG::E);
-        } else if (PairReg == V6CLANG::HL) {
-          HiIdx = regIndex(V6CLANG::H); LoIdx = regIndex(V6CLANG::L);
+        if (PairReg == V6Clang::BC) {
+          HiIdx = regIndex(V6Clang::B); LoIdx = regIndex(V6Clang::C);
+        } else if (PairReg == V6Clang::DE) {
+          HiIdx = regIndex(V6Clang::D); LoIdx = regIndex(V6Clang::E);
+        } else if (PairReg == V6Clang::HL) {
+          HiIdx = regIndex(V6Clang::H); LoIdx = regIndex(V6Clang::L);
         }
         // If both halves already hold the correct values, eliminate LXI.
         if (HiIdx >= 0 && LoIdx >= 0 &&
@@ -577,7 +577,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     }
 
     // --- INR/DCR r: update tracked value if known ---
-    if (Opc == V6CLANG::INRr) {
+    if (Opc == V6Clang::INRr) {
       MCRegister Reg = MI.getOperand(0).getReg();
       int Idx = regIndex(Reg);
       if (Idx >= 0 && KnownVal[Idx])
@@ -586,7 +586,7 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
         KnownVal[Idx] = std::nullopt;
       continue;
     }
-    if (Opc == V6CLANG::DCRr) {
+    if (Opc == V6Clang::DCRr) {
       MCRegister Reg = MI.getOperand(0).getReg();
       int Idx = regIndex(Reg);
       if (Idx >= 0 && KnownVal[Idx])
@@ -597,55 +597,55 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     }
 
     // --- XRA A: A = A ^ A = 0 → track A as holding 0 ---
-    if (Opc == V6CLANG::XRAr && MI.getOperand(2).getReg() == V6CLANG::A) {
-      int AIdx = regIndex(V6CLANG::A);
+    if (Opc == V6Clang::XRAr && MI.getOperand(2).getReg() == V6Clang::A) {
+      int AIdx = regIndex(V6Clang::A);
       KnownVal[AIdx] = 0;
       continue;
     }
 
     // --- ALU ops that write A: invalidate A ---
     switch (Opc) {
-    case V6CLANG::ADDr: case V6CLANG::ADCr: case V6CLANG::SUBr: case V6CLANG::SBBr:
-    case V6CLANG::ANAr: case V6CLANG::XRAr: case V6CLANG::ORAr:
-    case V6CLANG::ADDM: case V6CLANG::ADCM: case V6CLANG::SUBM: case V6CLANG::SBBM:
-    case V6CLANG::ANAM: case V6CLANG::XRAM: case V6CLANG::ORAM:
-    case V6CLANG::ADI: case V6CLANG::ACI: case V6CLANG::SUI: case V6CLANG::SBI:
-    case V6CLANG::ANI: case V6CLANG::XRI: case V6CLANG::ORI:
-    case V6CLANG::RLC: case V6CLANG::RRC: case V6CLANG::RAL: case V6CLANG::RAR:
-    case V6CLANG::CMA: case V6CLANG::DAA:
-      invalidate(V6CLANG::A);
+    case V6Clang::ADDr: case V6Clang::ADCr: case V6Clang::SUBr: case V6Clang::SBBr:
+    case V6Clang::ANAr: case V6Clang::XRAr: case V6Clang::ORAr:
+    case V6Clang::ADDM: case V6Clang::ADCM: case V6Clang::SUBM: case V6Clang::SBBM:
+    case V6Clang::ANAM: case V6Clang::XRAM: case V6Clang::ORAM:
+    case V6Clang::ADI: case V6Clang::ACI: case V6Clang::SUI: case V6Clang::SBI:
+    case V6Clang::ANI: case V6Clang::XRI: case V6Clang::ORI:
+    case V6Clang::RLC: case V6Clang::RRC: case V6Clang::RAL: case V6Clang::RAR:
+    case V6Clang::CMA: case V6Clang::DAA:
+      invalidate(V6Clang::A);
       continue;
     default:
       break;
     }
 
     // --- LDA / LDAX: write A ---
-    if (Opc == V6CLANG::LDA || Opc == V6CLANG::LDAX) {
-      invalidate(V6CLANG::A);
+    if (Opc == V6Clang::LDA || Opc == V6Clang::LDAX) {
+      invalidate(V6Clang::A);
       continue;
     }
 
     // --- POP: invalidate the pair's sub-registers ---
-    if (Opc == V6CLANG::POP) {
+    if (Opc == V6Clang::POP) {
       MCRegister Reg = MI.getOperand(0).getReg();
       invalidateWithSubSuper(Reg);
       // PSW writes A too.
-      if (Reg == V6CLANG::PSW)
-        invalidate(V6CLANG::A);
+      if (Reg == V6Clang::PSW)
+        invalidate(V6Clang::A);
       continue;
     }
 
     // --- INX/DCX: invalidate pair sub-registers (no simple ±1 on halves) ---
-    if (Opc == V6CLANG::INX || Opc == V6CLANG::DCX) {
+    if (Opc == V6Clang::INX || Opc == V6Clang::DCX) {
       MCRegister Reg = MI.getOperand(0).getReg();
       invalidateWithSubSuper(Reg);
       continue;
     }
 
     // --- XCHG: swap DE and HL known values ---
-    if (Opc == V6CLANG::XCHG) {
-      int DIdx = regIndex(V6CLANG::D), EIdx = regIndex(V6CLANG::E);
-      int HIdx = regIndex(V6CLANG::H), LIdx = regIndex(V6CLANG::L);
+    if (Opc == V6Clang::XCHG) {
+      int DIdx = regIndex(V6Clang::D), EIdx = regIndex(V6Clang::E);
+      int HIdx = regIndex(V6Clang::H), LIdx = regIndex(V6Clang::L);
       std::swap(KnownVal[DIdx], KnownVal[HIdx]);
       std::swap(KnownVal[EIdx], KnownVal[LIdx]);
       continue;
@@ -664,8 +664,8 @@ bool V6ClangLoadImmCombine::processBlock(MachineBasicBlock &MBB) {
     }
     // Implicit defs.
     if (const MCInstrDesc &Desc = MI.getDesc();
-        Desc.hasImplicitDefOfPhysReg(V6CLANG::A))
-      invalidate(V6CLANG::A);
+        Desc.hasImplicitDefOfPhysReg(V6Clang::A))
+      invalidate(V6Clang::A);
   }
 
   return Changed;

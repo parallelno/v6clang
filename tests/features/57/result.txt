@@ -332,10 +332,10 @@ Implementation summary
 
 Files touched
 -------------
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp
-- llvm-project/llvm/test/CodeGen/V6CLANG/o75-flag-arith-fold.ll      (new)
-- llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll (CHECK loosen)
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.h
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp
+- llvm-project/llvm/test/CodeGen/V6Clang/o75-flag-arith-fold.ll      (new)
+- llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-zero-to-xra.ll (CHECK loosen)
 - llvm/  mirror synced via scripts/sync_llvm_mirror.ps1

@@ -156,7 +156,7 @@ our use case.
 
 ### Step 3.1 — Create V6ClangMCExpr (lo8/hi8 MCExpr class) [x]
 
-**New file**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCExpr.h`
+**New file**: `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangMCExpr.h`
 
 ```cpp
 #ifndef LLVM_LIB_TARGET_V6CLANG_MCTARGETDESC_V6ClangMCEXPR_H
@@ -201,7 +201,7 @@ public:
 #endif
 ```
 
-**New file**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCExpr.cpp`
+**New file**: `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangMCExpr.cpp`
 
 ```cpp
 #include "V6ClangMCExpr.h"
@@ -276,7 +276,7 @@ MCFragment *V6ClangMCExpr::findAssociatedFragment() const {
 
 ### Step 3.2 — Add fixup kinds and relocation types [x]
 
-**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangFixupKinds.h`
+**File**: `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangFixupKinds.h`
 
 Add two new fixup kinds and relocation types:
 
@@ -301,7 +301,7 @@ enum RelocType {
 
 ### Step 3.3 — Update AsmBackend: fixup info, apply, and ELF reloc mapping [x]
 
-**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangAsmBackend.cpp`
+**File**: `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangAsmBackend.cpp`
 
 Three changes:
 
@@ -355,7 +355,7 @@ case V6CLANG::fixup_v6clang_hi8:
 
 ### Step 3.4 — Update CodeEmitter: dispatch V6ClangMCExpr to proper fixup [x]
 
-**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCCodeEmitter.cpp`
+**File**: `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangMCCodeEmitter.cpp`
 
 In `getMachineOpValue()`, when the operand is an expression, check if
 it's a `V6ClangMCExpr` and use the corresponding fixup kind:
@@ -408,7 +408,7 @@ return 0;
 
 ### Step 3.5 — Register new source file in CMakeLists.txt [x]
 
-**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/CMakeLists.txt`
+**File**: `llvm/lib/Target/V6Clang/MCTargetDesc/CMakeLists.txt`
 
 Add `V6ClangMCExpr.cpp`:
 
@@ -425,7 +425,7 @@ add_llvm_component_library(LLVMV6ClangDesc
 
 ### Step 3.6 — Define V6CLANG_BR_CC16_IMM pseudo instruction [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add after the V6CLANG_BR_CC16 definition:
 
@@ -458,7 +458,7 @@ def V6CLANG_BR_CC16_IMM : V6ClangPseudo<(outs),
 
 ### Step 3.7 — ISel: select V6CLANG_BR_CC16_IMM when RHS is constant [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`
 
 Modify the `V6ClangISD::BR_CC16` case to check whether RHS comes from an
 LXI-materialized constant (V6ClangWrapper of a GlobalAddress or a plain
@@ -533,7 +533,7 @@ constant):
 
 ### Step 3.8 — Implement V6CLANG_BR_CC16_IMM expansion in expandPostRAPseudo [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a new case for `V6CLANG::V6CLANG_BR_CC16_IMM` in `expandPostRAPseudo()`.
 The expansion is similar to V6CLANG_BR_CC16's EQ/NE path but uses MVI+CMP
@@ -652,7 +652,7 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
 
 ### Step 3.9 — Define target operand flags [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.h` (or a new
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.h` (or a new
 `V6ClangTargetFlags.h`)
 
 ```cpp
@@ -667,7 +667,7 @@ enum {
 
 ### Step 3.10 — Update MCInstLower to handle target flags [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangAsmPrinter.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangAsmPrinter.cpp`
 
 > **Implementation note**: The target flag handling was implemented in
 > `V6ClangMCInstLower.cpp` (in `lowerSymbolOperand()`), not in
@@ -747,7 +747,7 @@ are edits to existing files.
 
 ### Step 3.13 — Lit test: immediate comparison (NE with global address) [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/br-cc16-imm.ll`
+**File**: `tests/lit/CodeGen/V6Clang/br-cc16-imm.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
@@ -837,7 +837,7 @@ declare void @use()
 
 ### Step 3.14 — Lit test: loop with immediate comparison (no LXI in loop) [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/loop-cmp-imm.ll`
+**File**: `tests/lit/CodeGen/V6Clang/loop-cmp-imm.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
@@ -888,7 +888,7 @@ exit:
 
 ### Step 3.15 — Lit test: ELF object — relocation types [skipped — llvm-readobj not built]
 
-**File**: `tests/lit/CodeGen/V6CLANG/reloc-lo8-hi8.ll`
+**File**: `tests/lit/CodeGen/V6Clang/reloc-lo8-hi8.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 -filetype=obj < %s -o %t.o

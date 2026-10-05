@@ -757,7 +757,7 @@ Stage 6 is small because O64 already did the hard work:
 ### Testing
 
 1. **Lit tests** under
-   `llvm/test/CodeGen/V6CLANG/spill-patched-reload-i8-nonA-*.ll`, one
+   `llvm/test/CodeGen/V6Clang/spill-patched-reload-i8-nonA-*.ll`, one
    function per source register in `{B, C, D, E, H, L}`, with
    CHECK lines asserting:
    * `STA .Lpatch<N>+1` (or `LXI HL, .Lpatch<N>+1; MOV M, r` for

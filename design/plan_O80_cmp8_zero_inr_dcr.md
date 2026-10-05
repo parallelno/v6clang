@@ -19,7 +19,7 @@ def CPI : V6ClangInstImm8Opc<0b111,
 ```
 
 `Acc:$lhs` pins the LHS to A. The post-RA peephole pass
-[V6ClangZeroTestOpt.cpp](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangZeroTestOpt.cpp)
+[V6ClangZeroTestOpt.cpp](../llvm-project/llvm/lib/Target/V6Clang/V6ClangZeroTestOpt.cpp)
 then rewrites `CPI 0` to `ORA A` (saves 4cc per fire). The combined
 sequence emitted today, observed at
 [tests/features/37/v6clang.s line 76](../tests/features/37/v6clang.s#L76):
@@ -141,7 +141,7 @@ correct sequence per liveness shape.
 |------|------|-------|
 | Add pseudo `V6CLANG_CMP8_ZERO` | `(outs), (ins GR8:$src)`, `Defs=[FLAGS]`, pattern `(V6Clangcmp i8:$src, (i8 0))` | `V6ClangInstrInfo.td` |
 | Implement expansion | 3-priority shape table | `V6ClangInstrInfo.cpp::expandPostRAPseudo` |
-| Lit test | All three shapes | `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll` |
+| Lit test | All three shapes | `llvm-project/llvm/test/CodeGen/V6Clang/cmp8-zero-inr-dcr.ll` |
 | Feature test | C source mirroring `tests/features/37` | `tests/features/62/` |
 
 No changes to: ISel C++, register allocator, `V6ClangZeroTestOpt`, calling
@@ -151,7 +151,7 @@ convention, frame lowering, peepholes.
 
 ### Step 3.1 — Add `V6CLANG_CMP8_ZERO` TableGen pseudo [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Place the new def adjacent to `V6CLANG_CMP16_ZERO` (around line 1008):
 
@@ -186,7 +186,7 @@ def V6CLANG_CMP8_ZERO : V6ClangPseudo<(outs), (ins GR8:$src),
 
 ### Step 3.2 — Implement post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a new `case` in `V6ClangInstrInfo::expandPostRAPseudo` next to
 `case V6CLANG::V6CLANG_CMP16_ZERO:` (around line 996):
@@ -241,7 +241,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: cmp8-zero-inr-dcr.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/cmp8-zero-inr-dcr.ll`
 
 Cover all three shapes via separate functions. Use IR + extern call
 patterns to deterministically pin source and A across the test:
@@ -313,7 +313,7 @@ nz: %a2 = add i8 %a, 1
 ### Step 3.6 — Run lit subset [x]
 
 ```
-python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6CLANG\cmp8-zero-inr-dcr.ll
+python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6Clang\cmp8-zero-inr-dcr.ll
 ```
 
 > **Implementation Notes**: <empty>
@@ -501,5 +501,5 @@ After O80, that location prints `;--- V6CLANG_CMP8_ZERO ---` (or
 - [Feature Pipeline](pipeline_feature.md)
 - [Feature Test README](../tests/features/result.md)
 - Reference plan format: [plan_cmp_based_comparison.md](plan_cmp_based_comparison.md)
-- Sibling pseudo: [`V6CLANG_CMP16_ZERO`](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td) (line ~1008)
-- Annotation infrastructure: [V6ClangAsmPrinter.cpp::emitInstruction](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangAsmPrinter.cpp) (line ~202)
+- Sibling pseudo: [`V6CLANG_CMP16_ZERO`](../llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td) (line ~1008)
+- Annotation infrastructure: [V6ClangAsmPrinter.cpp::emitInstruction](../llvm-project/llvm/lib/Target/V6Clang/V6ClangAsmPrinter.cpp) (line ~202)

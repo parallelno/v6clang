@@ -158,9 +158,9 @@ Savings: **~60cc per loop iteration × 4096 = ~245,760cc** on the lfsr16 benchma
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` | Register new pass in `addPreISel()` |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangNarrowBitwisePass.cpp` (new) | Pass implementation |
-| `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` | Add new source file |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp` | Register new pass in `addPreISel()` |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangNarrowBitwisePass.cpp` (new) | Pass implementation |
+| `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt` | Add new source file |
 
 The pass is a `FunctionPass` using the standard `runOnFunction` / `InstVisitor`
 or explicit `IRBuilder` pattern.  It iterates over all `BinaryOperator`

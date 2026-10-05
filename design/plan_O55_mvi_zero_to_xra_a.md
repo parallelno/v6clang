@@ -9,7 +9,7 @@ After ISel + register allocation, the V6CLANG backend emits `MVI A, 0`
 accumulator. There is no post-RA pass that downgrades it to `XRA A`
 (1 byte, 4 cc) when the change in flag state is irrelevant.
 
-Concrete example from [tests/lit/CodeGen/V6CLANG/const-i8.ll](tests/lit/CodeGen/V6CLANG/const-i8.ll):
+Concrete example from [tests/lit/CodeGen/V6Clang/const-i8.ll](tests/lit/CodeGen/V6Clang/const-i8.ll):
 
 ```asm
 const_zero:
@@ -44,10 +44,10 @@ downgrade.
 The two related peepholes that already exist solve different problems:
 
 * O38 (`foldXraCmpZeroTest` in
-  [V6ClangPeephole.cpp](llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp)) seeds
+  [V6ClangPeephole.cpp](llvm/lib/Target/V6Clang/V6ClangPeephole.cpp)) seeds
   `XRA A` *upstream* of zero-test branches.
 * O13 (LoadImmCombine,
-  [V6ClangLoadImmCombine.cpp](llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp))
+  [V6ClangLoadImmCombine.cpp](llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp))
   deletes `MVI A, 0` when an earlier `XRA A` already left A=0.
 
 Neither covers the standalone "trailing `MVI A, 0`" case (e.g. a
@@ -103,7 +103,7 @@ pass. For each `MVI A, 0` instruction:
 * **O13 / LoadImmCombine** — after this peephole rewrites
   `MVI A, 0` to `XRA A`, O13's existing forward value-tracking
   recognises `XRA A` as a known-zero seed (see
-  [V6ClangLoadImmCombine.cpp:550-555](llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp)),
+  [V6ClangLoadImmCombine.cpp:550-555](llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp)),
   so any *further* downstream `MVI A, 0` is still subject to its
   cascade rule. Order: V6ClangPeephole runs before LoadImmCombine in the
   pass pipeline already (no change required).
@@ -114,8 +114,8 @@ pass. For each `MVI A, 0` instruction:
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | New helper `foldMviZeroToXraA`, dispatched from `runOnMachineFunction` |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll` | New lit test |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp` | New helper `foldMviZeroToXraA`, dispatched from `runOnMachineFunction` |
+| `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-zero-to-xra.ll` | New lit test |
 | `tests/features/46/` | Feature regression test (C source pair, baseline + post asm, `result.txt`) |
 | `design/future_plans/O55_additional_peepholes.md` | Mark Pattern 2 done; record verification that Patterns 1 and 3 are obsolete |
 | `design/future_plans/README.md` | Mark O55 ✅ |
@@ -126,7 +126,7 @@ pass. For each `MVI A, 0` instruction:
 
 ### Step 3.1 — Add `foldMviZeroToXraA` to V6ClangPeephole [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a new member function:
 
@@ -189,7 +189,7 @@ Changed |= foldMviZeroToXraA(MBB);   // O55 — added
 > * Keeping the `XRA A` construction in the canonical
 >   3-operand form (`def, lhs-use, rhs-use`) matches the
 >   accumulator-ALU instruction layout (see
->   [V6ClangInstrInfo.td:280-298](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td))
+>   [V6ClangInstrInfo.td:280-298](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td))
 >   and the existing `foldXraCmpZeroTest` site, so consumers that
 >   already understand `XRA A` (LoadImmCombine, BranchOpt) keep
 >   working.
@@ -211,7 +211,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `peephole-mvi-zero-to-xra.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-zero-to-xra.ll`
 
 Two functions:
 
@@ -290,7 +290,7 @@ stats per func, v6clang asm, v6clang worst-cycle/byte stats.
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-> **Implementation Notes**: Synced. `tests/lit/CodeGen/V6CLANG/` mirror
+> **Implementation Notes**: Synced. `tests/lit/CodeGen/V6Clang/` mirror
 > updated; `python tests\run_all.py` reports 120/121 lit + golden PASS
 > (the one fail is the pre-existing IPRA regression noted above).
 

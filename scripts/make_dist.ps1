@@ -103,7 +103,7 @@ foreach ($exe in $LlvmExes) {
 # ------------------------------------------- lib/clang/<ver>/v6clang/v6clang.ld
 $StageDriverDir = Join-Path $Stage "lib\clang\$ClangVer\v6clang"
 New-Item -ItemType Directory -Force -Path $StageDriverDir | Out-Null
-Copy-Item (Join-Path $repoRoot 'clang\lib\Driver\ToolChains\V6CLANG\v6clang.ld') `
+Copy-Item (Join-Path $repoRoot 'clang\lib\Driver\ToolChains\V6Clang\v6clang.ld') `
     -Destination (Join-Path $StageDriverDir 'v6clang.ld')
 
 # ------------------------- lib/clang/<ver>/include  (freestanding headers)

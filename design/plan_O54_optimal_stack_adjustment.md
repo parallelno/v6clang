@@ -51,7 +51,7 @@ When no GR16All pair is dead at the adjustment point, the fallback is
 not the LXI sequence but `DCX SP` / `INX SP × n` (1B / 8cc each, no
 clobber of any register). This wins on both axes against
 `LXI+DAD+SPHL` for n ∈ {2, 4} and ties on bytes (loses on cycles) at
-n = 6. Verified in [V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td):
+n = 6. Verified in [V6ClangInstrInfo.td](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td):
 `INX rp` / `DCX rp` accept `GR16AllPair`, and `GR16All` includes
 `SP`, so `INX SP` (encoding 0x33) and `DCX SP` (0x3B) are legal
 emissions today.
@@ -183,15 +183,15 @@ Read in this order before touching code:
 * `docs/V6ClangInstructionTimings.md` — verify PUSH/POP/LXI/DAD/SPHL
   costs.
 * `docs/V6ClangBuildGuide.md` — build & mirror sync commands.
-* `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` (current state) and
+* `llvm/lib/Target/V6Clang/V6ClangFrameLowering.cpp` (current state) and
   `V6ClangFrameLowering.h`.
-* `llvm/lib/Target/V6CLANG/V6ClangInstrCost.h` (O11 mode + costs).
+* `llvm/lib/Target/V6Clang/V6ClangInstrCost.h` (O11 mode + costs).
 
 > **Implementation Notes**:
 
 ### Step 3.2 — Add helpers to V6ClangFrameLowering [x]
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.{h,cpp}`:
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangFrameLowering.{h,cpp}`:
 
 ```cpp
 // V6ClangFrameLowering.h (private section)
@@ -299,7 +299,7 @@ Diagnose & fix any compile errors, rebuild.
 
 ### Step 3.7 — Lit test: new `frame-lowering-pop-push.ll` [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/frame-lowering-pop-push.ll`
+Create `llvm-project/llvm/test/CodeGen/V6Clang/frame-lowering-pop-push.ll`
 with these functions (each with `-v6clang-disable-alloca-promote
 -v6clang-disable-static-stack-alloc` so the stack frame is exercised):
 
@@ -317,7 +317,7 @@ with these functions (each with `-v6clang-disable-alloca-promote
 
 Run:
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\frame-lowering-pop-push.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6Clang\frame-lowering-pop-push.ll
 ```
 
 > **Implementation Notes**:
@@ -331,7 +331,7 @@ Update the CHECK lines accordingly.
 
 Run:
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\frame-lowering.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6Clang\frame-lowering.ll
 ```
 
 Also re-run `frame-leaf.ll` (no SP adjust expected; should be
@@ -355,10 +355,10 @@ python tests\run_all.py
 If any test fails, diagnose & fix, then rebuild.
 
 Special attention:
-* `tests/lit/CodeGen/V6CLANG/spill-reload.ll` — exercises the same
+* `tests/lit/CodeGen/V6Clang/spill-reload.ll` — exercises the same
   disabled-pass codepath; a 4-byte frame would regress without an
   update.
-* `tests/lit/CodeGen/V6CLANG/xchg-cancel-peephole.ll` — same gating.
+* `tests/lit/CodeGen/V6Clang/xchg-cancel-peephole.ll` — same gating.
 * All 16 golden tests must still pass with the same byte-exact
   outputs (functional equivalence).
 
@@ -395,8 +395,8 @@ Populate `tests/features/47/result.txt` per the README structure
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-Verify `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` matches
-`llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp`.
+Verify `llvm/lib/Target/V6Clang/V6ClangFrameLowering.cpp` matches
+`llvm-project/llvm/lib/Target/V6Clang/V6ClangFrameLowering.cpp`.
 
 > **Implementation Notes**:
 
@@ -460,7 +460,7 @@ to LXI for n ≥ 8.
 | Risk | Mitigation |
 |------|------------|
 | `chooseDeadPair` mis-classifies a live register as dead → silently corrupts an arg/return value | (1) Default to `PSW` whose halves are dead at function boundaries by ABI invariant. (2) Mirror the exact liveness checks already used by `emitPrologue` / `emitEpilogue` for `HLIsLiveIn` / `HLUsedByRet`. (3) `frame-lowering-pop-push.ll` covers i8/i16 arg + i8/i16 return cases. (4) When in doubt the helper returns `NoRegister`, which routes to the safe DCX/INX SP path. |
-| `INX SP` / `DCX SP` emission rejected by the verifier (operand class mismatch) | `INX`/`DCX` accept `GR16AllPair` and `SP` is in `GR16All` — verified in [V6ClangRegisterInfo.td](../llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.td#L102) and [V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L370). New lit test runs with `-verify-machineinstrs`. |
+| `INX SP` / `DCX SP` emission rejected by the verifier (operand class mismatch) | `INX`/`DCX` accept `GR16AllPair` and `SP` is in `GR16All` — verified in [V6ClangRegisterInfo.td](../llvm/lib/Target/V6Clang/V6ClangRegisterInfo.td#L102) and [V6ClangInstrInfo.td](../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L370). New lit test runs with `-verify-machineinstrs`. |
 | `POP rp` without `Dead` flag → verifier fails (`-verify-machineinstrs`) | Always tag `RegState::Define \| RegState::Dead`. New lit test runs with `-verify-machineinstrs`. |
 | Frame-pointer path silently still emits LXI for FP setup (not an SP adjustment but identical instruction) | Comment the FP setup explicitly; helper is invoked **only** for SP adjustments. |
 | Existing test `frame-lowering.ll` `array_local` CHECK lines tied to LXI sequence break | Update the CHECK lines as part of Step 3.8 — this is an expected, one-time expectation update. |
@@ -506,6 +506,6 @@ to LXI for n ≥ 8.
 * [O54 plan](future_plans/O54_optimal_stack_adjustment.md)
 * [Future Improvements](future_plans/README.md)
 * [Plan format reference](plan_cmp_based_comparison.md)
-* `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` — emitter site
-* `llvm/lib/Target/V6CLANG/V6ClangInstrCost.h` — O11 cost model
-* `llvm/test/CodeGen/V6CLANG/frame-lowering.ll` — existing baseline
+* `llvm/lib/Target/V6Clang/V6ClangFrameLowering.cpp` — emitter site
+* `llvm/lib/Target/V6Clang/V6ClangInstrCost.h` — O11 cost model
+* `llvm/test/CodeGen/V6Clang/frame-lowering.ll` — existing baseline

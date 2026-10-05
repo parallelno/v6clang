@@ -127,8 +127,8 @@ These sub-register indices enable the register allocator to split/coalesce 8-bit
 ### 4.1 TableGen Organization
 
 ```
-llvm/lib/Target/V6CLANG/
-  V6CLANG.td                    # Top-level target description
+llvm/lib/Target/V6Clang/
+  V6Clang.td                    # Top-level target description
   V6ClangRegisterInfo.td         # Register classes & sub-registers (§3)
   V6ClangInstrInfo.td            # Instruction definitions (§4.2)
   V6ClangInstrFormats.td         # Encoding formats (§4.3)
@@ -633,9 +633,9 @@ llvm-v6clang/
 ├── llvm/
 │   └── lib/
 │       └── Target/
-│           └── V6CLANG/
+│           └── V6Clang/
 │               ├── CMakeLists.txt
-│               ├── V6CLANG.td                      # Top-level TableGen
+│               ├── V6Clang.td                      # Top-level TableGen
 │               ├── V6ClangTargetMachine.h/.cpp      # TargetMachine subclass
 │               ├── V6ClangSubtarget.h/.cpp          # Subtarget features
 │               ├── V6ClangRegisterInfo.td           # Register descriptions
@@ -676,7 +676,7 @@ llvm-v6clang/
 │               └── memory.s
 │
 ├── lld/                                         # Linker support (§9.4)
-│   └── V6CLANG/
+│   └── V6Clang/
 │       ├── V6ClangLinker.h/.cpp
 │       └── V6ClangLinkerScript.ld
 │
@@ -696,14 +696,14 @@ llvm-v6clang/
 │   │       ├── test_calling_convention.c
 │   │       └── test_struct_return.c
 │   ├── lit/
-│   │   ├── CodeGen/V6CLANG/                         # LLVM IR → asm FileCheck tests
+│   │   ├── CodeGen/V6Clang/                         # LLVM IR → asm FileCheck tests
 │   │   │   ├── add-i8.ll
 │   │   │   ├── add-i16.ll
 │   │   │   ├── call-conv.ll
 │   │   │   ├── frame-lowering.ll
 │   │   │   ├── branch.ll
 │   │   │   └── peephole-ora.ll
-│   │   └── MC/V6CLANG/                              # Assembler/disassembler tests
+│   │   └── MC/V6Clang/                              # Assembler/disassembler tests
 │   │       ├── encoding.s
 │   │       └── relocations.s
 │   └── integration/
@@ -808,8 +808,8 @@ V6ClangPassConfig : TargetPassConfig
 The backend integrates into the LLVM build system:
 
 ```cmake
-# llvm/lib/Target/V6CLANG/CMakeLists.txt
-set(LLVM_TARGET_DEFINITIONS V6CLANG.td)
+# llvm/lib/Target/V6Clang/CMakeLists.txt
+set(LLVM_TARGET_DEFINITIONS V6Clang.td)
 
 tablegen(LLVM V6ClangGenRegisterInfo.inc   -gen-register-info)
 tablegen(LLVM V6ClangGenInstrInfo.inc      -gen-instr-info)
@@ -846,8 +846,8 @@ add_llvm_target(V6ClangCodeGen
 Build command:
 ```bash
 cmake -G Ninja ../llvm \
-  -DLLVM_TARGETS_TO_BUILD="V6CLANG" \
-  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6CLANG" \
+  -DLLVM_TARGETS_TO_BUILD="V6Clang" \
+  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6Clang" \
   -DCMAKE_BUILD_TYPE=Release
 ninja
 ```

@@ -34,7 +34,7 @@ MCInstrInfo *llvm::createV6ClangMCInstrInfo() {
 
 static MCRegisterInfo *createV6ClangMCRegisterInfo(const Triple &TT) {
   MCRegisterInfo *X = new MCRegisterInfo();
-  InitV6ClangMCRegisterInfo(X, V6CLANG::PC);
+  InitV6ClangMCRegisterInfo(X, V6Clang::PC);
   return X;
 }
 

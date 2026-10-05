@@ -20,25 +20,25 @@ Write-Host "Populating llvm-project/ from git-tracked mirrors..."
 
 # ── V6CLANG backend target directory ──
 # Full directory mirror (all files are V6CLANG-specific)
-robocopy "$root\llvm\lib\Target\V6CLANG" "$root\llvm-project\llvm\lib\Target\V6CLANG" /MIR /NFL /NDL /NJH /NJS
-Write-Host "  [OK] llvm/lib/Target/V6CLANG/"
+robocopy "$root\llvm\lib\Target\V6Clang" "$root\llvm-project\llvm\lib\Target\V6Clang" /MIR /NFL /NDL /NJH /NJS
+Write-Host "  [OK] llvm/lib/Target/V6Clang/"
 
 # ── Lit tests ──
 # CodeGen tests (source of truth for lit tests)
-robocopy "$root\tests\lit\CodeGen\V6CLANG" "$root\llvm-project\llvm\test\CodeGen\V6CLANG" /MIR /XD Output /NFL /NDL /NJH /NJS
-Write-Host "  [OK] llvm/test/CodeGen/V6CLANG/"
+robocopy "$root\tests\lit\CodeGen\V6Clang" "$root\llvm-project\llvm\test\CodeGen\V6Clang" /MIR /XD Output /NFL /NDL /NJH /NJS
+Write-Host "  [OK] llvm/test/CodeGen/V6Clang/"
 
 # MC encoding tests
-robocopy "$root\tests\lit\MC\V6CLANG" "$root\llvm-project\llvm\test\MC\V6CLANG" /MIR /XD Output /NFL /NDL /NJH /NJS
-Write-Host "  [OK] llvm/test/MC/V6CLANG/"
+robocopy "$root\tests\lit\MC\V6Clang" "$root\llvm-project\llvm\test\MC\V6Clang" /MIR /XD Output /NFL /NDL /NJH /NJS
+Write-Host "  [OK] llvm/test/MC/V6Clang/"
 
 # Linker tests (lld + V6CLANG)
-robocopy "$root\tests\lit\Linker\V6CLANG" "$root\llvm-project\llvm\test\Linker\V6CLANG" /MIR /XD Output /NFL /NDL /NJH /NJS
-Write-Host "  [OK] llvm/test/Linker/V6CLANG/"
+robocopy "$root\tests\lit\Linker\V6Clang" "$root\llvm-project\llvm\test\Linker\V6Clang" /MIR /XD Output /NFL /NDL /NJH /NJS
+Write-Host "  [OK] llvm/test/Linker/V6Clang/"
 
 # Clang integration tests
-robocopy "$root\tests\lit\Clang\V6CLANG" "$root\llvm-project\clang\test\CodeGen\V6CLANG" /MIR /XD Output /NFL /NDL /NJH /NJS
-Write-Host "  [OK] clang/test/CodeGen/V6CLANG/"
+robocopy "$root\tests\lit\Clang\V6Clang" "$root\llvm-project\clang\test\CodeGen\V6Clang" /MIR /XD Output /NFL /NDL /NJH /NJS
+Write-Host "  [OK] clang/test/CodeGen/V6Clang/"
 
 # ── Modified upstream LLVM files ──
 # M1: i8080 architecture registration in Triple
@@ -94,17 +94,17 @@ xcopy /Y /I "$root\clang\lib\Sema\Sema.cpp" "$root\llvm-project\clang\lib\Sema\"
 Write-Host "  [OK] Diagnostics"
 
 # M9 step 6: Builtin intrinsics
-xcopy /Y /I "$root\clang\include\clang\Basic\BuiltinsV6CLANG.def" "$root\llvm-project\clang\include\clang\Basic\" > $null
+xcopy /Y /I "$root\clang\include\clang\Basic\BuiltinsV6Clang.def" "$root\llvm-project\clang\include\clang\Basic\" > $null
 xcopy /Y /I "$root\clang\include\clang\Basic\TargetBuiltins.h" "$root\llvm-project\clang\include\clang\Basic\" > $null
-xcopy /Y /I "$root\llvm\include\llvm\IR\IntrinsicsV6CLANG.td" "$root\llvm-project\llvm\include\llvm\IR\" > $null
+xcopy /Y /I "$root\llvm\include\llvm\IR\IntrinsicsV6Clang.td" "$root\llvm-project\llvm\include\llvm\IR\" > $null
 xcopy /Y /I "$root\llvm\include\llvm\IR\Intrinsics.td" "$root\llvm-project\llvm\include\llvm\IR\" > $null
 xcopy /Y /I "$root\llvm\include\llvm\IR\CMakeLists.txt" "$root\llvm-project\llvm\include\llvm\IR\" > $null
 # xcopy preserves mirror timestamps. Touch the root definition so an existing
 # build tree regenerates IntrinsicImpl.inc after reverse population.
 (Get-Item "$root\llvm-project\llvm\include\llvm\IR\Intrinsics.td").LastWriteTime = Get-Date
-# Function.cpp (IntrinsicsV6CLANG.h include)
+# Function.cpp (IntrinsicsV6Clang.h include)
 xcopy /Y /I "$root\llvm\lib\IR\Function.cpp" "$root\llvm-project\llvm\lib\IR\" > $null
-Write-Host "  [OK] Intrinsics (IntrinsicsV6CLANG.td, BuiltinsV6CLANG.def, Function.cpp)"
+Write-Host "  [OK] Intrinsics (IntrinsicsV6Clang.td, BuiltinsV6Clang.def, Function.cpp)"
 
 # Loop-rotation opt-out hook in MachineBlockPlacement (gated by
 # TargetSubtargetInfo::enableLoopRotationInBlockPlacement, overridden in V6CLANG).
@@ -122,8 +122,8 @@ xcopy /Y /I "$root\llvm\lib\CodeGen\AsmPrinter\DwarfExpression.cpp" "$root\llvm-
 Write-Host "  [OK] AsmPrinter relocatable local debug addresses"
 
 # O-LLD: V6CLANG default linker script (data resource for the driver)
-if (-not (Test-Path "$root\llvm-project\clang\lib\Driver\ToolChains\V6CLANG")) { New-Item -ItemType Directory -Path "$root\llvm-project\clang\lib\Driver\ToolChains\V6CLANG" -Force > $null }
-xcopy /Y /I "$root\clang\lib\Driver\ToolChains\V6CLANG\v6clang.ld" "$root\llvm-project\clang\lib\Driver\ToolChains\V6CLANG\" > $null
+if (-not (Test-Path "$root\llvm-project\clang\lib\Driver\ToolChains\V6Clang")) { New-Item -ItemType Directory -Path "$root\llvm-project\clang\lib\Driver\ToolChains\V6Clang" -Force > $null }
+xcopy /Y /I "$root\clang\lib\Driver\ToolChains\V6Clang\v6clang.ld" "$root\llvm-project\clang\lib\Driver\ToolChains\V6Clang\" > $null
 Write-Host "  [OK] V6CLANG linker script (v6clang.ld)"
 
 # O-LLD: ld.lld native linker integration (V6CLANG arch backend)
@@ -149,9 +149,9 @@ xcopy /Y /I "$root\lld\unittests\AsLibELF\V6ClangPackedSectionsTest.cpp" "$root\
 Write-Host "  [OK] lld V6CLANG packed-section unit tests"
 
 # V6CLANG resource-dir headers (string.h, stdlib.h, v6clang.h)
-$resourceInclude = "$root\clang\lib\Driver\ToolChains\V6CLANG\include"
+$resourceInclude = "$root\clang\lib\Driver\ToolChains\V6Clang\include"
 if (Test-Path $resourceInclude) {
-    robocopy $resourceInclude "$root\llvm-project\clang\lib\Driver\ToolChains\V6CLANG\include" /MIR /NFL /NDL /NJH /NJS > $null
+    robocopy $resourceInclude "$root\llvm-project\clang\lib\Driver\ToolChains\V6Clang\include" /MIR /NFL /NDL /NJH /NJS > $null
     if ($LASTEXITCODE -gt 7) { throw "Failed to populate V6CLANG resource headers (robocopy exit $LASTEXITCODE)" }
     Write-Host "  [OK] V6CLANG resource-dir headers (string.h, stdlib.h, v6clang.h)"
 } else {

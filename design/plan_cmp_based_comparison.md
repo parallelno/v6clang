@@ -157,7 +157,7 @@ optional unconditional branch — the normal Jcc / JMP pattern that
 
 ### Step 3.1 — Remove tied-output constraint from V6CLANG_BR_CC16 [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 The CMP-based expansion is non-destructive — it doesn't modify LHS or
 RHS. The tied-output constraint is no longer needed.
@@ -188,7 +188,7 @@ def V6CLANG_BR_CC16 : V6ClangPseudo<(outs),
 
 ### Step 3.2 — Update ISel: remove i16 output from SDNode [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`
 
 The V6CLANG_BR_CC16 MachineInstr no longer has a register output. The
 SDNode should only produce a chain (MVT::Other):
@@ -223,7 +223,7 @@ SDNode should only produce a chain (MVT::Other):
 
 ### Step 3.3 — Update operand indices in expansion [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 With `(outs)` instead of `(outs GR16:$lhs_wb)`, the operand numbering
 shifts back by 1:
@@ -249,7 +249,7 @@ Update the `case V6CLANG::V6CLANG_BR_CC16:` block:
 
 ### Step 3.4 — Implement CMP-based EQ/NE expansion with MBB splitting [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Replace the XOR-based EQ/NE block with a CMP-based MBB-splitting
 expansion. The SUB/SBB path for other condition codes remains unchanged.
@@ -407,7 +407,7 @@ expansion path plus the .td definition and ISel node.
 
 ### Step 3.6 — Lit test: NE 16-bit comparison [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/cmp-based-br-cc16.ll`
+**File**: `tests/lit/CodeGen/V6Clang/cmp-based-br-cc16.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
@@ -473,7 +473,7 @@ declare void @use()
 
 ### Step 3.7 — Lit test: loop with pointer comparison [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/loop-cmp-no-spill.ll`
+**File**: `tests/lit/CodeGen/V6Clang/loop-cmp-no-spill.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s

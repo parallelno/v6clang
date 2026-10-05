@@ -157,7 +157,7 @@ pre-PEI pass keeps that whole-function logic in one place and leaves
 
 ### Step 3.1 — Add `MO_PATCH_IMM` target operand flag [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.h`
 
 Extend the `V6ClangII` flag enum:
 
@@ -181,7 +181,7 @@ enum {
 
 ### Step 3.2 — Lower `MO_MCSymbol` operands in `V6ClangMCInstLower` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangMCInstLower.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangMCInstLower.cpp`
 
 Add a case to `lowerInstruction` that handles `MachineOperand::MO_MCSymbol`:
 
@@ -207,7 +207,7 @@ Add a case to `lowerInstruction` that handles `MachineOperand::MO_MCSymbol`:
 
 ### Step 3.3 — Add `-mv6clang-spill-patched-reload` flag [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 ```cpp
 static llvm::cl::opt<bool> V6ClangSpillPatchedReload(
@@ -231,7 +231,7 @@ declaration in `V6Clang.h` next to `getV6ClangStaticStackEnabled`.
 
 ### Step 3.4 — Create `V6ClangSpillPatchedReload.cpp` (new pass) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 (new)
 
 Stage 1 logic, all hard-coded — no cost model, no DE/BC/A/r8:
@@ -239,7 +239,7 @@ Stage 1 logic, all hard-coded — no cost model, no DE/BC/A/r8:
 ```cpp
 //===-- V6ClangSpillPatchedReload.cpp - O61 Stage 1 rewrite --------*- C++ -*-===//
 // Post-RA pass: for static-stack-eligible functions, rewrite HL-only
-// V6CLANG_SPILL16/V6CLANG_RELOAD16 pairs into a patched LXI HL reload whose
+// V6CLANG_SPILL16/V6Clang_RELOAD16 pairs into a patched LXI HL reload whose
 // imm bytes are written by the SHLD spill (self-modifying code).
 //
 // Stage 1 candidate filter (hard-coded — no cost model):
@@ -392,7 +392,7 @@ FunctionPass *createV6ClangSpillPatchedReloadPass() {
 
 ### Step 3.5 — Wire the pass in `V6ClangTargetMachine::addPostRegAlloc` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 ```cpp
   void addPostRegAlloc() override {
@@ -417,17 +417,17 @@ FunctionPass *createV6ClangSpillPatchedReloadPass() {
 ### Step 3.6 — Declare factory in `V6Clang.h` and add file to `CMakeLists.txt` [x]
 
 **Files**:
-* `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h` — add
+* `llvm-project/llvm/lib/Target/V6Clang/V6Clang.h` — add
   `FunctionPass *createV6ClangSpillPatchedReloadPass();` next to the other
   `create*` declarations.
-* `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add
+* `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt` — add
   `V6ClangSpillPatchedReload.cpp` to the `add_llvm_target` source list.
 
 > **Implementation Notes**: Added `FunctionPass *createV6ClangSpillPatchedReloadPass();` in `V6Clang.h`. Inserted `V6ClangSpillPatchedReload.cpp` between `V6ClangSpillForwarding.cpp` and `V6ClangStaticStackAlloc.cpp` in `CMakeLists.txt`.
 
 ### Step 3.7 — Constant-tracking opt-out: `V6ClangLoadImmCombine.cpp` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 In the `LXI`-handling branches of `processInstruction` (around line
 296 and 480) and `initFromPredecessor` (around line 296), the existing
@@ -447,7 +447,7 @@ explicit `MO_PATCH_IMM` early-exit only if a guard is missing.
 
 ### Step 3.8 — Constant-tracking opt-out: `V6ClangInstrInfo.cpp` INX-scan [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 (around lines 339, 363, 367)
 
 The INX-peephole helper scans backward for an `LXI` defining a
@@ -491,7 +491,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.10 — Lit test: HL spill/reload patched form [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-hl.ll` (new)
+`llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-hl.ll` (new)
 
 Assert that under `-mv6clang-spill-patched-reload`:
 
@@ -506,7 +506,7 @@ Assert that under `-mv6clang-spill-patched-reload`:
 Also a negative test (default flags off): the same input emits
 classical `SHLD __v6clang_ss.f+N` / `LHLD __v6clang_ss.f+N`.
 
-> **Implementation Notes**: Created `llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-hl.ll` with two RUN lines (flag on + DISABLED prefix for flag off). Function `one_reload` uses two calls `%b1 = call op(%a); %b2 = call op(%a)` marked `norecurse` to trigger static-stack + force pure HL→HL reuse. Lit passes (1/1).
+> **Implementation Notes**: Created `llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-hl.ll` with two RUN lines (flag on + DISABLED prefix for flag off). Function `one_reload` uses two calls `%b1 = call op(%a); %b2 = call op(%a)` marked `norecurse` to trigger static-stack + force pure HL→HL reuse. Lit passes (1/1).
 
 ### Step 3.11 — Run regression tests [x]
 
@@ -539,7 +539,7 @@ cycle/byte stats per function.
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-> **Implementation Notes**: Mirror sync completed successfully. All O61 source edits (`V6ClangInstrInfo.h`, `V6ClangMCInstLower.cpp`, `V6ClangTargetMachine.cpp`, `V6Clang.h`, `CMakeLists.txt`, `V6ClangSpillPatchedReload.cpp`, `V6ClangInstrInfo.cpp`) and the lit test (`test/CodeGen/V6CLANG/spill-patched-reload-hl.ll`) are now mirrored from `llvm-project/` to `llvm/` and `tests/lit/`.
+> **Implementation Notes**: Mirror sync completed successfully. All O61 source edits (`V6ClangInstrInfo.h`, `V6ClangMCInstLower.cpp`, `V6ClangTargetMachine.cpp`, `V6Clang.h`, `CMakeLists.txt`, `V6ClangSpillPatchedReload.cpp`, `V6ClangInstrInfo.cpp`) and the lit test (`test/CodeGen/V6Clang/spill-patched-reload-hl.ll`) are now mirrored from `llvm-project/` to `llvm/` and `tests/lit/`.
 
 ---
 

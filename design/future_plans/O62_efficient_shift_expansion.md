@@ -3,7 +3,7 @@
 ## Problem
 
 `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` are expanded in
-[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) by a
+[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp) by a
 generic template that:
 
 1. Emits an unconditional full 16-bit copy (`MOV DstHi, SrcHi; MOV DstLo, SrcLo`)
@@ -43,10 +43,10 @@ The same structural waste affects `SHL16` by 8..15 and `SRA16` by 8..15.
 ## Root Cause
 
 In
-[V6ClangInstrInfo.cpp:1465 (V6CLANG_SHL16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1465),
-[V6ClangInstrInfo.cpp:1512 (V6CLANG_SRL16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1512),
+[V6ClangInstrInfo.cpp:1465 (V6CLANG_SHL16)](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L1465),
+[V6ClangInstrInfo.cpp:1512 (V6CLANG_SRL16)](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L1512),
 and
-[V6ClangInstrInfo.cpp:1555 (V6CLANG_SRA16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1555),
+[V6ClangInstrInfo.cpp:1555 (V6CLANG_SRA16)](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L1555),
 the expander unconditionally does:
 
 ```cpp
@@ -104,7 +104,7 @@ the `DstReg != SrcReg` + `ShAmt % 8 == 0` (or >= 8) branch.
 ## Implementation
 
 All changes local to
-[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) in the
+[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp) in the
 three `V6CLANG_S*16` cases of `expandPostRAPseudo`. No TableGen, no new
 pseudo, no ISel change, no new flag.
 

@@ -228,7 +228,7 @@ Real-world impact (tests/run_all.py benchmark suite):
 6. Implementation
 ====================================================================
 
-New pass:     llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp
+New pass:     llvm/lib/Target/V6Clang/V6ClangRegValueForwarding.cpp
               FunctionPass *createV6ClangRegValueForwardingPass()
 Pipeline:     addPreEmitPass(), between V6ClangZeroTestOpt and V6ClangRedundantFlagElim.
 CLI toggle:   -v6clang-disable-reg-value-forwarding (default off = enabled)
@@ -248,7 +248,7 @@ Removed (folded in):
                                  definition, call site). collapseMovChain
                                  (O82/O88) and eliminateSelfMov kept.
 
-New lit test: llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll
+New lit test: llvm/test/CodeGen/V6Clang/reg-value-forwarding-cross-bb.ll
 Baseline RUN lines of peephole-mov.ll, peephole-inx-dcx-spill-fold.ll,
 peephole-pair-copy-roundtrip.ll, shift-i16-byte-aligned.ll updated to also
 pass --v6clang-disable-reg-value-forwarding so their "unoptimized" prefixes still

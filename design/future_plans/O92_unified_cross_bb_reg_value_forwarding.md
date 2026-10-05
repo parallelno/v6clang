@@ -213,7 +213,7 @@ passes rely on. The new pass runs after it and handles only the cross-BB cases
 
 ## Implementation sketch
 
-1. New file `llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp` (+ mirror under
+1. New file `llvm/lib/Target/V6Clang/V6ClangRegValueForwarding.cpp` (+ mirror under
    `llvm-project/...`), `MachineFunctionPass`.
 2. CLI toggle `-v6clang-disable-reg-value-forwarding` (double-dash via `-mllvm`).
 3. Register in `V6ClangTargetMachine::addPreEmitPass` **after** the existing
@@ -233,7 +233,7 @@ passes rely on. The new pass runs after it and handles only the cross-BB cases
 - **Feature test:** new `tests/features/NN/` from `temp/acc_loop_repro2.c`;
   assert the loop body has no `MOV A, D` and the value is established once before
   the loop.
-- **Lit test:** `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll`
+- **Lit test:** `llvm-project/llvm/test/CodeGen/V6Clang/reg-value-forwarding-cross-bb.ll`
   covering (a) cross-BB `MOV` elision, (b) loop back-edge convergence, (c)
   `MVI` constant redundancy, (d) **negative**: a patched-imm `MVI` (carrying a
   `.LLo61_N:` pre-instr label / `MO_PATCH_IMM`) is preserved and is **not**

@@ -133,7 +133,7 @@ OP    M             ; V6CLANG::{ADDM|ADCM|SUBM|SBBM|ANAM|XRAM|ORAM|CMPM}, uses A
 | `CMPr` | `CMPM` | 0xBE |
 
 All eight definitions already exist in
-[V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td) lines 294–303
+[V6ClangInstrInfo.td](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td) lines 294–303
 with empty pattern lists — no TableGen changes needed.
 
 ## Safety conditions
@@ -346,12 +346,12 @@ between the MOVs, A still live after store).
 
 ## Testing
 
-- Lit: new `tests/lit/CodeGen/V6CLANG/mov-alu-m-fold.ll` with CHECK lines
+- Lit: new `tests/lit/CodeGen/V6Clang/mov-alu-m-fold.ll` with CHECK lines
   per ALU variant; negative CHECK-NOTs for the `r` still-live and `r=A`
   cases.
 - Stage 2 lit: one positive (intervening independent MOV) + one negative
   (intervening store or HL-aliasing op).
-- Stage 3 lit: new `tests/lit/CodeGen/V6CLANG/inc-dec-mvi-m-fold.ll` covering
+- Stage 3 lit: new `tests/lit/CodeGen/V6Clang/inc-dec-mvi-m-fold.ll` covering
   `++global_byte`, `--global_byte`, `global_byte = 42`.
 - Feature test: `tests/features/38/` already exercises the `XRA` case —
   extend with round-trip validation before/after the pass.

@@ -190,7 +190,7 @@ as reentrant. The analysis is ~20 lines of code (BFS from interrupt roots).
 
 ### Step 3.1 — Create V6ClangMachineFunctionInfo [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangMachineFunctionInfo.h` (new)
+**File**: `llvm/lib/Target/V6Clang/V6ClangMachineFunctionInfo.h` (new)
 
 Create a `MachineFunctionInfo` subclass to store per-function static
 allocation metadata.
@@ -222,7 +222,7 @@ public:
 
 ### Step 3.2 — Register MFInfo in V6ClangTargetMachine [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetMachine.h`
 
 Override `createMachineFunctionInfo()` in `V6ClangTargetMachine` so that LLVM
 creates a `V6ClangMachineFunctionInfo` for each `MachineFunction`:
@@ -237,7 +237,7 @@ MachineFunctionInfo *createMachineFunctionInfo(
 
 ### Step 3.3 — Add `-mv6clang-static-stack` target option [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 Add a `cl::opt<bool>` for the static stack feature:
 
@@ -258,7 +258,7 @@ bool getV6ClangStaticStackEnabled();
 
 ### Step 3.4 — Create V6ClangStaticStackAlloc pass [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangStaticStackAlloc.cpp` (new)
+**File**: `llvm/lib/Target/V6Clang/V6ClangStaticStackAlloc.cpp` (new)
 
 The core module-aware allocation pass. Registered as a `MachineFunctionPass`
 in `addPostRegAlloc()`.
@@ -313,7 +313,7 @@ For each eligible function:
 
 ### Step 3.5 — Modify eliminateFrameIndex for static expansion [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp`
 
 At the top of `eliminateFrameIndex`, check for static allocation:
 
@@ -374,8 +374,8 @@ BuildMI(MBB, II, DL, TII.get(V6CLANG::LXI))
 
 ### Step 3.6 — Register pass in pipeline [x]
 
-**Files**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`,
-`llvm/lib/Target/V6CLANG/V6Clang.h`, `llvm/lib/Target/V6CLANG/CMakeLists.txt`
+**Files**: `llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`,
+`llvm/lib/Target/V6Clang/V6Clang.h`, `llvm/lib/Target/V6Clang/CMakeLists.txt`
 
 1. In `V6Clang.h`, declare:
    ```cpp
@@ -402,7 +402,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.8 — Lit test: static spill/reload [x]
 
-**File**: `llvm/lib/Target/V6CLANG/tests/lit/CodeGen/V6CLANG/static-stack-alloc.ll`
+**File**: `llvm/lib/Target/V6Clang/tests/lit/CodeGen/V6Clang/static-stack-alloc.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 -mv6clang-static-stack < %s | FileCheck %s

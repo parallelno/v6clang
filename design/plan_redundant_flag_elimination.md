@@ -71,7 +71,7 @@ simple and safe.
 | 3.3 | Register in pipeline | `V6ClangTargetMachine.cpp` |
 | 3.4 | Add to build | `CMakeLists.txt` |
 | 3.5 | Build | `ninja -C llvm-build clang llc` |
-| 3.6 | Lit test | `tests/lit/CodeGen/V6CLANG/redundant-flag-elim.ll` |
+| 3.6 | Lit test | `tests/lit/CodeGen/V6Clang/redundant-flag-elim.ll` |
 | 3.7 | Run regression tests | `python tests\run_all.py` |
 | 3.8 | Verification assembly | `tests\features\README.md` steps |
 | 3.9 | Sync mirror | `scripts\sync_llvm_mirror.ps1` |
@@ -82,7 +82,7 @@ simple and safe.
 
 ### Step 3.1 — Create V6ClangRedundantFlagElim.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangRedundantFlagElim.cpp`
 
 Post-RA `MachineFunctionPass` with a forward scan through each basic block:
 
@@ -133,7 +133,7 @@ Post-RA `MachineFunctionPass` with a forward scan through each basic block:
 
 ### Step 3.2 — Declare factory function in V6Clang.h [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6Clang.h`
 
 Add:
 ```cpp
@@ -144,7 +144,7 @@ FunctionPass *createV6ClangRedundantFlagElimPass();
 
 ### Step 3.3 — Register pass in pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 Add the pass **after** `V6ClangZeroTestOpt` (which creates `ORA A` from
 `CPI 0`) and **before** `V6ClangSPTrickOpt`:
@@ -163,7 +163,7 @@ addPass(createV6ClangSPTrickOptPass());
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt`
 
 Add `V6ClangRedundantFlagElim.cpp` to the source list.
 
@@ -179,7 +179,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: redundant-flag-elim.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/redundant-flag-elim.ll`
+**File**: `tests/lit/CodeGen/V6Clang/redundant-flag-elim.ll`
 
 Test cases:
 1. ALU op + ORA A → ORA A eliminated (e.g., XRA + ORA A + JZ)
@@ -307,4 +307,4 @@ JZ   label   ; 12cc         JZ   label   ; 12cc
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [llvm-z80 Z80PostRACompareMerge](design\future_plans\llvm_z80_analysis.md) §S7
-* [V6ClangZeroTestOpt](llvm\lib\Target\V6CLANG\V6ClangZeroTestOpt.cpp) — creates ORA A that this pass eliminates
+* [V6ClangZeroTestOpt](llvm\lib\Target\V6Clang\V6ClangZeroTestOpt.cpp) — creates ORA A that this pass eliminates

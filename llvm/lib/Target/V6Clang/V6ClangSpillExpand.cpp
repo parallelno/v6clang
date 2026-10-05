@@ -59,9 +59,9 @@ bool llvm::isPairDeadAfterMI(unsigned PairReg, const MachineInstr &MI,
   // already V6CLANG-scoped via V6ClangMCTargetDesc.h.
   unsigned Lo = 0, Hi = 0;
   switch (PairReg) {
-  case V6CLANG::HL: Lo = V6CLANG::L; Hi = V6CLANG::H; break;
-  case V6CLANG::DE: Lo = V6CLANG::E; Hi = V6CLANG::D; break;
-  case V6CLANG::BC: Lo = V6CLANG::C; Hi = V6CLANG::B; break;
+  case V6Clang::HL: Lo = V6Clang::L; Hi = V6Clang::H; break;
+  case V6Clang::DE: Lo = V6Clang::E; Hi = V6Clang::D; break;
+  case V6Clang::BC: Lo = V6Clang::C; Hi = V6Clang::B; break;
   default:
     // For non-pair registers fall back to the byte-wise query.
     return isRegDeadAfterMI(PairReg, MI, MBB, TRI);
@@ -73,7 +73,7 @@ bool llvm::isPairDeadAfterMI(unsigned PairReg, const MachineInstr &MI,
 Register llvm::findDeadSpareGPR8(Register Excluded, const MachineInstr &MI,
                                  MachineBasicBlock &MBB,
                                  const TargetRegisterInfo *TRI) {
-  static const MCPhysReg Candidates[] = {V6CLANG::B, V6CLANG::C, V6CLANG::D, V6CLANG::E};
+  static const MCPhysReg Candidates[] = {V6Clang::B, V6Clang::C, V6Clang::D, V6Clang::E};
   BitVector Reserved = TRI->getReservedRegs(*MBB.getParent());
   for (MCPhysReg R : Candidates) {
     if (Reserved.test(R))
@@ -96,98 +96,98 @@ void llvm::expandSpill8Static(MachineInstr &MI,
   DebugLoc DL = MI.getDebugLoc();
 
   // Shape C: SrcReg is H or L. A is the only possible router.
-  if (SrcReg == V6CLANG::H || SrcReg == V6CLANG::L) {
-    bool ADead = isRegDeadAfterMI(V6CLANG::A, MI, MBB, TRI);
+  if (SrcReg == V6Clang::H || SrcReg == V6Clang::L) {
+    bool ADead = isRegDeadAfterMI(V6Clang::A, MI, MBB, TRI);
     // Row 1: A dead -> MOV A, H|L ; STA addr
     if (ADead) {
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::A, RegState::Define)
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::A, RegState::Define)
           .addReg(SrcReg, getKillRegState(SrcIsKill));
-      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::STA))
-                   .addReg(V6CLANG::A);
+      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::STA))
+                   .addReg(V6Clang::A);
       AppendAddr(B);
       return;
     }
     // Row 2: A live, Tmp in {B,C,D,E} dead -> save A in Tmp, route, restore.
     Register Tmp = findDeadSpareGPR8(/*Excluded=*/Register(), MI, MBB, TRI);
     if (Tmp) {
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
           .addReg(Tmp, RegState::Define)
-          .addReg(V6CLANG::A);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::A, RegState::Define)
+          .addReg(V6Clang::A);
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::A, RegState::Define)
           .addReg(SrcReg, getKillRegState(SrcIsKill));
-      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::STA))
-                   .addReg(V6CLANG::A);
+      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::STA))
+                   .addReg(V6Clang::A);
       AppendAddr(B);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::A, RegState::Define)
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::A, RegState::Define)
           .addReg(Tmp, RegState::Kill);
       return;
     }
     // Row 3 (fallback): PUSH PSW ; MOV A, H|L ; STA addr ; POP PSW
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::A, RegState::Define)
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::A, RegState::Define)
         .addReg(SrcReg, getKillRegState(SrcIsKill));
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::STA))
-                 .addReg(V6CLANG::A);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::STA))
+                 .addReg(V6Clang::A);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::POP), V6CLANG::PSW);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::POP), V6Clang::PSW);
     return;
   }
 
   // Shape B: SrcReg in {B, C, D, E}.
-  assert((SrcReg == V6CLANG::B || SrcReg == V6CLANG::C ||
-          SrcReg == V6CLANG::D || SrcReg == V6CLANG::E) &&
+  assert((SrcReg == V6Clang::B || SrcReg == V6Clang::C ||
+          SrcReg == V6Clang::D || SrcReg == V6Clang::E) &&
          "expandSpill8Static: expected GR8 src (A handled by caller)");
 
-  bool HLDead = isPairDeadAfterMI(V6CLANG::HL, MI, MBB, TRI);
+  bool HLDead = isPairDeadAfterMI(V6Clang::HL, MI, MBB, TRI);
   // Row 1: HL dead -> LXI HL, addr ; MOV M, r
   if (HLDead) {
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LXI))
-                 .addReg(V6CLANG::HL, RegState::Define);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LXI))
+                 .addReg(V6Clang::HL, RegState::Define);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVMr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVMr))
         .addReg(SrcReg, getKillRegState(SrcIsKill));
     return;
   }
-  bool ADead = isRegDeadAfterMI(V6CLANG::A, MI, MBB, TRI);
+  bool ADead = isRegDeadAfterMI(V6Clang::A, MI, MBB, TRI);
   // Row 2: HL live, A dead -> MOV A, r ; STA addr
   if (ADead) {
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::A, RegState::Define)
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::A, RegState::Define)
         .addReg(SrcReg, getKillRegState(SrcIsKill));
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::STA))
-                 .addReg(V6CLANG::A);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::STA))
+                 .addReg(V6Clang::A);
     AppendAddr(B);
     return;
   }
   // Row 3: HL live, A live, Tmp in {B,C,D,E}\{r} dead
   Register Tmp = findDeadSpareGPR8(/*Excluded=*/SrcReg, MI, MBB, TRI);
   if (Tmp) {
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
         .addReg(Tmp, RegState::Define)
-        .addReg(V6CLANG::A);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::A, RegState::Define)
+        .addReg(V6Clang::A);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::A, RegState::Define)
         .addReg(SrcReg, getKillRegState(SrcIsKill));
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::STA))
-                 .addReg(V6CLANG::A);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::STA))
+                 .addReg(V6Clang::A);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::A, RegState::Define)
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::A, RegState::Define)
         .addReg(Tmp, RegState::Kill);
     return;
   }
   // Row 4 (fallback): PUSH HL ; LXI HL, addr ; MOV M, r ; POP HL
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-  auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LXI))
-               .addReg(V6CLANG::HL, RegState::Define);
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::HL);
+  auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LXI))
+               .addReg(V6Clang::HL, RegState::Define);
   AppendAddr(B);
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVMr))
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVMr))
       .addReg(SrcReg, getKillRegState(SrcIsKill));
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::POP), V6CLANG::HL);
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::POP), V6Clang::HL);
 }
 
 void llvm::expandReload8Static(MachineInstr &MI,
@@ -201,102 +201,102 @@ void llvm::expandReload8Static(MachineInstr &MI,
 
   // Shape C: DstReg is H or L. Need to set one half of HL without
   // clobbering the other (unless the other is dead).
-  if (DstReg == V6CLANG::H || DstReg == V6CLANG::L) {
-    Register OtherHL = (DstReg == V6CLANG::H) ? V6CLANG::L : V6CLANG::H;
+  if (DstReg == V6Clang::H || DstReg == V6Clang::L) {
+    Register OtherHL = (DstReg == V6Clang::H) ? V6Clang::L : V6Clang::H;
     bool OtherHLDead = isRegDeadAfterMI(OtherHL, MI, MBB, TRI);
     // Row 1: other half dead -> LXI HL, addr ; MOV Dst, M
     if (OtherHLDead) {
-      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LXI))
-                   .addReg(V6CLANG::HL, RegState::Define);
+      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LXI))
+                   .addReg(V6Clang::HL, RegState::Define);
       AppendAddr(B);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrM))
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrM))
           .addReg(DstReg, RegState::Define);
       return;
     }
-    bool ADead = isRegDeadAfterMI(V6CLANG::A, MI, MBB, TRI);
+    bool ADead = isRegDeadAfterMI(V6Clang::A, MI, MBB, TRI);
     // Row 2: A dead -> LDA addr ; MOV Dst, A
     if (ADead) {
-      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LDA), V6CLANG::A);
+      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LDA), V6Clang::A);
       AppendAddr(B);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
           .addReg(DstReg, RegState::Define)
-          .addReg(V6CLANG::A, RegState::Kill);
+          .addReg(V6Clang::A, RegState::Kill);
       return;
     }
     // Row 3: A live, Tmp in {B,C,D,E} dead -> save A in Tmp, route, restore.
     Register Tmp = findDeadSpareGPR8(/*Excluded=*/Register(), MI, MBB, TRI);
     if (Tmp) {
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
           .addReg(Tmp, RegState::Define)
-          .addReg(V6CLANG::A);
-      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LDA), V6CLANG::A);
+          .addReg(V6Clang::A);
+      auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LDA), V6Clang::A);
       AppendAddr(B);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
           .addReg(DstReg, RegState::Define)
-          .addReg(V6CLANG::A);
-      BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::A, RegState::Define)
+          .addReg(V6Clang::A);
+      BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+          .addReg(V6Clang::A, RegState::Define)
           .addReg(Tmp, RegState::Kill);
       return;
     }
     // Row 4 (fallback): PUSH PSW ; LDA addr ; MOV Dst, A ; POP PSW
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LDA), V6CLANG::A);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LDA), V6Clang::A);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
         .addReg(DstReg, RegState::Define)
-        .addReg(V6CLANG::A);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::POP), V6CLANG::PSW);
+        .addReg(V6Clang::A);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::POP), V6Clang::PSW);
     return;
   }
 
   // Shape B: DstReg in {B, C, D, E}.
-  assert((DstReg == V6CLANG::B || DstReg == V6CLANG::C ||
-          DstReg == V6CLANG::D || DstReg == V6CLANG::E) &&
+  assert((DstReg == V6Clang::B || DstReg == V6Clang::C ||
+          DstReg == V6Clang::D || DstReg == V6Clang::E) &&
          "expandReload8Static: expected GR8 dst (A handled by caller)");
 
-  bool HLDead = isPairDeadAfterMI(V6CLANG::HL, MI, MBB, TRI);
+  bool HLDead = isPairDeadAfterMI(V6Clang::HL, MI, MBB, TRI);
   // Row 1: HL dead -> LXI HL, addr ; MOV r, M
   if (HLDead) {
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LXI))
-                 .addReg(V6CLANG::HL, RegState::Define);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LXI))
+                 .addReg(V6Clang::HL, RegState::Define);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrM))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrM))
         .addReg(DstReg, RegState::Define);
     return;
   }
-  bool ADead = isRegDeadAfterMI(V6CLANG::A, MI, MBB, TRI);
+  bool ADead = isRegDeadAfterMI(V6Clang::A, MI, MBB, TRI);
   // Row 2: HL live, A dead -> LDA addr ; MOV r, A
   if (ADead) {
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LDA), V6CLANG::A);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LDA), V6Clang::A);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
         .addReg(DstReg, RegState::Define)
-        .addReg(V6CLANG::A, RegState::Kill);
+        .addReg(V6Clang::A, RegState::Kill);
     return;
   }
   // Row 3: HL live, A live, Tmp in {B,C,D,E}\{Dst} dead.
   Register Tmp = findDeadSpareGPR8(/*Excluded=*/DstReg, MI, MBB, TRI);
   if (Tmp) {
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
         .addReg(Tmp, RegState::Define)
-        .addReg(V6CLANG::A);
-    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LDA), V6CLANG::A);
+        .addReg(V6Clang::A);
+    auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LDA), V6Clang::A);
     AppendAddr(B);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
         .addReg(DstReg, RegState::Define)
-        .addReg(V6CLANG::A);
-    BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrr))
-        .addReg(V6CLANG::A, RegState::Define)
+        .addReg(V6Clang::A);
+    BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrr))
+        .addReg(V6Clang::A, RegState::Define)
         .addReg(Tmp, RegState::Kill);
     return;
   }
   // Row 4 (fallback): PUSH HL ; LXI HL, addr ; MOV r, M ; POP HL
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-  auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::LXI))
-               .addReg(V6CLANG::HL, RegState::Define);
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::PUSH)).addReg(V6Clang::HL);
+  auto B = BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::LXI))
+               .addReg(V6Clang::HL, RegState::Define);
   AppendAddr(B);
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::MOVrM))
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::MOVrM))
       .addReg(DstReg, RegState::Define);
-  BuildMI(MBB, InsertBefore, DL, TII.get(V6CLANG::POP), V6CLANG::HL);
+  BuildMI(MBB, InsertBefore, DL, TII.get(V6Clang::POP), V6Clang::HL);
 }

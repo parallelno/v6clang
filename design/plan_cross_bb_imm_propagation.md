@@ -58,7 +58,7 @@ state.
 |------|------|-------|
 | Quick fix | Skip hi-byte MVI when lo8 == hi8 | V6ClangInstrInfo.cpp |
 | Cross-BB init | Add initFromPredecessor() | V6ClangLoadImmCombine.cpp |
-| Lit test | Cross-BB propagation test | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | Cross-BB propagation test | tests/lit/CodeGen/V6Clang/ |
 
 ---
 
@@ -66,7 +66,7 @@ state.
 
 ### Step 3.1 — Quick fix: skip hi-byte MVI when lo8 == hi8 in BR_CC16_IMM [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 In the V6CLANG_BR_CC16_IMM expansion (both NE and EQ paths), wrap the
 CompareHiMBB's `MVI A, hi8` in `if (!sameLoHi)` where `sameLoHi` is
@@ -101,7 +101,7 @@ Same for EQ path.
 
 ### Step 3.2 — Cross-BB propagation: add initFromPredecessor() to LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 Add a new method that, for blocks with a single predecessor, forward-scans
 the predecessor block using the same instruction-processing logic as
@@ -139,7 +139,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: cross-bb-imm-propagation.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/cross-bb-imm-propagation.ll`
+**File**: `tests/lit/CodeGen/V6Clang/cross-bb-imm-propagation.ll`
 
 Test cases:
 1. **NE with lo8==hi8 (0x4242)**: Verify only one `MVI A, 66` appears.

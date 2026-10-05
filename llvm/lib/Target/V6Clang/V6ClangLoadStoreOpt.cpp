@@ -132,14 +132,14 @@ private:
 
   /// True if MI is INX HL.
   static bool isINX_HL(const MachineInstr &MI) {
-    return MI.getOpcode() == V6CLANG::INX && MI.getNumOperands() >= 1 &&
-           MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6CLANG::HL;
+    return MI.getOpcode() == V6Clang::INX && MI.getNumOperands() >= 1 &&
+           MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6Clang::HL;
   }
 
   /// True if MI is DCX HL.
   static bool isDCX_HL(const MachineInstr &MI) {
-    return MI.getOpcode() == V6CLANG::DCX && MI.getNumOperands() >= 1 &&
-           MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6CLANG::HL;
+    return MI.getOpcode() == V6Clang::DCX && MI.getNumOperands() >= 1 &&
+           MI.getOperand(0).isReg() && MI.getOperand(0).getReg() == V6Clang::HL;
   }
 
   /// True if MI uses any part of HL.
@@ -147,7 +147,7 @@ private:
     for (const MachineOperand &MO : MI.operands()) {
       if (!MO.isReg() || !MO.isUse()) continue;
       Register R = MO.getReg();
-      if (R == V6CLANG::HL || R == V6CLANG::H || R == V6CLANG::L) return true;
+      if (R == V6Clang::HL || R == V6Clang::H || R == V6Clang::L) return true;
     }
     return false;
   }
@@ -159,9 +159,9 @@ char V6ClangLoadStoreOpt::ID = 0;
 
 HLAddr HLAddr::fromLXI(const MachineInstr &MI) {
   HLAddr A;
-  if (MI.getOpcode() != V6CLANG::LXI) return A;
+  if (MI.getOpcode() != V6Clang::LXI) return A;
   if (MI.getNumOperands() < 2) return A;
-  if (!MI.getOperand(0).isReg() || MI.getOperand(0).getReg() != V6CLANG::HL)
+  if (!MI.getOperand(0).isReg() || MI.getOperand(0).getReg() != V6Clang::HL)
     return A;
   const MachineOperand &Op = MI.getOperand(1);
   A.TF = Op.getTargetFlags();
@@ -194,15 +194,15 @@ HLAddr HLAddr::fromLXI(const MachineInstr &MI) {
 bool V6ClangLoadStoreOpt::clobbersHL(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.operands()) {
     if (MO.isRegMask()) {
-      if (MO.clobbersPhysReg(V6CLANG::HL) ||
-          MO.clobbersPhysReg(V6CLANG::H)  ||
-          MO.clobbersPhysReg(V6CLANG::L))
+      if (MO.clobbersPhysReg(V6Clang::HL) ||
+          MO.clobbersPhysReg(V6Clang::H)  ||
+          MO.clobbersPhysReg(V6Clang::L))
         return true;
       continue;
     }
     if (!MO.isReg() || !MO.isDef()) continue;
     Register R = MO.getReg();
-    if (R == V6CLANG::HL || R == V6CLANG::H || R == V6CLANG::L) return true;
+    if (R == V6Clang::HL || R == V6Clang::H || R == V6Clang::L) return true;
   }
   return false;
 }
@@ -229,8 +229,8 @@ bool V6ClangLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB, unsigned MaxDelta)
     }
 
     // LXI HL, X — try to fold against the running State.
-    if (MI.getOpcode() == V6CLANG::LXI && MI.getOperand(0).isReg() &&
-        MI.getOperand(0).getReg() == V6CLANG::HL && !MI.isBundled()) {
+    if (MI.getOpcode() == V6Clang::LXI && MI.getOperand(0).isReg() &&
+        MI.getOperand(0).getReg() == V6Clang::HL && !MI.isBundled()) {
       HLAddr New = HLAddr::fromLXI(MI);
       int64_t Delta = 0;
       if (State.isKnown() && New.isKnown() && State.tryDelta(New, Delta)) {
@@ -243,10 +243,10 @@ bool V6ClangLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB, unsigned MaxDelta)
         }
         uint64_t Abs = (uint64_t)std::abs(Delta);
         if (Abs <= (uint64_t)MaxDelta) {
-          unsigned Opc = Delta > 0 ? V6CLANG::INX : V6CLANG::DCX;
+          unsigned Opc = Delta > 0 ? V6Clang::INX : V6Clang::DCX;
           DebugLoc DL = MI.getDebugLoc();
           for (uint64_t k = 0; k < Abs; ++k) {
-            BuildMI(MBB, MI, DL, TII.get(Opc), V6CLANG::HL).addReg(V6CLANG::HL);
+            BuildMI(MBB, MI, DL, TII.get(Opc), V6Clang::HL).addReg(V6Clang::HL);
           }
           auto ToErase = I++;
           ToErase->eraseFromParent();
@@ -274,8 +274,8 @@ bool V6ClangLoadStoreOpt::eliminateDeadLXI(MachineBasicBlock &MBB) {
   bool Changed = false;
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
-    if (!(I->getOpcode() == V6CLANG::LXI && I->getNumOperands() >= 1 &&
-          I->getOperand(0).isReg() && I->getOperand(0).getReg() == V6CLANG::HL)) {
+    if (!(I->getOpcode() == V6Clang::LXI && I->getNumOperands() >= 1 &&
+          I->getOperand(0).isReg() && I->getOperand(0).getReg() == V6Clang::HL)) {
       ++I;
       continue;
     }

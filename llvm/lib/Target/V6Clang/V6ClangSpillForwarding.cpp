@@ -68,17 +68,17 @@ private:
 
   /// Check if Opc is a SPILL pseudo.
   static bool isSpill(unsigned Opc) {
-    return Opc == V6CLANG::V6CLANG_SPILL8 || Opc == V6CLANG::V6CLANG_SPILL16;
+    return Opc == V6Clang::V6CLANG_SPILL8 || Opc == V6Clang::V6CLANG_SPILL16;
   }
 
   /// Check if Opc is a RELOAD pseudo.
   static bool isReload(unsigned Opc) {
-    return Opc == V6CLANG::V6CLANG_RELOAD8 || Opc == V6CLANG::V6CLANG_RELOAD16;
+    return Opc == V6Clang::V6CLANG_RELOAD8 || Opc == V6Clang::V6CLANG_RELOAD16;
   }
 
   /// Check if Opc is 16-bit (SPILL16 or RELOAD16).
   static bool is16Bit(unsigned Opc) {
-    return Opc == V6CLANG::V6CLANG_SPILL16 || Opc == V6CLANG::V6CLANG_RELOAD16;
+    return Opc == V6Clang::V6CLANG_SPILL16 || Opc == V6Clang::V6CLANG_RELOAD16;
   }
 
   bool processBlock(MachineBasicBlock &MBB);
@@ -130,15 +130,15 @@ bool V6ClangSpillForwarding::processBlock(MachineBasicBlock &MBB) {
               MBB.erase(&*NextIt);
             } else if (is16Bit(Opc)) {
               // 16-bit cross-register: replace RELOAD with 2 MOVs.
-              MCPhysReg SrcLo = TRI->getSubReg(SrcReg, V6CLANG::sub_lo);
-              MCPhysReg SrcHi = TRI->getSubReg(SrcReg, V6CLANG::sub_hi);
-              MCPhysReg DstLo = TRI->getSubReg(DstReg, V6CLANG::sub_lo);
-              MCPhysReg DstHi = TRI->getSubReg(DstReg, V6CLANG::sub_hi);
+              MCPhysReg SrcLo = TRI->getSubReg(SrcReg, V6Clang::sub_lo);
+              MCPhysReg SrcHi = TRI->getSubReg(SrcReg, V6Clang::sub_hi);
+              MCPhysReg DstLo = TRI->getSubReg(DstReg, V6Clang::sub_lo);
+              MCPhysReg DstHi = TRI->getSubReg(DstReg, V6Clang::sub_hi);
               DebugLoc DL = NextIt->getDebugLoc();
-              BuildMI(MBB, NextIt, DL, TII->get(V6CLANG::MOVrr))
+              BuildMI(MBB, NextIt, DL, TII->get(V6Clang::MOVrr))
                   .addReg(DstLo, RegState::Define)
                   .addReg(SrcLo);
-              BuildMI(MBB, NextIt, DL, TII->get(V6CLANG::MOVrr))
+              BuildMI(MBB, NextIt, DL, TII->get(V6Clang::MOVrr))
                   .addReg(DstHi, RegState::Define)
                   .addReg(SrcHi);
               MBB.erase(&*NextIt);
@@ -147,7 +147,7 @@ bool V6ClangSpillForwarding::processBlock(MachineBasicBlock &MBB) {
             } else {
               // 8-bit cross-register: replace RELOAD with 1 MOV.
               DebugLoc DL = NextIt->getDebugLoc();
-              BuildMI(MBB, NextIt, DL, TII->get(V6CLANG::MOVrr))
+              BuildMI(MBB, NextIt, DL, TII->get(V6Clang::MOVrr))
                   .addReg(DstReg, RegState::Define)
                   .addReg(SrcReg);
               MBB.erase(&*NextIt);
@@ -206,15 +206,15 @@ bool V6ClangSpillForwarding::processBlock(MachineBasicBlock &MBB) {
 
         if (is16Bit(Opc)) {
           // 16-bit forwarding: replace with 2 MOVs.
-          MCPhysReg SrcLo = TRI->getSubReg(SrcReg, V6CLANG::sub_lo);
-          MCPhysReg SrcHi = TRI->getSubReg(SrcReg, V6CLANG::sub_hi);
-          MCPhysReg DstLo = TRI->getSubReg(DstReg, V6CLANG::sub_lo);
-          MCPhysReg DstHi = TRI->getSubReg(DstReg, V6CLANG::sub_hi);
+          MCPhysReg SrcLo = TRI->getSubReg(SrcReg, V6Clang::sub_lo);
+          MCPhysReg SrcHi = TRI->getSubReg(SrcReg, V6Clang::sub_hi);
+          MCPhysReg DstLo = TRI->getSubReg(DstReg, V6Clang::sub_lo);
+          MCPhysReg DstHi = TRI->getSubReg(DstReg, V6Clang::sub_hi);
           DebugLoc DL = MI.getDebugLoc();
-          BuildMI(MBB, MII, DL, TII->get(V6CLANG::MOVrr))
+          BuildMI(MBB, MII, DL, TII->get(V6Clang::MOVrr))
               .addReg(DstLo, RegState::Define)
               .addReg(SrcLo);
-          BuildMI(MBB, MII, DL, TII->get(V6CLANG::MOVrr))
+          BuildMI(MBB, MII, DL, TII->get(V6Clang::MOVrr))
               .addReg(DstHi, RegState::Define)
               .addReg(SrcHi);
           MII = MBB.erase(&MI);
@@ -230,7 +230,7 @@ bool V6ClangSpillForwarding::processBlock(MachineBasicBlock &MBB) {
 
         // 8-bit forwarding: replace with 1 MOV.
         DebugLoc DL = MI.getDebugLoc();
-        BuildMI(MBB, MII, DL, TII->get(V6CLANG::MOVrr))
+        BuildMI(MBB, MII, DL, TII->get(V6Clang::MOVrr))
             .addReg(DstReg, RegState::Define)
             .addReg(SrcReg);
         MII = MBB.erase(&MI);

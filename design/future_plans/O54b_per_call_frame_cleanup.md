@@ -8,7 +8,7 @@
 
 When a callee receives stack-passed arguments, the caller must release that
 space after the CALL returns. Today V6CLANG runs in **reserved-call-frame** mode:
-[`V6ClangFrameLowering::eliminateCallFramePseudoInstr`](../../llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp#L268-L275)
+[`V6ClangFrameLowering::eliminateCallFramePseudoInstr`](../../llvm-project/llvm/lib/Target/V6Clang/V6ClangFrameLowering.cpp#L268-L275)
 simply erases the `ADJCALLSTACKDOWN`/`UP` pseudos because the prologue already
 reserved `MFI.getMaxCallFrameSize()` for the entire function.
 

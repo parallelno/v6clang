@@ -104,7 +104,7 @@ removed.
 | `getConditionalCall` | Map Jcc opcode → Cxx (inverted) opcode | V6ClangBranchOpt.cpp |
 | `foldConditionalCalls` | Detect & rewrite Jcc-over-CALL pattern | V6ClangBranchOpt.cpp |
 | Wire into runOnMachineFunction | Order: after threadJMPOnlyBlocks | V6ClangBranchOpt.cpp |
-| Lit test | `conditional-call.ll` | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | `conditional-call.ll` | tests/lit/CodeGen/V6Clang/ |
 | Feature test | `tests/features/49/` | tests/features/ |
 | Update README | Mark O15 ✅ | design/future_plans/README.md |
 
@@ -114,7 +114,7 @@ removed.
 
 ### Step 3.1 — Add `getConditionalCall` mapping helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp`
 
 Static helper next to `getConditionalReturn`:
 
@@ -142,7 +142,7 @@ static unsigned getConditionalCall(unsigned JccOpc) {
 
 ### Step 3.2 — Implement `foldConditionalCalls` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp`
 
 Algorithm (mirrors `invertConditionalOverRET`, simplified):
 
@@ -193,7 +193,7 @@ successor edges).
 
 ### Step 3.3 — Wire `foldConditionalCalls` into the pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangBranchOpt.cpp`
 
 In `runOnMachineFunction`, add a call to the new helper. Place it
 **after** `invertConditionalBranch` (which simplifies `Jcc;JMP` →
@@ -225,7 +225,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: conditional-call.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/conditional-call.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/conditional-call.ll`
 
 Cases:
 

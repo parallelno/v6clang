@@ -94,7 +94,7 @@ Extend `V6ClangTypeNarrowing.cpp`:
 
 ### Step 3.1 — Relax PHI sibling guard + generalize to or/xor [x]
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTypeNarrowing.cpp`:
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangTypeNarrowing.cpp`:
 
 1. Add helper `allUsersAreZeroTests(Value *V)` that returns true when every
    user is `icmp eq/ne V, 0`.
@@ -131,7 +131,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: bitwise-narrow-const.ll [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise-narrow-const.ll` covering:
+Create `llvm-project/llvm/test/CodeGen/V6Clang/bitwise-narrow-const.ll` covering:
 
 - `and_zero_test_phi_sibling`: `and i16 PHI, 1` with i16 siblings — must emit `ANI 1`
 - `or_narrow_const`: `or i16 x, 0x80` result used as i8 — `ORI 0x80`
@@ -139,7 +139,7 @@ Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise-narrow-const.ll` covering
 - `and_wide_const`: `and i16 x, 0x1234` — must NOT narrow (C > 0xFF)
 - `and_live_hi`: result assigned to i16 — must NOT narrow when hi byte needed
 
-Run: `python llvm-build\bin\llvm-lit.py llvm-project\llvm\test\CodeGen\V6CLANG\bitwise-narrow-const.ll`
+Run: `python llvm-build\bin\llvm-lit.py llvm-project\llvm\test\CodeGen\V6Clang\bitwise-narrow-const.ll`
 
 > **Implementation Notes**: Created `type-narrow-bitwise-const.ll` (not `bitwise-narrow-const.ll`). 4 test cases: (1) `and_zerotest_phi_siblings` — PHI + siblings, zero-test only → `ANI` emitted, no `LXI`; (2) `and_live_result_no_narrow` — result used as i16 return → must NOT narrow; (3) `and_large_const_no_narrow` — C=3855 > 0xFF → must NOT narrow; (4) `and_no_siblings_baseline` — PHI with no siblings → `ANI`. All 4 pass. Key fix required: `.ll` must have `target triple = "i8080-unknown-v6clang"` for the pass to fire.
 
@@ -185,7 +185,7 @@ Create `tests\features\72\result.txt` following `tests\features\result.md` forma
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-> **Implementation Notes**: `scripts/sync_llvm_mirror.ps1` ran cleanly, syncing `llvm/lib/Target/V6CLANG/V6ClangTypeNarrowing.cpp` and `tests/lit/CodeGen/V6CLANG/type-narrow-bitwise-const.ll`.
+> **Implementation Notes**: `scripts/sync_llvm_mirror.ps1` ran cleanly, syncing `llvm/lib/Target/V6Clang/V6ClangTypeNarrowing.cpp` and `tests/lit/CodeGen/V6Clang/type-narrow-bitwise-const.ll`.
 
 ---
 

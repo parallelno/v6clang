@@ -304,7 +304,7 @@ Verification
   `tests/features/56/v6clang.c` (without the
   `OLD_BASELINE_SKIP_HL_LIVE` guard) against HEAD~1 yields
   `error: ran out of registers during register allocation`.
-- `llvm/test/CodeGen/V6CLANG/store16g-shapes.ll` — pins each row via the
+- `llvm/test/CodeGen/V6Clang/store16g-shapes.ll` — pins each row via the
   V6CLANG calling convention; all 6 cases match.
 - `python tests\run_all.py` — golden + lit suites both PASS
   (132/132 tests).

@@ -147,8 +147,8 @@ multiple translation units.
 
 > **Implementation Notes**: Final-link producer coverage exists across the
 > mirrored lit suite and feature fixtures: `debug-line.ll`,
-> `Linker/V6CLANG/debug-gc-sections.test` (GC + all-ones tombstone),
-> `Linker/V6CLANG/debug-v6asm-mixed.test` (mixed C/ASM line table), the
+> `Linker/V6Clang/debug-gc-sections.test` (GC + all-ones tombstone),
+> `Linker/V6Clang/debug-v6asm-mixed.test` (mixed C/ASM line table), the
 > `debug-*` Clang CodeGen tests, and Feature 83's `-O0/-O1/-O2/-Os` matrix.
 
 ### Step 3.9 - Prove optimization and performance non-regression [x]

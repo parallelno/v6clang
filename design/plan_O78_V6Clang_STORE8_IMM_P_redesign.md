@@ -99,7 +99,7 @@ DE-dead)`. Other M-operand pseudos still use the generic helper.
 
 ### Step 3.1 — Replace `V6CLANG_STORE8_IMM_P` case in `expandPostRAPseudo` [x]
 
-File: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (~line 2459).
+File: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` (~line 2459).
 
 New body:
 
@@ -174,7 +174,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `store8imm-shape-redesign.ll` [x]
 
-New file `llvm-project/llvm/test/CodeGen/V6CLANG/store8imm-shape-redesign.ll`
+New file `llvm-project/llvm/test/CodeGen/V6Clang/store8imm-shape-redesign.ll`
 covering all 7 rows. Use free-list CC pinning to control AddrReg
 (1st i16 arg → HL, 2nd → DE, 3rd → BC) plus inline-asm `OUT 0xde`
 consumers to control liveness of A/HL/DE.
@@ -190,7 +190,7 @@ Required CHECK shapes:
 
 Run with:
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\store8imm-shape-redesign.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6Clang\store8imm-shape-redesign.ll
 ```
 
 > **Implementation Notes**:
@@ -226,11 +226,11 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 > **Implementation Notes**:
 >
-> - Expander rewritten in `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+> - Expander rewritten in `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 >   (~line 2459) as a per-shape dispatch covering all seven rows of the
 >   design table. `expandMemOpM` is no longer used for `V6CLANG_STORE8_IMM_P`.
 > - Lit test: 7 CHECK blocks at
->   `llvm-project/llvm/test/CodeGen/V6CLANG/store8imm-shape-redesign.ll` — PASS.
+>   `llvm-project/llvm/test/CodeGen/V6Clang/store8imm-shape-redesign.ll` — PASS.
 > - `python tests\run_all.py` → 134/134 PASS. Benchmarks unchanged.
 > - Per-fire wins (vs OLD): row 2 (BC, A-dead) −3B/−40cc, row 3 (DE, A-dead)
 >   −1B/−4cc, row 6 (BC, DE-dead) 0B/−20cc. Other shapes already optimal.

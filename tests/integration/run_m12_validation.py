@@ -897,7 +897,7 @@ def run_isr_test(llc, verbose=False):
 
 def run_verify_machineinstrs(llc, verbose=False):
     """Run all lit-test IR files through llc with -verify-machineinstrs."""
-    lit_dir = ROOT / "tests" / "lit" / "CodeGen" / "V6CLANG"
+    lit_dir = ROOT / "tests" / "lit" / "CodeGen" / "V6Clang"
     if not lit_dir.exists():
         print("  SKIP: CodeGen lit test directory not found")
         return 0, 0, []

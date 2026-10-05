@@ -90,7 +90,7 @@ invert the CC (C↔NC, M↔P). This works because:
 
 ### Step 3.1 — Extend ISel dispatch for ordering conditions [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`
 
 In the `V6ClangISD::BR_CC16` case of `Select()`, after the existing EQ/NE
 block, add handling for ordering conditions (COND_C/NC/M/P):
@@ -113,7 +113,7 @@ block, add handling for ordering conditions (COND_C/NC/M/P):
 
 ### Step 3.2 — Extend V6CLANG_BR_CC16_IMM expansion for ordering conditions [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 In `expandPostRAPseudo()` case `V6CLANG_BR_CC16_IMM`:
 
@@ -137,7 +137,7 @@ In `expandPostRAPseudo()` case `V6CLANG_BR_CC16_IMM`:
 
 ### Step 3.3 — Add V6CLANG_CMP16_IMM pseudo [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add a new pseudo alongside the existing `V6CLANG_CMP16`:
 ```tablegen
@@ -154,7 +154,7 @@ a separate SELECT_CC node.
 
 ### Step 3.4 — Extend LowerSELECT_CC for ordering with constant RHS [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 In `LowerSELECT_CC()`, after the existing O34 zero-test block, add
 handling for i16 ordering conditions with constant RHS:
@@ -180,7 +180,7 @@ the CMP operands and the CC are simultaneously accessible.
 
 ### Step 3.5 — Extend ISel Select() for V6ClangISD::CMP with i16 constant [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`
 
 In `Select()`, add a handler for `V6ClangISD::CMP` (alongside the existing
 `V6ClangISD::BR_CC16` case):
@@ -196,7 +196,7 @@ No CC adjustment here — that was already done in `LowerSELECT_CC()`.
 
 ### Step 3.6 — Expand V6CLANG_CMP16_IMM post-RA [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add `case V6CLANG::V6CLANG_CMP16_IMM:` in `expandPostRAPseudo()`:
 ```
@@ -220,7 +220,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.8 — Lit test: br-cc16-imm-ord.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/br-cc16-imm-ord.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/br-cc16-imm-ord.ll`
 
 Test all six ordering conditions with integer constants:
 - `test_ult`: `icmp ult i16 %x, 1000` → CHECK for MVI+SUB, MVI+SBB, no LXI
@@ -237,7 +237,7 @@ Test all six ordering conditions with integer constants:
 
 ### Step 3.9 — Update existing lit test: br-cc16-imm.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/br-cc16-imm.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/br-cc16-imm.ll`
 
 Update `lt_still_register` test — it currently asserts that ULT uses
 the register path. After this change, it should use MVI+SUB/SBB.

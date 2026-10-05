@@ -48,4 +48,4 @@ Implementation: V6ClangRedundantFlagElim.cpp extended with:
   - isBridgeDead(): confirm R is dead after CMP R
   - New elimination rule: ZFlagValid && XRA A && next=CMP R && R in AValueRegs
 
-New lit test: llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll
+New lit test: llvm-project/llvm/test/CodeGen/V6Clang/cmp8-zero-redundant-after-alu.ll

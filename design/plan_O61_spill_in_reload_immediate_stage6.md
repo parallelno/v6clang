@@ -217,7 +217,7 @@ pass.
 
 ### Step 3.1 — Widen the i8 spill-source filter [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Delete the `AllASources` check in the i8 slot loop (the GR8 reload-dst
 check stays). Concretely replace:
@@ -247,7 +247,7 @@ reload destinations is retained verbatim.
 
 ### Step 3.2 — Source-set-aware K cap [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Compute an `AllASources` flag (same predicate as the deleted
 filter) and branch on it before picking the 2nd winner:
@@ -282,7 +282,7 @@ if (AllASources && E.Spills.size() == 1) {
 
 ### Step 3.3 — Per-source spill emitter (A / non-A) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the body of the i8 `for (MachineInstr *Spill : E.Spills)`
 loop with a per-source switch. The A branch is the verbatim Stage 4
@@ -338,7 +338,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.5 — Lit test: non-A i8 patched spill [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-stage6.ll`
+`llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-stage6.ll`
 (new)
 
 Cover at minimum:
@@ -357,7 +357,7 @@ Use `-mv6clang-spill-patched-reload -v6clang-disable-shld-lhld-fold` as the
 RUN-line flags, matching the other stages.
 
 > **Implementation Notes**: Added
-> `llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-stage6.ll`
+> `llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-stage6.ll`
 > covering `three_i8(i8,i8,i8)` which forces one B/C spill and one D/E
 > spill through `expandSpill8Static` Row 1
 > (`LXI HL, .LLo61_*+1; MOV M, r`) plus the A-source fast path

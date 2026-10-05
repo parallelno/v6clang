@@ -36,7 +36,7 @@ static std::string findFirstExisting(llvm::ArrayRef<std::string> Candidates) {
 /// Locate a V6CLANG driver data file (linker script) by name.
 /// Search order:
 ///   1. <bin>/../lib/clang/<ver>/v6clang/<filename>           (installed)
-///   2. <bin>/../../clang/lib/Driver/ToolChains/V6CLANG/...   (workspace dev tree)
+///   2. <bin>/../../clang/lib/Driver/ToolChains/V6Clang/...   (workspace dev tree)
 ///   3. <bin>/../../llvm-project/clang/lib/...            (llvm-project mirror)
 static std::string findV6ClangDriverFile(const ToolChain &TC, StringRef Filename) {
   StringRef Dir = TC.getDriver().Dir;
@@ -45,11 +45,11 @@ static std::string findV6ClangDriverFile(const ToolChain &TC, StringRef Filename
 
   llvm::SmallString<256> DevTree(Dir);
   llvm::sys::path::append(DevTree, "..", "..", "clang", "lib");
-  llvm::sys::path::append(DevTree, "Driver", "ToolChains", "V6CLANG", Filename);
+  llvm::sys::path::append(DevTree, "Driver", "ToolChains", "V6Clang", Filename);
 
   llvm::SmallString<256> MirrorTree(Dir);
   llvm::sys::path::append(MirrorTree, "..", "..", "llvm-project", "clang");
-  llvm::sys::path::append(MirrorTree, "lib", "Driver", "ToolChains", "V6CLANG");
+  llvm::sys::path::append(MirrorTree, "lib", "Driver", "ToolChains", "V6Clang");
   llvm::sys::path::append(MirrorTree, Filename);
 
   return findFirstExisting({std::string(Installed), std::string(DevTree),

@@ -138,7 +138,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=sccache `
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
             -DLLVM_TARGETS_TO_BUILD=X86 `
-            -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG `
+            -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6Clang `
             "-DLLVM_ENABLE_PROJECTS=clang;lld"
 
       - name: Build

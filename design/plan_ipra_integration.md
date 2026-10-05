@@ -75,11 +75,11 @@ Implement the feature in three backend steps:
 
 | Step | What | Where |
 |------|------|-------|
-| 3.1 | Remove hard GPR/FLAGS defs from `CALL` | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` |
-| 3.2 | Enable IPRA by default | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h` |
-| 3.3 | Audit call builders and document mask assumptions | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`, `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`, `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` |
+| 3.1 | Remove hard GPR/FLAGS defs from `CALL` | `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` |
+| 3.2 | Enable IPRA by default | `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.h` |
+| 3.3 | Audit call builders and document mask assumptions | `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`, `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`, `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp` |
 | 3.4 | Build | — |
-| 3.5 | Lit test | `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll` |
+| 3.5 | Lit test | `tests/lit/CodeGen/V6Clang/ipra-call-preservation.ll` |
 | 3.6 | Run regression tests | — |
 | 3.7 | Verification assembly | `tests/features/19/` |
 | 3.8 | Create `result.txt` | `tests/features/19/result.txt` |
@@ -89,7 +89,7 @@ Implement the feature in three backend steps:
 
 ### Step 3.1 — Remove hard non-SP defs from `CALL` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Change the ordinary `CALL` definition from:
 
@@ -114,7 +114,7 @@ Leave conditional calls as-is; they already only define `SP`.
 
 ### Step 3.2 — Enable IPRA in the target machine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.h`
 
 Add:
 
@@ -135,9 +135,9 @@ to pass `-mllvm -enable-ipra` manually.
 ### Step 3.3 — Audit V6CLANG call creation and mask propagation [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Verify and document the concrete call creation paths:
 
@@ -169,7 +169,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: direct-call IPRA spill removal [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll`
+**File**: `tests/lit/CodeGen/V6Clang/ipra-call-preservation.ll`
 
 Add focused coverage for:
 
@@ -183,7 +183,7 @@ Add focused coverage for:
 Use `CHECK` lines to verify the direct-call case loses stack-frame spill code
 around `CALL` while the conservative case still retains it.
 
-> **Implementation Notes**: Added `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll`.
+> **Implementation Notes**: Added `tests/lit/CodeGen/V6Clang/ipra-call-preservation.ll`.
 > The test covers three cases in one file: direct internal call with IPRA,
 > conservative external call with IPRA, and direct-call fallback with
 > `-enable-ipra=false`. Verified with a focused `llvm-lit.py` run.
@@ -281,7 +281,7 @@ features even need to act.
 ## 7. Future Enhancements
 
 - ~~Add targeted MIR or llc coverage for recursive SCC cases once IPRA is working.~~
-  Done — `tests/lit/CodeGen/V6CLANG/ipra-recursive-scc.ll` covers mutual-recursion
+  Done — `tests/lit/CodeGen/V6Clang/ipra-recursive-scc.ll` covers mutual-recursion
   SCC conservative behavior and contrasts it with leaf-call IPRA narrowing.
 - ~~Consider adding a debug-only verifier check that V6CLANG `CALL` instructions carry
   a register mask after instruction selection.~~

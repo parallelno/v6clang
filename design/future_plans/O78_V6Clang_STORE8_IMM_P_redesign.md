@@ -210,7 +210,7 @@ Notes:
 
 ## Verification plan
 
-- Lit test `tests/lit/CodeGen/V6CLANG/store8imm-shape-redesign.ll` covering all
+- Lit test `tests/lit/CodeGen/V6Clang/store8imm-shape-redesign.ll` covering all
   seven sub-shapes. Pattern after the four `temp/store8imm_case*.c`
   probes already in the workspace; add three more for the new (A dead +
   BC), (A dead + DE), (BC + HL live + DE dead) shapes. Use the free-list

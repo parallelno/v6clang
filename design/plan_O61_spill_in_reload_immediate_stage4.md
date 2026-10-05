@@ -51,7 +51,7 @@ The Stage 3 `V6ClangSpillPatchedReload` pass only collects
 Every 8-bit spill/reload pair goes straight through the classical
 static-stack expansion in
 `V6ClangRegisterInfo::eliminateFrameIndex`
-([V6ClangRegisterInfo.cpp lines 133–200](../llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp#L133))
+([V6ClangRegisterInfo.cpp lines 133–200](../llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp#L133))
 as `STA`/`LDA` (A-target) or the HL-routed
 `PUSH HL; LXI HL, slot; MOV M, r / MOV r, M; POP HL` sequence
 (non-A target). The `__v6clang_ss.f` BSS slot is 1 byte per i8 spill
@@ -231,7 +231,7 @@ pass.
 
 ### Step 3.1 — Extend `deltaForReload` for i8 reloads [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Add an i8 branch. The simplest form is a second helper to keep the
 i16 function body unchanged:
@@ -258,7 +258,7 @@ static int deltaForReload8(unsigned DstReg, bool HLLive) {
 
 ### Step 3.2 — Extend chooser with `Width` parameter [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Extend `scoreReload` and `pickBestReload` to accept the slot width.
 The 2nd-patch exclusion flag is reused (`AllowHL=false` for i16)
@@ -291,7 +291,7 @@ widths.
 
 ### Step 3.3 — Collect i8 pseudos into `Slots8` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Add to the existing MF scan:
 
@@ -317,7 +317,7 @@ for (auto &MBB : MF) {
 
 ### Step 3.4 — Add i8 slot rewrite loop [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 After the existing i16 slot loop, add a parallel i8 loop:
 
@@ -363,7 +363,7 @@ for (auto &KV : Slots8) {
 
 ### Step 3.5 — Spill emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Per original `V6CLANG_SPILL8` (src = A), emit one `STA` per Sym:
 
@@ -386,7 +386,7 @@ for (MachineInstr *Spill : E.Spills) {
 
 ### Step 3.6 — Winner patch emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 ```cpp
 for (size_t wi = 0; wi < Winners.size(); ++wi) {
@@ -408,7 +408,7 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
 
 ### Step 3.7 — Unpatched reload emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Mirror `V6ClangRegisterInfo::eliminateFrameIndex`'s `V6CLANG_RELOAD8`
 branches (A / H / L / other r8), replacing the
@@ -460,7 +460,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.9 — Lit test: i8 patched reload [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-i8.ll` (new)
+`llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-i8.ll` (new)
 
 Four cases:
 

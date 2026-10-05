@@ -186,7 +186,7 @@ pass; Stage 2 simply expands what the gated pass does.
 
 ### Step 3.1 — Add `deltaForReload` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Anonymous-namespace static helper that returns the saved cycles for a
 single reload site according to the
@@ -215,7 +215,7 @@ static int deltaForReload(unsigned DstReg, bool HLLive) {
 
 ### Step 3.2 — Copy `isRegDeadAfterMI` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Anonymous-namespace duplicate of the existing helper from
 `V6ClangRegisterInfo.cpp` (~25 lines). Used to discriminate the
@@ -231,7 +231,7 @@ HL-dead vs HL-live reload-cost rows in the Δ table.
 
 ### Step 3.3 — Acquire `MachineBlockFrequencyInfo` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Override `getAnalysisUsage`:
 
@@ -274,7 +274,7 @@ default-construction of the analysis. Verify during implementation.)
 
 ### Step 3.4 — Extend filter & add chooser [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace the Stage 1 candidate-filter block with:
 
@@ -330,7 +330,7 @@ if (BestDelta == 0)
 
 ### Step 3.5 — Patch the winner with `LXI <DstReg>, 0` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Generalise Stage 1's hard-coded `V6CLANG::HL` patch site:
 
@@ -358,7 +358,7 @@ Register WinnerDst = PatchedReload->getOperand(0).getReg();
 
 ### Step 3.6 — Rewrite unpatched non-HL reloads with classical sequences [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp`
 
 Replace Stage 1's "all reloads → LHLD Sym+1" loop with a
 register-aware emitter:
@@ -425,7 +425,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.8 — Lit test: DE/BC patched reload [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-de-bc.ll`
+`llvm-project/llvm/test/CodeGen/V6Clang/spill-patched-reload-de-bc.ll`
 (new)
 
 Three tests:

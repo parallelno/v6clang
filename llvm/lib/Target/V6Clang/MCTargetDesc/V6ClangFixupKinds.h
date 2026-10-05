@@ -10,7 +10,7 @@
 #include "llvm/MC/MCFixup.h"
 
 namespace llvm {
-namespace V6CLANG {
+namespace V6Clang {
 
 enum Fixups {
   /// 8-bit absolute value (immediate operand at byte offset 1).
@@ -42,7 +42,7 @@ enum RelocType {
   R_V6CLANG_32   = 5,   ///< 32-bit absolute value (little-endian)
 };
 
-} // namespace V6CLANG
+} // namespace V6Clang
 } // namespace llvm
 
 #endif // LLVM_LIB_TARGET_V6CLANG_MCTARGETDESC_V6ClangFIXUPKINDS_H

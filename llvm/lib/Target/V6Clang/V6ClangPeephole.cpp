@@ -127,7 +127,7 @@ char V6ClangPeephole::ID = 0;
 bool V6ClangPeephole::eliminateSelfMov(MachineBasicBlock &MBB) {
   bool Changed = false;
   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-    if (MI.getOpcode() != V6CLANG::MOVrr)
+    if (MI.getOpcode() != V6Clang::MOVrr)
       continue;
     if (MI.getOperand(0).getReg() == MI.getOperand(1).getReg()) {
       MI.eraseFromParent();
@@ -142,7 +142,7 @@ static bool isRetOnlyBlock(const MachineBasicBlock &MBB) {
   for (const MachineInstr &MI : MBB) {
     if (MI.isDebugInstr())
       continue;
-    if (MI.getOpcode() == V6CLANG::RET)
+    if (MI.getOpcode() == V6Clang::RET)
       return true; // RET found — any debug instrs after it are fine.
     return false;  // Non-debug, non-RET instruction → not RET-only.
   }
@@ -163,16 +163,16 @@ bool V6ClangPeephole::eliminateTailCall(MachineBasicBlock &MBB) {
     return false;
 
   // --- Pattern 1: CALL; RET in the same block (O14) ---
-  if (MBB.size() >= 2 && LastIt->getOpcode() == V6CLANG::RET) {
+  if (MBB.size() >= 2 && LastIt->getOpcode() == V6Clang::RET) {
     auto CallIt = std::prev(LastIt);
     while (CallIt != MBB.begin() && CallIt->isDebugInstr())
       CallIt = std::prev(CallIt);
 
-    if (CallIt->getOpcode() == V6CLANG::CALL) {
+    if (CallIt->getOpcode() == V6Clang::CALL) {
       const TargetInstrInfo &TII =
           *MBB.getParent()->getSubtarget().getInstrInfo();
       BuildMI(MBB, CallIt, CallIt->getDebugLoc(),
-              TII.get(V6CLANG::V6CLANG_TAILJMP))
+              TII.get(V6Clang::V6CLANG_TAILJMP))
           .add(CallIt->getOperand(0));
 
       LastIt->eraseFromParent();
@@ -182,13 +182,13 @@ bool V6ClangPeephole::eliminateTailCall(MachineBasicBlock &MBB) {
   }
 
   // --- Pattern 2: CALL at end of block, sole successor is RET-only (O23) ---
-  if (LastIt->getOpcode() == V6CLANG::CALL && MBB.succ_size() == 1) {
+  if (LastIt->getOpcode() == V6Clang::CALL && MBB.succ_size() == 1) {
     MachineBasicBlock *Succ = *MBB.succ_begin();
     if (isRetOnlyBlock(*Succ)) {
       const TargetInstrInfo &TII =
           *MBB.getParent()->getSubtarget().getInstrInfo();
       BuildMI(MBB, LastIt, LastIt->getDebugLoc(),
-              TII.get(V6CLANG::V6CLANG_TAILJMP))
+              TII.get(V6Clang::V6CLANG_TAILJMP))
           .add(LastIt->getOperand(0));
 
       LastIt->eraseFromParent();
@@ -263,13 +263,13 @@ static bool isRegDeadAfter(MachineBasicBlock &MBB,
 /// Return true if MI is a redundant zero-test: ORA A or CPI 0.
 static bool isRedundantZeroTest(const MachineInstr &MI) {
   // ORA A: ORAr with all three operands (dst, lhs, src) = A.
-  if (MI.getOpcode() == V6CLANG::ORAr &&
-      MI.getOperand(0).getReg() == V6CLANG::A &&
-      MI.getOperand(1).getReg() == V6CLANG::A &&
-      MI.getOperand(2).getReg() == V6CLANG::A)
+  if (MI.getOpcode() == V6Clang::ORAr &&
+      MI.getOperand(0).getReg() == V6Clang::A &&
+      MI.getOperand(1).getReg() == V6Clang::A &&
+      MI.getOperand(2).getReg() == V6Clang::A)
     return true;
   // CPI 0: compare A with immediate 0.
-  if (MI.getOpcode() == V6CLANG::CPI &&
+  if (MI.getOpcode() == V6Clang::CPI &&
       MI.getOperand(1).isImm() && MI.getOperand(1).getImm() == 0)
     return true;
   return false;
@@ -321,12 +321,12 @@ static void markRegUsesUndef(MachineInstr *MI, Register Reg) {
 
 static bool readsNonCarryFlags(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
-  case V6CLANG::JZ:
-  case V6CLANG::JNZ:
-  case V6CLANG::JP:
-  case V6CLANG::JM:
-  case V6CLANG::JPE:
-  case V6CLANG::JPO:
+  case V6Clang::JZ:
+  case V6Clang::JNZ:
+  case V6Clang::JP:
+  case V6Clang::JM:
+  case V6Clang::JPE:
+  case V6Clang::JPO:
     return true;
   default:
     return false;
@@ -337,7 +337,7 @@ static bool definesFlags(const MachineInstr &MI,
                          const TargetRegisterInfo *TRI) {
   for (const MachineOperand &MO : MI.operands()) {
     if (MO.isReg() && MO.isDef() && MO.getReg().isPhysical() &&
-        TRI->regsOverlap(MO.getReg(), V6CLANG::FLAGS))
+        TRI->regsOverlap(MO.getReg(), V6Clang::FLAGS))
       return true;
   }
   return false;
@@ -345,17 +345,17 @@ static bool definesFlags(const MachineInstr &MI,
 
 static bool definesOnlyCarryFlag(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
-  case V6CLANG::DAD:
-  case V6CLANG::V6CLANG_DAD:
-  case V6CLANG::V6CLANG_LEA_FI:
-  case V6CLANG::V6CLANG_LOAD8_FI:
-  case V6CLANG::V6CLANG_LOAD16_FI:
-  case V6CLANG::V6CLANG_STORE8_FI:
-  case V6CLANG::V6CLANG_STORE16_FI:
-  case V6CLANG::V6CLANG_SPILL8:
-  case V6CLANG::V6CLANG_RELOAD8:
-  case V6CLANG::V6CLANG_SPILL16:
-  case V6CLANG::V6CLANG_RELOAD16:
+  case V6Clang::DAD:
+  case V6Clang::V6CLANG_DAD:
+  case V6Clang::V6CLANG_LEA_FI:
+  case V6Clang::V6CLANG_LOAD8_FI:
+  case V6Clang::V6CLANG_LOAD16_FI:
+  case V6Clang::V6CLANG_STORE8_FI:
+  case V6Clang::V6CLANG_STORE16_FI:
+  case V6Clang::V6CLANG_SPILL8:
+  case V6Clang::V6CLANG_RELOAD8:
+  case V6Clang::V6CLANG_SPILL16:
+  case V6Clang::V6CLANG_RELOAD16:
     return true;
   default:
     return false;
@@ -372,14 +372,14 @@ static bool hasNonCarryFlagUseBeforeFullFlagDef(
       return false;
   }
   for (MachineBasicBlock *Succ : MBB.successors())
-    if (Succ->isLiveIn(V6CLANG::FLAGS))
+    if (Succ->isLiveIn(V6Clang::FLAGS))
       return true;
   return false;
 }
 
 /// Return true if MI is a DCR r or INR r instruction.
 static bool isDcrOrInr(const MachineInstr &MI) {
-  return MI.getOpcode() == V6CLANG::DCRr || MI.getOpcode() == V6CLANG::INRr;
+  return MI.getOpcode() == V6Clang::DCRr || MI.getOpcode() == V6Clang::INRr;
 }
 
 /// Fold DCR/INR + redundant flag test + JNZ/JZ into DCR/INR + JNZ/JZ.
@@ -396,7 +396,7 @@ bool V6ClangPeephole::foldCounterBranch(MachineBasicBlock &MBB) {
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &BrMI = *I;
     // Match JNZ or JZ.
-    if (BrMI.getOpcode() != V6CLANG::JNZ && BrMI.getOpcode() != V6CLANG::JZ)
+    if (BrMI.getOpcode() != V6Clang::JNZ && BrMI.getOpcode() != V6Clang::JZ)
       continue;
 
     // We need at least 2 instructions before the branch for Pattern A.
@@ -420,20 +420,20 @@ bool V6ClangPeephole::foldCounterBranch(MachineBasicBlock &MBB) {
       if (DcrAIt != MBB.begin()) {
         auto MovArIt = std::prev(DcrAIt);  // MOV A, r
 
-        if (MovRaIt->getOpcode() == V6CLANG::MOVrr &&
-            MovRaIt->getOperand(1).getReg() == V6CLANG::A &&
+        if (MovRaIt->getOpcode() == V6Clang::MOVrr &&
+            MovRaIt->getOperand(1).getReg() == V6Clang::A &&
             isDcrOrInr(*DcrAIt) &&
-            DcrAIt->getOperand(0).getReg() == V6CLANG::A &&
-            MovArIt->getOpcode() == V6CLANG::MOVrr &&
-            MovArIt->getOperand(0).getReg() == V6CLANG::A) {
+            DcrAIt->getOperand(0).getReg() == V6Clang::A &&
+            MovArIt->getOpcode() == V6Clang::MOVrr &&
+            MovArIt->getOperand(0).getReg() == V6Clang::A) {
           Register CounterReg = MovArIt->getOperand(1).getReg();
           Register StoreReg = MovRaIt->getOperand(0).getReg();
           // MOV A,r and MOV r,A must refer to the same register r.
-          if (CounterReg == StoreReg && CounterReg != V6CLANG::A &&
-              isRegDeadAfter(MBB, I, V6CLANG::A, TRI)) {
+          if (CounterReg == StoreReg && CounterReg != V6Clang::A &&
+              isRegDeadAfter(MBB, I, V6Clang::A, TRI)) {
             // Replace 5 instructions with DCR/INR r + Jcc.
-            unsigned NewOpc = (DcrAIt->getOpcode() == V6CLANG::DCRr)
-                                  ? V6CLANG::DCRr : V6CLANG::INRr;
+            unsigned NewOpc = (DcrAIt->getOpcode() == V6Clang::DCRr)
+                                  ? V6Clang::DCRr : V6Clang::INRr;
             BuildMI(MBB, *MovArIt, MovArIt->getDebugLoc(),
                     TII.get(NewOpc), CounterReg)
                 .addReg(CounterReg);
@@ -451,14 +451,14 @@ bool V6ClangPeephole::foldCounterBranch(MachineBasicBlock &MBB) {
 
     // --- Try Pattern B (4 instructions → 2) ---
     // DCR r; MOV A,r; ORA A; Jcc
-    if (PreOraIt->getOpcode() == V6CLANG::MOVrr &&
-        PreOraIt->getOperand(0).getReg() == V6CLANG::A) {
+    if (PreOraIt->getOpcode() == V6Clang::MOVrr &&
+        PreOraIt->getOperand(0).getReg() == V6Clang::A) {
       Register SrcReg = PreOraIt->getOperand(1).getReg();
-      if (SrcReg != V6CLANG::A && PreOraIt != MBB.begin()) {
+      if (SrcReg != V6Clang::A && PreOraIt != MBB.begin()) {
         auto DcrIt = std::prev(PreOraIt);
         if (isDcrOrInr(*DcrIt) &&
             DcrIt->getOperand(0).getReg() == SrcReg &&
-            isRegDeadAfter(MBB, I, V6CLANG::A, TRI)) {
+            isRegDeadAfter(MBB, I, V6Clang::A, TRI)) {
           // Remove MOV A,r and ORA A — keep DCR r and Jcc.
           OraIt->eraseFromParent();
           PreOraIt->eraseFromParent();
@@ -471,7 +471,7 @@ bool V6ClangPeephole::foldCounterBranch(MachineBasicBlock &MBB) {
     // --- Try Pattern A (3 instructions → 2) ---
     // DCR A; ORA A; Jcc
     if (isDcrOrInr(*PreOraIt) &&
-        PreOraIt->getOperand(0).getReg() == V6CLANG::A) {
+        PreOraIt->getOperand(0).getReg() == V6Clang::A) {
       // Remove ORA A — DCR A already set Z.
       OraIt->eraseFromParent();
       Changed = true;
@@ -499,11 +499,11 @@ bool V6ClangPeephole::foldXraCmpZeroTest(MachineBasicBlock &MBB) {
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &MovMI = *I;
     // Match MOV A, r (r != A).
-    if (MovMI.getOpcode() != V6CLANG::MOVrr ||
-        MovMI.getOperand(0).getReg() != V6CLANG::A)
+    if (MovMI.getOpcode() != V6Clang::MOVrr ||
+        MovMI.getOperand(0).getReg() != V6Clang::A)
       continue;
     Register SrcReg = MovMI.getOperand(1).getReg();
-    if (SrcReg == V6CLANG::A)
+    if (SrcReg == V6Clang::A)
       continue;
 
     // Next must be ORA A or CPI 0.
@@ -517,11 +517,11 @@ bool V6ClangPeephole::foldXraCmpZeroTest(MachineBasicBlock &MBB) {
     auto BrIt = std::next(OraIt);
     if (BrIt == E)
       continue;
-    if (BrIt->getOpcode() != V6CLANG::JZ && BrIt->getOpcode() != V6CLANG::JNZ)
+    if (BrIt->getOpcode() != V6Clang::JZ && BrIt->getOpcode() != V6Clang::JNZ)
       continue;
 
     // Check safety: A must be dead or A=0 acceptable on fallthrough.
-    bool Safe = isRegDeadAfter(MBB, BrIt, V6CLANG::A, TRI);
+    bool Safe = isRegDeadAfter(MBB, BrIt, V6Clang::A, TRI);
     if (!Safe) {
       // Condition 2: first non-debug instruction in the fallthrough successor
       // is MVI A, 0. Since XRA A sets A=0, the value change is benign.
@@ -537,8 +537,8 @@ bool V6ClangPeephole::foldXraCmpZeroTest(MachineBasicBlock &MBB) {
         while (FTIt != FallThrough->end() && FTIt->isDebugInstr())
           ++FTIt;
         if (FTIt != FallThrough->end() &&
-            FTIt->getOpcode() == V6CLANG::MVIr &&
-            FTIt->getOperand(0).getReg() == V6CLANG::A &&
+            FTIt->getOpcode() == V6Clang::MVIr &&
+            FTIt->getOperand(0).getReg() == V6Clang::A &&
             FTIt->getOperand(1).isImm() &&
             FTIt->getOperand(1).getImm() == 0)
           Safe = true;
@@ -549,15 +549,15 @@ bool V6ClangPeephole::foldXraCmpZeroTest(MachineBasicBlock &MBB) {
 
     // Replace MOV A, r with XRA A.
     MachineInstr *XraMI =
-        BuildMI(MBB, MovMI, MovMI.getDebugLoc(), TII.get(V6CLANG::XRAr), V6CLANG::A)
-            .addReg(V6CLANG::A)
-            .addReg(V6CLANG::A)
+        BuildMI(MBB, MovMI, MovMI.getDebugLoc(), TII.get(V6Clang::XRAr), V6Clang::A)
+            .addReg(V6Clang::A)
+            .addReg(V6Clang::A)
             .getInstr();
-    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, TRI))
-      markRegUsesUndef(XraMI, V6CLANG::A);
+    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, TRI))
+      markRegUsesUndef(XraMI, V6Clang::A);
     // Replace ORA A with CMP r.
-    BuildMI(MBB, *OraIt, OraIt->getDebugLoc(), TII.get(V6CLANG::CMPr))
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, *OraIt, OraIt->getDebugLoc(), TII.get(V6Clang::CMPr))
+        .addReg(V6Clang::A)
         .addReg(SrcReg);
 
     // Advance iterator past the branch before erasing MOV and ORA.
@@ -576,7 +576,7 @@ static bool touchesDEorHL(const MachineInstr &MI,
     if (!MO.isReg())
       continue;
     Register Reg = MO.getReg();
-    if (TRI->regsOverlap(Reg, V6CLANG::DE) || TRI->regsOverlap(Reg, V6CLANG::HL))
+    if (TRI->regsOverlap(Reg, V6Clang::DE) || TRI->regsOverlap(Reg, V6Clang::HL))
       return true;
   }
   return false;
@@ -593,7 +593,7 @@ bool V6ClangPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
-    if (I->getOpcode() != V6CLANG::XCHG) {
+    if (I->getOpcode() != V6Clang::XCHG) {
       ++I;
       continue;
     }
@@ -605,7 +605,7 @@ bool V6ClangPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
         ++J;
         continue;
       }
-      if (J->getOpcode() == V6CLANG::XCHG)
+      if (J->getOpcode() == V6Clang::XCHG)
         break; // Found matching XCHG.
       if (touchesDEorHL(*J, TRI)) {
         CanCancel = false;
@@ -613,7 +613,7 @@ bool V6ClangPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
       }
       ++J;
     }
-    if (CanCancel && J != E && J->getOpcode() == V6CLANG::XCHG) {
+    if (CanCancel && J != E && J->getOpcode() == V6Clang::XCHG) {
       // XCHG pair found — delete both.
       MBB.erase(J);        // erase second XCHG
       I = MBB.erase(I);    // erase first XCHG, I now points to next
@@ -637,19 +637,19 @@ bool V6ClangPeephole::foldXchgDad(MachineBasicBlock &MBB) {
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() != V6CLANG::XCHG)
+    if (I->getOpcode() != V6Clang::XCHG)
       continue;
 
     auto Next = std::next(I);
-    if (Next == E || Next->getOpcode() != V6CLANG::DAD)
+    if (Next == E || Next->getOpcode() != V6Clang::DAD)
       continue;
 
     // DAD operand must be DE.
-    if (Next->getOperand(0).getReg() != V6CLANG::DE)
+    if (Next->getOperand(0).getReg() != V6Clang::DE)
       continue;
 
     // DE must be dead after DAD (DE value differs with/without XCHG).
-    if (!isRegDeadAfter(MBB, Next, V6CLANG::DE, TRI))
+    if (!isRegDeadAfter(MBB, Next, V6Clang::DE, TRI))
       continue;
 
     // Safe to remove the XCHG.
@@ -680,27 +680,27 @@ bool V6ClangPeephole::foldXchgSwapRedundancy(MachineBasicBlock &MBB) {
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
     // (1) MOV r1, H
-    if (I->getOpcode() != V6CLANG::MOVrr ||
-        I->getOperand(1).getReg() != V6CLANG::H) {
+    if (I->getOpcode() != V6Clang::MOVrr ||
+        I->getOperand(1).getReg() != V6Clang::H) {
       ++I;
       continue;
     }
     Register R1 = I->getOperand(0).getReg();
     // r1 must not be one of the registers touched by XCHG.
-    if (R1 == V6CLANG::H || R1 == V6CLANG::L || R1 == V6CLANG::D || R1 == V6CLANG::E) {
+    if (R1 == V6Clang::H || R1 == V6Clang::L || R1 == V6Clang::D || R1 == V6Clang::E) {
       ++I;
       continue;
     }
 
     // (2) MOV r2, L
     auto I2 = std::next(I);
-    if (I2 == E || I2->getOpcode() != V6CLANG::MOVrr ||
-        I2->getOperand(1).getReg() != V6CLANG::L) {
+    if (I2 == E || I2->getOpcode() != V6Clang::MOVrr ||
+        I2->getOperand(1).getReg() != V6Clang::L) {
       ++I;
       continue;
     }
     Register R2 = I2->getOperand(0).getReg();
-    if (R2 == V6CLANG::H || R2 == V6CLANG::L || R2 == V6CLANG::D || R2 == V6CLANG::E ||
+    if (R2 == V6Clang::H || R2 == V6Clang::L || R2 == V6Clang::D || R2 == V6Clang::E ||
         R2 == R1) {
       ++I;
       continue;
@@ -708,15 +708,15 @@ bool V6ClangPeephole::foldXchgSwapRedundancy(MachineBasicBlock &MBB) {
 
     // (3) XCHG
     auto I3 = std::next(I2);
-    if (I3 == E || I3->getOpcode() != V6CLANG::XCHG) {
+    if (I3 == E || I3->getOpcode() != V6Clang::XCHG) {
       ++I;
       continue;
     }
 
     // (4) MOV D, r1
     auto I4 = std::next(I3);
-    if (I4 == E || I4->getOpcode() != V6CLANG::MOVrr ||
-        I4->getOperand(0).getReg() != V6CLANG::D ||
+    if (I4 == E || I4->getOpcode() != V6Clang::MOVrr ||
+        I4->getOperand(0).getReg() != V6Clang::D ||
         I4->getOperand(1).getReg() != R1) {
       ++I;
       continue;
@@ -724,8 +724,8 @@ bool V6ClangPeephole::foldXchgSwapRedundancy(MachineBasicBlock &MBB) {
 
     // (5) MOV E, r2
     auto I5 = std::next(I4);
-    if (I5 == E || I5->getOpcode() != V6CLANG::MOVrr ||
-        I5->getOperand(0).getReg() != V6CLANG::E ||
+    if (I5 == E || I5->getOpcode() != V6Clang::MOVrr ||
+        I5->getOperand(0).getReg() != V6Clang::E ||
         I5->getOperand(1).getReg() != R2) {
       ++I;
       continue;
@@ -774,9 +774,9 @@ static bool isUncoveredLhldReachable(
 
   // 1. Scan remainder of current BB after the folded LHLD.
   for (auto I = AfterD, E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() == V6CLANG::SHLD && isSameAddress(Addr, I->getOperand(1)))
+    if (I->getOpcode() == V6Clang::SHLD && isSameAddress(Addr, I->getOperand(1)))
       return false;  // another SHLD covers all forward paths
-    if (I->getOpcode() == V6CLANG::LHLD && isSameAddress(Addr, I->getOperand(1)))
+    if (I->getOpcode() == V6Clang::LHLD && isSameAddress(Addr, I->getOperand(1)))
       return true;   // uncovered reader in same BB
   }
 
@@ -798,9 +798,9 @@ static bool isUncoveredLhldReachable(
     auto ScanEnd = IsSelf ? MachineBasicBlock::iterator(ShldC) : Cur->end();
 
     for (auto I = Cur->begin(); I != ScanEnd; ++I) {
-      if (I->getOpcode() == V6CLANG::SHLD && isSameAddress(Addr, I->getOperand(1)))
+      if (I->getOpcode() == V6Clang::SHLD && isSameAddress(Addr, I->getOperand(1)))
         goto next_bb;  // covered — don't follow successors
-      if (I->getOpcode() == V6CLANG::LHLD && isSameAddress(Addr, I->getOperand(1)))
+      if (I->getOpcode() == V6Clang::LHLD && isSameAddress(Addr, I->getOperand(1)))
         return true;   // uncovered reader
     }
 
@@ -832,7 +832,7 @@ bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
   const TargetInstrInfo &TII = *MBB.getParent()->getSubtarget().getInstrInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() != V6CLANG::SHLD)
+    if (I->getOpcode() != V6Clang::SHLD)
       continue;
     if (isDebugAllocaHome(*I))
       continue;
@@ -848,7 +848,7 @@ bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
         continue;
 
       // Check for matching LHLD.
-      if (J->getOpcode() == V6CLANG::LHLD &&
+      if (J->getOpcode() == V6Clang::LHLD &&
           isSameAddress(ShldAddr, J->getOperand(1))) {
         if (isDebugAllocaHome(*J)) {
           Abort = true;
@@ -864,18 +864,18 @@ bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
       }
 
       // Abort on re-spill to same address.
-      if (J->getOpcode() == V6CLANG::SHLD &&
+      if (J->getOpcode() == V6Clang::SHLD &&
           isSameAddress(ShldAddr, J->getOperand(1))) {
         Abort = true;
         break;
       }
 
       // SP delta tracking.
-      if (J->modifiesRegister(V6CLANG::SP, TRI)) {
+      if (J->modifiesRegister(V6Clang::SP, TRI)) {
         unsigned Opc = J->getOpcode();
-        if (Opc == V6CLANG::PUSH) {
+        if (Opc == V6Clang::PUSH) {
           SPDelta -= 2;
-        } else if (Opc == V6CLANG::POP) {
+        } else if (Opc == V6Clang::POP) {
           SPDelta += 2;
           if (SPDelta > 0) { Abort = true; break; }
         } else if (J->isCall()) {
@@ -897,10 +897,10 @@ bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
       continue;
 
     // Replace SHLD with PUSH HL.
-    BuildMI(MBB, *I, I->getDebugLoc(), TII.get(V6CLANG::PUSH))
-        .addReg(V6CLANG::HL);
+    BuildMI(MBB, *I, I->getDebugLoc(), TII.get(V6Clang::PUSH))
+        .addReg(V6Clang::HL);
     // Replace LHLD with POP HL.
-    BuildMI(MBB, *MatchIt, MatchIt->getDebugLoc(), TII.get(V6CLANG::POP), V6CLANG::HL);
+    BuildMI(MBB, *MatchIt, MatchIt->getDebugLoc(), TII.get(V6Clang::POP), V6Clang::HL);
 
     MatchIt->eraseFromParent();
     I = MBB.erase(I);
@@ -910,18 +910,18 @@ bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
   return Changed;
 }
 
-/// Map a register-form ALU opcode (V6CLANG::ADDr/.../CMPr) to its memory-form
-/// counterpart (V6CLANG::ADDM/.../CMPM). Returns 0 if Opc is not foldable.
+/// Map a register-form ALU opcode (V6Clang::ADDr/.../CMPr) to its memory-form
+/// counterpart (V6Clang::ADDM/.../CMPM). Returns 0 if Opc is not foldable.
 static unsigned aluRegToMemOpcode(unsigned Opc) {
   switch (Opc) {
-  case V6CLANG::ADDr: return V6CLANG::ADDM;
-  case V6CLANG::ADCr: return V6CLANG::ADCM;
-  case V6CLANG::SUBr: return V6CLANG::SUBM;
-  case V6CLANG::SBBr: return V6CLANG::SBBM;
-  case V6CLANG::ANAr: return V6CLANG::ANAM;
-  case V6CLANG::XRAr: return V6CLANG::XRAM;
-  case V6CLANG::ORAr: return V6CLANG::ORAM;
-  case V6CLANG::CMPr: return V6CLANG::CMPM;
+  case V6Clang::ADDr: return V6Clang::ADDM;
+  case V6Clang::ADCr: return V6Clang::ADCM;
+  case V6Clang::SUBr: return V6Clang::SUBM;
+  case V6Clang::SBBr: return V6Clang::SBBM;
+  case V6Clang::ANAr: return V6Clang::ANAM;
+  case V6Clang::XRAr: return V6Clang::XRAM;
+  case V6Clang::ORAr: return V6Clang::ORAM;
+  case V6Clang::CMPr: return V6Clang::CMPM;
   default:        return 0;
   }
 }
@@ -952,9 +952,9 @@ static bool scanBetweenSafe(MachineBasicBlock::iterator Begin,
         continue;
       Register Reg = MO.getReg();
       bool TouchesR  = TRI->regsOverlap(Reg, R);
-      bool TouchesHL = TRI->regsOverlap(Reg, V6CLANG::HL);
-      bool TouchesA  = TRI->regsOverlap(Reg, V6CLANG::A);
-      bool TouchesF  = TRI->regsOverlap(Reg, V6CLANG::FLAGS);
+      bool TouchesHL = TRI->regsOverlap(Reg, V6Clang::HL);
+      bool TouchesA  = TRI->regsOverlap(Reg, V6Clang::A);
+      bool TouchesF  = TRI->regsOverlap(Reg, V6Clang::FLAGS);
       if (!TouchesR && !TouchesHL && !TouchesA && !TouchesF)
         continue;
       if (TouchesR || TouchesHL)
@@ -985,13 +985,13 @@ bool V6ClangPeephole::foldMovAluM(MachineBasicBlock &MBB) {
   static constexpr unsigned kMaxScanWindow = 16;
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E;) {
-    if (I->getOpcode() != V6CLANG::MOVrM) {
+    if (I->getOpcode() != V6Clang::MOVrM) {
       ++I;
       continue;
     }
 
     Register MovDst = I->getOperand(0).getReg();
-    if (MovDst == V6CLANG::A) {
+    if (MovDst == V6Clang::A) {
       ++I;
       continue;
     }
@@ -1009,7 +1009,7 @@ bool V6ClangPeephole::foldMovAluM(MachineBasicBlock &MBB) {
       // Is this the candidate ALU op?
       unsigned MemOpc = aluRegToMemOpcode(J->getOpcode());
       if (MemOpc != 0) {
-        bool IsCMP = (J->getOpcode() == V6CLANG::CMPr);
+        bool IsCMP = (J->getOpcode() == V6Clang::CMPr);
         unsigned RhsIdx = IsCMP ? 1 : 2;
         if (J->getOperand(RhsIdx).getReg() == MovDst)
           break; // found
@@ -1034,7 +1034,7 @@ bool V6ClangPeephole::foldMovAluM(MachineBasicBlock &MBB) {
       continue;
     }
 
-    bool IsCMP = (J->getOpcode() == V6CLANG::CMPr);
+    bool IsCMP = (J->getOpcode() == V6Clang::CMPr);
 
     // r must be dead after the ALU op.
     if (!isRegDeadAfter(MBB, J, MovDst, TRI)) {
@@ -1047,8 +1047,8 @@ bool V6ClangPeephole::foldMovAluM(MachineBasicBlock &MBB) {
     MachineInstrBuilder MIB =
         BuildMI(MBB, *J, J->getDebugLoc(), TII.get(MemOpc));
     if (!IsCMP)
-      MIB.addReg(V6CLANG::A, RegState::Define);
-    MIB.addReg(V6CLANG::A);
+      MIB.addReg(V6Clang::A, RegState::Define);
+    MIB.addReg(V6Clang::A);
 
     // Erase the ALU op and the original MOV.
     auto Next = std::next(J);
@@ -1088,17 +1088,17 @@ bool V6ClangPeephole::foldIncDecMviM(MachineBasicBlock &MBB) {
     unsigned Opc = I->getOpcode();
 
     // ---- Shape A: MOV A, M ; INR/DCR A ; MOV M, A -> INR/DCR M ----
-    if (Opc == V6CLANG::MOVrM && I->getOperand(0).getReg() == V6CLANG::A) {
+    if (Opc == V6Clang::MOVrM && I->getOperand(0).getReg() == V6Clang::A) {
       auto Mid = nextNonDebug(std::next(I), E);
       if (Mid != E &&
-          (Mid->getOpcode() == V6CLANG::INRr || Mid->getOpcode() == V6CLANG::DCRr) &&
-          Mid->getOperand(0).getReg() == V6CLANG::A) {
+          (Mid->getOpcode() == V6Clang::INRr || Mid->getOpcode() == V6Clang::DCRr) &&
+          Mid->getOperand(0).getReg() == V6Clang::A) {
         auto Tail = nextNonDebug(std::next(Mid), E);
-        if (Tail != E && Tail->getOpcode() == V6CLANG::MOVMr &&
-            Tail->getOperand(0).getReg() == V6CLANG::A &&
-            isRegDeadAfter(MBB, Tail, V6CLANG::A, TRI)) {
+        if (Tail != E && Tail->getOpcode() == V6Clang::MOVMr &&
+            Tail->getOperand(0).getReg() == V6Clang::A &&
+            isRegDeadAfter(MBB, Tail, V6Clang::A, TRI)) {
           unsigned MemOpc =
-              (Mid->getOpcode() == V6CLANG::INRr) ? V6CLANG::INRM : V6CLANG::DCRM;
+              (Mid->getOpcode() == V6Clang::INRr) ? V6Clang::INRM : V6Clang::DCRM;
           BuildMI(MBB, *Tail, Tail->getDebugLoc(), TII.get(MemOpc));
           auto Next = std::next(Tail);
           Tail->eraseFromParent();
@@ -1117,15 +1117,15 @@ bool V6ClangPeephole::foldIncDecMviM(MachineBasicBlock &MBB) {
     // [opcode, imm] with the imm at byte offset 1), so we forward
     // the pre-instr `.LLo61_N:` label and the operand's target flags
     // (e.g. MO_PATCH_IMM) onto the new MVI M.
-    if (Opc == V6CLANG::MVIr && I->getOperand(0).getReg() == V6CLANG::A) {
+    if (Opc == V6Clang::MVIr && I->getOperand(0).getReg() == V6Clang::A) {
       auto Tail = nextNonDebug(std::next(I), E);
-      if (Tail != E && Tail->getOpcode() == V6CLANG::MOVMr &&
-          Tail->getOperand(0).getReg() == V6CLANG::A &&
-          isRegDeadAfter(MBB, Tail, V6CLANG::A, TRI)) {
+      if (Tail != E && Tail->getOpcode() == V6Clang::MOVMr &&
+          Tail->getOperand(0).getReg() == V6Clang::A &&
+          isRegDeadAfter(MBB, Tail, V6Clang::A, TRI)) {
         const MachineOperand &ImmOp = I->getOperand(1);
         MachineFunction &MF = *MBB.getParent();
         MachineInstr *NewMI =
-            BuildMI(MBB, *Tail, Tail->getDebugLoc(), TII.get(V6CLANG::MVIM))
+            BuildMI(MBB, *Tail, Tail->getDebugLoc(), TII.get(V6Clang::MVIM))
                 .add(ImmOp)
                 .getInstr();
         if (MCSymbol *PreSym = I->getPreInstrSymbol())
@@ -1158,9 +1158,9 @@ bool V6ClangPeephole::foldMviZeroToXraA(MachineBasicBlock &MBB) {
       *MBB.getParent()->getSubtarget().getInstrInfo();
 
   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-    if (MI.getOpcode() != V6CLANG::MVIr)
+    if (MI.getOpcode() != V6Clang::MVIr)
       continue;
-    if (MI.getOperand(0).getReg() != V6CLANG::A)
+    if (MI.getOperand(0).getReg() != V6Clang::A)
       continue;
     if (!MI.getOperand(1).isImm() || MI.getOperand(1).getImm() != 0)
       continue;
@@ -1171,16 +1171,16 @@ bool V6ClangPeephole::foldMviZeroToXraA(MachineBasicBlock &MBB) {
       continue;
     if (hasNonCarryFlagUseBeforeFullFlagDef(MBB, MI.getIterator(), TRI))
       continue;
-    if (!isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::FLAGS, TRI))
+    if (!isRegDeadAfter(MBB, MI.getIterator(), V6Clang::FLAGS, TRI))
       continue;
 
-    MachineInstr *XraMI = BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6CLANG::XRAr),
-                                  V6CLANG::A)
-                              .addReg(V6CLANG::A)
-                              .addReg(V6CLANG::A)
+    MachineInstr *XraMI = BuildMI(MBB, MI, MI.getDebugLoc(), TII.get(V6Clang::XRAr),
+                                  V6Clang::A)
+                              .addReg(V6Clang::A)
+                              .addReg(V6Clang::A)
                               .getInstr();
-    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, TRI))
-      markRegUsesUndef(XraMI, V6CLANG::A);
+    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, TRI))
+      markRegUsesUndef(XraMI, V6Clang::A);
     MI.eraseFromParent();
     Changed = true;
   }
@@ -1192,14 +1192,14 @@ bool V6ClangPeephole::foldMviZeroToXraA(MachineBasicBlock &MBB) {
 /// 8080 encoding).  CPI has no def of A; the others tie dst = lhs = A.
 static unsigned aluRegToImmOpc(unsigned Opc) {
   switch (Opc) {
-  case V6CLANG::ADDr: return V6CLANG::ADI;
-  case V6CLANG::ADCr: return V6CLANG::ACI;
-  case V6CLANG::SUBr: return V6CLANG::SUI;
-  case V6CLANG::SBBr: return V6CLANG::SBI;
-  case V6CLANG::ANAr: return V6CLANG::ANI;
-  case V6CLANG::XRAr: return V6CLANG::XRI;
-  case V6CLANG::ORAr: return V6CLANG::ORI;
-  case V6CLANG::CMPr: return V6CLANG::CPI;
+  case V6Clang::ADDr: return V6Clang::ADI;
+  case V6Clang::ADCr: return V6Clang::ACI;
+  case V6Clang::SUBr: return V6Clang::SUI;
+  case V6Clang::SBBr: return V6Clang::SBI;
+  case V6Clang::ANAr: return V6Clang::ANI;
+  case V6Clang::XRAr: return V6Clang::XRI;
+  case V6Clang::ORAr: return V6Clang::ORI;
+  case V6Clang::CMPr: return V6Clang::CPI;
   default:        return 0;
   }
 }
@@ -1208,7 +1208,7 @@ static unsigned aluRegToImmOpc(unsigned Opc) {
 /// For writers (ADDr/.../ORAr): operands are (dst=A, lhs=A, src=GR8).
 /// For CMPr: operands are (lhs=A, src=GR8) with no def.
 static unsigned aluRegSrcOpIdx(unsigned Opc) {
-  return (Opc == V6CLANG::CMPr) ? 1u : 2u;
+  return (Opc == V6Clang::CMPr) ? 1u : 2u;
 }
 
 /// O79: fold `MVI R, NN; ... ; ALU R` into `... ; ALU-immediate NN`
@@ -1237,9 +1237,9 @@ bool V6ClangPeephole::foldMviAluImm(MachineBasicBlock &MBB) {
     MachineInstr &MVI = *I;
     auto NextI = std::next(I);
 
-    if (MVI.getOpcode() != V6CLANG::MVIr) { I = NextI; continue; }
+    if (MVI.getOpcode() != V6Clang::MVIr) { I = NextI; continue; }
     Register R = MVI.getOperand(0).getReg();
-    if (R == V6CLANG::A) { I = NextI; continue; }
+    if (R == V6Clang::A) { I = NextI; continue; }
     // The fold copies the imm operand wholesale; it must be a real
     // immediate (target-flagged O61 placeholders are still .isImm()).
     if (!MVI.getOperand(1).isImm()) { I = NextI; continue; }
@@ -1298,12 +1298,12 @@ bool V6ClangPeephole::foldMviAluImm(MachineBasicBlock &MBB) {
     // Build the immediate-form ALU op at the consumer's position.
     DebugLoc DL = Cons.getDebugLoc();
     MachineInstrBuilder MIB = BuildMI(MBB, Cons, DL, TII.get(ImmOpc));
-    if (ImmOpc != V6CLANG::CPI) {
+    if (ImmOpc != V6Clang::CPI) {
       // ADI/ACI/.../ORI: (outs Acc:$dst)(ins Acc:$lhs, imm8:$imm)
-      MIB.addReg(V6CLANG::A, RegState::Define).addReg(V6CLANG::A);
+      MIB.addReg(V6Clang::A, RegState::Define).addReg(V6Clang::A);
     } else {
       // CPI: (outs)(ins Acc:$lhs, imm8:$imm)
-      MIB.addReg(V6CLANG::A);
+      MIB.addReg(V6Clang::A);
     }
     // Copy the imm operand wholesale to preserve target flags
     // (notably V6ClangII::MO_PATCH_IMM for O61 patched landing pads).
@@ -1335,10 +1335,10 @@ bool V6ClangPeephole::eliminateDeadMVI(MachineBasicBlock &MBB) {
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-    if (MI.getOpcode() != V6CLANG::MVIr)
+    if (MI.getOpcode() != V6Clang::MVIr)
       continue;
     Register Dst = MI.getOperand(0).getReg();
-    if (Dst == V6CLANG::A) // handled by foldMviZeroToXraA / foldMviAluImm
+    if (Dst == V6Clang::A) // handled by foldMviZeroToXraA / foldMviAluImm
       continue;
     if (isO61PatchedImm(MI))
       continue;
@@ -1360,7 +1360,7 @@ bool V6ClangPeephole::eliminateDeadMov(MachineBasicBlock &MBB) {
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-    if (MI.getOpcode() != V6CLANG::MOVrr)
+    if (MI.getOpcode() != V6Clang::MOVrr)
       continue;
     Register Dst = MI.getOperand(0).getReg();
     Register Src = MI.getOperand(1).getReg();
@@ -1389,7 +1389,7 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6CLANG::MOVrr)
+    if (ProducerMI.getOpcode() != V6Clang::MOVrr)
       continue;
 
     Register X = ProducerMI.getOperand(0).getReg(); // dead intermediate
@@ -1412,7 +1412,7 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
         continue;
       ++Steps;
 
-      bool IsConsumer = J->getOpcode() == V6CLANG::MOVrr &&
+      bool IsConsumer = J->getOpcode() == V6Clang::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), X);
 
       bool ReadsX = false, ClobbersX = false, ClobbersY = false;
@@ -1541,7 +1541,7 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
   // Transform: emit MVI Z, Imm before the MOV, then erase MOV and MVI X.
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6CLANG::MVIr)
+    if (ProducerMI.getOpcode() != V6Clang::MVIr)
       continue;
     if (isO61PatchedImm(ProducerMI))
       continue;
@@ -1555,7 +1555,7 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
         continue;
       ++Steps;
 
-      bool IsConsumer = J->getOpcode() == V6CLANG::MOVrr &&
+      bool IsConsumer = J->getOpcode() == V6Clang::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), X);
 
       bool ReadsX = false, ClobbersX = false;
@@ -1579,7 +1579,7 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
           Register Z = J->getOperand(0).getReg();
           const TargetInstrInfo &TII =
               *MBB.getParent()->getSubtarget().getInstrInfo();
-          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6CLANG::MVIr), Z)
+          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6Clang::MVIr), Z)
               .addImm(Imm);
           auto Next = std::next(I);
           J->eraseFromParent();
@@ -1612,9 +1612,9 @@ bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
 static bool isStackAffecting(const MachineInstr &MI,
                              const TargetRegisterInfo *TRI) {
   unsigned Op = MI.getOpcode();
-  if (Op == V6CLANG::PUSH || Op == V6CLANG::POP || Op == V6CLANG::XTHL || Op == V6CLANG::SPHL)
+  if (Op == V6Clang::PUSH || Op == V6Clang::POP || Op == V6Clang::XTHL || Op == V6Clang::SPHL)
     return true;
-  return MI.modifiesRegister(V6CLANG::SP, TRI);
+  return MI.modifiesRegister(V6Clang::SP, TRI);
 }
 
 bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
@@ -1626,7 +1626,7 @@ bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
 
   bool Changed = false;
   for (auto I = MBB.begin(), E = MBB.end(); I != E;) {
-    if (I->getOpcode() != V6CLANG::POP) {
+    if (I->getOpcode() != V6Clang::POP) {
       ++I;
       continue;
     }
@@ -1641,7 +1641,7 @@ bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
         continue;
 
       // Found a PUSH of the same register pair — candidate.
-      if (J->getOpcode() == V6CLANG::PUSH &&
+      if (J->getOpcode() == V6Clang::PUSH &&
           J->getOperand(0).getReg() == Rp) {
         PushIt = J;
         break;
@@ -1675,9 +1675,9 @@ bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
 
     // Verify rp is truly dead after the PUSH.  For PSW, check A and FLAGS
     // independently: isRegDeadAfter(PSW) can be fooled by a later A-only def.
-    bool DeadAfterPush = TRI->regsOverlap(Rp, V6CLANG::PSW)
-                             ? isRegDeadAfter(MBB, PushIt, V6CLANG::A, TRI) &&
-                                   isRegDeadAfter(MBB, PushIt, V6CLANG::FLAGS, TRI)
+    bool DeadAfterPush = TRI->regsOverlap(Rp, V6Clang::PSW)
+                             ? isRegDeadAfter(MBB, PushIt, V6Clang::A, TRI) &&
+                                   isRegDeadAfter(MBB, PushIt, V6Clang::FLAGS, TRI)
                              : isRegDeadAfter(MBB, PushIt, Rp, TRI);
     if (!DeadAfterPush) {
       ++I;
@@ -1714,7 +1714,7 @@ bool V6ClangPeephole::foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB) {
   bool Changed = false;
   for (auto I = MBB.begin(), E = MBB.end(); I != E;) {
     // Only MOVrr instructions start either pattern.
-    if (I->getOpcode() != V6CLANG::MOVrr || isO61PatchedImm(*I)) {
+    if (I->getOpcode() != V6Clang::MOVrr || isO61PatchedImm(*I)) {
       ++I;
       continue;
     }
@@ -1727,12 +1727,12 @@ bool V6ClangPeephole::foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB) {
     // rl ∈ {C, E}; rh is the paired high byte; rp is BC or DE.
     // Replace with: INX H (or DCX H) / SHLD addr.  Requires rp dead after SHLD.
     do {
-      if (Src != V6CLANG::L) break;
-      if (Dst != V6CLANG::C && Dst != V6CLANG::E) break;
+      if (Src != V6Clang::L) break;
+      if (Dst != V6Clang::C && Dst != V6Clang::E) break;
 
       Register Rl = Dst;
-      Register Rh = (Rl == V6CLANG::C) ? V6CLANG::B  : V6CLANG::D;
-      Register Rp = (Rl == V6CLANG::C) ? V6CLANG::BC : V6CLANG::DE;
+      Register Rh = (Rl == V6Clang::C) ? V6Clang::B  : V6Clang::D;
+      Register Rp = (Rl == V6Clang::C) ? V6Clang::BC : V6Clang::DE;
 
       auto I1 = nextReal(I,  E);  if (I1 == E) break;
       auto I2 = nextReal(I1, E);  if (I2 == E) break;
@@ -1740,39 +1740,39 @@ bool V6ClangPeephole::foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB) {
       auto I4 = nextReal(I3, E);  if (I4 == E) break;
       auto I5 = nextReal(I4, E);  if (I5 == E) break;
 
-      if (I1->getOpcode() != V6CLANG::MOVrr)            break;
+      if (I1->getOpcode() != V6Clang::MOVrr)            break;
       if (I1->getOperand(0).getReg() != Rh)          break;
-      if (I1->getOperand(1).getReg() != V6CLANG::H)      break;
+      if (I1->getOperand(1).getReg() != V6Clang::H)      break;
       if (isO61PatchedImm(*I1))                      break;
 
       bool IsInx;
-      if (I2->getOpcode() == V6CLANG::INX &&
+      if (I2->getOpcode() == V6Clang::INX &&
           I2->getOperand(0).getReg() == Rp)
         IsInx = true;
-      else if (I2->getOpcode() == V6CLANG::DCX &&
+      else if (I2->getOpcode() == V6Clang::DCX &&
                I2->getOperand(0).getReg() == Rp)
         IsInx = false;
       else
         break;
       if (isO61PatchedImm(*I2))                      break;
 
-      if (I3->getOpcode() != V6CLANG::MOVrr)            break;
-      if (I3->getOperand(0).getReg() != V6CLANG::L)     break;
+      if (I3->getOpcode() != V6Clang::MOVrr)            break;
+      if (I3->getOperand(0).getReg() != V6Clang::L)     break;
       if (I3->getOperand(1).getReg() != Rl)          break;
       if (isO61PatchedImm(*I3))                      break;
 
-      if (I4->getOpcode() != V6CLANG::MOVrr)            break;
-      if (I4->getOperand(0).getReg() != V6CLANG::H)     break;
+      if (I4->getOpcode() != V6Clang::MOVrr)            break;
+      if (I4->getOperand(0).getReg() != V6Clang::H)     break;
       if (I4->getOperand(1).getReg() != Rh)          break;
       if (isO61PatchedImm(*I4))                      break;
 
-      if (I5->getOpcode() != V6CLANG::SHLD)             break;
+      if (I5->getOpcode() != V6Clang::SHLD)             break;
       if (!isRegDeadAfter(MBB, I5, Rp, TRI))        break;
 
       // Emit INX H or DCX H before SHLD.
       BuildMI(MBB, I5, I5->getDebugLoc(),
-              TII.get(IsInx ? V6CLANG::INX : V6CLANG::DCX), V6CLANG::HL)
-          .addReg(V6CLANG::HL);
+              TII.get(IsInx ? V6Clang::INX : V6Clang::DCX), V6Clang::HL)
+          .addReg(V6Clang::HL);
 
       // Erase I4..I1 in reverse order, then erase I0.
       I4->eraseFromParent();
@@ -1790,34 +1790,34 @@ bool V6ClangPeephole::foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB) {
     // Round-trip copy with no increment — all four MOVs are no-ops.
     // rh ∈ {B, D}; rp is BC or DE.  Requires rp dead after SHLD.
     do {
-      if (Src != V6CLANG::H) break;
-      if (Dst != V6CLANG::B && Dst != V6CLANG::D) break;
+      if (Src != V6Clang::H) break;
+      if (Dst != V6Clang::B && Dst != V6Clang::D) break;
 
       Register Rh = Dst;
-      Register Rl = (Rh == V6CLANG::B) ? V6CLANG::C : V6CLANG::E;
-      Register Rp = (Rh == V6CLANG::B) ? V6CLANG::BC : V6CLANG::DE;
+      Register Rl = (Rh == V6Clang::B) ? V6Clang::C : V6Clang::E;
+      Register Rp = (Rh == V6Clang::B) ? V6Clang::BC : V6Clang::DE;
 
       auto J1 = nextReal(I,  E);  if (J1 == E) break;
       auto J2 = nextReal(J1, E);  if (J2 == E) break;
       auto J3 = nextReal(J2, E);  if (J3 == E) break;
       auto J4 = nextReal(J3, E);  if (J4 == E) break;
 
-      if (J1->getOpcode() != V6CLANG::MOVrr)            break;
+      if (J1->getOpcode() != V6Clang::MOVrr)            break;
       if (J1->getOperand(0).getReg() != Rl)          break;
-      if (J1->getOperand(1).getReg() != V6CLANG::L)     break;
+      if (J1->getOperand(1).getReg() != V6Clang::L)     break;
       if (isO61PatchedImm(*J1))                      break;
 
-      if (J2->getOpcode() != V6CLANG::MOVrr)            break;
-      if (J2->getOperand(0).getReg() != V6CLANG::L)     break;
+      if (J2->getOpcode() != V6Clang::MOVrr)            break;
+      if (J2->getOperand(0).getReg() != V6Clang::L)     break;
       if (J2->getOperand(1).getReg() != Rl)          break;
       if (isO61PatchedImm(*J2))                      break;
 
-      if (J3->getOpcode() != V6CLANG::MOVrr)            break;
-      if (J3->getOperand(0).getReg() != V6CLANG::H)     break;
+      if (J3->getOpcode() != V6Clang::MOVrr)            break;
+      if (J3->getOperand(0).getReg() != V6Clang::H)     break;
       if (J3->getOperand(1).getReg() != Rh)          break;
       if (isO61PatchedImm(*J3))                      break;
 
-      if (J4->getOpcode() != V6CLANG::SHLD)             break;
+      if (J4->getOpcode() != V6Clang::SHLD)             break;
       if (!isRegDeadAfter(MBB, J4, Rp, TRI))        break;
 
       // Erase J3..J1 in reverse order, then erase J0.
@@ -1872,7 +1872,7 @@ bool V6ClangPeephole::foldPairCopyRoundTrip(MachineBasicBlock &MBB) {
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
     // (1): MOV A1, B1
-    if (I->getOpcode() != V6CLANG::MOVrr || isO61PatchedImm(*I)) {
+    if (I->getOpcode() != V6Clang::MOVrr || isO61PatchedImm(*I)) {
       ++I;
       continue;
     }
@@ -1882,7 +1882,7 @@ bool V6ClangPeephole::foldPairCopyRoundTrip(MachineBasicBlock &MBB) {
 
     // (2): MOV A2, B2
     auto I2 = nextNonDbg(I, E);
-    if (I2 == E || I2->getOpcode() != V6CLANG::MOVrr || isO61PatchedImm(*I2)) {
+    if (I2 == E || I2->getOpcode() != V6Clang::MOVrr || isO61PatchedImm(*I2)) {
       ++I;
       continue;
     }
@@ -1892,7 +1892,7 @@ bool V6ClangPeephole::foldPairCopyRoundTrip(MachineBasicBlock &MBB) {
 
     // (3): MOV B1, A1  (reverse of step 1)
     auto I3 = nextNonDbg(I2, E);
-    if (I3 == E || I3->getOpcode() != V6CLANG::MOVrr || isO61PatchedImm(*I3)) {
+    if (I3 == E || I3->getOpcode() != V6Clang::MOVrr || isO61PatchedImm(*I3)) {
       ++I;
       continue;
     }
@@ -1904,7 +1904,7 @@ bool V6ClangPeephole::foldPairCopyRoundTrip(MachineBasicBlock &MBB) {
 
     // (4): MOV B2, A2  (reverse of step 2)
     auto I4 = nextNonDbg(I3, E);
-    if (I4 == E || I4->getOpcode() != V6CLANG::MOVrr || isO61PatchedImm(*I4)) {
+    if (I4 == E || I4->getOpcode() != V6Clang::MOVrr || isO61PatchedImm(*I4)) {
       ++I;
       continue;
     }

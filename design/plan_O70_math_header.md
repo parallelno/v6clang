@@ -14,7 +14,7 @@ ld.lld: error: undefined symbol: __udivhi3
 ```
 
 The libcall names are set by `setLibcallName` in
-`llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` (lines 178-185), but the
+`llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` (lines 178-185), but the
 corresponding object files are never produced or installed. The
 sources exist as `.s` files in `compiler-rt/lib/builtins/v6clang/` but
 they are not built into a library anywhere in the toolchain — the
@@ -123,7 +123,7 @@ inline-asm constraint list, not by the C ABI.
   added; `mul_bench.c` extended; `ra_clobber_lp.c` locked in as a
   regression. `tests/features/52/` — feature-style c8080 ↔ v6clang
   comparison for `i8 * i8`.
-- **Lit.** `llvm/test/CodeGen/V6CLANG/runtime_*.ll` (linkage smoke,
+- **Lit.** `llvm/test/CodeGen/V6Clang/runtime_*.ll` (linkage smoke,
   i8 mul lowering, opt-out behavior).
 - **Backlog.** Mark O70 complete in `design/future_plans/README.md`.
 
@@ -196,7 +196,7 @@ Read in this order:
 - `docs/V6ClangBuildGuide.md` — build commands, mirror sync, driver flow.
 - `docs/Vector_06c_instruction_timings.md` — for cycle-budget claims in the body sizing.
 - `clang/lib/Driver/ToolChains/V6Clang.cpp` — current driver shape; pattern for `findV6ClangRuntimeFile` / `addClangTargetOptions` / `AddClangSystemIncludeArgs`.
-- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` lines 55-185 — current libcall wiring, `MUL i8` action.
+- `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` lines 55-185 — current libcall wiring, `MUL i8` action.
 - `compiler-rt/lib/builtins/v6clang/*.s` — algorithm references.
 - Existing inline-asm test `tests/features/inline_asm_clobber/` — verify our assumptions about how RA reads clobber lists today.
 
@@ -269,7 +269,7 @@ two CALLs the C ABI would force).
 
 ### Step 3.6 — ISel: `MUL_I8 = LibCall` [ ]
 
-In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` change
+In `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` change
 line 59:
 
 ```cpp
@@ -341,7 +341,7 @@ Diagnose and fix any build errors. Re-run until clean.
 
 ### Step 3.11 — Lit test: i8 mul lowers to `__mulqi3` [ ]
 
-Add `llvm-project/llvm/test/CodeGen/V6CLANG/i8_mul_libcall.ll`. Verify:
+Add `llvm-project/llvm/test/CodeGen/V6Clang/i8_mul_libcall.ll`. Verify:
 - `mul i8 %a, %b` lowers to `CALL __mulqi3`.
 - The trunc after the libcall elides when only the low byte is used.
 

@@ -31,18 +31,18 @@ static bool priorClearsCarry(const MachineBasicBlock &MBB,
     --MI;
     if (MI->isDebugInstr())
       continue;
-    if (!MI->definesRegister(V6CLANG::FLAGS, /*TRI=*/nullptr))
+    if (!MI->definesRegister(V6Clang::FLAGS, /*TRI=*/nullptr))
       continue;
     switch (MI->getOpcode()) {
-    case V6CLANG::ANAr:
-    case V6CLANG::ANAM:
-    case V6CLANG::ANI:
-    case V6CLANG::XRAr:
-    case V6CLANG::XRAM:
-    case V6CLANG::XRI:
-    case V6CLANG::ORAr:
-    case V6CLANG::ORAM:
-    case V6CLANG::ORI:
+    case V6Clang::ANAr:
+    case V6Clang::ANAM:
+    case V6Clang::ANI:
+    case V6Clang::XRAr:
+    case V6Clang::XRAM:
+    case V6Clang::XRI:
+    case V6Clang::ORAr:
+    case V6Clang::ORAM:
+    case V6Clang::ORI:
       return true;
     default:
       return false;
@@ -52,53 +52,53 @@ static bool priorClearsCarry(const MachineBasicBlock &MBB,
 }
 
 V6ClangInstrInfo::V6ClangInstrInfo()
-    : V6ClangGenInstrInfo(V6CLANG::ADJCALLSTACKDOWN, V6CLANG::ADJCALLSTACKUP), RI() {}
+    : V6ClangGenInstrInfo(V6Clang::ADJCALLSTACKDOWN, V6Clang::ADJCALLSTACKUP), RI() {}
 
 void V6ClangInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator MI,
                                 const DebugLoc &DL, MCRegister DestReg,
                                 MCRegister SrcReg, bool KillSrc) const {
   // 8-bit register copy: MOV dest, src
-  if (V6CLANG::GR8RegClass.contains(DestReg) &&
-      V6CLANG::GR8RegClass.contains(SrcReg)) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+  if (V6Clang::GR8RegClass.contains(DestReg) &&
+      V6Clang::GR8RegClass.contains(SrcReg)) {
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
         .addReg(DestReg, RegState::Define)
         .addReg(SrcReg, getKillRegState(KillSrc));
     return;
   }
 
   // 16-bit pair copy: two MOV instructions (hi byte, then lo byte)
-  if (V6CLANG::GR16RegClass.contains(DestReg) &&
-      V6CLANG::GR16RegClass.contains(SrcReg)) {
+  if (V6Clang::GR16RegClass.contains(DestReg) &&
+      V6Clang::GR16RegClass.contains(SrcReg)) {
     // DE↔HL with source killed: use XCHG (1B/4cc vs 2B/16cc).
     // Safe because source is dead — the reverse swap side-effect is harmless.
     if (KillSrc &&
-        ((DestReg == V6CLANG::HL && SrcReg == V6CLANG::DE) ||
-         (DestReg == V6CLANG::DE && SrcReg == V6CLANG::HL))) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        ((DestReg == V6Clang::HL && SrcReg == V6Clang::DE) ||
+         (DestReg == V6Clang::DE && SrcReg == V6Clang::HL))) {
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       return;
     }
 
     const TargetRegisterInfo *TRI = &RI;
-    MCRegister DestHi = TRI->getSubReg(DestReg, V6CLANG::sub_hi);
-    MCRegister DestLo = TRI->getSubReg(DestReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = TRI->getSubReg(SrcReg, V6CLANG::sub_hi);
-    MCRegister SrcLo = TRI->getSubReg(SrcReg, V6CLANG::sub_lo);
+    MCRegister DestHi = TRI->getSubReg(DestReg, V6Clang::sub_hi);
+    MCRegister DestLo = TRI->getSubReg(DestReg, V6Clang::sub_lo);
+    MCRegister SrcHi = TRI->getSubReg(SrcReg, V6Clang::sub_hi);
+    MCRegister SrcLo = TRI->getSubReg(SrcReg, V6Clang::sub_lo);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
         .addReg(DestHi, RegState::Define)
         .addReg(SrcHi, getKillRegState(KillSrc));
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
         .addReg(DestLo, RegState::Define)
         .addReg(SrcLo, getKillRegState(KillSrc));
     return;
   }
 
   // SP → HL: LXI HL, 0 + DAD SP (no direct MOV path on 8080).
-  if (DestReg == V6CLANG::HL && SrcReg == V6CLANG::SP) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::LXI), V6CLANG::HL).addImm(0);
-    BuildMI(MBB, MI, DL, get(V6CLANG::DAD))
-        .addReg(V6CLANG::SP);
+  if (DestReg == V6Clang::HL && SrcReg == V6Clang::SP) {
+    BuildMI(MBB, MI, DL, get(V6Clang::LXI), V6Clang::HL).addImm(0);
+    BuildMI(MBB, MI, DL, get(V6Clang::DAD))
+        .addReg(V6Clang::SP);
     return;
   }
 
@@ -106,21 +106,21 @@ void V6ClangInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   // Sequence: PUSH HL; LXI HL,2; DAD SP; MOV DestHi,H; MOV DestLo,L; POP HL.
   // The +2 in the LXI immediate cancels the SP -= 2 done by PUSH HL, so the
   // value materialised is the original SP value. Clobbers FLAGS (reserved).
-  if (SrcReg == V6CLANG::SP &&
-      (DestReg == V6CLANG::DE || DestReg == V6CLANG::BC)) {
+  if (SrcReg == V6Clang::SP &&
+      (DestReg == V6Clang::DE || DestReg == V6Clang::BC)) {
     const TargetRegisterInfo *TRI = &RI;
-    MCRegister DestHi = TRI->getSubReg(DestReg, V6CLANG::sub_hi);
-    MCRegister DestLo = TRI->getSubReg(DestReg, V6CLANG::sub_lo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    BuildMI(MBB, MI, DL, get(V6CLANG::LXI), V6CLANG::HL).addImm(2);
-    BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+    MCRegister DestHi = TRI->getSubReg(DestReg, V6Clang::sub_hi);
+    MCRegister DestLo = TRI->getSubReg(DestReg, V6Clang::sub_lo);
+    BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    BuildMI(MBB, MI, DL, get(V6Clang::LXI), V6Clang::HL).addImm(2);
+    BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::SP);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
         .addReg(DestHi, RegState::Define)
-        .addReg(V6CLANG::H);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+        .addReg(V6Clang::H);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
         .addReg(DestLo, RegState::Define)
-        .addReg(V6CLANG::L);
-    BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+        .addReg(V6Clang::L);
+    BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
     return;
   }
 
@@ -135,16 +135,16 @@ void V6ClangInstrInfo::storeRegToStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
 
-  if (V6CLANG::GR8RegClass.hasSubClassEq(RC) ||
-      V6CLANG::AccRegClass.hasSubClassEq(RC)) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::V6CLANG_SPILL8))
+  if (V6Clang::GR8RegClass.hasSubClassEq(RC) ||
+      V6Clang::AccRegClass.hasSubClassEq(RC)) {
+    BuildMI(MBB, MI, DL, get(V6Clang::V6CLANG_SPILL8))
         .addReg(SrcReg, getKillRegState(isKill))
         .addFrameIndex(FrameIndex);
     return;
   }
 
-  if (V6CLANG::GR16RegClass.hasSubClassEq(RC)) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::V6CLANG_SPILL16))
+  if (V6Clang::GR16RegClass.hasSubClassEq(RC)) {
+    BuildMI(MBB, MI, DL, get(V6Clang::V6CLANG_SPILL16))
         .addReg(SrcReg, getKillRegState(isKill))
         .addFrameIndex(FrameIndex);
     return;
@@ -161,16 +161,16 @@ void V6ClangInstrInfo::loadRegFromStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
 
-  if (V6CLANG::GR8RegClass.hasSubClassEq(RC) ||
-      V6CLANG::AccRegClass.hasSubClassEq(RC)) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::V6CLANG_RELOAD8))
+  if (V6Clang::GR8RegClass.hasSubClassEq(RC) ||
+      V6Clang::AccRegClass.hasSubClassEq(RC)) {
+    BuildMI(MBB, MI, DL, get(V6Clang::V6CLANG_RELOAD8))
         .addReg(DestReg, RegState::Define)
         .addFrameIndex(FrameIndex);
     return;
   }
 
-  if (V6CLANG::GR16RegClass.hasSubClassEq(RC)) {
-    BuildMI(MBB, MI, DL, get(V6CLANG::V6CLANG_RELOAD16))
+  if (V6Clang::GR16RegClass.hasSubClassEq(RC)) {
+    BuildMI(MBB, MI, DL, get(V6Clang::V6CLANG_RELOAD16))
         .addReg(DestReg, RegState::Define)
         .addFrameIndex(FrameIndex);
     return;
@@ -187,28 +187,28 @@ void V6ClangInstrInfo::loadRegFromStackSlot(
 static V6ClangCC::CondCode getCondFromJcc(unsigned Opc) {
   switch (Opc) {
   default: llvm_unreachable("Not a V6CLANG conditional branch");
-  case V6CLANG::JNZ: return V6ClangCC::COND_NZ;
-  case V6CLANG::JZ:  return V6ClangCC::COND_Z;
-  case V6CLANG::JNC: return V6ClangCC::COND_NC;
-  case V6CLANG::JC:  return V6ClangCC::COND_C;
-  case V6CLANG::JPO: return V6ClangCC::COND_PO;
-  case V6CLANG::JPE: return V6ClangCC::COND_PE;
-  case V6CLANG::JP:  return V6ClangCC::COND_P;
-  case V6CLANG::JM:  return V6ClangCC::COND_M;
+  case V6Clang::JNZ: return V6ClangCC::COND_NZ;
+  case V6Clang::JZ:  return V6ClangCC::COND_Z;
+  case V6Clang::JNC: return V6ClangCC::COND_NC;
+  case V6Clang::JC:  return V6ClangCC::COND_C;
+  case V6Clang::JPO: return V6ClangCC::COND_PO;
+  case V6Clang::JPE: return V6ClangCC::COND_PE;
+  case V6Clang::JP:  return V6ClangCC::COND_P;
+  case V6Clang::JM:  return V6ClangCC::COND_M;
   }
 }
 
 /// Map a V6ClangCC condition code to a Jcc opcode.
 static unsigned getJccFromCond(V6ClangCC::CondCode CC) {
   switch (CC) {
-  case V6ClangCC::COND_NZ: return V6CLANG::JNZ;
-  case V6ClangCC::COND_Z:  return V6CLANG::JZ;
-  case V6ClangCC::COND_NC: return V6CLANG::JNC;
-  case V6ClangCC::COND_C:  return V6CLANG::JC;
-  case V6ClangCC::COND_PO: return V6CLANG::JPO;
-  case V6ClangCC::COND_PE: return V6CLANG::JPE;
-  case V6ClangCC::COND_P:  return V6CLANG::JP;
-  case V6ClangCC::COND_M:  return V6CLANG::JM;
+  case V6ClangCC::COND_NZ: return V6Clang::JNZ;
+  case V6ClangCC::COND_Z:  return V6Clang::JZ;
+  case V6ClangCC::COND_NC: return V6Clang::JNC;
+  case V6ClangCC::COND_C:  return V6Clang::JC;
+  case V6ClangCC::COND_PO: return V6Clang::JPO;
+  case V6ClangCC::COND_PE: return V6Clang::JPE;
+  case V6ClangCC::COND_P:  return V6Clang::JP;
+  case V6ClangCC::COND_M:  return V6Clang::JM;
   }
   llvm_unreachable("Unknown V6CLANG condition code");
 }
@@ -230,8 +230,8 @@ static V6ClangCC::CondCode getOppositeCond(V6ClangCC::CondCode CC) {
 
 static bool isCondBranch(unsigned Opc) {
   switch (Opc) {
-  case V6CLANG::JNZ: case V6CLANG::JZ: case V6CLANG::JNC: case V6CLANG::JC:
-  case V6CLANG::JPO: case V6CLANG::JPE: case V6CLANG::JP: case V6CLANG::JM:
+  case V6Clang::JNZ: case V6Clang::JZ: case V6Clang::JNC: case V6Clang::JC:
+  case V6Clang::JPO: case V6Clang::JPE: case V6Clang::JP: case V6Clang::JM:
     return true;
   default:
     return false;
@@ -239,7 +239,7 @@ static bool isCondBranch(unsigned Opc) {
 }
 
 static bool isUncondBranch(unsigned Opc) {
-  return Opc == V6CLANG::JMP;
+  return Opc == V6Clang::JMP;
 }
 
 bool V6ClangInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
@@ -337,7 +337,7 @@ unsigned V6ClangInstrInfo::insertBranch(MachineBasicBlock &MBB,
   if (Cond.empty()) {
     // Unconditional branch.
     assert(!FBB && "Unconditional branch with false block?");
-    BuildMI(&MBB, DL, get(V6CLANG::JMP)).addMBB(TBB);
+    BuildMI(&MBB, DL, get(V6Clang::JMP)).addMBB(TBB);
     if (BytesAdded)
       *BytesAdded = 3;
     return 1;
@@ -356,7 +356,7 @@ unsigned V6ClangInstrInfo::insertBranch(MachineBasicBlock &MBB,
   }
 
   // Conditional + unconditional: Jcc TBB; JMP FBB
-  BuildMI(&MBB, DL, get(V6CLANG::JMP)).addMBB(FBB);
+  BuildMI(&MBB, DL, get(V6Clang::JMP)).addMBB(FBB);
   if (BytesAdded)
     *BytesAdded = 6;
   return 2;
@@ -392,7 +392,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
     MachineInstr &Cand = *I;
 
     // Found LXI defining Reg — return it.
-    if (Cand.getOpcode() == V6CLANG::LXI &&
+    if (Cand.getOpcode() == V6Clang::LXI &&
         Cand.getOperand(0).getReg() == Reg) {
       // O61: a patched LXI carries an MCSymbol imm, not a concrete imm.
       // Its value is unknown at compile time, so we cannot fold from it.
@@ -421,7 +421,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
     for (auto I = Pred->end(); I != Pred->begin() && PredCount < ScanLimit;
          ++PredCount) {
       --I;
-      if (I->getOpcode() == V6CLANG::LXI && I->getOperand(0).getReg() == Reg) {
+      if (I->getOpcode() == V6Clang::LXI && I->getOperand(0).getReg() == Reg) {
         // O61: patched LXI has an opaque (MCSymbol) imm — can't fold.
         if (!I->getOperand(1).isImm())
           return nullptr;
@@ -444,7 +444,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
 /// Return true if the FLAGS register implicit-def on \p MI is dead.
 static bool isFlagsDefDead(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.implicit_operands()) {
-    if (MO.isReg() && MO.isDef() && MO.getReg() == V6CLANG::FLAGS)
+    if (MO.isReg() && MO.isDef() && MO.getReg() == V6Clang::FLAGS)
       return MO.isDead();
   }
   // No FLAGS implicit def found — conservatively safe (no flags produced).
@@ -625,7 +625,7 @@ static Register findDeadGR8AtMI(const MachineInstr &MI,
   // GR8 minus A. Order is arbitrary; preferring the BC pair first leaves
   // H/L (often live as pointer halves) for last.
   static const unsigned Candidates[] = {
-      V6CLANG::B, V6CLANG::C, V6CLANG::D, V6CLANG::E, V6CLANG::H, V6CLANG::L,
+      V6Clang::B, V6Clang::C, V6Clang::D, V6Clang::E, V6Clang::H, V6Clang::L,
   };
   for (unsigned R : Candidates) {
     if (Exclude1 && TRI->regsOverlap(R, Exclude1))
@@ -650,11 +650,11 @@ static void expandMemOpM(MachineBasicBlock &MBB, MachineInstr &MI,
   DebugLoc DL = MI.getDebugLoc();
   auto Ip = MI.getIterator();
 
-  if (AddrReg == V6CLANG::HL) {
+  if (AddrReg == V6Clang::HL) {
     Emit(MBB, Ip);
     return;
   }
-  if (AddrReg == V6CLANG::DE) {
+  if (AddrReg == V6Clang::DE) {
     // XCHG; OP M; XCHG — restores HL and DE. The trailing XCHG can
     // be omitted only when BOTH HL and DE are dead after MI: the first
     // XCHG puts the address in HL and old-HL in DE, so if DE is still
@@ -662,26 +662,26 @@ static void expandMemOpM(MachineBasicBlock &MBB, MachineInstr &MI,
     // address register), omitting the restore leaves DE = old-HL
     // instead of the original address, causing the store to write to
     // the wrong location.
-    bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-    bool DEDead = isRegDeadAtMI(V6CLANG::DE, MI, MBB, &RI);
-    BuildMI(MBB, Ip, DL, TII.get(V6CLANG::XCHG));
+    bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+    bool DEDead = isRegDeadAtMI(V6Clang::DE, MI, MBB, &RI);
+    BuildMI(MBB, Ip, DL, TII.get(V6Clang::XCHG));
     Emit(MBB, Ip);
     if (!HLDead || !DEDead)
-      BuildMI(MBB, Ip, DL, TII.get(V6CLANG::XCHG));
+      BuildMI(MBB, Ip, DL, TII.get(V6Clang::XCHG));
     return;
   }
-  // AddrReg == V6CLANG::BC — no swap instruction; copy B→H, C→L, restore HL.
-  bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
+  // AddrReg == V6Clang::BC — no swap instruction; copy B→H, C→L, restore HL.
+  bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
   if (!HLDead)
-    BuildMI(MBB, Ip, DL, TII.get(V6CLANG::PUSH))
-        .addReg(V6CLANG::HL, RegState::Kill)
-        .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-  BuildMI(MBB, Ip, DL, TII.get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
-  BuildMI(MBB, Ip, DL, TII.get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
+    BuildMI(MBB, Ip, DL, TII.get(V6Clang::PUSH))
+        .addReg(V6Clang::HL, RegState::Kill)
+        .addReg(V6Clang::SP, RegState::ImplicitDefine);
+  BuildMI(MBB, Ip, DL, TII.get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::C);
+  BuildMI(MBB, Ip, DL, TII.get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::B);
   Emit(MBB, Ip);
   if (!HLDead)
-    BuildMI(MBB, Ip, DL, TII.get(V6CLANG::POP), V6CLANG::HL)
-        .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+    BuildMI(MBB, Ip, DL, TII.get(V6Clang::POP), V6Clang::HL)
+        .addReg(V6Clang::SP, RegState::ImplicitDefine);
 }
 
 bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
@@ -692,7 +692,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   // Removed in `default` case when no expansion occurs.
   MachineInstr *CommentMI = nullptr;
   if (getV6ClangAnnotatePseudosEnabled()) {
-    CommentMI = BuildMI(MBB, MI, DL, get(V6CLANG::V6CLANG_PSEUDO_COMMENT))
+    CommentMI = BuildMI(MBB, MI, DL, get(V6Clang::V6CLANG_PSEUDO_COMMENT))
                     .addImm(MI.getOpcode())
                     .getInstr();
   }
@@ -703,55 +703,55 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       CommentMI->eraseFromParent();
     return false;
 
-  case V6CLANG::V6CLANG_BUILD_PAIR: {
+  case V6Clang::V6CLANG_BUILD_PAIR: {
     // Combine two i8 values into i16 register pair.
     Register Dst = MI.getOperand(0).getReg();
     Register Lo = MI.getOperand(1).getReg();
     Register Hi = MI.getOperand(2).getReg();
-    MCRegister DstLo = RI.getSubReg(Dst, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(Dst, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(Dst, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(Dst, V6Clang::sub_hi);
     // Copy hi first in case DstLo == Hi (avoids clobbering).
     if (Hi != DstHi)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(Hi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(Hi);
     if (Lo != DstLo)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(Lo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(Lo);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_NEG16: {
+  case V6Clang::V6CLANG_NEG16: {
     // Negate a 16-bit pair without first materializing a zero scratch pair.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
 
-    MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-                              .addReg(V6CLANG::A)
-                              .addReg(V6CLANG::A)
+    MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+                              .addReg(V6Clang::A)
+                              .addReg(V6Clang::A)
                               .getInstr();
-    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, &RI))
-      markRegUsesUndef(XraMI, V6CLANG::A);
+    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, &RI))
+      markRegUsesUndef(XraMI, V6Clang::A);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+        .addReg(V6Clang::A)
         .addReg(SrcLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A)
-        .addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A)
+        .addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+        .addReg(V6Clang::A)
         .addReg(SrcHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_NEG8: {
+  case V6Clang::V6CLANG_NEG8: {
     // Result-only i8 negate. Use CMA; INR A only when the source is already
     // in A; keep the subtract-based shape for every other case.
     Register Dst = MI.getOperand(0).getReg();
@@ -761,90 +761,90 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // RA may materialize a short-lived copy `MOV Src, A` immediately before
     // the pseudo when the original value already lives in A. Fold that copy
     // back into the accumulator-only negate shape.
-    if (Src != V6CLANG::A && SrcKilled) {
+    if (Src != V6Clang::A && SrcKilled) {
       auto PrevIt = MI.getIterator();
       while (PrevIt != MBB.begin()) {
         --PrevIt;
-        if (PrevIt->isDebugInstr() || PrevIt->getOpcode() == V6CLANG::V6CLANG_PSEUDO_COMMENT)
+        if (PrevIt->isDebugInstr() || PrevIt->getOpcode() == V6Clang::V6CLANG_PSEUDO_COMMENT)
           continue;
 
         bool IsCopyFromA = false;
-        if (PrevIt->getOpcode() == V6CLANG::MOVrr) {
+        if (PrevIt->getOpcode() == V6Clang::MOVrr) {
           IsCopyFromA = PrevIt->getOperand(0).getReg() == Src &&
-                        PrevIt->getOperand(1).getReg() == V6CLANG::A;
+                        PrevIt->getOperand(1).getReg() == V6Clang::A;
         } else if (PrevIt->isCopy()) {
           IsCopyFromA = PrevIt->getOperand(0).getReg() == Src &&
-                        PrevIt->getOperand(1).getReg() == V6CLANG::A;
+                        PrevIt->getOperand(1).getReg() == V6Clang::A;
         }
 
         if (IsCopyFromA) {
           PrevIt->eraseFromParent();
-          Src = V6CLANG::A;
+          Src = V6Clang::A;
         }
         break;
       }
     }
 
-    if (Src == V6CLANG::A) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::CMA), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::INRr), V6CLANG::A).addReg(V6CLANG::A);
-      if (Dst != V6CLANG::A)
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), Dst).addReg(V6CLANG::A);
+    if (Src == V6Clang::A) {
+      BuildMI(MBB, MI, DL, get(V6Clang::CMA), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::INRr), V6Clang::A).addReg(V6Clang::A);
+      if (Dst != V6Clang::A)
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), Dst).addReg(V6Clang::A);
     } else {
-      MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-                                .addReg(V6CLANG::A)
-                                .addReg(V6CLANG::A)
+      MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+                                .addReg(V6Clang::A)
+                                .addReg(V6Clang::A)
                                 .getInstr();
-      if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, &RI))
-        markRegUsesUndef(XraMI, V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-          .addReg(V6CLANG::A)
+      if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, &RI))
+        markRegUsesUndef(XraMI, V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+          .addReg(V6Clang::A)
           .addReg(Src, getKillRegState(SrcKilled));
-      if (Dst != V6CLANG::A)
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), Dst).addReg(V6CLANG::A);
+      if (Dst != V6Clang::A)
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), Dst).addReg(V6Clang::A);
     }
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SEXT: {
+  case V6Clang::V6CLANG_SEXT: {
     // Sign-extend i8 to i16 via RLC + SBB.
     // RLC rotates A left: bit 7 → carry.
     // SBB A: A = A - A - carry = -carry = 0x00 or 0xFF.
     Register Dst = MI.getOperand(0).getReg();
     Register Src = MI.getOperand(1).getReg();
-    MCRegister DstLo = RI.getSubReg(Dst, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(Dst, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(Dst, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(Dst, V6Clang::sub_hi);
 
     // Copy source to destination low byte first.
     if (Src != DstLo)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(Src);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(Src);
     // Compute sign extension: MOV A, Src; RLC; SBB A; MOV DstHi, A
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(Src);
-    BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(Src);
+    BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_BRCOND: {
+  case V6Clang::V6CLANG_BRCOND: {
     MachineBasicBlock *Target = MI.getOperand(0).getMBB();
     int64_t CC = MI.getOperand(1).getImm();
 
     unsigned JccOpc;
     switch (CC) {
     default: llvm_unreachable("Unknown V6CLANG condition code");
-    case V6ClangCC::COND_NZ: JccOpc = V6CLANG::JNZ; break;
-    case V6ClangCC::COND_Z:  JccOpc = V6CLANG::JZ;  break;
-    case V6ClangCC::COND_NC: JccOpc = V6CLANG::JNC; break;
-    case V6ClangCC::COND_C:  JccOpc = V6CLANG::JC;  break;
-    case V6ClangCC::COND_PO: JccOpc = V6CLANG::JPO; break;
-    case V6ClangCC::COND_PE: JccOpc = V6CLANG::JPE; break;
-    case V6ClangCC::COND_P:  JccOpc = V6CLANG::JP;  break;
-    case V6ClangCC::COND_M:  JccOpc = V6CLANG::JM;  break;
+    case V6ClangCC::COND_NZ: JccOpc = V6Clang::JNZ; break;
+    case V6ClangCC::COND_Z:  JccOpc = V6Clang::JZ;  break;
+    case V6ClangCC::COND_NC: JccOpc = V6Clang::JNC; break;
+    case V6ClangCC::COND_C:  JccOpc = V6Clang::JC;  break;
+    case V6ClangCC::COND_PO: JccOpc = V6Clang::JPO; break;
+    case V6ClangCC::COND_PE: JccOpc = V6Clang::JPE; break;
+    case V6ClangCC::COND_P:  JccOpc = V6Clang::JP;  break;
+    case V6ClangCC::COND_M:  JccOpc = V6Clang::JM;  break;
     }
 
     BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
@@ -857,34 +857,34 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   //===------------------------------------------------------------------===//
 
   // O41: Pre-RA INX/DCX pseudos — expand to N copies of INX/DCX rp.
-  case V6CLANG::V6CLANG_INX16: {
+  case V6Clang::V6CLANG_INX16: {
     Register Rp = MI.getOperand(0).getReg();
     unsigned Count = MI.getOperand(2).getImm();
     for (unsigned I = 0; I < Count; ++I)
-      BuildMI(MBB, MI, DL, get(V6CLANG::INX), Rp).addReg(Rp);
+      BuildMI(MBB, MI, DL, get(V6Clang::INX), Rp).addReg(Rp);
     MI.eraseFromParent();
     return true;
   }
-  case V6CLANG::V6CLANG_DCX16: {
+  case V6Clang::V6CLANG_DCX16: {
     Register Rp = MI.getOperand(0).getReg();
     unsigned Count = MI.getOperand(2).getImm();
     for (unsigned I = 0; I < Count; ++I)
-      BuildMI(MBB, MI, DL, get(V6CLANG::DCX), Rp).addReg(Rp);
+      BuildMI(MBB, MI, DL, get(V6Clang::DCX), Rp).addReg(Rp);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_DAD: {
+  case V6Clang::V6CLANG_DAD: {
     // V6CLANG_DAD: dst = lhs + rhs via physical DAD instruction.
     Register DstReg = MI.getOperand(0).getReg();
     Register LhsReg = MI.getOperand(1).getReg();
     Register RhsReg = MI.getOperand(2).getReg();
-    assert(V6CLANG::GR16RegClass.contains(DstReg) &&
+    assert(V6Clang::GR16RegClass.contains(DstReg) &&
            "V6CLANG_DAD result must be an allocatable register pair");
 
     Register BaseReg = LhsReg;
     Register AddReg = RhsReg;
-    if (RhsReg == V6CLANG::HL) {
+    if (RhsReg == V6Clang::HL) {
       BaseReg = RhsReg;
       AddReg = LhsReg;
     }
@@ -893,9 +893,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // here because a later def of L can kill the old pair value while H is
     // still live as an independent i8. Since skipping preservation clobbers
     // both halves, require both H and L to be dead separately.
-    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::H, &RI) &&
-            isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::L, &RI);
-    bool PreserveHL = DstReg != V6CLANG::HL && !HLDead;
+    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6Clang::H, &RI) &&
+            isRegDeadAfter(MBB, MI.getIterator(), V6Clang::L, &RI);
+    bool PreserveHL = DstReg != V6Clang::HL && !HLDead;
 
     // Try INX/DCX chains for small constants loaded by a preceding LXI.
     // INX/DCX set no flags, so this is only valid when FLAGS is dead.
@@ -908,21 +908,21 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         if (ImmVal != 0) {
           unsigned AbsVal =
               static_cast<unsigned>(ImmVal > 0 ? ImmVal : -ImmVal);
-          unsigned InxOpc = ImmVal > 0 ? V6CLANG::INX : V6CLANG::DCX;
+          unsigned InxOpc = ImmVal > 0 ? V6Clang::INX : V6Clang::DCX;
           V6ClangOptMode Mode = getV6ClangOptMode(*MBB.getParent());
           V6ClangInstrCost InxCost = V6ClangCost::INX * AbsVal;
           V6ClangInstrCost DadCost = V6ClangCost::LXI + V6ClangCost::DAD;
           if (InxCost.isCheaperOrEqual(DadCost, Mode)) {
             if (PreserveHL)
-              BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-            if (BaseReg != V6CLANG::HL)
-              copyPhysReg(MBB, MI, DL, V6CLANG::HL, BaseReg, /*KillSrc=*/false);
+              BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+            if (BaseReg != V6Clang::HL)
+              copyPhysReg(MBB, MI, DL, V6Clang::HL, BaseReg, /*KillSrc=*/false);
             for (unsigned I = 0; I < AbsVal; ++I)
-              BuildMI(MBB, MI, DL, get(InxOpc), V6CLANG::HL).addReg(V6CLANG::HL);
-            if (DstReg != V6CLANG::HL)
-              copyPhysReg(MBB, MI, DL, DstReg, V6CLANG::HL, /*KillSrc=*/false);
+              BuildMI(MBB, MI, DL, get(InxOpc), V6Clang::HL).addReg(V6Clang::HL);
+            if (DstReg != V6Clang::HL)
+              copyPhysReg(MBB, MI, DL, DstReg, V6Clang::HL, /*KillSrc=*/false);
             if (PreserveHL)
-              BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+              BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
             Register ConstReg = LXI->getOperand(0).getReg();
             if (LXI->getParent() == &MBB &&
                 isRegDeadAfter(MBB, MI.getIterator(), ConstReg, &RI))
@@ -934,29 +934,29 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       }
     }
 
-    if (PreserveHL && BaseReg == V6CLANG::HL && AddReg == V6CLANG::DE &&
-        DstReg == V6CLANG::DE) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::DE);
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+    if (PreserveHL && BaseReg == V6Clang::HL && AddReg == V6Clang::DE &&
+        DstReg == V6Clang::DE) {
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::DE);
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       MI.eraseFromParent();
       return true;
     }
 
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    if (BaseReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, V6CLANG::HL, BaseReg, /*KillSrc=*/false);
-    BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(AddReg);
-    if (DstReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, DstReg, V6CLANG::HL, /*KillSrc=*/false);
+      BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    if (BaseReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, V6Clang::HL, BaseReg, /*KillSrc=*/false);
+    BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(AddReg);
+    if (DstReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, DstReg, V6Clang::HL, /*KillSrc=*/false);
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_ADD16: {
+  case V6Clang::V6CLANG_ADD16: {
     // dst = lhs + rhs (16-bit)
     Register DstReg = MI.getOperand(0).getReg();
     Register LhsReg = MI.getOperand(1).getReg();
@@ -982,7 +982,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         if (ImmVal != 0) {
           unsigned AbsVal =
               static_cast<unsigned>(ImmVal > 0 ? ImmVal : -ImmVal);
-          unsigned InxOpc = ImmVal > 0 ? V6CLANG::INX : V6CLANG::DCX;
+          unsigned InxOpc = ImmVal > 0 ? V6Clang::INX : V6Clang::DCX;
           V6ClangOptMode Mode = getV6ClangOptMode(*MBB.getParent());
           V6ClangInstrCost InxCost = V6ClangCost::INX * AbsVal;
           V6ClangInstrCost DadCost = V6ClangCost::LXI + V6ClangCost::DAD;
@@ -1003,14 +1003,14 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // DAD rp: HL = HL + rp. Only sets Carry flag.
     // Optimization: if dst==HL and one operand is HL, use DAD rp (12cc)
     // instead of the full 6-instruction 8-bit chain (~40cc).
-    if (DstReg == V6CLANG::HL && LhsReg == V6CLANG::HL) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(RhsReg);
+    if (DstReg == V6Clang::HL && LhsReg == V6Clang::HL) {
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(RhsReg);
       MI.eraseFromParent();
       return true;
     }
-    if (DstReg == V6CLANG::HL && RhsReg == V6CLANG::HL) {
+    if (DstReg == V6Clang::HL && RhsReg == V6Clang::HL) {
       // ADD is commutative: HL = rp + HL → DAD rp
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(LhsReg);
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(LhsReg);
       MI.eraseFromParent();
       return true;
     }
@@ -1019,14 +1019,14 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // instead of the general A-byte chain (24cc, 6B). The second XCHG
     // restores old HL; if it was undef, mark the XCHG implicit reads as
     // undef for the MIR verifier.
-    if (DstReg == V6CLANG::DE && LhsReg == V6CLANG::DE && RhsReg == V6CLANG::DE) {
-      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6CLANG::HL, &RI);
-      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
+    if (DstReg == V6Clang::DE && LhsReg == V6Clang::DE && RhsReg == V6Clang::DE) {
+      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6Clang::HL, &RI);
+      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
       if (!HLLive) {
-        markXchgUseUndef(FirstXchg, V6CLANG::HL);
-        markXchgUseUndef(SecondXchg, V6CLANG::DE);
+        markXchgUseUndef(FirstXchg, V6Clang::HL);
+        markXchgUseUndef(SecondXchg, V6Clang::DE);
       }
       MI.eraseFromParent();
       return true;
@@ -1036,16 +1036,16 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // instead of the general A-byte chain. This is valid even when old HL
     // is live because the second XCHG restores it. If old HL is undef, mark
     // the corresponding XCHG implicit reads as undef for the MIR verifier.
-    if (DstReg == V6CLANG::DE &&
-        ((LhsReg == V6CLANG::DE && RhsReg == V6CLANG::BC) ||
-         (LhsReg == V6CLANG::BC && RhsReg == V6CLANG::DE))) {
-      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6CLANG::HL, &RI);
-      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::BC);
-      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
+    if (DstReg == V6Clang::DE &&
+        ((LhsReg == V6Clang::DE && RhsReg == V6Clang::BC) ||
+         (LhsReg == V6Clang::BC && RhsReg == V6Clang::DE))) {
+      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6Clang::HL, &RI);
+      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::BC);
+      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
       if (!HLLive) {
-        markXchgUseUndef(FirstXchg, V6CLANG::HL);
-        markXchgUseUndef(SecondXchg, V6CLANG::DE);
+        markXchgUseUndef(FirstXchg, V6Clang::HL);
+        markXchgUseUndef(SecondXchg, V6Clang::DE);
       }
       MI.eraseFromParent();
       return true;
@@ -1056,74 +1056,74 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // instead of the general 8-bit A-chain (40cc, 6B). HL is preserved by
     // the paired XCHGs. If old HL is undef, mark the XCHG reads accordingly.
     // Mirror of the DE=DE+BC fast path above.
-    if (DstReg == V6CLANG::BC &&
-        ((LhsReg == V6CLANG::BC && RhsReg == V6CLANG::DE) ||
-         (LhsReg == V6CLANG::DE && RhsReg == V6CLANG::BC)) &&
-        isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::DE, &RI)) {
-      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6CLANG::HL, &RI);
-      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::BC);
-      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
+    if (DstReg == V6Clang::BC &&
+        ((LhsReg == V6Clang::BC && RhsReg == V6Clang::DE) ||
+         (LhsReg == V6Clang::DE && RhsReg == V6Clang::BC)) &&
+        isRegDeadAfter(MBB, MI.getIterator(), V6Clang::DE, &RI)) {
+      bool HLLive = isRegLiveBefore(MBB, MI.getIterator(), V6Clang::HL, &RI);
+      MachineInstr *FirstXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::BC);
+      MachineInstr *SecondXchg = BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
       if (!HLLive) {
-        markXchgUseUndef(FirstXchg, V6CLANG::HL);
-        markXchgUseUndef(SecondXchg, V6CLANG::DE);
+        markXchgUseUndef(FirstXchg, V6Clang::HL);
+        markXchgUseUndef(SecondXchg, V6Clang::DE);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::B).addReg(V6CLANG::D);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::C).addReg(V6CLANG::E);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::B).addReg(V6Clang::D);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::C).addReg(V6Clang::E);
       MI.eraseFromParent();
       return true;
     }
 
     // --- Path A: one operand is HL, DstReg != HL ---
     // Use DAD + copy result out (via XCHG for DE, MOV pair for BC).
-    if (DstReg != V6CLANG::HL &&
-        (LhsReg == V6CLANG::HL || RhsReg == V6CLANG::HL)) {
-      Register OtherReg = (LhsReg == V6CLANG::HL) ? RhsReg : LhsReg;
-      bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::HL, &RI);
+    if (DstReg != V6Clang::HL &&
+        (LhsReg == V6Clang::HL || RhsReg == V6Clang::HL)) {
+      Register OtherReg = (LhsReg == V6Clang::HL) ? RhsReg : LhsReg;
+      bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6Clang::HL, &RI);
 
-      if (DstReg == V6CLANG::DE) {
+      if (DstReg == V6Clang::DE) {
         if (HLDead) {
           // A1-DE: DAD OtherReg; XCHG → 16cc, 2B
-          BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(OtherReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
           MI.eraseFromParent();
           return true;
         }
-        if (OtherReg == V6CLANG::DE) {
+        if (OtherReg == V6Clang::DE) {
           // A2-DE: DE = HL + DE, HL live. XCHG; DAD DE; XCHG → 20cc, 3B
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-          BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::DE);
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::DE);
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
           MI.eraseFromParent();
           return true;
         }
         // A3-DE: DE = HL + BC, HL live. Preserve HL explicitly around DAD.
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(OtherReg);
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
         MI.eraseFromParent();
         return true;
       }
 
       if (HLDead) {
         // A-general (dest=BC): DAD + MOV pair → 28cc, 3B
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
-        MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-        MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(OtherReg);
+        MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+        MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::H);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::L);
         MI.eraseFromParent();
         return true;
       }
       // A-general live-HL (dest=BC): preserve HL explicitly around DAD.
-      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
-      MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-      MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
-      BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(OtherReg);
+      MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+      MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::H);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::L);
+      BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
       MI.eraseFromParent();
       return true;
     }
@@ -1131,22 +1131,22 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // --- Path B: DstReg == HL, neither operand is HL ---
     // Copy one operand into HL (via XCHG for DE, MOV pair otherwise),
     // then DAD the other.
-    if (DstReg == V6CLANG::HL && LhsReg != V6CLANG::HL && RhsReg != V6CLANG::HL) {
+    if (DstReg == V6Clang::HL && LhsReg != V6Clang::HL && RhsReg != V6Clang::HL) {
       // B1-DE: one operand is DE (not both), DE dead → XCHG + DAD
       if (LhsReg != RhsReg) {
         Register DEOp = Register();
         Register NonDEOp = Register();
-        if (LhsReg == V6CLANG::DE) {
+        if (LhsReg == V6Clang::DE) {
           DEOp = LhsReg;
           NonDEOp = RhsReg;
-        } else if (RhsReg == V6CLANG::DE) {
+        } else if (RhsReg == V6Clang::DE) {
           DEOp = RhsReg;
           NonDEOp = LhsReg;
         }
-        if (DEOp && isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::DE, &RI)) {
+        if (DEOp && isRegDeadAfter(MBB, MI.getIterator(), V6Clang::DE, &RI)) {
           // XCHG; DAD NonDEOp → 16cc, 2B
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-          BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(NonDEOp);
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(NonDEOp);
           MI.eraseFromParent();
           return true;
         }
@@ -1154,38 +1154,38 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 
       // B-general: MOV pair + DAD → 28cc, 3B
       {
-        MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-        MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(LhsHi);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(LhsLo);
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(RhsReg);
+        MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+        MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(LhsHi);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(LhsLo);
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(RhsReg);
         MI.eraseFromParent();
         return true;
       }
     }
 
     // General case: expand to 8-bit chain.
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6Clang::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6Clang::sub_hi);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ADDr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::ADDr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SUB16: {
+  case V6Clang::V6CLANG_SUB16: {
     // dst = lhs - rhs (16-bit)
     Register DstReg = MI.getOperand(0).getReg();
     Register LhsReg = MI.getOperand(1).getReg();
@@ -1203,7 +1203,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         if (ImmVal != 0) {
           unsigned AbsVal =
               static_cast<unsigned>(ImmVal > 0 ? ImmVal : -ImmVal);
-          unsigned InxOpc = ImmVal > 0 ? V6CLANG::DCX : V6CLANG::INX;
+          unsigned InxOpc = ImmVal > 0 ? V6Clang::DCX : V6Clang::INX;
           V6ClangOptMode Mode = getV6ClangOptMode(*MBB.getParent());
           V6ClangInstrCost InxCost = V6ClangCost::INX * AbsVal;
           V6ClangInstrCost DadCost = V6ClangCost::LXI + V6ClangCost::DAD;
@@ -1221,35 +1221,35 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       }
     }
 
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6Clang::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6Clang::sub_hi);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_AND16:
-  case V6CLANG::V6CLANG_OR16:
-  case V6CLANG::V6CLANG_XOR16: {
+  case V6Clang::V6CLANG_AND16:
+  case V6Clang::V6CLANG_OR16:
+  case V6Clang::V6CLANG_XOR16: {
     // dst = lhs OP rhs (16-bit, pair-wise 8-bit)
     unsigned OpOpc;
     switch (MI.getOpcode()) {
-    case V6CLANG::V6CLANG_AND16: OpOpc = V6CLANG::ANAr; break;
-    case V6CLANG::V6CLANG_OR16:  OpOpc = V6CLANG::ORAr; break;
-    case V6CLANG::V6CLANG_XOR16: OpOpc = V6CLANG::XRAr; break;
+    case V6Clang::V6CLANG_AND16: OpOpc = V6Clang::ANAr; break;
+    case V6Clang::V6CLANG_OR16:  OpOpc = V6Clang::ORAr; break;
+    case V6Clang::V6CLANG_XOR16: OpOpc = V6Clang::XRAr; break;
     default: llvm_unreachable("unexpected opcode");
     }
 
@@ -1257,34 +1257,34 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     Register LhsReg = MI.getOperand(1).getReg();
     Register RhsReg = MI.getOperand(2).getReg();
 
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6Clang::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6Clang::sub_hi);
 
     // O89: skip hi-byte computation when DstHi is dead (e.g. (u8)(a OP b)).
     bool HiDead = isRegDeadAfter(MBB, MI.getIterator(), DstHi, &RI);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-    BuildMI(MBB, MI, DL, get(OpOpc), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+    BuildMI(MBB, MI, DL, get(OpOpc), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
     if (!HiDead) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-      BuildMI(MBB, MI, DL, get(OpOpc), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(RhsHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+      BuildMI(MBB, MI, DL, get(OpOpc), V6Clang::A)
+          .addReg(V6Clang::A).addReg(RhsHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
     }
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_AND16_IMM:
-  case V6CLANG::V6CLANG_OR16_IMM:
-  case V6CLANG::V6CLANG_XOR16_IMM: {
+  case V6Clang::V6CLANG_AND16_IMM:
+  case V6Clang::V6CLANG_OR16_IMM:
+  case V6Clang::V6CLANG_XOR16_IMM: {
     // O93: dst = src OP imm16 (constant). dst and src are tied to the same
     // pair. The constant is loaded into A byte-wise and the cheaper 4cc
     // register ALU form is applied (legal because AND/OR/XOR are commutative),
@@ -1293,9 +1293,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     unsigned Kind = MI.getOpcode();
     unsigned OpOpc;
     switch (Kind) {
-    case V6CLANG::V6CLANG_AND16_IMM: OpOpc = V6CLANG::ANAr; break;
-    case V6CLANG::V6CLANG_OR16_IMM:  OpOpc = V6CLANG::ORAr; break;
-    case V6CLANG::V6CLANG_XOR16_IMM: OpOpc = V6CLANG::XRAr; break;
+    case V6Clang::V6CLANG_AND16_IMM: OpOpc = V6Clang::ANAr; break;
+    case V6Clang::V6CLANG_OR16_IMM:  OpOpc = V6Clang::ORAr; break;
+    case V6Clang::V6CLANG_XOR16_IMM: OpOpc = V6Clang::XRAr; break;
     default: llvm_unreachable("unexpected opcode");
     }
 
@@ -1304,8 +1304,8 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     unsigned LoByte = Imm & 0xFF;
     unsigned HiByte = (Imm >> 8) & 0xFF;
 
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
 
     // O89: skip the hi-byte work entirely when DstHi is dead (e.g. (u8)(x OP C)).
     bool HiDead = isRegDeadAfter(MBB, MI.getIterator(), DstHi, &RI);
@@ -1313,33 +1313,33 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // Emit `RegByte = RegByte OP ByteVal` with per-byte identity folding.
     auto emitByte = [&](unsigned ByteVal, MCRegister RegByte) {
       switch (Kind) {
-      case V6CLANG::V6CLANG_AND16_IMM:
+      case V6Clang::V6CLANG_AND16_IMM:
         if (ByteVal == 0xFF)
           return; // x & 0xFF == x — identity.
         if (ByteVal == 0x00) {
           // x & 0x00 == 0 — just zero the byte (O55 may fold MVI A,0 → XRA A).
-          BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), RegByte).addImm(0);
+          BuildMI(MBB, MI, DL, get(V6Clang::MVIr), RegByte).addImm(0);
           return;
         }
         break;
-      case V6CLANG::V6CLANG_OR16_IMM:
+      case V6Clang::V6CLANG_OR16_IMM:
         if (ByteVal == 0x00)
           return; // x | 0x00 == x — identity.
         if (ByteVal == 0xFF) {
           // x | 0xFF == 0xFF — set the byte.
-          BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), RegByte).addImm(0xFF);
+          BuildMI(MBB, MI, DL, get(V6Clang::MVIr), RegByte).addImm(0xFF);
           return;
         }
         break;
-      case V6CLANG::V6CLANG_XOR16_IMM:
+      case V6Clang::V6CLANG_XOR16_IMM:
         if (ByteVal == 0x00)
           return; // x ^ 0x00 == x — identity.
         break;
       }
       // Generic: MVI A, ByteVal; OP A, RegByte; MOV RegByte, A.
-      BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A).addImm(ByteVal);
-      BuildMI(MBB, MI, DL, get(OpOpc), V6CLANG::A).addReg(V6CLANG::A).addReg(RegByte);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), RegByte).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A).addImm(ByteVal);
+      BuildMI(MBB, MI, DL, get(OpOpc), V6Clang::A).addReg(V6Clang::A).addReg(RegByte);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), RegByte).addReg(V6Clang::A);
     };
 
     emitByte(LoByte, DstLo);
@@ -1350,40 +1350,40 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP16_ZERO: {
+  case V6Clang::V6CLANG_CMP16_ZERO: {
     // O34: Zero-test for i16 — MOV A, Hi; ORA Lo → Z=1 iff pair==0.
     Register SrcReg = MI.getOperand(0).getReg();
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(SrcLo);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(SrcLo);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP16_SIGN: {
+  case V6Clang::V6CLANG_CMP16_SIGN: {
     // Signed compare against zero — XRA A; ADD hi(src) exposes the pair's
     // sign bit in S while staying cheaper than the generic IMM compare.
     Register SrcReg = MI.getOperand(0).getReg();
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
 
-    MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-                              .addReg(V6CLANG::A)
-                              .addReg(V6CLANG::A)
+    MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+                              .addReg(V6Clang::A)
+                              .addReg(V6Clang::A)
                               .getInstr();
-    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, &RI))
-      markRegUsesUndef(XraMI, V6CLANG::A);
+    if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, &RI))
+      markRegUsesUndef(XraMI, V6Clang::A);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::ADDr), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::ADDr), V6Clang::A)
+        .addReg(V6Clang::A)
         .addReg(SrcHi);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP8_ZERO: {
+  case V6Clang::V6CLANG_CMP8_ZERO: {
     // O80: Zero-test for i8 with three liveness-driven shapes.
     //   src = A          → ORA A                  (1B / 4cc)
     //   src ≠ A, A dead  → XRA A; CMP src         (2B / 8cc, O38 path)
@@ -1394,26 +1394,26 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     Register Src = MI.getOperand(0).getReg();
     bool SrcKilled = MI.getOperand(0).isKill();
 
-    if (Src == V6CLANG::A) {
+    if (Src == V6Clang::A) {
       // Shape 1: src already in A → ORA A.
-      BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
-    } else if (isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)) {
+      BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
+    } else if (isRegDeadAtMI(V6Clang::A, MI, MBB, &RI)) {
       // Shape 2: A dead → XRA A; CMP src (preserves O38 emission).
-      MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A).getInstr();
-      if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6CLANG::A, &RI))
-      markRegUsesUndef(XraMI, V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::CMPr))
-          .addReg(V6CLANG::A)
+      MachineInstr *XraMI = BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A).getInstr();
+      if (!isRegLiveBefore(MBB, XraMI->getIterator(), V6Clang::A, &RI))
+      markRegUsesUndef(XraMI, V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::CMPr))
+          .addReg(V6Clang::A)
           .addReg(Src, getKillRegState(SrcKilled));
     } else {
       // Shape 3: A live → INR src; DCR src (A-preserving zero-test).
       // Both INR/DCR are tied ($rd = $src). The kill flag belongs only
       // on the second use (DCR) so the first (INR) doesn't kill src
       // before the pair completes.
-      BuildMI(MBB, MI, DL, get(V6CLANG::INRr), Src).addReg(Src);
-      BuildMI(MBB, MI, DL, get(V6CLANG::DCRr), Src)
+      BuildMI(MBB, MI, DL, get(V6Clang::INRr), Src).addReg(Src);
+      BuildMI(MBB, MI, DL, get(V6Clang::DCRr), Src)
           .addReg(Src, getKillRegState(SrcKilled));
     }
 
@@ -1421,37 +1421,37 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP16: {
+  case V6Clang::V6CLANG_CMP16: {
     // Compare lhs vs rhs (16-bit) via SUB/SBB.
     // Sets FLAGS: C for unsigned, S for signed. Z only for hi byte.
     Register LhsReg = MI.getOperand(0).getReg();
     Register RhsReg = MI.getOperand(1).getReg();
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6Clang::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6Clang::sub_hi);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(RhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(RhsHi);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP16_IMM: {
+  case V6Clang::V6CLANG_CMP16_IMM: {
     // O24: Compare lhs vs immediate (16-bit) via MVI+SUB/SBB.
     // Same as BR_CC16_IMM ordering expansion, minus the Jcc.
     // The K→K-1 + CC inversion was already done in LowerSELECT_CC.
     Register LhsReg = MI.getOperand(0).getReg();
     MachineOperand &RhsOp = MI.getOperand(1);
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
 
     auto addImmLo = [&](MachineInstrBuilder &MIB) {
       if (RhsOp.isImm()) {
@@ -1479,23 +1479,23 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     };
 
     {
-      auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A);
+      auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A);
       addImmLo(MIB);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(LhsLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(LhsLo);
     {
-      auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A);
+      auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A);
       addImmHi(MIB);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(LhsHi);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_BR_CC16: {
+  case V6Clang::V6CLANG_BR_CC16: {
     // Fused 16-bit compare + conditional branch.
     // Different sequences depending on condition code.
     // Operand layout: 0=$lhs, 1=$rhs, 2=$cc, 3=$dst
@@ -1504,10 +1504,10 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     int64_t CC = MI.getOperand(2).getImm();
     MachineBasicBlock *Target = MI.getOperand(3).getMBB();
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6Clang::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6Clang::sub_hi);
 
     if (CC == V6ClangCC::COND_Z || CC == V6ClangCC::COND_NZ) {
       // EQ/NE: CMP-based non-destructive expansion with MBB splitting.
@@ -1556,21 +1556,21 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         //   MBB: MOV A, LhsLo; CMP RhsLo; JNZ Target → fallthrough CompareHiMBB
         //   CompareHiMBB: MOV A, LhsHi; CMP RhsHi; JNZ Target; JMP FallthroughMBB
 
-        BuildMI(&MBB, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-        BuildMI(&MBB, DL, get(V6CLANG::CMPr))
-            .addReg(V6CLANG::A).addReg(RhsLo);
-        BuildMI(&MBB, DL, get(V6CLANG::JNZ)).addMBB(Target);
+        BuildMI(&MBB, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+        BuildMI(&MBB, DL, get(V6Clang::CMPr))
+            .addReg(V6Clang::A).addReg(RhsLo);
+        BuildMI(&MBB, DL, get(V6Clang::JNZ)).addMBB(Target);
 
         MBB.addSuccessor(Target);
         MBB.addSuccessor(CompareHiMBB);
 
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::CMPr))
-            .addReg(V6CLANG::A).addReg(RhsHi);
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::JNZ)).addMBB(Target);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::CMPr))
+            .addReg(V6Clang::A).addReg(RhsHi);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::JNZ)).addMBB(Target);
         // Explicit JMP so analyzeBranch sees Cond+Uncond (Jcc Target + JMP Fallthrough).
         // BranchFolding will remove this JMP if FallthroughMBB is the layout successor.
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::JMP)).addMBB(FallthroughMBB);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::JMP)).addMBB(FallthroughMBB);
 
         CompareHiMBB->addSuccessor(Target);
         CompareHiMBB->addSuccessor(FallthroughMBB);
@@ -1580,21 +1580,21 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         //   MBB: MOV A, LhsLo; CMP RhsLo; JNZ FallthroughMBB → fallthrough CompareHiMBB
         //   CompareHiMBB: MOV A, LhsHi; CMP RhsHi; JZ Target; JMP FallthroughMBB
 
-        BuildMI(&MBB, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-        BuildMI(&MBB, DL, get(V6CLANG::CMPr))
-            .addReg(V6CLANG::A).addReg(RhsLo);
-        BuildMI(&MBB, DL, get(V6CLANG::JNZ)).addMBB(FallthroughMBB);
+        BuildMI(&MBB, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+        BuildMI(&MBB, DL, get(V6Clang::CMPr))
+            .addReg(V6Clang::A).addReg(RhsLo);
+        BuildMI(&MBB, DL, get(V6Clang::JNZ)).addMBB(FallthroughMBB);
 
         MBB.addSuccessor(FallthroughMBB);
         MBB.addSuccessor(CompareHiMBB);
 
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::CMPr))
-            .addReg(V6CLANG::A).addReg(RhsHi);
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::JZ)).addMBB(Target);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::CMPr))
+            .addReg(V6Clang::A).addReg(RhsHi);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::JZ)).addMBB(Target);
         // Explicit JMP so analyzeBranch sees Cond+Uncond (Jcc Target + JMP Fallthrough).
         // BranchFolding will remove this JMP if FallthroughMBB is the layout successor.
-        BuildMI(CompareHiMBB, DL, get(V6CLANG::JMP)).addMBB(FallthroughMBB);
+        BuildMI(CompareHiMBB, DL, get(V6Clang::JMP)).addMBB(FallthroughMBB);
 
         CompareHiMBB->addSuccessor(Target);
         CompareHiMBB->addSuccessor(FallthroughMBB);
@@ -1610,20 +1610,20 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       unsigned JccOpc;
       switch (CC) {
       default: llvm_unreachable("Unknown V6CLANG condition code");
-      case V6ClangCC::COND_C:  JccOpc = V6CLANG::JC;  break;
-      case V6ClangCC::COND_NC: JccOpc = V6CLANG::JNC; break;
-      case V6ClangCC::COND_M:  JccOpc = V6CLANG::JM;  break;
-      case V6ClangCC::COND_P:  JccOpc = V6CLANG::JP;  break;
-      case V6ClangCC::COND_PO: JccOpc = V6CLANG::JPO; break;
-      case V6ClangCC::COND_PE: JccOpc = V6CLANG::JPE; break;
+      case V6ClangCC::COND_C:  JccOpc = V6Clang::JC;  break;
+      case V6ClangCC::COND_NC: JccOpc = V6Clang::JNC; break;
+      case V6ClangCC::COND_M:  JccOpc = V6Clang::JM;  break;
+      case V6ClangCC::COND_P:  JccOpc = V6Clang::JP;  break;
+      case V6ClangCC::COND_PO: JccOpc = V6Clang::JPO; break;
+      case V6ClangCC::COND_PE: JccOpc = V6Clang::JPE; break;
       }
 
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(RhsLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(RhsHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(RhsLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(RhsHi);
       BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
 
       MI.eraseFromParent();
@@ -1631,7 +1631,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     }
   }
 
-  case V6CLANG::V6CLANG_BR_CC16_IMM: {
+  case V6Clang::V6CLANG_BR_CC16_IMM: {
     // Fused 16-bit compare + branch with immediate RHS.
     // Operand layout: 0=$lhs(GR16), 1=$rhs(imm16), 2=$cc, 3=$dst
     // Expansion: MVI A, lo8(rhs); CMP LhsLo; Jcc; MVI A, hi8(rhs); CMP LhsHi; Jcc
@@ -1645,8 +1645,8 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
             CC == V6ClangCC::COND_M || CC == V6ClangCC::COND_P) &&
            "V6CLANG_BR_CC16_IMM: unsupported condition code");
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6Clang::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6Clang::sub_hi);
 
     // --- O27: Fast zero-test path (MOV A, Hi; ORA Lo; Jcc) ---
     // When comparing against immediate 0, use the 8080 idiom:
@@ -1659,10 +1659,10 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // MVI+SUB/SBB sequence below, which produces correct flags.
     if (RhsOp.isImm() && RhsOp.getImm() == 0 &&
         (CC == V6ClangCC::COND_Z || CC == V6ClangCC::COND_NZ)) {
-      unsigned JccOpc = (CC == V6ClangCC::COND_Z) ? V6CLANG::JZ : V6CLANG::JNZ;
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(LhsLo);
+      unsigned JccOpc = (CC == V6ClangCC::COND_Z) ? V6Clang::JZ : V6Clang::JNZ;
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(LhsHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(LhsLo);
       BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
       MI.eraseFromParent();
       return true;
@@ -1704,24 +1704,24 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       unsigned JccOpc;
       switch (CC) {
       default: llvm_unreachable("Unknown ordering CC");
-      case V6ClangCC::COND_C:  JccOpc = V6CLANG::JC;  break;
-      case V6ClangCC::COND_NC: JccOpc = V6CLANG::JNC; break;
-      case V6ClangCC::COND_M:  JccOpc = V6CLANG::JM;  break;
-      case V6ClangCC::COND_P:  JccOpc = V6CLANG::JP;  break;
+      case V6ClangCC::COND_C:  JccOpc = V6Clang::JC;  break;
+      case V6ClangCC::COND_NC: JccOpc = V6Clang::JNC; break;
+      case V6ClangCC::COND_M:  JccOpc = V6Clang::JM;  break;
+      case V6ClangCC::COND_P:  JccOpc = V6Clang::JP;  break;
       }
 
       {
-        auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmLo(MIB);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::SUBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(LhsLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::SUBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(LhsLo);
       {
-        auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmHi(MIB);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(LhsHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(LhsHi);
       BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
 
       MI.eraseFromParent();
@@ -1762,52 +1762,52 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     if (CC == V6ClangCC::COND_NZ) {
       // NE: MVI A, lo8; CMP LhsLo; JNZ Target | MVI A, hi8; CMP LhsHi; JNZ Target
       {
-        auto MIB = BuildMI(&MBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(&MBB, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmLo(MIB);
       }
-      BuildMI(&MBB, DL, get(V6CLANG::CMPr))
-          .addReg(V6CLANG::A).addReg(LhsLo);
-      BuildMI(&MBB, DL, get(V6CLANG::JNZ)).addMBB(Target);
+      BuildMI(&MBB, DL, get(V6Clang::CMPr))
+          .addReg(V6Clang::A).addReg(LhsLo);
+      BuildMI(&MBB, DL, get(V6Clang::JNZ)).addMBB(Target);
 
       MBB.addSuccessor(Target);
       MBB.addSuccessor(CompareHiMBB);
 
       if (!SameLoHi) {
-        auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(CompareHiMBB, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmHi(MIB);
       } else {
-        CompareHiMBB->addLiveIn(V6CLANG::A);
+        CompareHiMBB->addLiveIn(V6Clang::A);
       }
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::CMPr))
-          .addReg(V6CLANG::A).addReg(LhsHi);
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::JNZ)).addMBB(Target);
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::JMP)).addMBB(FallthroughMBB);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::CMPr))
+          .addReg(V6Clang::A).addReg(LhsHi);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::JNZ)).addMBB(Target);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::JMP)).addMBB(FallthroughMBB);
 
       CompareHiMBB->addSuccessor(Target);
       CompareHiMBB->addSuccessor(FallthroughMBB);
     } else {
       // EQ: MVI A, lo8; CMP LhsLo; JNZ Fallthrough | MVI A, hi8; CMP LhsHi; JZ Target
       {
-        auto MIB = BuildMI(&MBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(&MBB, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmLo(MIB);
       }
-      BuildMI(&MBB, DL, get(V6CLANG::CMPr))
-          .addReg(V6CLANG::A).addReg(LhsLo);
-      BuildMI(&MBB, DL, get(V6CLANG::JNZ)).addMBB(FallthroughMBB);
+      BuildMI(&MBB, DL, get(V6Clang::CMPr))
+          .addReg(V6Clang::A).addReg(LhsLo);
+      BuildMI(&MBB, DL, get(V6Clang::JNZ)).addMBB(FallthroughMBB);
 
       MBB.addSuccessor(FallthroughMBB);
       MBB.addSuccessor(CompareHiMBB);
 
       if (!SameLoHi) {
-        auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
+        auto MIB = BuildMI(CompareHiMBB, DL, get(V6Clang::MVIr), V6Clang::A);
         addImmHi(MIB);
       } else {
-        CompareHiMBB->addLiveIn(V6CLANG::A);
+        CompareHiMBB->addLiveIn(V6Clang::A);
       }
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::CMPr))
-          .addReg(V6CLANG::A).addReg(LhsHi);
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::JZ)).addMBB(Target);
-      BuildMI(CompareHiMBB, DL, get(V6CLANG::JMP)).addMBB(FallthroughMBB);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::CMPr))
+          .addReg(V6Clang::A).addReg(LhsHi);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::JZ)).addMBB(Target);
+      BuildMI(CompareHiMBB, DL, get(V6Clang::JMP)).addMBB(FallthroughMBB);
 
       CompareHiMBB->addSuccessor(Target);
       CompareHiMBB->addSuccessor(FallthroughMBB);
@@ -1821,7 +1821,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   // M7: i16 load/store pseudo expansions
   //===------------------------------------------------------------------===//
 
-  case V6CLANG::V6CLANG_LOAD16_P: {
+  case V6Clang::V6CLANG_LOAD16_P: {
     // O71 — Honest per-shape preservation.
     //
     // The pseudo declares (outs GR16:$dst, ins GR16:$addr) with no Defs.
@@ -1834,53 +1834,53 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     Register DstReg  = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
 
     // Helper closures. All emit at MI (replaced below by eraseFromParent).
     auto emitDCX = [&](MCRegister Pair) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::DCX), Pair).addReg(Pair);
+      BuildMI(MBB, MI, DL, get(V6Clang::DCX), Pair).addReg(Pair);
     };
     auto emitINXHL = [&]() {
-      BuildMI(MBB, MI, DL, get(V6CLANG::INX), V6CLANG::HL).addReg(V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::INX), V6Clang::HL).addReg(V6Clang::HL);
     };
     auto emitMOVrM = [&](MCRegister Dst) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrM), Dst);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrM), Dst);
     };
     auto emitMOVrr = [&](MCRegister Dst, MCRegister Src) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), Dst).addReg(Src);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), Dst).addReg(Src);
     };
     auto emitXCHG = [&]() {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
     };
 
-    if (AddrReg == V6CLANG::HL && DstReg == V6CLANG::HL) {
+    if (AddrReg == V6Clang::HL && DstReg == V6Clang::HL) {
       // Case 1: addr=HL, dst=HL.
       //   MOV Spare, M; INX H; MOV H, M; MOV L, Spare
       // Spare candidate must avoid HL (its halves are the destination).
       // No DCX H — dst=HL means original HL is being overwritten by
       // definition; not live across the pseudo as the prior value.
-      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::HL);
+      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6Clang::HL);
       bool UseA = !Spare;
-      MCRegister Tmp = UseA ? MCRegister(V6CLANG::A) : Spare.asMCReg();
-      bool ALive = UseA && !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      MCRegister Tmp = UseA ? MCRegister(V6Clang::A) : Spare.asMCReg();
+      bool ALive = UseA && !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
       emitMOVrM(Tmp);
       emitINXHL();
-      emitMOVrM(V6CLANG::H);
-      emitMOVrr(V6CLANG::L, Tmp);
+      emitMOVrM(V6Clang::H);
+      emitMOVrr(V6Clang::L, Tmp);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-    } else if (AddrReg == V6CLANG::HL) {
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+    } else if (AddrReg == V6Clang::HL) {
       // Case 2: addr=HL, dst ∈ {BC, DE}.
       //   MOV DstLo, M; INX H; MOV DstHi, M; (DCX H if HL live)
       emitMOVrM(DstLo);
       emitINXHL();
       emitMOVrM(DstHi);
-      if (!isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI))
-        emitDCX(V6CLANG::HL);
-    } else if (AddrReg == V6CLANG::DE && DstReg == V6CLANG::DE) {
+      if (!isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI))
+        emitDCX(V6Clang::HL);
+    } else if (AddrReg == V6Clang::DE && DstReg == V6Clang::DE) {
       // Case 4: addr=DE, dst=DE.
       //   XCHG; MOV Spare, M; INX H; MOV H, M; MOV L, Spare; XCHG
       //
@@ -1899,27 +1899,27 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       // Falls back to A with PUSH PSW / POP PSW iff A is live.
       // No DCX D — dst=DE means caller wanted DE redefined.
       auto findCase4Spare = [&]() -> Register {
-        if (isRegDeadAtMI(V6CLANG::B, MI, MBB, &RI)) return Register(V6CLANG::B);
-        if (isRegDeadAtMI(V6CLANG::C, MI, MBB, &RI)) return Register(V6CLANG::C);
-        if (isRegDeadAtMI(V6CLANG::H, MI, MBB, &RI)) return Register(V6CLANG::D);
-        if (isRegDeadAtMI(V6CLANG::L, MI, MBB, &RI)) return Register(V6CLANG::E);
+        if (isRegDeadAtMI(V6Clang::B, MI, MBB, &RI)) return Register(V6Clang::B);
+        if (isRegDeadAtMI(V6Clang::C, MI, MBB, &RI)) return Register(V6Clang::C);
+        if (isRegDeadAtMI(V6Clang::H, MI, MBB, &RI)) return Register(V6Clang::D);
+        if (isRegDeadAtMI(V6Clang::L, MI, MBB, &RI)) return Register(V6Clang::E);
         return Register();
       };
       Register Spare = findCase4Spare();
       bool UseA = !Spare;
-      MCRegister Tmp = UseA ? MCRegister(V6CLANG::A) : Spare.asMCReg();
-      bool ALive = UseA && !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      MCRegister Tmp = UseA ? MCRegister(V6Clang::A) : Spare.asMCReg();
+      bool ALive = UseA && !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
       emitXCHG();
       emitMOVrM(Tmp);
       emitINXHL();
-      emitMOVrM(V6CLANG::H);
-      emitMOVrr(V6CLANG::L, Tmp);
+      emitMOVrM(V6Clang::H);
+      emitMOVrr(V6Clang::L, Tmp);
       emitXCHG();
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-    } else if (AddrReg == V6CLANG::DE) {
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+    } else if (AddrReg == V6Clang::DE) {
       // Cases 3a / 3b: addr=DE, dst ∈ {BC, HL}.
       //   XCHG; MOV LoadLo, M; INX H; MOV LoadHi, M; XCHG; (DCX D if DE live)
       // For dst=BC: LoadLo=C, LoadHi=B (BC halves) — trailing XCHG just
@@ -1929,9 +1929,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //             in DE halves; the trailing XCHG then delivers
       //             HL ← loaded, DE ← address+1.
       MCRegister LoadLo, LoadHi;
-      if (DstReg == V6CLANG::HL) {
-        LoadLo = V6CLANG::E;
-        LoadHi = V6CLANG::D;
+      if (DstReg == V6Clang::HL) {
+        LoadLo = V6Clang::E;
+        LoadHi = V6Clang::D;
       } else {
         LoadLo = DstLo;
         LoadHi = DstHi;
@@ -1941,9 +1941,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       emitINXHL();
       emitMOVrM(LoadHi);
       emitXCHG();
-      if (!isRegDeadAtMI(V6CLANG::DE, MI, MBB, &RI))
-        emitDCX(V6CLANG::DE);
-    } else if (DstReg == V6CLANG::HL) {
+      if (!isRegDeadAtMI(V6Clang::DE, MI, MBB, &RI))
+        emitDCX(V6Clang::DE);
+    } else if (DstReg == V6Clang::HL) {
       // Case 6: addr=BC, dst=HL. Two shapes; pick whichever is cheapest.
       //
       //   Shape A — M-staging (used when A is live AND a non-HL/BC GR8
@@ -1960,33 +1960,33 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   spare: 7B / 68cc (+1B/8cc if DCX B).
       //
       // No PUSH H / POP H — dst=HL means original HL is dead.
-      bool ADead = isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
-      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::HL, V6CLANG::BC);
+      bool ADead = isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
+      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6Clang::HL, V6Clang::BC);
       if (!ADead && Spare) {
         // Shape A.
         MCRegister Tmp = Spare.asMCReg();
-        emitMOVrr(V6CLANG::H, V6CLANG::B);
-        emitMOVrr(V6CLANG::L, V6CLANG::C);
+        emitMOVrr(V6Clang::H, V6Clang::B);
+        emitMOVrr(V6Clang::L, V6Clang::C);
         emitMOVrM(Tmp);
         emitINXHL();
-        emitMOVrM(V6CLANG::H);
-        emitMOVrr(V6CLANG::L, Tmp);
+        emitMOVrM(V6Clang::H);
+        emitMOVrr(V6Clang::L, Tmp);
       } else {
         // Shape B.
         bool APushPop = !ADead;
         if (APushPop)
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-        BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-        emitMOVrr(V6CLANG::L, V6CLANG::A);
-        BuildMI(MBB, MI, DL, get(V6CLANG::INX), V6CLANG::BC).addReg(V6CLANG::BC);
-        BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-        emitMOVrr(V6CLANG::H, V6CLANG::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+        BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+        emitMOVrr(V6Clang::L, V6Clang::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::INX), V6Clang::BC).addReg(V6Clang::BC);
+        BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+        emitMOVrr(V6Clang::H, V6Clang::A);
         if (APushPop)
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-        if (!isRegDeadAtMI(V6CLANG::BC, MI, MBB, &RI))
-          emitDCX(V6CLANG::BC);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+        if (!isRegDeadAtMI(V6Clang::BC, MI, MBB, &RI))
+          emitDCX(V6Clang::BC);
       }
-    } else if (DstReg == V6CLANG::BC) {
+    } else if (DstReg == V6Clang::BC) {
       // Case 5b: addr=BC, dst=BC. Three-tier dispatch (no DCX BC needed
       // since BC is the destination):
       //
@@ -1999,36 +1999,36 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //     LDAX B; MOV S,A; INX B; LDAX B; MOV B,A; MOV C,S
       //
       //   Tier 3 — worst case (7B / 68cc): PUSH H wraps tier-1 body.
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
       if (HLDead) {
-        emitMOVrr(V6CLANG::H, V6CLANG::B);
-        emitMOVrr(V6CLANG::L, V6CLANG::C);
-        emitMOVrM(V6CLANG::C);
+        emitMOVrr(V6Clang::H, V6Clang::B);
+        emitMOVrr(V6Clang::L, V6Clang::C);
+        emitMOVrM(V6Clang::C);
         emitINXHL();
-        emitMOVrM(V6CLANG::B);
+        emitMOVrM(V6Clang::B);
       } else {
-        bool ADead = isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+        bool ADead = isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
         Register Spare =
-            ADead ? findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::BC) : Register();
+            ADead ? findDeadGR8AtMI(MI, MBB, &RI, V6Clang::BC) : Register();
         if (Spare) {
           MCRegister Tmp = Spare.asMCReg();
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-          emitMOVrr(Tmp, V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::INX), V6CLANG::BC).addReg(V6CLANG::BC);
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-          emitMOVrr(V6CLANG::B, V6CLANG::A);
-          emitMOVrr(V6CLANG::C, Tmp);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+          emitMOVrr(Tmp, V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::INX), V6Clang::BC).addReg(V6Clang::BC);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+          emitMOVrr(V6Clang::B, V6Clang::A);
+          emitMOVrr(V6Clang::C, Tmp);
         } else {
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-              .addReg(V6CLANG::HL, RegState::Kill)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-          emitMOVrr(V6CLANG::H, V6CLANG::B);
-          emitMOVrr(V6CLANG::L, V6CLANG::C);
-          emitMOVrM(V6CLANG::C);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+              .addReg(V6Clang::HL, RegState::Kill)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
+          emitMOVrr(V6Clang::H, V6Clang::B);
+          emitMOVrr(V6Clang::L, V6Clang::C);
+          emitMOVrM(V6Clang::C);
           emitINXHL();
-          emitMOVrM(V6CLANG::B);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+          emitMOVrM(V6Clang::B);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
         }
       }
     } else {
@@ -2048,18 +2048,18 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //
       //   Otherwise (HL fully live, A live) — PUSH H wraps current shape
       //   (7B / 68cc, BC preserved).
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
       if (HLDead) {
-        emitMOVrr(V6CLANG::H, V6CLANG::B);
-        emitMOVrr(V6CLANG::L, V6CLANG::C);
-        emitMOVrM(V6CLANG::E);
+        emitMOVrr(V6Clang::H, V6Clang::B);
+        emitMOVrr(V6Clang::L, V6Clang::C);
+        emitMOVrM(V6Clang::E);
         emitINXHL();
-        emitMOVrM(V6CLANG::D);
+        emitMOVrM(V6Clang::D);
       } else {
-        bool ADead = isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+        bool ADead = isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
         auto findCase5aSpare = [&]() -> Register {
-          if (isRegDeadAtMI(V6CLANG::H, MI, MBB, &RI)) return Register(V6CLANG::H);
-          if (isRegDeadAtMI(V6CLANG::L, MI, MBB, &RI)) return Register(V6CLANG::L);
+          if (isRegDeadAtMI(V6Clang::H, MI, MBB, &RI)) return Register(V6Clang::H);
+          if (isRegDeadAtMI(V6Clang::L, MI, MBB, &RI)) return Register(V6Clang::L);
           return Register();
         };
         Register Spare = ADead ? Register() : findCase5aSpare();
@@ -2067,28 +2067,28 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
           MCRegister Tmp;
           if (!ADead) {
             Tmp = Spare.asMCReg();
-            emitMOVrr(Tmp, V6CLANG::A);
+            emitMOVrr(Tmp, V6Clang::A);
           }
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-          emitMOVrr(V6CLANG::E, V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::INX), V6CLANG::BC).addReg(V6CLANG::BC);
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX), V6CLANG::A).addReg(V6CLANG::BC);
-          emitMOVrr(V6CLANG::D, V6CLANG::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+          emitMOVrr(V6Clang::E, V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::INX), V6Clang::BC).addReg(V6Clang::BC);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX), V6Clang::A).addReg(V6Clang::BC);
+          emitMOVrr(V6Clang::D, V6Clang::A);
           if (!ADead)
-            emitMOVrr(V6CLANG::A, Tmp);
-          if (!isRegDeadAtMI(V6CLANG::BC, MI, MBB, &RI))
-            emitDCX(V6CLANG::BC);
+            emitMOVrr(V6Clang::A, Tmp);
+          if (!isRegDeadAtMI(V6Clang::BC, MI, MBB, &RI))
+            emitDCX(V6Clang::BC);
         } else {
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-              .addReg(V6CLANG::HL, RegState::Kill)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-          emitMOVrr(V6CLANG::H, V6CLANG::B);
-          emitMOVrr(V6CLANG::L, V6CLANG::C);
-          emitMOVrM(V6CLANG::E);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+              .addReg(V6Clang::HL, RegState::Kill)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
+          emitMOVrr(V6Clang::H, V6Clang::B);
+          emitMOVrr(V6Clang::L, V6Clang::C);
+          emitMOVrM(V6Clang::E);
           emitINXHL();
-          emitMOVrM(V6CLANG::D);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+          emitMOVrM(V6Clang::D);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
         }
       }
     }
@@ -2097,7 +2097,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_STORE16_P: {
+  case V6Clang::V6CLANG_STORE16_P: {
     // O72 — Honest per-shape preservation, mirroring O71's LOAD16_P
     // redesign. The pseudo declares (ins GR16:$val, GR16:$addr) with no
     // Defs. Pre-RA passes treat the store as preserving every register
@@ -2106,60 +2106,60 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     Register ValReg  = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    MCRegister ValLo = RI.getSubReg(ValReg, V6CLANG::sub_lo);
-    MCRegister ValHi = RI.getSubReg(ValReg, V6CLANG::sub_hi);
+    MCRegister ValLo = RI.getSubReg(ValReg, V6Clang::sub_lo);
+    MCRegister ValHi = RI.getSubReg(ValReg, V6Clang::sub_hi);
 
     auto emitDCX = [&](MCRegister Pair) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::DCX), Pair).addReg(Pair);
+      BuildMI(MBB, MI, DL, get(V6Clang::DCX), Pair).addReg(Pair);
     };
     auto emitINXHL = [&]() {
-      BuildMI(MBB, MI, DL, get(V6CLANG::INX), V6CLANG::HL).addReg(V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::INX), V6Clang::HL).addReg(V6Clang::HL);
     };
     auto emitINX = [&](MCRegister Pair) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::INX), Pair).addReg(Pair);
+      BuildMI(MBB, MI, DL, get(V6Clang::INX), Pair).addReg(Pair);
     };
     auto emitMOVMr = [&](MCRegister Src) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(Src);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVMr)).addReg(Src);
     };
     auto emitMOVrr = [&](MCRegister Dst, MCRegister Src) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), Dst).addReg(Src);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), Dst).addReg(Src);
     };
     auto emitXCHG = [&]() {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
     };
     auto emitSTAX = [&](MCRegister Pair) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::STAX)).addReg(V6CLANG::A).addReg(Pair);
+      BuildMI(MBB, MI, DL, get(V6Clang::STAX)).addReg(V6Clang::A).addReg(Pair);
     };
 
-    if (AddrReg == V6CLANG::HL && ValReg == V6CLANG::HL) {
+    if (AddrReg == V6Clang::HL && ValReg == V6Clang::HL) {
       // Row 1: addr=HL, val=HL.
       //   MOV Spare, H; MOV M, L; INX H; MOV M, Spare; (DCX H if HL live)
       // INX H may carry from L into H, so the high byte must be parked
       // in a GR8 *before* INX. Spare candidate avoids HL (its halves are
       // the value and the address).
-      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::HL);
+      Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6Clang::HL);
       bool UseA = !Spare;
-      MCRegister Tmp = UseA ? MCRegister(V6CLANG::A) : Spare.asMCReg();
-      bool ALive = UseA && !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      MCRegister Tmp = UseA ? MCRegister(V6Clang::A) : Spare.asMCReg();
+      bool ALive = UseA && !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-      emitMOVrr(Tmp, V6CLANG::H);
-      emitMOVMr(V6CLANG::L);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+      emitMOVrr(Tmp, V6Clang::H);
+      emitMOVMr(V6Clang::L);
       emitINXHL();
       emitMOVMr(Tmp);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-      if (!isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI))
-        emitDCX(V6CLANG::HL);
-    } else if (AddrReg == V6CLANG::HL) {
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+      if (!isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI))
+        emitDCX(V6Clang::HL);
+    } else if (AddrReg == V6Clang::HL) {
       // Row 2: addr=HL, val ∈ {BC, DE}.
       //   MOV M, ValLo; INX H; MOV M, ValHi; (DCX H if HL live)
       emitMOVMr(ValLo);
       emitINXHL();
       emitMOVMr(ValHi);
-      if (!isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI))
-        emitDCX(V6CLANG::HL);
-    } else if (AddrReg == V6CLANG::DE && ValReg == V6CLANG::DE) {
+      if (!isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI))
+        emitDCX(V6Clang::HL);
+    } else if (AddrReg == V6Clang::DE && ValReg == V6Clang::DE) {
       // Row 4: addr=DE, val=DE.
       //   XCHG; MOV Spare, H; MOV M, L; INX H; MOV M, Spare; XCHG;
       //   (DCX D if DE live)
@@ -2173,29 +2173,29 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   A  iff A dead   (with PUSH PSW fallback);
       //   H, L — never (they hold the address mid-sequence).
       auto findRow4Spare = [&]() -> Register {
-        if (isRegDeadAtMI(V6CLANG::B, MI, MBB, &RI)) return Register(V6CLANG::B);
-        if (isRegDeadAtMI(V6CLANG::C, MI, MBB, &RI)) return Register(V6CLANG::C);
-        if (isRegDeadAtMI(V6CLANG::H, MI, MBB, &RI)) return Register(V6CLANG::D);
-        if (isRegDeadAtMI(V6CLANG::L, MI, MBB, &RI)) return Register(V6CLANG::E);
+        if (isRegDeadAtMI(V6Clang::B, MI, MBB, &RI)) return Register(V6Clang::B);
+        if (isRegDeadAtMI(V6Clang::C, MI, MBB, &RI)) return Register(V6Clang::C);
+        if (isRegDeadAtMI(V6Clang::H, MI, MBB, &RI)) return Register(V6Clang::D);
+        if (isRegDeadAtMI(V6Clang::L, MI, MBB, &RI)) return Register(V6Clang::E);
         return Register();
       };
       Register Spare = findRow4Spare();
       bool UseA = !Spare;
-      MCRegister Tmp = UseA ? MCRegister(V6CLANG::A) : Spare.asMCReg();
-      bool ALive = UseA && !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      MCRegister Tmp = UseA ? MCRegister(V6Clang::A) : Spare.asMCReg();
+      bool ALive = UseA && !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
       emitXCHG();
-      emitMOVrr(Tmp, V6CLANG::H);
-      emitMOVMr(V6CLANG::L);
+      emitMOVrr(Tmp, V6Clang::H);
+      emitMOVMr(V6Clang::L);
       emitINXHL();
       emitMOVMr(Tmp);
       emitXCHG();
       if (ALive)
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-      if (!isRegDeadAtMI(V6CLANG::DE, MI, MBB, &RI))
-        emitDCX(V6CLANG::DE);
-    } else if (AddrReg == V6CLANG::DE) {
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+      if (!isRegDeadAtMI(V6Clang::DE, MI, MBB, &RI))
+        emitDCX(V6Clang::DE);
+    } else if (AddrReg == V6Clang::DE) {
       // Rows 3a/3b: addr=DE, val ∈ {HL, BC}.
       //   XCHG; MOV M, lo; INX H; MOV M, hi; XCHG; (DCX D if DE live)
       // For val=HL: after leading XCHG, HL = address, DE = orig HL.
@@ -2204,9 +2204,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   restores HL = orig HL, leaves DE = address+1.
       // For val=BC: BC is unaffected by XCHG. lo = C, hi = B.
       MCRegister StoreLo, StoreHi;
-      if (ValReg == V6CLANG::HL) {
-        StoreLo = V6CLANG::E;
-        StoreHi = V6CLANG::D;
+      if (ValReg == V6Clang::HL) {
+        StoreLo = V6Clang::E;
+        StoreHi = V6Clang::D;
       } else {
         StoreLo = ValLo;
         StoreHi = ValHi;
@@ -2216,9 +2216,9 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       emitINXHL();
       emitMOVMr(StoreHi);
       emitXCHG();
-      if (!isRegDeadAtMI(V6CLANG::DE, MI, MBB, &RI))
-        emitDCX(V6CLANG::DE);
-    } else if (ValReg != V6CLANG::BC) {
+      if (!isRegDeadAtMI(V6Clang::DE, MI, MBB, &RI))
+        emitDCX(V6Clang::DE);
+    } else if (ValReg != V6Clang::BC) {
       // Row 5: addr=BC, val ∈ {HL, DE}.
       //   [MOV Spare, A | PUSH PSW]    if A live
       //   MOV A, lo; STAX B; INX B; MOV A, hi; STAX B
@@ -2228,26 +2228,26 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       // {A, BC, ValReg}: the body reads both halves of the value via
       // MOV A, lo / MOV A, hi, and writes/reads BC via STAX/INX, so the
       // save target must survive the body unchanged.
-      bool ALive = !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      bool ALive = !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       Register Spare;
       if (ALive)
-        Spare = findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::BC, ValReg);
+        Spare = findDeadGR8AtMI(MI, MBB, &RI, V6Clang::BC, ValReg);
       bool UsePush = ALive && !Spare;
       if (Spare)
-        emitMOVrr(Spare.asMCReg(), V6CLANG::A);
+        emitMOVrr(Spare.asMCReg(), V6Clang::A);
       else if (UsePush)
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-      emitMOVrr(V6CLANG::A, ValLo);
-      emitSTAX(V6CLANG::BC);
-      emitINX(V6CLANG::BC);
-      emitMOVrr(V6CLANG::A, ValHi);
-      emitSTAX(V6CLANG::BC);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+      emitMOVrr(V6Clang::A, ValLo);
+      emitSTAX(V6Clang::BC);
+      emitINX(V6Clang::BC);
+      emitMOVrr(V6Clang::A, ValHi);
+      emitSTAX(V6Clang::BC);
       if (Spare)
-        emitMOVrr(V6CLANG::A, Spare.asMCReg());
+        emitMOVrr(V6Clang::A, Spare.asMCReg());
       else if (UsePush)
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
-      if (!isRegDeadAtMI(V6CLANG::BC, MI, MBB, &RI))
-        emitDCX(V6CLANG::BC);
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
+      if (!isRegDeadAtMI(V6Clang::BC, MI, MBB, &RI))
+        emitDCX(V6Clang::BC);
     } else {
       // Row 6: addr=BC, val=BC. Three-tier dispatch on HL liveness and
       // GR8 spare availability:
@@ -2255,50 +2255,50 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   6b — HL live, GR8 spare available: STAX-body with A saved into
       //        the spare (HL untouched).
       //   6c — HL live, no GR8 spare: PUSH H / scratch body / POP H.
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-      bool BCLive = !isRegDeadAtMI(V6CLANG::BC, MI, MBB, &RI);
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+      bool BCLive = !isRegDeadAtMI(V6Clang::BC, MI, MBB, &RI);
 
       if (HLDead) {
         // 6a — 5B / 40cc.
-        emitMOVrr(V6CLANG::H, V6CLANG::B);
-        emitMOVrr(V6CLANG::L, V6CLANG::C);
-        emitMOVMr(V6CLANG::C);
+        emitMOVrr(V6Clang::H, V6Clang::B);
+        emitMOVrr(V6Clang::L, V6Clang::C);
+        emitMOVMr(V6Clang::C);
         emitINXHL();
-        emitMOVMr(V6CLANG::B);
+        emitMOVMr(V6Clang::B);
         if (BCLive)
-          emitDCX(V6CLANG::BC);
+          emitDCX(V6Clang::BC);
       } else {
         // HL live.  Body reads both halves of BC, so Spare must exclude
         // BC. A is excluded automatically by findDeadGR8AtMI.
-        Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6CLANG::BC);
+        Register Spare = findDeadGR8AtMI(MI, MBB, &RI, V6Clang::BC);
         if (Spare) {
           // 6b — STAX body, save A into Spare. HL untouched.
-          bool ALive = !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+          bool ALive = !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
           if (ALive)
-            emitMOVrr(Spare.asMCReg(), V6CLANG::A);
-          emitMOVrr(V6CLANG::A, V6CLANG::C);
-          emitSTAX(V6CLANG::BC);
-          emitINX(V6CLANG::BC);
-          emitMOVrr(V6CLANG::A, V6CLANG::B);
-          emitSTAX(V6CLANG::BC);
+            emitMOVrr(Spare.asMCReg(), V6Clang::A);
+          emitMOVrr(V6Clang::A, V6Clang::C);
+          emitSTAX(V6Clang::BC);
+          emitINX(V6Clang::BC);
+          emitMOVrr(V6Clang::A, V6Clang::B);
+          emitSTAX(V6Clang::BC);
           if (ALive)
-            emitMOVrr(V6CLANG::A, Spare.asMCReg());
+            emitMOVrr(V6Clang::A, Spare.asMCReg());
           if (BCLive)
-            emitDCX(V6CLANG::BC);
+            emitDCX(V6Clang::BC);
         } else {
           // 6c — PUSH H / scratch body / POP H.
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-              .addReg(V6CLANG::HL, RegState::Kill)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-          emitMOVrr(V6CLANG::H, V6CLANG::B);
-          emitMOVrr(V6CLANG::L, V6CLANG::C);
-          emitMOVMr(V6CLANG::C);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+              .addReg(V6Clang::HL, RegState::Kill)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
+          emitMOVrr(V6Clang::H, V6Clang::B);
+          emitMOVrr(V6Clang::L, V6Clang::C);
+          emitMOVMr(V6Clang::C);
           emitINXHL();
-          emitMOVMr(V6CLANG::B);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+          emitMOVMr(V6Clang::B);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
           if (BCLive)
-            emitDCX(V6CLANG::BC);
+            emitDCX(V6Clang::BC);
         }
       }
     }
@@ -2307,7 +2307,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_LOAD16_G: {
+  case V6Clang::V6CLANG_LOAD16_G: {
     // Load 16-bit from global address. O73: per-shape, liveness-aware.
     //   dst=HL: LHLD addr                                   (3B / 20cc)
     //   dst=DE: XCHG; LHLD addr; XCHG                       (5B / 28cc)
@@ -2318,16 +2318,16 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     MachineOperand &AddrOp = MI.getOperand(1);
 
     auto emitLHLD = [&](MachineBasicBlock::iterator InsertPt) {
-      auto MIB = BuildMI(MBB, InsertPt, DL, get(V6CLANG::LHLD), V6CLANG::HL);
+      auto MIB = BuildMI(MBB, InsertPt, DL, get(V6Clang::LHLD), V6Clang::HL);
       if (AddrOp.isGlobal())
         MIB.addGlobalAddress(AddrOp.getGlobal(), AddrOp.getOffset());
       else
         MIB.addImm(AddrOp.getImm());
     };
 
-    if (DstReg == V6CLANG::HL) {
+    if (DstReg == V6Clang::HL) {
       emitLHLD(MI);
-    } else if (DstReg == V6CLANG::DE) {
+    } else if (DstReg == V6Clang::DE) {
       // dst=DE, HL dead: LHLD addr; XCHG (4B / 24cc).
       //   HL is scratch — LHLD overwrites it, XCHG moves loaded value
       //   into DE; HL ends up holding old DE which is dead anyway.
@@ -2336,35 +2336,35 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   the first XCHG is dead, since the second XCHG overwrites HL
       //   with the loaded value). If DE wasn't live before, annotate
       //   the first XCHG's DE read as undef.
-      if (isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI)) {
+      if (isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI)) {
         emitLHLD(MI);
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       } else {
         MachineInstr *FirstXchg =
-            BuildMI(MBB, MI, DL, get(V6CLANG::XCHG)).getInstr();
+            BuildMI(MBB, MI, DL, get(V6Clang::XCHG)).getInstr();
         emitLHLD(MI);
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-        if (!isRegLiveBefore(MBB, FirstXchg->getIterator(), V6CLANG::DE, &RI))
-          markXchgUseUndef(FirstXchg, V6CLANG::DE);
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+        if (!isRegLiveBefore(MBB, FirstXchg->getIterator(), V6Clang::DE, &RI))
+          markXchgUseUndef(FirstXchg, V6Clang::DE);
       }
     } else {
       // BC: three-way dispatch on (HLDead, ADead). See O73 design.
-      MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-      MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
+      MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+      MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
 
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-      bool ADead  = isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+      bool ADead  = isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
 
       if (HLDead) {
         // 5B / 36cc: LHLD addr; MOV B,H; MOV C,L (HL is scratch).
         emitLHLD(MI);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::H);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::L);
       } else if (ADead) {
         // 8B / 48cc: LDA addr; MOV C,A; LDA addr+1; MOV B,A.
         // Preserves HL — strictly cheaper than PUSH/POP wrap (−16cc, +1B).
         auto emitLDA = [&](int64_t Bias) {
-          auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::LDA), V6CLANG::A);
+          auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::LDA), V6Clang::A);
           if (AddrOp.isGlobal())
             MIB.addGlobalAddress(AddrOp.getGlobal(),
                                  AddrOp.getOffset() + Bias);
@@ -2372,19 +2372,19 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
             MIB.addImm(AddrOp.getImm() + Bias);
         };
         emitLDA(0);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
         emitLDA(1);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
       } else {
         // 7B / 64cc fallback: PUSH H; LHLD; MOV B,H; MOV C,L; POP H.
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-            .addReg(V6CLANG::HL, RegState::Kill)
-            .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+            .addReg(V6Clang::HL, RegState::Kill)
+            .addReg(V6Clang::SP, RegState::ImplicitDefine);
         emitLHLD(MI);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-            .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::H);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::L);
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+            .addReg(V6Clang::SP, RegState::ImplicitDefine);
       }
     }
 
@@ -2392,7 +2392,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_STORE16_G: {
+  case V6Clang::V6CLANG_STORE16_G: {
     // Store 16-bit to global address. O74: per-shape, liveness-aware.
     //   val=HL:                 SHLD addr                            (3B / 20cc)
     //   val=DE, HL dead:        XCHG; SHLD addr                      (4B / 24cc)
@@ -2404,56 +2404,56 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     MachineOperand &AddrOp = MI.getOperand(1);
 
     auto emitSHLD = [&]() {
-      auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::SHLD)).addReg(V6CLANG::HL);
+      auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::SHLD)).addReg(V6Clang::HL);
       if (AddrOp.isGlobal())
         MIB.addGlobalAddress(AddrOp.getGlobal(), AddrOp.getOffset());
       else
         MIB.addImm(AddrOp.getImm());
     };
 
-    if (ValReg == V6CLANG::HL) {
+    if (ValReg == V6Clang::HL) {
       emitSHLD();
-    } else if (ValReg == V6CLANG::DE) {
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+    } else if (ValReg == V6Clang::DE) {
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       emitSHLD();
       if (!HLDead)
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
     } else {
       // val=BC: three-way dispatch on (HLDead, ADead).
-      bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-      bool ADead  = isRegDeadAtMI(V6CLANG::A,  MI, MBB, &RI);
+      bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+      bool ADead  = isRegDeadAtMI(V6Clang::A,  MI, MBB, &RI);
 
       if (HLDead) {
         // 5B / 36cc: MOV H,B; MOV L,C; SHLD addr.
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::B);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::C);
         emitSHLD();
       } else if (ADead) {
         // 8B / 48cc: MOV A,C; STA addr; MOV A,B; STA addr+1.
         // Preserves HL — strictly cheaper than PUSH/POP wrap (−16cc, +1B).
         auto emitSTA = [&](int64_t Bias) {
-          auto MIB = BuildMI(MBB, MI, DL, get(V6CLANG::STA)).addReg(V6CLANG::A);
+          auto MIB = BuildMI(MBB, MI, DL, get(V6Clang::STA)).addReg(V6Clang::A);
           if (AddrOp.isGlobal())
             MIB.addGlobalAddress(AddrOp.getGlobal(),
                                  AddrOp.getOffset() + Bias);
           else
             MIB.addImm(AddrOp.getImm() + Bias);
         };
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(V6CLANG::C);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(V6Clang::C);
         emitSTA(0);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(V6CLANG::B);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(V6Clang::B);
         emitSTA(1);
       } else {
         // 7B / 64cc fallback: PUSH H; MOV H,B; MOV L,C; SHLD; POP H.
-        BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-            .addReg(V6CLANG::HL, RegState::Kill)
-            .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
+        BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+            .addReg(V6Clang::HL, RegState::Kill)
+            .addReg(V6Clang::SP, RegState::ImplicitDefine);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::B);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::C);
         emitSHLD();
-        BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-            .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+        BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+            .addReg(V6Clang::SP, RegState::ImplicitDefine);
       }
     }
 
@@ -2461,117 +2461,117 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_SHL16_DAD: {
+  case V6Clang::V6CLANG_SHL16_DAD: {
     // Left shift i16 by 1..7 via repeated DAD H.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::H, &RI) &&
-                  isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::L, &RI);
+    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6Clang::H, &RI) &&
+                  isRegDeadAfter(MBB, MI.getIterator(), V6Clang::L, &RI);
 
-    if (DstReg == V6CLANG::DE && SrcReg == V6CLANG::DE) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+    if (DstReg == V6Clang::DE && SrcReg == V6Clang::DE) {
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       for (unsigned i = 0; i < ShAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       MI.eraseFromParent();
       return true;
     }
 
-    bool PreserveHL = DstReg != V6CLANG::HL && !HLDead;
+    bool PreserveHL = DstReg != V6Clang::HL && !HLDead;
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    if (SrcReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, V6CLANG::HL, SrcReg, /*KillSrc=*/false);
+      BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    if (SrcReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, V6Clang::HL, SrcReg, /*KillSrc=*/false);
     for (unsigned i = 0; i < ShAmt; ++i)
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-    if (DstReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, DstReg, V6CLANG::HL, /*KillSrc=*/false);
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+    if (DstReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, DstReg, V6Clang::HL, /*KillSrc=*/false);
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SHL16_BYTE: {
+  case V6Clang::V6CLANG_SHL16_BYTE: {
     // Left shift i16 by 8 via byte-lane move.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
 
     if (DstHi != SrcLo)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(SrcLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), DstLo).addImm(0);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(SrcLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MVIr), DstLo).addImm(0);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SHL16_RAM_HI: {
+  case V6Clang::V6CLANG_SHL16_RAM_HI: {
     // Left shift i16 by 9..15 via byte-lane move plus A-domain byte work.
     // 9..13 use repeated ADD A; 14..15 use the rotate-and-mask form.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
 
     unsigned TailAmt = ShAmt - 8;
     if (TailAmt >= 6) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcLo);
       for (unsigned i = 0; i < 16 - ShAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::RRC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-          .addReg(V6CLANG::A)
+        BuildMI(MBB, MI, DL, get(V6Clang::RRC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+          .addReg(V6Clang::A)
           .addImm(ShAmt == 14 ? 0xC0 : 0x80);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), DstLo).addImm(0);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MVIr), DstLo).addImm(0);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
     } else {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcLo);
       for (unsigned i = 0; i < TailAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::ADDr), V6CLANG::A)
-            .addReg(V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), DstLo).addImm(0);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::ADDr), V6Clang::A)
+            .addReg(V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MVIr), DstLo).addImm(0);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
     }
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRL16_RAR: {
+  case V6Clang::V6CLANG_SRL16_RAR: {
     // Logical right shift i16 by 1..2 via the per-bit RAR loop.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
 
     if (DstReg != SrcReg) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(SrcHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(SrcLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(SrcLo);
     }
     bool CYClear = priorClearsCarry(MBB, MI);
     for (unsigned i = 0; i < ShAmt; ++i) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstHi);
       if (!CYClear)
-        BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-            .addReg(V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+            .addReg(V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
       CYClear = false;
     }
 
@@ -2579,207 +2579,207 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRL16_24BIT: {
+  case V6Clang::V6CLANG_SRL16_24BIT: {
     // Logical right shift i16 by 3..7 via the 24-bit DAD/ADC trick.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::H, &RI) &&
-                  isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::L, &RI);
+    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6Clang::H, &RI) &&
+                  isRegDeadAfter(MBB, MI.getIterator(), V6Clang::L, &RI);
 
-    if (DstReg == V6CLANG::DE && SrcReg == V6CLANG::DE) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-      BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
+    if (DstReg == V6Clang::DE && SrcReg == V6Clang::DE) {
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
       for (unsigned i = 0; i < 8 - ShAmt; ++i) {
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-        BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A)
-            .addReg(V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+        BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A)
+            .addReg(V6Clang::A).addReg(V6Clang::A);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::H);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::H);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       MI.eraseFromParent();
       return true;
     }
 
-    bool PreserveHL = DstReg != V6CLANG::HL && !HLDead;
+    bool PreserveHL = DstReg != V6Clang::HL && !HLDead;
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    if (SrcReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, V6CLANG::HL, SrcReg, /*KillSrc=*/false);
-    BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    if (SrcReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, V6Clang::HL, SrcReg, /*KillSrc=*/false);
+    BuildMI(MBB, MI, DL, get(V6Clang::XRAr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A);
     for (unsigned i = 0; i < 8 - ShAmt; ++i) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::H);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::A);
-    if (DstReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, DstReg, V6CLANG::HL, /*KillSrc=*/false);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::H);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::A);
+    if (DstReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, DstReg, V6Clang::HL, /*KillSrc=*/false);
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRL16_BYTE: {
+  case V6Clang::V6CLANG_SRL16_BYTE: {
     // Logical right shift i16 by 8 via byte-lane move.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
 
     if (DstLo != SrcHi)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(SrcHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), DstHi).addImm(0);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MVIr), DstHi).addImm(0);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRL16_RAM_LO: {
+  case V6Clang::V6CLANG_SRL16_RAM_LO: {
     // Logical right shift i16 by 9..15 via rotate-and-mask.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
 
     unsigned TailAmt = ShAmt - 8;
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
     if (TailAmt <= 4) {
       for (unsigned i = 0; i < TailAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::RRC), V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::RRC), V6Clang::A).addReg(V6Clang::A);
     } else {
       for (unsigned i = 0; i < 8 - TailAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+        .addReg(V6Clang::A)
         .addImm((1u << (16 - ShAmt)) - 1u);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), DstHi).addImm(0);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MVIr), DstHi).addImm(0);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRA16_RAR: {
+  case V6Clang::V6CLANG_SRA16_RAR: {
     // Arithmetic right shift i16 by 1..2 via the per-bit RAR loop.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
-    MCRegister SrcLo = RI.getSubReg(SrcReg, V6CLANG::sub_lo);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
+    MCRegister SrcLo = RI.getSubReg(SrcReg, V6Clang::sub_lo);
 
     if (DstReg != SrcReg) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(SrcHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(SrcLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(SrcLo);
     }
     for (unsigned i = 0; i < ShAmt; ++i) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A)
-          .addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A)
-          .addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A)
-          .addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A)
+          .addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A)
+          .addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A)
+          .addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
     }
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRA16_24BIT: {
+  case V6Clang::V6CLANG_SRA16_24BIT: {
     // Arithmetic right shift i16 by 3..7 via the sign-seeded 24-bit trick.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::H, &RI) &&
-                  isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::L, &RI);
+    bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6Clang::H, &RI) &&
+                  isRegDeadAfter(MBB, MI.getIterator(), V6Clang::L, &RI);
 
-    if (DstReg == V6CLANG::DE && SrcReg == V6CLANG::DE) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(V6CLANG::H);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
+    if (DstReg == V6Clang::DE && SrcReg == V6Clang::DE) {
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(V6Clang::H);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
       for (unsigned i = 0; i < 8 - ShAmt; ++i) {
-        BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-        BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A)
-            .addReg(V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+        BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A)
+            .addReg(V6Clang::A).addReg(V6Clang::A);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::H);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::H);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       MI.eraseFromParent();
       return true;
     }
 
-    bool PreserveHL = DstReg != V6CLANG::HL && !HLDead;
+    bool PreserveHL = DstReg != V6Clang::HL && !HLDead;
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
-    if (SrcReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, V6CLANG::HL, SrcReg, /*KillSrc=*/false);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(V6CLANG::H);
-    BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::HL);
+    if (SrcReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, V6Clang::HL, SrcReg, /*KillSrc=*/false);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(V6Clang::H);
+    BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A);
     for (unsigned i = 0; i < 8 - ShAmt; ++i) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::H);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::A);
-    if (DstReg != V6CLANG::HL)
-      copyPhysReg(MBB, MI, DL, DstReg, V6CLANG::HL, /*KillSrc=*/false);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::H);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::A);
+    if (DstReg != V6Clang::HL)
+      copyPhysReg(MBB, MI, DL, DstReg, V6Clang::HL, /*KillSrc=*/false);
     if (PreserveHL)
-      BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL);
+      BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRA16_BYTE: {
+  case V6Clang::V6CLANG_SRA16_BYTE: {
     // Arithmetic right shift i16 by 8 via byte-lane move plus sign splat.
     Register DstReg = MI.getOperand(0).getReg();
     Register SrcReg = MI.getOperand(1).getReg();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
     if (DstLo != SrcHi)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(SrcHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_SRA16_RAM_LO: {
+  case V6Clang::V6CLANG_SRA16_RAM_LO: {
     // Arithmetic right shift i16 by 9..15.
     // Keep the older byte-lane + one-step form for >>9; collapse >>15 to a
     // direct sign splat; use rotate-and-mask plus sign-fill for the rest.
@@ -2787,110 +2787,110 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     Register SrcReg = MI.getOperand(1).getReg();
     unsigned ShAmt = MI.getOperand(2).getImm();
 
-    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
-    MCRegister SrcHi = RI.getSubReg(SrcReg, V6CLANG::sub_hi);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6Clang::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6Clang::sub_lo);
+    MCRegister SrcHi = RI.getSubReg(SrcReg, V6Clang::sub_hi);
     bool DstHiDead = isRegDeadAfter(MBB, MI.getIterator(), DstHi, &RI);
 
     unsigned TailAmt = ShAmt - 8;
     if (TailAmt == 1) {
       if (DstHiDead) {
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-        BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-        BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A).addReg(V6CLANG::A);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+        BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+        BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A).addReg(V6Clang::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
         MI.eraseFromParent();
         return true;
       }
 
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
       if (DstLo != SrcHi)
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(SrcHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(DstLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RAR), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(DstLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::RAR), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
       MI.eraseFromParent();
       return true;
     }
 
     if (TailAmt == 7) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
       if (!DstHiDead)
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
       MI.eraseFromParent();
       return true;
     }
 
     if (DstHiDead) {
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
       if (TailAmt <= 4) {
         for (unsigned i = 0; i < TailAmt; ++i)
-          BuildMI(MBB, MI, DL, get(V6CLANG::RRC), V6CLANG::A).addReg(V6CLANG::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::RRC), V6Clang::A).addReg(V6Clang::A);
       } else {
         for (unsigned i = 0; i < 8 - TailAmt; ++i)
-          BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
       }
-      BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-          .addReg(V6CLANG::A)
+      BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+          .addReg(V6Clang::A)
           .addImm((1u << (8 - TailAmt)) - 1u);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
 
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-      BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(V6CLANG::A);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-          .addReg(V6CLANG::A)
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+      BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(V6Clang::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+          .addReg(V6Clang::A)
           .addImm((0xFFu << (8 - TailAmt)) & 0xFFu);
-      BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-          .addReg(V6CLANG::A).addReg(DstLo);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+          .addReg(V6Clang::A).addReg(DstLo);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
 
       MI.eraseFromParent();
       return true;
     }
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
     if (TailAmt <= 4) {
       for (unsigned i = 0; i < TailAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::RRC), V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::RRC), V6Clang::A).addReg(V6Clang::A);
     } else {
       for (unsigned i = 0; i < 8 - TailAmt; ++i)
-        BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
     }
-    BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+        .addReg(V6Clang::A)
         .addImm((1u << (8 - TailAmt)) - 1u);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
 
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SrcHi);
-    BuildMI(MBB, MI, DL, get(V6CLANG::RLC), V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::SBBr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ANI), V6CLANG::A)
-        .addReg(V6CLANG::A)
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SrcHi);
+    BuildMI(MBB, MI, DL, get(V6Clang::RLC), V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::SBBr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstHi).addReg(V6Clang::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::ANI), V6Clang::A)
+        .addReg(V6Clang::A)
         .addImm((0xFFu << (8 - TailAmt)) & 0xFFu);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
-        .addReg(V6CLANG::A).addReg(DstLo);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::ORAr), V6Clang::A)
+        .addReg(V6Clang::A).addReg(DstLo);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), DstLo).addReg(V6Clang::A);
 
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_ROTL16_1: {
+  case V6Clang::V6CLANG_ROTL16_1: {
     // O68 Phase 2: rotl i16 x, 1
     //   DAD H        ; HL <<= 1, CY = old bit 15      (10cc, 1B)
     //   MVI A, 0     ; (does not touch flags — CY preserved) ( 7cc, 2B)
@@ -2900,37 +2900,37 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     // so no framing is needed. Total: 4 instr / 5B / 26cc, A clobbered
     // (matches today's expand semantics). MVI A,0 chosen over MOV A,L
     // + ACI 0 to break the L→A→A dep chain and save 1cc.
-    BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A).addImm(0);
-    BuildMI(MBB, MI, DL, get(V6CLANG::ADCr), V6CLANG::A).addReg(V6CLANG::A).addReg(V6CLANG::L);
-    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6Clang::DAD)).addReg(V6Clang::HL);
+    BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A).addImm(0);
+    BuildMI(MBB, MI, DL, get(V6Clang::ADCr), V6Clang::A).addReg(V6Clang::A).addReg(V6Clang::L);
+    BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::A);
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_LOAD8_P: {
+  case V6Clang::V6CLANG_LOAD8_P: {
     // HL-preserving expansion with 4-priority chain.
     Register DstReg = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    if (AddrReg == V6CLANG::HL) {
+    if (AddrReg == V6Clang::HL) {
       // Priority 1: addr is HL — just load (7cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrM))
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrM))
           .addReg(DstReg, RegState::Define);
-    } else if (DstReg == V6CLANG::A &&
-               (AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE)) {
+    } else if (DstReg == V6Clang::A &&
+               (AddrReg == V6Clang::BC || AddrReg == V6Clang::DE)) {
       // Priority 2: LDAX — dst is A (7cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
+      BuildMI(MBB, MI, DL, get(V6Clang::LDAX))
           .addReg(DstReg, RegState::Define)
           .addReg(AddrReg);
-    } else if ((AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE) &&
-               isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)) {
+    } else if ((AddrReg == V6Clang::BC || AddrReg == V6Clang::DE) &&
+               isRegDeadAtMI(V6Clang::A, MI, MBB, &RI)) {
       // Priority 3: LDAX then move — A is dead (12cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
-          .addReg(V6CLANG::A, RegState::Define)
+      BuildMI(MBB, MI, DL, get(V6Clang::LDAX))
+          .addReg(V6Clang::A, RegState::Define)
           .addReg(AddrReg);
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-          .addReg(DstReg, RegState::Define).addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+          .addReg(DstReg, RegState::Define).addReg(V6Clang::A);
     } else {
       // Priority 4: AddrReg ∈ {BC, DE}, DstReg != A. O76 — three-way
       // dispatch on (AddrReg, A-liveness, dead-GR8 availability):
@@ -2938,7 +2938,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   6a : addr=BC, A live, SpareR   → SpareR-A envelope  (4B/32cc)
       //   6b : addr=BC, A live, no spare → PSW-wrap fallback  (4B/44cc)
       //   4/5: A dead                    → LDAX + MOV         (2B/16cc)
-      bool ALive = !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      bool ALive = !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
 
       // partner(dst) = XCHG image of dst. After `XCHG; MOV r,M; XCHG`
       // the byte loaded into `partnerOf(dst)` ends up in `dst`. Correct
@@ -2950,78 +2950,78 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //     for addr=DE. See plan_O76_V6CLANG_LOAD8_P_redesign.md.
       auto partnerOf = [](Register R) -> Register {
         switch (R) {
-        case V6CLANG::B: return V6CLANG::B;
-        case V6CLANG::C: return V6CLANG::C;
-        case V6CLANG::H: return V6CLANG::D;
-        case V6CLANG::L: return V6CLANG::E;
-        case V6CLANG::D: return V6CLANG::H;
-        case V6CLANG::E: return V6CLANG::L;
+        case V6Clang::B: return V6Clang::B;
+        case V6Clang::C: return V6Clang::C;
+        case V6Clang::H: return V6Clang::D;
+        case V6Clang::L: return V6Clang::E;
+        case V6Clang::D: return V6Clang::H;
+        case V6Clang::E: return V6Clang::L;
         default:     return Register();
         }
       };
 
-      if (ALive && AddrReg == V6CLANG::DE) {
+      if (ALive && AddrReg == V6Clang::DE) {
         // 7: XCHG bypass. 3B / 16cc, unconditional for any non-A dst.
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrM))
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrM))
             .addReg(partnerOf(DstReg), RegState::Define);
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       } else if (ALive) {
         // 6a / 6b: addr=BC, A live. Try SpareR-A first (saves 12cc vs
         // PSW-wrap, same byte count). Exclude A and DstReg — SpareR
         // must survive the post-LDAX `MOV dst,A`.
         Register SpareR = findDeadGR8AtMI(MI, MBB, &RI,
-                                          /*Exclude1=*/V6CLANG::A,
+                                          /*Exclude1=*/V6Clang::A,
                                           /*Exclude2=*/DstReg);
         if (SpareR) {
           // 6a: MOV spareR,A; LDAX; MOV dst,A; MOV A,spareR.
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), SpareR).addReg(V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
-              .addReg(V6CLANG::A, RegState::Define).addReg(AddrReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-              .addReg(DstReg, RegState::Define).addReg(V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SpareR);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), SpareR).addReg(V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX))
+              .addReg(V6Clang::A, RegState::Define).addReg(AddrReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+              .addReg(DstReg, RegState::Define).addReg(V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SpareR);
         } else {
           // 6b: PUSH PSW; LDAX; MOV dst,A; POP PSW (legacy fallback).
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-          BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
-              .addReg(V6CLANG::A, RegState::Define).addReg(AddrReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-              .addReg(DstReg, RegState::Define).addReg(V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+          BuildMI(MBB, MI, DL, get(V6Clang::LDAX))
+              .addReg(V6Clang::A, RegState::Define).addReg(AddrReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+              .addReg(DstReg, RegState::Define).addReg(V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
         }
       } else {
         // 4 / 5: A dead — plain LDAX + MOV.
-        BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
-            .addReg(V6CLANG::A, RegState::Define).addReg(AddrReg);
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-            .addReg(DstReg, RegState::Define).addReg(V6CLANG::A);
+        BuildMI(MBB, MI, DL, get(V6Clang::LDAX))
+            .addReg(V6Clang::A, RegState::Define).addReg(AddrReg);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+            .addReg(DstReg, RegState::Define).addReg(V6Clang::A);
       }
     }
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_STORE8_P: {
+  case V6Clang::V6CLANG_STORE8_P: {
     // HL-preserving expansion with 4-priority chain.
     Register SrcReg = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    if (AddrReg == V6CLANG::HL) {
+    if (AddrReg == V6Clang::HL) {
       // Priority 1: addr is HL — just store (7cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(SrcReg);
-    } else if (SrcReg == V6CLANG::A &&
-               (AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE)) {
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVMr)).addReg(SrcReg);
+    } else if (SrcReg == V6Clang::A &&
+               (AddrReg == V6Clang::BC || AddrReg == V6Clang::DE)) {
       // Priority 2: STAX — src already in A (7cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
+      BuildMI(MBB, MI, DL, get(V6Clang::STAX))
           .addReg(SrcReg).addReg(AddrReg);
-    } else if ((AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE) &&
-               isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)) {
+    } else if ((AddrReg == V6Clang::BC || AddrReg == V6Clang::DE) &&
+               isRegDeadAtMI(V6Clang::A, MI, MBB, &RI)) {
       // Priority 3: route through A for STAX — A is dead (12cc)
-      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-          .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
-      BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
-          .addReg(V6CLANG::A).addReg(AddrReg);
+      BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+          .addReg(V6Clang::A, RegState::Define).addReg(SrcReg);
+      BuildMI(MBB, MI, DL, get(V6Clang::STAX))
+          .addReg(V6Clang::A).addReg(AddrReg);
     } else {
       // Priority 4: AddrReg ∈ {BC, DE}, SrcReg != A. O77 — three-way
       // dispatch on (AddrReg, A-liveness, dead-GR8 availability):
@@ -3029,7 +3029,7 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       //   6a : addr=BC, A live, SpareR   → SpareR-A envelope  (4B/32cc)
       //   6b : addr=BC, A live, no spare → PSW-wrap fallback  (4B/44cc)
       //   4/5: A dead                    → MOV A,src + STAX   (2B/16cc)
-      bool ALive = !isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      bool ALive = !isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
 
       // partner(src) = XCHG image of src. After `XCHG; MOV M,r; XCHG`
       // the byte stored is the value originally in `src` for every
@@ -3038,22 +3038,22 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       // load (O76), there is no `src ∈ {D, E}` edge case.
       auto partnerOf = [](Register R) -> Register {
         switch (R) {
-        case V6CLANG::B: return V6CLANG::B;
-        case V6CLANG::C: return V6CLANG::C;
-        case V6CLANG::H: return V6CLANG::D;
-        case V6CLANG::L: return V6CLANG::E;
-        case V6CLANG::D: return V6CLANG::H;
-        case V6CLANG::E: return V6CLANG::L;
+        case V6Clang::B: return V6Clang::B;
+        case V6Clang::C: return V6Clang::C;
+        case V6Clang::H: return V6Clang::D;
+        case V6Clang::L: return V6Clang::E;
+        case V6Clang::D: return V6Clang::H;
+        case V6Clang::E: return V6Clang::L;
         default:     return Register();
         }
       };
 
-      if (ALive && AddrReg == V6CLANG::DE) {
+      if (ALive && AddrReg == V6Clang::DE) {
         // 7: XCHG bypass. 3B / 16cc, unconditional for any non-A src.
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr))
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVMr))
             .addReg(partnerOf(SrcReg));
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       } else if (ALive) {
         // 6a / 6b: addr=BC, A live. Try SpareR-A first (saves 12cc vs
         // PSW-wrap, same byte count). Exclude AddrReg (BC) and SrcReg
@@ -3064,27 +3064,27 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
             findDeadGR8AtMI(MI, MBB, &RI, AddrReg, SrcReg);
         if (SpareR) {
           // 6a: MOV spareR,A; MOV A,src; STAX B; MOV A,spareR.
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), SpareR).addReg(V6CLANG::A);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
-              .addReg(V6CLANG::A).addReg(AddrReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(SpareR);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), SpareR).addReg(V6Clang::A);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+              .addReg(V6Clang::A, RegState::Define).addReg(SrcReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::STAX))
+              .addReg(V6Clang::A).addReg(AddrReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::A).addReg(SpareR);
         } else {
           // 6b: PUSH PSW; MOV A,src; STAX B; POP PSW (legacy fallback).
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::PSW);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-              .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
-              .addReg(V6CLANG::A).addReg(AddrReg);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::PSW);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH)).addReg(V6Clang::PSW);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+              .addReg(V6Clang::A, RegState::Define).addReg(SrcReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::STAX))
+              .addReg(V6Clang::A).addReg(AddrReg);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::PSW);
         }
       } else {
         // 4 / 5: A dead — plain MOV A,src + STAX.
-        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
-            .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
-        BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
-            .addReg(V6CLANG::A).addReg(AddrReg);
+        BuildMI(MBB, MI, DL, get(V6Clang::MOVrr))
+            .addReg(V6Clang::A, RegState::Define).addReg(SrcReg);
+        BuildMI(MBB, MI, DL, get(V6Clang::STAX))
+            .addReg(V6Clang::A).addReg(AddrReg);
       }
     }
     MI.eraseFromParent();
@@ -3095,94 +3095,94 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   // O49 — Direct memory ALU / store / RMW pseudos.
   //===------------------------------------------------------------------===//
 
-  case V6CLANG::V6CLANG_ADD_M_P:
-  case V6CLANG::V6CLANG_ADC_M_P:
-  case V6CLANG::V6CLANG_SUB_M_P:
-  case V6CLANG::V6CLANG_SBB_M_P:
-  case V6CLANG::V6CLANG_ANA_M_P:
-  case V6CLANG::V6CLANG_ORA_M_P:
-  case V6CLANG::V6CLANG_XRA_M_P: {
+  case V6Clang::V6CLANG_ADD_M_P:
+  case V6Clang::V6CLANG_ADC_M_P:
+  case V6Clang::V6CLANG_SUB_M_P:
+  case V6Clang::V6CLANG_SBB_M_P:
+  case V6Clang::V6CLANG_ANA_M_P:
+  case V6Clang::V6CLANG_ORA_M_P:
+  case V6Clang::V6CLANG_XRA_M_P: {
     // Operands: 0=$dst(Acc tied), 1=$lhs(Acc tied), 2=$addr(GR16).
     unsigned MOpc;
     switch (MI.getOpcode()) {
-    case V6CLANG::V6CLANG_ADD_M_P: MOpc = V6CLANG::ADDM; break;
-    case V6CLANG::V6CLANG_ADC_M_P: MOpc = V6CLANG::ADCM; break;
-    case V6CLANG::V6CLANG_SUB_M_P: MOpc = V6CLANG::SUBM; break;
-    case V6CLANG::V6CLANG_SBB_M_P: MOpc = V6CLANG::SBBM; break;
-    case V6CLANG::V6CLANG_ANA_M_P: MOpc = V6CLANG::ANAM; break;
-    case V6CLANG::V6CLANG_ORA_M_P: MOpc = V6CLANG::ORAM; break;
-    case V6CLANG::V6CLANG_XRA_M_P: MOpc = V6CLANG::XRAM; break;
+    case V6Clang::V6CLANG_ADD_M_P: MOpc = V6Clang::ADDM; break;
+    case V6Clang::V6CLANG_ADC_M_P: MOpc = V6Clang::ADCM; break;
+    case V6Clang::V6CLANG_SUB_M_P: MOpc = V6Clang::SUBM; break;
+    case V6Clang::V6CLANG_SBB_M_P: MOpc = V6Clang::SBBM; break;
+    case V6Clang::V6CLANG_ANA_M_P: MOpc = V6Clang::ANAM; break;
+    case V6Clang::V6CLANG_ORA_M_P: MOpc = V6Clang::ORAM; break;
+    case V6Clang::V6CLANG_XRA_M_P: MOpc = V6Clang::XRAM; break;
     default: llvm_unreachable("unexpected ALU M opcode");
     }
     Register AddrReg = MI.getOperand(2).getReg();
     expandMemOpM(MBB, MI, *this, RI, AddrReg,
         [&](MachineBasicBlock &B, MachineBasicBlock::iterator Ip) {
           // Physical M ALU ops: (outs Acc:$dst)(ins Acc:$lhs), tied.
-          BuildMI(B, Ip, DL, get(MOpc), V6CLANG::A).addReg(V6CLANG::A);
+          BuildMI(B, Ip, DL, get(MOpc), V6Clang::A).addReg(V6Clang::A);
         });
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_CMP_M_P: {
+  case V6Clang::V6CLANG_CMP_M_P: {
     // Operands: 0=$lhs(Acc), 1=$addr(GR16). No register output.
     Register AddrReg = MI.getOperand(1).getReg();
     expandMemOpM(MBB, MI, *this, RI, AddrReg,
         [&](MachineBasicBlock &B, MachineBasicBlock::iterator Ip) {
           // Physical CMPM: (outs)(ins Acc:$lhs).
-          BuildMI(B, Ip, DL, get(V6CLANG::CMPM)).addReg(V6CLANG::A);
+          BuildMI(B, Ip, DL, get(V6Clang::CMPM)).addReg(V6Clang::A);
         });
     MI.eraseFromParent();
     return true;
   }
 
-  case V6CLANG::V6CLANG_STORE8_IMM_P: {
+  case V6Clang::V6CLANG_STORE8_IMM_P: {
     // Operands: 0=$imm(imm8), 1=$addr(GR16).
     // Per-shape dispatch (O78). See design/future_plans/O78_*.md.
     int64_t Imm = MI.getOperand(0).getImm();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    if (AddrReg == V6CLANG::HL) {
+    if (AddrReg == V6Clang::HL) {
       // Row 1: direct.  2B / 12cc.
-      BuildMI(MBB, MI, DL, get(V6CLANG::MVIM)).addImm(Imm);
+      BuildMI(MBB, MI, DL, get(V6Clang::MVIM)).addImm(Imm);
     } else {
-      bool ADead = isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI);
+      bool ADead = isRegDeadAtMI(V6Clang::A, MI, MBB, &RI);
       if (ADead) {
         // Rows 2/3: A dead → MVI A, imm; STAX rp.  3B / 16cc.
-        BuildMI(MBB, MI, DL, get(V6CLANG::MVIr), V6CLANG::A).addImm(Imm);
-        BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
-            .addReg(V6CLANG::A).addReg(AddrReg);
-      } else if (AddrReg == V6CLANG::DE) {
+        BuildMI(MBB, MI, DL, get(V6Clang::MVIr), V6Clang::A).addImm(Imm);
+        BuildMI(MBB, MI, DL, get(V6Clang::STAX))
+            .addReg(V6Clang::A).addReg(AddrReg);
+      } else if (AddrReg == V6Clang::DE) {
         // Row 4: A live, addr=DE → XCHG bypass.  4B / 20cc.
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-        BuildMI(MBB, MI, DL, get(V6CLANG::MVIM)).addImm(Imm);
-        BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+        BuildMI(MBB, MI, DL, get(V6Clang::MVIM)).addImm(Imm);
+        BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
       } else {
-        // AddrReg == V6CLANG::BC, A live.
-        bool HLDead = isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI);
-        bool DEDead = isRegDeadAtMI(V6CLANG::DE, MI, MBB, &RI);
+        // AddrReg == V6Clang::BC, A live.
+        bool HLDead = isRegDeadAtMI(V6Clang::HL, MI, MBB, &RI);
+        bool DEDead = isRegDeadAtMI(V6Clang::DE, MI, MBB, &RI);
         if (HLDead) {
           // Row 5: BC + HL dead.  4B / 28cc.
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MVIM)).addImm(Imm);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::C);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::B);
+          BuildMI(MBB, MI, DL, get(V6Clang::MVIM)).addImm(Imm);
         } else if (DEDead) {
           // Row 6: BC + HL live + DE dead → DE-route.  5B / 36cc.
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::D).addReg(V6CLANG::B);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::E).addReg(V6CLANG::C);
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
-          BuildMI(MBB, MI, DL, get(V6CLANG::MVIM)).addImm(Imm);
-          BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::D).addReg(V6Clang::B);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::E).addReg(V6Clang::C);
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
+          BuildMI(MBB, MI, DL, get(V6Clang::MVIM)).addImm(Imm);
+          BuildMI(MBB, MI, DL, get(V6Clang::XCHG));
         } else {
           // Row 7: BC, all live → PUSH H envelope (legacy).  6B / 56cc.
-          BuildMI(MBB, MI, DL, get(V6CLANG::PUSH))
-              .addReg(V6CLANG::HL, RegState::Kill)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
-          BuildMI(MBB, MI, DL, get(V6CLANG::MVIM)).addImm(Imm);
-          BuildMI(MBB, MI, DL, get(V6CLANG::POP), V6CLANG::HL)
-              .addReg(V6CLANG::SP, RegState::ImplicitDefine);
+          BuildMI(MBB, MI, DL, get(V6Clang::PUSH))
+              .addReg(V6Clang::HL, RegState::Kill)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::L).addReg(V6Clang::C);
+          BuildMI(MBB, MI, DL, get(V6Clang::MOVrr), V6Clang::H).addReg(V6Clang::B);
+          BuildMI(MBB, MI, DL, get(V6Clang::MVIM)).addImm(Imm);
+          BuildMI(MBB, MI, DL, get(V6Clang::POP), V6Clang::HL)
+              .addReg(V6Clang::SP, RegState::ImplicitDefine);
         }
       }
     }
@@ -3190,11 +3190,11 @@ bool V6ClangInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     return true;
   }
 
-  case V6CLANG::V6CLANG_INR_M_P:
-  case V6CLANG::V6CLANG_DCR_M_P: {
+  case V6Clang::V6CLANG_INR_M_P:
+  case V6Clang::V6CLANG_DCR_M_P: {
     // Operand: 0=$addr(GR16).
-    unsigned MOpc = (MI.getOpcode() == V6CLANG::V6CLANG_INR_M_P) ? V6CLANG::INRM
-                                                        : V6CLANG::DCRM;
+    unsigned MOpc = (MI.getOpcode() == V6Clang::V6CLANG_INR_M_P) ? V6Clang::INRM
+                                                        : V6Clang::DCRM;
     Register AddrReg = MI.getOperand(0).getReg();
     expandMemOpM(MBB, MI, *this, RI, AddrReg,
         [&](MachineBasicBlock &B, MachineBasicBlock::iterator Ip) {

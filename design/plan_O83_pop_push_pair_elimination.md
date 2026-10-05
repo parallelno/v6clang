@@ -100,7 +100,7 @@ to nearly every ALU instruction, making condition 2 almost never satisfiable.
 | File | Change |
 |------|--------|
 | `V6ClangPeephole.cpp` | Add `DisablePopPushElim` flag, `eliminateDeadPopPush()` method, call site in `runOnMachineFunction()` |
-| `tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll` | New lit test (positive + negative + disabled-flag cases) |
+| `tests/lit/CodeGen/V6Clang/peephole-pop-push-elim.ll` | New lit test (positive + negative + disabled-flag cases) |
 
 ---
 
@@ -123,7 +123,7 @@ See **Preparation steps** from `tests/features/README.md`.
 
 ### Step 3.2 — Add `DisablePopPushElim` command-line flag [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 After the existing `DisableMviAluFold` flag (around line 47), add:
 
@@ -141,7 +141,7 @@ static cl::opt<bool> DisablePopPushElim(
 
 ### Step 3.3 — Add method declaration to `V6ClangPeephole` class [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 In the `V6ClangPeephole` class private section (around line 88), add:
 
@@ -155,7 +155,7 @@ bool eliminateDeadPopPush(MachineBasicBlock &MBB);
 
 ### Step 3.4 — Implement `eliminateDeadPopPush()` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add the method before `runOnMachineFunction`. Full body:
 
@@ -277,7 +277,7 @@ bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
 
 ### Step 3.5 — Call from `runOnMachineFunction()` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 In `runOnMachineFunction`, add the call after `foldShldLhldToPushPop` (O43
 produces the PUSH/POP pairs that O83 then eliminates):
@@ -307,7 +307,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.7 — Lit test: `peephole-pop-push-elim.ll` [ ]
 
-Create `tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll`.
+Create `tests/lit/CodeGen/V6Clang/peephole-pop-push-elim.ll`.
 
 The test uses a register-pressure-heavy loop (sieve inner kernel) and checks:
 - **Positive (enabled)**: the output contains no adjacent `POP H` + `PUSH H`
@@ -317,7 +317,7 @@ The test uses a register-pressure-heavy loop (sieve inner kernel) and checks:
 
 Run the lit test:
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\peephole-pop-push-elim.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6Clang\peephole-pop-push-elim.ll -v
 ```
 
 > **Implementation Notes**: <empty>

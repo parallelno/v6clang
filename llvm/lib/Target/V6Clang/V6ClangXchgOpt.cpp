@@ -54,7 +54,7 @@ char V6ClangXchgOpt::ID = 0;
 
 /// Check if MI is MOV rd, rs where rd and rs are the specified registers.
 static bool isMovReg(const MachineInstr &MI, unsigned Dst, unsigned Src) {
-  return MI.getOpcode() == V6CLANG::MOVrr &&
+  return MI.getOpcode() == V6Clang::MOVrr &&
          MI.getOperand(0).getReg() == Dst &&
          MI.getOperand(1).getReg() == Src;
 }
@@ -170,51 +170,51 @@ bool V6ClangXchgOpt::tryXchg(MachineBasicBlock &MBB,
   // O33: dropped isRegLiveBefore() — if HL/DE is dead after, the swap's
   // side-effect into the other pair is harmless even when undefined.
   // Pattern 1: MOV D, H; MOV E, L → XCHG  (copies HL→DE, but also DE→HL)
-  if (isMovReg(First, V6CLANG::D, V6CLANG::H) && isMovReg(Second, V6CLANG::E, V6CLANG::L)) {
-    if (!isRegDeadAfter(MBB, Next, V6CLANG::HL, TRI))
+  if (isMovReg(First, V6Clang::D, V6Clang::H) && isMovReg(Second, V6Clang::E, V6Clang::L)) {
+    if (!isRegDeadAfter(MBB, Next, V6Clang::HL, TRI))
       return false; // HL is live after → XCHG would corrupt it
     MachineInstr *XchgMI =
-        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6CLANG::XCHG));
+        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6Clang::XCHG));
     // DE is the "other" pair: its value is unobserved post-swap (HL is dead).
     // If DE wasn't defined before, annotate the implicit use as undef so
     // -verify-machineinstrs is satisfied.
-    markUndefIfNotLive(XchgMI, MBB, V6CLANG::DE, TRI);
+    markUndefIfNotLive(XchgMI, MBB, V6Clang::DE, TRI);
     First.eraseFromParent();
     Second.eraseFromParent();
     return true;
   }
 
   // Pattern 2: MOV H, D; MOV L, E → XCHG  (copies DE→HL, but also HL→DE)
-  if (isMovReg(First, V6CLANG::H, V6CLANG::D) && isMovReg(Second, V6CLANG::L, V6CLANG::E)) {
-    if (!isRegDeadAfter(MBB, Next, V6CLANG::DE, TRI))
+  if (isMovReg(First, V6Clang::H, V6Clang::D) && isMovReg(Second, V6Clang::L, V6Clang::E)) {
+    if (!isRegDeadAfter(MBB, Next, V6Clang::DE, TRI))
       return false; // DE is live after → XCHG would corrupt it
     MachineInstr *XchgMI =
-        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6CLANG::XCHG));
-    markUndefIfNotLive(XchgMI, MBB, V6CLANG::HL, TRI);
+        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6Clang::XCHG));
+    markUndefIfNotLive(XchgMI, MBB, V6Clang::HL, TRI);
     First.eraseFromParent();
     Second.eraseFromParent();
     return true;
   }
 
   // Pattern 3: MOV E, L; MOV D, H → XCHG (reversed order, same as pattern 1)
-  if (isMovReg(First, V6CLANG::E, V6CLANG::L) && isMovReg(Second, V6CLANG::D, V6CLANG::H)) {
-    if (!isRegDeadAfter(MBB, Next, V6CLANG::HL, TRI))
+  if (isMovReg(First, V6Clang::E, V6Clang::L) && isMovReg(Second, V6Clang::D, V6Clang::H)) {
+    if (!isRegDeadAfter(MBB, Next, V6Clang::HL, TRI))
       return false; // HL is live after → XCHG would corrupt it
     MachineInstr *XchgMI =
-        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6CLANG::XCHG));
-    markUndefIfNotLive(XchgMI, MBB, V6CLANG::DE, TRI);
+        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6Clang::XCHG));
+    markUndefIfNotLive(XchgMI, MBB, V6Clang::DE, TRI);
     First.eraseFromParent();
     Second.eraseFromParent();
     return true;
   }
 
   // Pattern 4: MOV L, E; MOV H, D → XCHG (reversed order, same as pattern 2)
-  if (isMovReg(First, V6CLANG::L, V6CLANG::E) && isMovReg(Second, V6CLANG::H, V6CLANG::D)) {
-    if (!isRegDeadAfter(MBB, Next, V6CLANG::DE, TRI))
+  if (isMovReg(First, V6Clang::L, V6Clang::E) && isMovReg(Second, V6Clang::H, V6Clang::D)) {
+    if (!isRegDeadAfter(MBB, Next, V6Clang::DE, TRI))
       return false; // DE is live after → XCHG would corrupt it
     MachineInstr *XchgMI =
-        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6CLANG::XCHG));
-    markUndefIfNotLive(XchgMI, MBB, V6CLANG::HL, TRI);
+        BuildMI(MBB, First, First.getDebugLoc(), TII.get(V6Clang::XCHG));
+    markUndefIfNotLive(XchgMI, MBB, V6Clang::HL, TRI);
     First.eraseFromParent();
     Second.eraseFromParent();
     return true;
@@ -245,14 +245,14 @@ bool V6ClangXchgOpt::runOnMachineFunction(MachineFunction &MF) {
     // Cancel adjacent XCHG pairs that tryXchg may have created by placing
     // a new XCHG next to an existing one.  XCHG; XCHG = no-op (O44).
     for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
-      if (I->getOpcode() != V6CLANG::XCHG) {
+      if (I->getOpcode() != V6Clang::XCHG) {
         ++I;
         continue;
       }
       auto J = std::next(I);
       while (J != E && J->isDebugInstr())
         ++J;
-      if (J != E && J->getOpcode() == V6CLANG::XCHG) {
+      if (J != E && J->getOpcode() == V6Clang::XCHG) {
         MBB.erase(J);
         I = MBB.erase(I);
         Changed = true;

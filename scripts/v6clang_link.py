@@ -9,7 +9,7 @@ The Vector-06c LLVM toolchain now uses native LLVM `ld.lld` plus
 To override the linker script, defsyms, or link multiple objects manually:
 
     ld.lld -m elf32v6clang \
-           -T clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld \
+           -T clang/lib/Driver/ToolChains/V6Clang/v6clang.ld \
            foo.o bar.o -o out.elf
     llvm-objcopy -O binary out.elf out.rom
 

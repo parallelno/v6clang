@@ -63,7 +63,7 @@ Run `ninja -C llvm-build clang llc` through the MSVC developer environment.
 Add and run CodeGen lit coverage for `V6CLANG_LOAD8_FI`, `V6CLANG_LOAD16_FI`, `V6CLANG_STORE8_FI`, and `V6CLANG_STORE16_FI`.
 
 > **Implementation Notes**:
-> Added `llvm-project/llvm/test/CodeGen/V6CLANG/frame-index-direct-fi.ll`. Targeted run passed: 1/1.
+> Added `llvm-project/llvm/test/CodeGen/V6Clang/frame-index-direct-fi.ll`. Targeted run passed: 1/1.
 
 ### Step 3.6 — Feature verification [x]
 Create/compile the O69 feature test and compare old/new assembly per `tests\features\README.md`.

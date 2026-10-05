@@ -38,9 +38,9 @@ public:
 
 private:
   /// Pick a GR16All pair whose halves are dead at MBBI for use as
-  /// PUSH/POP filler when adjusting SP. Returns V6CLANG::PSW when A+FLAGS
+  /// PUSH/POP filler when adjusting SP. Returns V6Clang::PSW when A+FLAGS
   /// are dead, otherwise BC/DE/HL in that fallback order, or
-  /// V6CLANG::NoRegister when none qualifies.
+  /// V6Clang::NoRegister when none qualifies.
   Register chooseDeadPair(const MachineBasicBlock &MBB,
                           MachineBasicBlock::iterator MBBI,
                           bool IsPrologue) const;

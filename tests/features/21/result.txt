@@ -284,12 +284,12 @@ main:
 ## Files Changed
 
 ### New files:
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangMachineFunctionInfo.h
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangStaticStackAlloc.cpp
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangMachineFunctionInfo.h
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangStaticStackAlloc.cpp
 
 ### Modified files:
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp
-- llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp
-- llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h
-- llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.h
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp
+- llvm-project/llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp
+- llvm-project/llvm/lib/Target/V6Clang/V6Clang.h
+- llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt

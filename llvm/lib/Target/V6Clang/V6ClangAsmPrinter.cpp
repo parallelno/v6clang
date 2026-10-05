@@ -163,9 +163,9 @@ void V6ClangAsmPrinter::emitFunctionBodyStart() {
   // V6ClangArgAllocator in V6ClangISelLowering.cpp). i8 args take from
   // {A,B,C,D,E,L,H}; i16 args take from {HL,DE,BC}; taking an i16 pair
   // removes its two halves from the i8 list and vice versa.
-  SmallVector<MCPhysReg, 7> FreeI8 = {V6CLANG::A, V6CLANG::B, V6CLANG::C,
-                                      V6CLANG::D, V6CLANG::E, V6CLANG::L, V6CLANG::H};
-  SmallVector<MCPhysReg, 3> FreeI16 = {V6CLANG::HL, V6CLANG::DE, V6CLANG::BC};
+  SmallVector<MCPhysReg, 7> FreeI8 = {V6Clang::A, V6Clang::B, V6Clang::C,
+                                      V6Clang::D, V6Clang::E, V6Clang::L, V6Clang::H};
+  SmallVector<MCPhysReg, 3> FreeI16 = {V6Clang::HL, V6Clang::DE, V6Clang::BC};
   auto dropReg = [](SmallVectorImpl<MCPhysReg> &L, MCPhysReg R) {
     auto It = std::find(L.begin(), L.end(), R);
     if (It != L.end())
@@ -173,17 +173,17 @@ void V6ClangAsmPrinter::emitFunctionBodyStart() {
   };
   auto pairOf = [](MCPhysReg H) -> MCPhysReg {
     switch (H) {
-    case V6CLANG::H: case V6CLANG::L: return V6CLANG::HL;
-    case V6CLANG::D: case V6CLANG::E: return V6CLANG::DE;
-    case V6CLANG::B: case V6CLANG::C: return V6CLANG::BC;
+    case V6Clang::H: case V6Clang::L: return V6Clang::HL;
+    case V6Clang::D: case V6Clang::E: return V6Clang::DE;
+    case V6Clang::B: case V6Clang::C: return V6Clang::BC;
     default: return MCRegister::NoRegister;
     }
   };
   auto halves = [](MCPhysReg P) -> std::pair<MCPhysReg, MCPhysReg> {
     switch (P) {
-    case V6CLANG::HL: return {V6CLANG::H, V6CLANG::L};
-    case V6CLANG::DE: return {V6CLANG::D, V6CLANG::E};
-    case V6CLANG::BC: return {V6CLANG::B, V6CLANG::C};
+    case V6Clang::HL: return {V6Clang::H, V6Clang::L};
+    case V6Clang::DE: return {V6Clang::D, V6Clang::E};
+    case V6Clang::BC: return {V6Clang::B, V6Clang::C};
     default: return {MCRegister::NoRegister, MCRegister::NoRegister};
     }
   };
@@ -263,7 +263,7 @@ void V6ClangAsmPrinter::emitFunctionBodyStart() {
 }
 
 void V6ClangAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  if (MI->getOpcode() == V6CLANG::V6CLANG_PSEUDO_COMMENT) {
+  if (MI->getOpcode() == V6Clang::V6CLANG_PSEUDO_COMMENT) {
     unsigned OrigOpc = MI->getOperand(0).getImm();
     const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
     OutStreamer->emitRawComment(Twine("--- ") + TII->getName(OrigOpc) + " ---");
@@ -289,9 +289,9 @@ bool V6ClangAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNum,
     // their 8080-canonical first-half (H/D/B) instead so inline-asm output
     // round-trips through the integrated assembler.
     Register Reg = MO.getReg();
-    unsigned AltIdx = V6CLANG::NoRegAltName;
-    if (V6CLANG::GR16AllRegClass.contains(Reg))
-      AltIdx = V6CLANG::Pair8080;
+    unsigned AltIdx = V6Clang::NoRegAltName;
+    if (V6Clang::GR16AllRegClass.contains(Reg))
+      AltIdx = V6Clang::Pair8080;
     O << V6ClangInstPrinter::getRegisterName(Reg, AltIdx);
     return false;
   }

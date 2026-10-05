@@ -135,7 +135,7 @@ What changed (compiler/driver)
    - Internal helpers `__v6clang_udivmod16_body`, `__v6clang_neg_hl_body`, etc.
    - New: `__udivmodhi4`, `__divmodhi4` for fused divmod.
 
-2. `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`:
+2. `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`:
    - `MUL i8` : Promote → LibCall.
    - `setLibcallName(RTLIB::MUL_I8,   "__mulqi3")`.
    - `SDIVREM/UDIVREM i16` : Expand → LibCall.
@@ -152,9 +152,9 @@ What changed (compiler/driver)
      who supply their own runtime).
 
 5. ISel + libcall test coverage:
-   - `llvm/test/CodeGen/V6CLANG/i8_mul_libcall.ll`     — i8 MUL → __mulqi3.
-   - `llvm/test/CodeGen/V6CLANG/divmod-fusion.ll`      — udiv+urem fuse.
-   - `llvm/test/CodeGen/V6CLANG/mul-shift-i8.ll`       — updated (CHECK __mulqi3).
+   - `llvm/test/CodeGen/V6Clang/i8_mul_libcall.ll`     — i8 MUL → __mulqi3.
+   - `llvm/test/CodeGen/V6Clang/divmod-fusion.ll`      — udiv+urem fuse.
+   - `llvm/test/CodeGen/V6Clang/mul-shift-i8.ll`       — updated (CHECK __mulqi3).
    - `clang/test/Driver/v6clang-auto-include.c`        — driver flag check.
    - `tests/v6clang_lib/linkage_smoke.c`               — links cleanly with
        all 5 operators present (518 bytes; 235 with --gc-sections).

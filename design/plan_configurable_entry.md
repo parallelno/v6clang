@@ -56,7 +56,7 @@ reserved-for-implementation-use convention.
 | Component | Change |
 |-----------|--------|
 | `compiler-rt/lib/builtins/v6clang/crt0.s` | `CALL main` → `CALL __entry`; update header comments |
-| `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | Add `PROVIDE(__entry = main);` inside `SECTIONS`; update header comment |
+| `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld` | Add `PROVIDE(__entry = main);` inside `SECTIONS`; update header comment |
 | No driver C++ change needed | `--defsym` already forwarded via `OPT_Wl_COMMA` |
 
 ## Usage
@@ -91,7 +91,7 @@ custom linker script.
 | `custom_entry.c` | Program with `myStart` instead of `main`, built with `--defsym=__entry=myStart` |
 | `build.bat` | Demonstrates both build variants |
 
-### 2. lit tests (`tests/lit/Linker/V6CLANG/entry-override.test`)
+### 2. lit tests (`tests/lit/Linker/V6Clang/entry-override.test`)
 
 - Assemble a `main` object and an `alt` object via `llc`.
 - Link **without** `--defsym`: verify `__entry` symbol address equals `main`'s address.

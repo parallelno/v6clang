@@ -90,7 +90,7 @@ Then wire it into the two existing hardcoded threshold decisions in
 | Wire DAD | INX chain for small constants feeding DAD | V6ClangInstrInfo.cpp |
 | Wire ADD16 | Replace hardcoded `±1..±3` with cost comparison | V6ClangInstrInfo.cpp |
 | Wire SUB16 | Same cost comparison for subtraction path | V6ClangInstrInfo.cpp |
-| Lit test | Verify INX/DCX thresholds under `-O2` and `-Oz` | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | Verify INX/DCX thresholds under `-O2` and `-Oz` | tests/lit/CodeGen/V6Clang/ |
 
 ---
 
@@ -98,7 +98,7 @@ Then wire it into the two existing hardcoded threshold decisions in
 
 ### Step 3.1 — Create `V6ClangInstrCost.h` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrCost.h` (new)
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrCost.h` (new)
 
 Header-only struct:
 
@@ -150,7 +150,7 @@ namespace V6ClangCost {
 
 ### Step 3.2 — Wire cost model into V6CLANG_DAD expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Currently `V6CLANG_DAD` always expands to `DAD rp`, even when `rp` was loaded
 with a small constant via `LXI rp, N`. For example, `LXI DE, 1; DAD DE`
@@ -210,7 +210,7 @@ case V6CLANG::V6CLANG_DAD: {
 
 ### Step 3.3 — Wire cost model into V6CLANG_ADD16 expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Replace the hardcoded `ImmVal >= 1 && ImmVal <= 3` / `-3 .. -1` check
 in the `V6CLANG_ADD16` case with a cost comparison:
@@ -237,7 +237,7 @@ derived from instruction costs.
 
 ### Step 3.4 — Wire cost model into V6CLANG_SUB16 expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Same change for the subtraction path (DCX/INX chain for constants).
 
@@ -253,7 +253,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: cost-model-inx-threshold.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/cost-model-inx-threshold.ll`
+**File**: `tests/lit/CodeGen/V6Clang/cost-model-inx-threshold.ll`
 
 Test that:
 1. `ptr + 2` → 2×INX (wins under all modes)

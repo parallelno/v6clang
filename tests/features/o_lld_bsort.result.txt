@@ -7,7 +7,7 @@ This test verifies the full O-LLD plan
 1. clang -target i8080-unknown-v6clang drives `ld.lld -m elf32v6clang` and then
    `llvm-objcopy -O binary` automatically.
 2. The default `v6clang.ld` linker script (from
-   `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`) places `.text` at 0x0100.
+   `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`) places `.text` at 0x0100.
 3. `KEEP(*(.text._start))` puts main() at the load address (0x0100).
 4. .data (the statically initialized `ARR`) is laid out after .text.
 5. R_V6CLANG_16 relocations for cross-section pointer references resolve

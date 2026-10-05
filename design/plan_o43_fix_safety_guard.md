@@ -65,7 +65,7 @@ found, the fold is safe.
 
 ### Step 3.1 — Add `isUncoveredLhldReachable` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a static helper before `foldShldLhldToPushPop`:
 
@@ -131,7 +131,7 @@ static bool isUncoveredLhldReachable(
 
 ### Step 3.2 — Guard the fold in `foldShldLhldToPushPop` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Insert the guard immediately before the "Replace SHLD with PUSH HL"
 block, after `if (Abort || !Found) continue;`:
@@ -154,7 +154,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: add negative test case [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/shld-lhld-push-pop-peephole.ll`
+**File**: `tests/lit/CodeGen/V6Clang/shld-lhld-push-pop-peephole.ll`
 
 Add a second function to the existing lit test that exercises the bug
 scenario: a loop where LHLD at the top reads a slot that is SHLD+LHLD'd
@@ -181,7 +181,7 @@ python tests\run_all.py
 
 Or targeted:
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\shld-lhld-push-pop-peephole.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6Clang\shld-lhld-push-pop-peephole.ll -v
 ```
 
 > **Implementation Notes**: `shld-lhld-push-pop-peephole.ll` PASS (test #80 of 102).

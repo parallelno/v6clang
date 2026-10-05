@@ -111,7 +111,7 @@ clobber set to RA.
 compiler-rt/lib/builtins/v6clang/include/v6clang_arith.h     ← the header
 clang/lib/Driver/ToolChains/V6Clang.cpp                  ← auto-include wiring
 clang/include/clang/Driver/Options.td                ← opt-out flag
-llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp              ← MUL_I8 = LibCall
+llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp              ← MUL_I8 = LibCall
 docs/V6ClangRuntimeAndInlineAsm.md                       ← user-facing doc
 tests/v6clang_lib/                                       ← linkage + perf + RA tests
 ```
@@ -342,7 +342,7 @@ to the new doc.
    - `optout.c` — verify `-fno-v6clang-auto-include` actually suppresses
      and produces an undefined-symbol link error.
 5. **Lit tests.** Mirror linkage-smoke and Tier B clobber-correctness
-   tests under `llvm/test/CodeGen/V6CLANG/`.
+   tests under `llvm/test/CodeGen/V6Clang/`.
 6. **Doc.** `docs/V6ClangRuntimeAndInlineAsm.md` per outline above. Update
    `docs/V6ClangBuildGuide.md` cross-link. Strip `-nodefaultlibs` from any
    user-facing example.

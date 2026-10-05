@@ -107,7 +107,7 @@ Symmetric for ROTR.
 | 3.3  | Register node names in `getTargetNodeName`            | `V6ClangISelLowering.cpp`                    |
 | 3.4  | Add `def V6Clangrotl8`, `def V6Clangrotr8` SDNode + Pat<>    | `V6ClangInstrInfo.td`                        |
 | 3.5  | Build clang+llc                                       | —                                        |
-| 3.6  | Lit test `rotate-i8.ll`                               | `tests/lit/CodeGen/V6CLANG/`                 |
+| 3.6  | Lit test `rotate-i8.ll`                               | `tests/lit/CodeGen/V6Clang/`                 |
 | 3.7  | Runtime correctness test (rotate-i8.asm via v6emul)   | `tests/runtime/`                         |
 | 3.8  | Run full regression: lit, golden, benchmarks          | —                                        |
 | 3.9  | Verification feature folder                           | `tests/features/N/`                      |
@@ -124,7 +124,7 @@ yet — only the matcher path.
 
 #### Step 3.1 — Add `V6ClangISD::ROTL8` and `V6ClangISD::ROTR8` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
 
 Add to the `V6ClangISD::NodeType` enum (next to `SEXT`):
 
@@ -135,7 +135,7 @@ ROTR8,    // 1-bit accumulator rotate right (RRC).
 
 #### Step 3.2 — `getTargetNodeName` cases [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 In `V6ClangTargetLowering::getTargetNodeName`, add:
 
@@ -146,7 +146,7 @@ case V6ClangISD::ROTR8: return "V6ClangISD::ROTR8";
 
 #### Step 3.3 — TableGen SDNode + ISel patterns [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 After the rotate instruction defs (around line 410):
 
@@ -245,8 +245,8 @@ correctness, and ensure no regressions.
 
 #### Step 3.6 — Lit test `rotate-i8.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/rotate-i8.ll`
-(also mirrored in `tests/lit/CodeGen/V6CLANG/`)
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/rotate-i8.ll`
+(also mirrored in `tests/lit/CodeGen/V6Clang/`)
 
 Cases:
 1. `rotl by 1` → `RLC` only (no other rotate insns).
@@ -299,8 +299,8 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
 Verify hashes of edited files match between `llvm-project/` source
-of truth and `llvm/` mirror; same for `llvm-project/llvm/test/CodeGen/V6CLANG/`
-↔ `tests/lit/CodeGen/V6CLANG/`.
+of truth and `llvm/` mirror; same for `llvm-project/llvm/test/CodeGen/V6Clang/`
+↔ `tests/lit/CodeGen/V6Clang/`.
 
 #### Step 3.11 — Documentation [skipped — unconditional ISel, no flag; see result.txt]
 
@@ -370,7 +370,7 @@ them rotate. Real impact is unlocking idiomatic C bit-rotation.
 
 * [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
 * [V6ClangInstructionTimings](docs/V6ClangInstructionTimings.md)
-* [V6ClangInstrInfo.td](llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td) — RLC/RRC/RAL/RAR defs (line 401–409)
-* [V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp) — current Expand action (line 77–78), LowerSHL template (line 607)
-* [V6ClangISelLowering.h](llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h) — V6ClangISD::NodeType enum
+* [V6ClangInstrInfo.td](llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td) — RLC/RRC/RAL/RAR defs (line 401–409)
+* [V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp) — current Expand action (line 77–78), LowerSHL template (line 607)
+* [V6ClangISelLowering.h](llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.h) — V6ClangISD::NodeType enum
 * [plan_xra_cmp_zero_test.md](design/plan_xra_cmp_zero_test.md) — reference plan style

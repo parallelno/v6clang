@@ -195,7 +195,7 @@ gaps outside a sequence are disassembly-only locations.
 Read `docs/V6ClangBuildGuide.md`, `docs/V6ClangArchitecture.md`,
 `docs/V6ClangUsage.md`, `tools/v6emul/docs/cli.md`,
 `tools/v6emul/docs/ipc-protocol.md`, `clang/lib/Driver/ToolChains/V6Clang.cpp`,
-`clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`, the V6CLANG MC assembler backend, and
+`clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`, the V6CLANG MC assembler backend, and
 the DAP `setBreakpoints`, `Breakpoint`, `Source`, and `sourceFileMap` semantics.
 
 Record the Level 1 DWARF version, path policy, line-sliding policy, zero address
@@ -215,7 +215,7 @@ The first version of this test must fail on the current absence of `.debug_*`.
 Also add `llvm-dwarfdump` to the documented/build test targets if the local
 build does not currently produce it.
 
-> **Implementation Notes**: Added `llvm/test/CodeGen/V6CLANG/debug-line.ll` with
+> **Implementation Notes**: Added `llvm/test/CodeGen/V6Clang/debug-line.ll` with
 > a minimal debug compile unit and line location; it failed before MC debug
 > support was enabled and now verifies the required DWARF sections. Added
 > `clang/test/Driver/v6clang-debug-metadata.c`, a real C/header fixture compiled
@@ -234,7 +234,7 @@ immediately and inspect every generated relocation and malformed-section
 diagnostic.
 
 > **Implementation Notes**: Set `SupportsDebugInformation = true` in
-> `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCAsmInfo.cpp`. The resulting object
+> `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangMCAsmInfo.cpp`. The resulting object
 > emits DWARF v4 with address size 2.
 
 ### Step 3.4 - Complete the V6CLANG debug relocation ABI [x]
@@ -281,7 +281,7 @@ Add a V6CLANG linker lit test that correlates `llvm-dwarfdump --debug-line`,
 > remaining relocations. A manual final-ELF probe also confirmed that
 > `.debug_line` contains the linked `.text` address. The planned two-object
 > `--gc-sections` live/discarded-function coverage now exists in
-> `llvm/test/Linker/V6CLANG/debug-gc-sections.test`: live code and symbols remain,
+> `llvm/test/Linker/V6Clang/debug-gc-sections.test`: live code and symbols remain,
 > while `.text.dead` and its symbol are removed. LLD keeps a non-allocating
 > `dead.c` line-program contribution with a zero address after collection, so
 > an adapter must aggregate only rows that fall in a final executable section.
@@ -375,7 +375,7 @@ without identifying which producer emitted each line table.
 > a 3-byte ROM plus an ELF32 `ET_EXEC` companion with `.text` at `0x0100` and
 > all four DWARF sections. The packaged executable SHA-256 is
 > `4C41C67DD24E3F8BEC186A040401A1A862A50D7E3E3231F216F773D1EC1158BC`.
-> `llvm/test/Linker/V6CLANG/debug-v6asm-mixed.test` compiles a Clang `-g -gdwarf-4`
+> `llvm/test/Linker/V6Clang/debug-v6asm-mixed.test` compiles a Clang `-g -gdwarf-4`
 > object and a v6asm `-g -f obj` object, links them into one ELF, and verifies
 > both symbols, both source file names in `.debug_line`, all required DWARF
 > sections, and complete relocation resolution. Adapter consumption remains

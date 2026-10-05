@@ -34,7 +34,7 @@ def V6CLANG_RELOAD8 : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
 
 // Same for V6CLANG_SPILL16 / V6CLANG_RELOAD16.
 ```
-(`llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` — `def V6CLANG_SPILL8`)
+(`llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` — `def V6CLANG_SPILL8`)
 
 The flag def is **only actually true** on the dynamic-stack lowering in
 `V6ClangRegisterInfo::eliminateFrameIndex` (lines ~391–456), which emits
@@ -283,7 +283,7 @@ Go with the split.
    still emits useful labels (`;--- V6CLANG_SPILL8_S ---` vs
    `;--- V6CLANG_SPILL8_D ---`, or strip the suffix for readability).
 7. **Tests**
-   * Add a new lit test `test/CodeGen/V6CLANG/spill-flags-static.ll`:
+   * Add a new lit test `test/CodeGen/V6Clang/spill-flags-static.ll`:
      function with `CMP r; [spill]; JZ L` and assert that the `JZ` still
      reads the flags the `CMP` set (no reloaded flag restore).
    * Keep an analogous `spill-flags-dynamic.ll` under
@@ -349,11 +349,11 @@ Concrete examples to measure after implementation:
 
 ## References
 
-* Pseudo defs — `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+* Pseudo defs — `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
   (`def V6CLANG_SPILL8`, `def V6CLANG_RELOAD8`, `def V6CLANG_SPILL16`,
   `def V6CLANG_RELOAD16`).
 * Static-stack lowering —
-  `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp` lines ~143–250.
+  `llvm-project/llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp` lines ~143–250.
 * Dynamic-stack lowering — same file, lines ~391–456.
 * Storage hook — `V6ClangInstrInfo::storeRegToStackSlot` /
   `loadRegFromStackSlot`.

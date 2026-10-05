@@ -68,7 +68,7 @@ are in {DE, HL} and `KillSrc` is true, emit XCHG instead of two MOVs.
 
 ### Step 3.1 — Add XCHG optimization in copyPhysReg [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add an early check in the 16-bit copy path of `copyPhysReg()`. Before
 the existing sub-register decomposition, check if both registers are
@@ -111,7 +111,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: xchg-copyphysreg.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/xchg-copyphysreg.ll`
+**File**: `tests/lit/CodeGen/V6Clang/xchg-copyphysreg.ll`
 
 Create a lit test that verifies XCHG is emitted for a DE→HL copy where
 the source register is dead. A function that returns its second argument
@@ -132,7 +132,7 @@ define i16 @return_second(i16 %a, i16 %b) {
 }
 ```
 
-> **Implementation Notes**: Created `tests/lit/CodeGen/V6CLANG/xchg-copyphysreg.ll` with `return_second` (returns 2nd i16 arg). CHECK: XCHG / CHECK-NEXT: RET / CHECK-NOT: MOV H, D / CHECK-NOT: MOV L, E. Test passes.
+> **Implementation Notes**: Created `tests/lit/CodeGen/V6Clang/xchg-copyphysreg.ll` with `return_second` (returns 2nd i16 arg). CHECK: XCHG / CHECK-NEXT: RET / CHECK-NOT: MOV H, D / CHECK-NOT: MOV L, E. Test passes.
 
 ### Step 3.4 — Run regression tests [x]
 

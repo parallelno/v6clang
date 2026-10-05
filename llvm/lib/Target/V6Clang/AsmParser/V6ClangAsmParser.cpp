@@ -233,18 +233,18 @@ MCRegister V6ClangAsmParser::matchRegisterName(StringRef Name) {
   // Normalize to upper case for the small fixed set.
   if (Name.size() == 1) {
     switch (Name[0] | 0x20) {
-    case 'a': return V6CLANG::A;
-    case 'b': return V6CLANG::B;
-    case 'c': return V6CLANG::C;
-    case 'd': return V6CLANG::D;
-    case 'e': return V6CLANG::E;
-    case 'h': return V6CLANG::H;
-    case 'l': return V6CLANG::L;
+    case 'a': return V6Clang::A;
+    case 'b': return V6Clang::B;
+    case 'c': return V6Clang::C;
+    case 'd': return V6Clang::D;
+    case 'e': return V6Clang::E;
+    case 'h': return V6Clang::H;
+    case 'l': return V6Clang::L;
     default:  return MCRegister();
     }
   }
-  if (Name.equals_insensitive("sp"))  return V6CLANG::SP;
-  if (Name.equals_insensitive("psw")) return V6CLANG::PSW;
+  if (Name.equals_insensitive("sp"))  return V6Clang::SP;
+  if (Name.equals_insensitive("psw")) return V6Clang::PSW;
   // Long pair forms HL/DE/BC are deliberately rejected.
   return MCRegister();
 }
@@ -400,9 +400,9 @@ unsigned V6ClangAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
 
   auto promotePair = [](unsigned Reg) -> unsigned {
     switch (Reg) {
-    case V6CLANG::B: return V6CLANG::BC;
-    case V6CLANG::D: return V6CLANG::DE;
-    case V6CLANG::H: return V6CLANG::HL;
+    case V6Clang::B: return V6Clang::BC;
+    case V6Clang::D: return V6Clang::DE;
+    case V6Clang::H: return V6Clang::HL;
     default:     return 0;
     }
   };
@@ -415,7 +415,7 @@ unsigned V6ClangAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
   // accept B/D/H (promoted), SP (already in GR16All — default check passed),
   // and PSW (not in GR16All — we accept it here).
   case MCK_GR16All:
-    if (R == V6CLANG::PSW || R == V6CLANG::SP)
+    if (R == V6Clang::PSW || R == V6Clang::SP)
       return Match_Success;
     if (unsigned P = promotePair(R)) {
       Op.setReg(P);
@@ -425,7 +425,7 @@ unsigned V6ClangAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
 
   // PUSH / POP operand: BC, DE, HL, PSW (NOT SP — opcode 0xF1/0xF5 means PSW).
   case MCK_GR16Stack:
-    if (R == V6CLANG::PSW)
+    if (R == V6Clang::PSW)
       return Match_Success;
     if (unsigned P = promotePair(R)) {
       Op.setReg(P);
@@ -443,7 +443,7 @@ unsigned V6ClangAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
 
   // GR16Idx (BC/DE only — for LDAX/STAX).
   case MCK_GR16Idx:
-    if (R == V6CLANG::B || R == V6CLANG::D) {
+    if (R == V6Clang::B || R == V6Clang::D) {
       Op.setReg(promotePair(R));
       return Match_Success;
     }
@@ -451,15 +451,15 @@ unsigned V6ClangAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
 
   // GR16Ptr (HL only — used internally; rare in hand-written asm).
   case MCK_GR16Ptr:
-    if (R == V6CLANG::H) {
-      Op.setReg(V6CLANG::HL);
+    if (R == V6Clang::H) {
+      Op.setReg(V6Clang::HL);
       return Match_Success;
     }
     return Match_InvalidOperand;
 
   // GR16SP (SP only).
   case MCK_GR16SP:
-    if (R == V6CLANG::SP)
+    if (R == V6Clang::SP)
       return Match_Success;
     return Match_InvalidOperand;
   }

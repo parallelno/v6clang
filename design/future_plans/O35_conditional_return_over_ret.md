@@ -152,7 +152,7 @@ Uses the same `-v6clang-disable-branch-opt` flag (part of V6ClangBranchOpt).
 
 - `test_cond_zero_tailcall` in `tests/features/13/` — should now emit `RNZ`
   instead of `JZ` + `RET`.
-- May need to update `tests/lit/CodeGen/V6CLANG/branch-threading.ll` and
+- May need to update `tests/lit/CodeGen/V6Clang/branch-threading.ll` and
   `conditional-tail-call.ll` CHECK patterns.
 
 ## Complexity & Risk

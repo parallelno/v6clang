@@ -1,11 +1,11 @@
 # V6CLANG Target — CMakeLists.txt
 #
 # Build the V6CLANG (Vector 06c / Intel 8080) LLVM backend.
-# Enable with: cmake ... -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6CLANG"
+# Enable with: cmake ... -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6Clang"
 
-add_llvm_component_group(V6CLANG)
+add_llvm_component_group(V6Clang)
 
-set(LLVM_TARGET_DEFINITIONS V6CLANG.td)
+set(LLVM_TARGET_DEFINITIONS V6Clang.td)
 
 tablegen(LLVM V6ClangGenRegisterInfo.inc   -gen-register-info)
 tablegen(LLVM V6ClangGenInstrInfo.inc      -gen-instr-info)
@@ -66,7 +66,7 @@ add_llvm_target(V6ClangCodeGen
     V6ClangInfo
 
   ADD_TO_COMPONENT
-    V6CLANG
+    V6Clang
 )
 
 add_subdirectory(AsmParser)

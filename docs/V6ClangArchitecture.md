@@ -24,7 +24,7 @@ e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8
 
 ## Default Memory Map
 
-The canonical layout is set by `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`,
+The canonical layout is set by `clang/lib/Driver/ToolChains/V6Clang/v6clang.ld`,
 which clang passes to `ld.lld` automatically. Sections are emitted in
 the order `.text`, `.rodata`, `.data`, `.bss.pack`, `.bss`. The linker
 also defines the symbols `__bss_start`, `__bss_end`, and
@@ -202,7 +202,7 @@ registry. The value was chosen to mirror the i8080 CPU number and is local to
 this toolchain. It is defined once in `llvm/include/llvm/BinaryFormat/ELF.h`
 and consumed by:
 
-- `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangAsmBackend.cpp` — emits objects with
+- `llvm/lib/Target/V6Clang/MCTargetDesc/V6ClangAsmBackend.cpp` — emits objects with
   this `e_machine`.
 - `lld/ELF/Arch/V6Clang.cpp` + `lld/ELF/Target.cpp` — `ld.lld` dispatches to the
   V6CLANG relocation backend on this `e_machine`.

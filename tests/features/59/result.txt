@@ -227,7 +227,7 @@ Benchmark impact:
 
 Files changed
 -------------
-  llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp
+  llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp
     case V6CLANG::V6CLANG_STORE8_P: priority-4 arm rewritten (~70 lines).
     Reuses isRegDeadAtMI, findDeadGR8AtMI; mirrors the LOAD8_P shape.
 

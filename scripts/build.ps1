@@ -119,7 +119,7 @@ if (-not $SkipBuild) {
           "-DCMAKE_MAKE_PROGRAM=$VenvNinjaFwd" `
           "-DPython3_EXECUTABLE=$VenvPythonFwd" `
           -DLLVM_TARGETS_TO_BUILD=X86 `
-          -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG `
+          -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6Clang `
           '-DLLVM_ENABLE_PROJECTS=clang;lld'
     if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
 

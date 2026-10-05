@@ -76,7 +76,7 @@ allocator — still cheaper than `LXI + MOV A,M + MOV r,A`.
 
 ### Step 3.1 — Add ISel patterns for constant-address LDA/STA [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add after the existing `(load (V6Clangwrapper tglobaladdr))` → LDA pattern:
 
@@ -105,7 +105,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: lda-sta-const-addr.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/lda-sta-const-addr.ll`
+**File**: `tests/lit/CodeGen/V6Clang/lda-sta-const-addr.ll`
 
 Test that:
 1. Load i8 from constant address → LDA

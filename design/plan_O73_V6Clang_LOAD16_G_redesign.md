@@ -117,7 +117,7 @@ arm in `case V6CLANG::V6CLANG_LOAD16_G:` with a three-way dispatch on
 
 ### Step 3.1 — Rewrite expander: `dst=BC` arm three-way dispatch [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_LOAD16_G:` (currently line ~1883).
 
 Replace the existing `dst=BC` branch with:
@@ -187,7 +187,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.3 — Lit test: load16g_shapes.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/load16g_shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/load16g_shapes.ll`
 
 Construct the three dispatch outcomes directly in IR. Use a
 3-i16-arg call site to force `dst=BC` allocation; vary which other
@@ -250,7 +250,7 @@ define void @case3c_a_live(i16 %hl_keep, i8 %a_keep) {
 
 ```
 cd llvm-project
-llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6CLANG
+llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6Clang
 ```
 
 Diagnose and fix any failure. Pre-existing global-load lit tests

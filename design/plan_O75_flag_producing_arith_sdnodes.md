@@ -201,7 +201,7 @@ Two structural changes, in order:
 
 ### Step 3.1 — Phase A: Define FLAGS-as-SSA-i8 SDNode profiles [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Replace the glue-based definitions. New shape (paralleling X86):
 
@@ -241,7 +241,7 @@ def V6Clangselectcc : SDNode<"V6ClangISD::SELECT_CC", SDT_V6ClangSelectCC, []>;
 
 ### Step 3.2 — Phase A: Update CMP/BRCOND TableGen patterns to use `FLAGS` [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Convert `CMPr`/`CMPM`/`CPI` patterns to `[(set FLAGS, (V6Clangcmp …))]`,
 where `FLAGS` refers to the physical register `def FLAGS` already in
@@ -268,7 +268,7 @@ Same for `V6CLANG_SELECT_CC` (the FLAGS operand is appended).
 
 ### Step 3.3 — Phase A: Update LowerBR_CC / LowerSELECT_CC for SSA FLAGS [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Replace:
 ```cpp
@@ -305,7 +305,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.5 — Lit: re-run all CodeGen tests after Phase A [ ]
 
 ```
-python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6CLANG\
+python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6Clang\
 ```
 
 Expectation: **0 regressions**. Phase A is structurally equivalent.
@@ -314,7 +314,7 @@ Expectation: **0 regressions**. Phase A is structurally equivalent.
 
 ### Step 3.6 — Phase B: Add `V6ClangISD::*F` enum entries + name printer [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
 
 Add to `enum NodeType`:
 ```cpp
@@ -329,7 +329,7 @@ INCF, DECF,
 
 ### Step 3.7 — Phase B: SDTypeProfiles + SDNodes + Pat<>s for *F [ ]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 ```tablegen
 // (i8 dst, i8 flags) = OP_F(i8 lhs, i8 rs)
@@ -501,7 +501,7 @@ Same shape for `LowerSELECT_CC`.
 
 ### Step 3.11 — Lit test: `o75-flag-arith-fold.ll` [ ]
 
-New lit test under `llvm-project/llvm/test/CodeGen/V6CLANG/`:
+New lit test under `llvm-project/llvm/test/CodeGen/V6Clang/`:
 
 * `dec_loop`: `while (--c)` — expect `DCR C; JNZ` only, no `MOV A,C` /
   `MOV C,A` / `CPI 0`.

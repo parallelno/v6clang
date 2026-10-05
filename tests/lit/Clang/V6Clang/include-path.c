@@ -33,9 +33,9 @@ void test_use(char *p) {
 
 // DRIVER: -ffunction-sections
 // DRIVER: -internal-isystem
-// DRIVER-SAME: V6CLANG
+// DRIVER-SAME: v6clang
 // DRIVER-SAME: include
 
-// NOSTDINC-NOT: ToolChains{{[/\\]+}}V6CLANG{{[/\\]+}}include"
+// NOSTDINC-NOT: ToolChains{{[/\\]+}}v6clang{{[/\\]+}}include"
 
 // NOFUNCSEC-NOT: -ffunction-sections

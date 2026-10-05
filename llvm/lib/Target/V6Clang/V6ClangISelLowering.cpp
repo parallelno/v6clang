@@ -31,12 +31,12 @@ V6ClangTargetLowering::V6ClangTargetLowering(const V6ClangTargetMachine &TM,
                                        const V6ClangSubtarget &STI)
     : TargetLowering(TM) {
   // Register classes.
-  addRegisterClass(MVT::i8, &V6CLANG::GR8RegClass);
-  addRegisterClass(MVT::i16, &V6CLANG::GR16RegClass);
+  addRegisterClass(MVT::i8, &V6Clang::GR8RegClass);
+  addRegisterClass(MVT::i16, &V6Clang::GR16RegClass);
 
   computeRegisterProperties(STI.getRegisterInfo());
 
-  setStackPointerRegisterToSaveRestore(V6CLANG::SP);
+  setStackPointerRegisterToSaveRestore(V6Clang::SP);
 
   // Boolean values from setcc are exactly 0 or 1 in an i8 register.
   setBooleanContents(ZeroOrOneBooleanContent);
@@ -366,8 +366,8 @@ SDValue V6ClangTargetLowering::PerformDAGCombine(SDNode *N,
         // a virtual live-in from HL, e.g. a function argument) on the LHS so
         // that RA can allocate it to HL without an extra copy.  Now that
         // V6Clangdad lacks SDNPCommutative the combiner will not undo this order.
-        bool LHSIsHL = isCopyFromArgReg(LHS, V6CLANG::HL, DAG);
-        bool RHSIsHL = isCopyFromArgReg(RHS, V6CLANG::HL, DAG);
+        bool LHSIsHL = isCopyFromArgReg(LHS, V6Clang::HL, DAG);
+        bool RHSIsHL = isCopyFromArgReg(RHS, V6Clang::HL, DAG);
         if (!LHSIsHL && RHSIsHL)
           std::swap(LHS, RHS);
 
@@ -386,8 +386,8 @@ SDValue V6ClangTargetLowering::PerformDAGCombine(SDNode *N,
     if (N->getValueType(0) == MVT::i16) {
       SDValue LHS = N->getOperand(0);
       SDValue RHS = N->getOperand(1);
-      if (!isCopyFromArgReg(LHS, V6CLANG::HL, DAG) &&
-          isCopyFromArgReg(RHS, V6CLANG::HL, DAG)) {
+      if (!isCopyFromArgReg(LHS, V6Clang::HL, DAG) &&
+          isCopyFromArgReg(RHS, V6Clang::HL, DAG)) {
         SDLoc DL(N);
         return DAG.getNode(ISD::MUL, DL, MVT::i16, RHS, LHS);
       }
@@ -446,7 +446,7 @@ SDValue V6ClangTargetLowering::LowerOperation(SDValue Op,
     if (Op.getValueType() == MVT::i8) {
       if (auto *CLHS = dyn_cast<ConstantSDNode>(Op.getOperand(0))) {
         if ((CLHS->getZExtValue() & 0xFF) == 0 &&
-            isCopyFromArgReg(Op.getOperand(1), V6CLANG::A, DAG))
+            isCopyFromArgReg(Op.getOperand(1), V6Clang::A, DAG))
           return DAG.getNode(V6ClangISD::NEG8, SDLoc(Op), MVT::i8,
                              Op.getOperand(1));
       }
@@ -1282,9 +1282,9 @@ class V6ClangArgAllocator {
   // Map an i16 pair to its two 8-bit halves.  Returns {0,0} for non-paired.
   static std::pair<MCPhysReg, MCPhysReg> halves(MCPhysReg Pair) {
     switch (Pair) {
-    case V6CLANG::HL: return {V6CLANG::H, V6CLANG::L};
-    case V6CLANG::DE: return {V6CLANG::D, V6CLANG::E};
-    case V6CLANG::BC: return {V6CLANG::B, V6CLANG::C};
+    case V6Clang::HL: return {V6Clang::H, V6Clang::L};
+    case V6Clang::DE: return {V6Clang::D, V6Clang::E};
+    case V6Clang::BC: return {V6Clang::B, V6Clang::C};
     default:      return {MCRegister::NoRegister, MCRegister::NoRegister};
     }
   }
@@ -1292,17 +1292,17 @@ class V6ClangArgAllocator {
   // Map an 8-bit half to its enclosing i16 pair.  Returns 0 when none.
   static MCPhysReg pairOf(MCPhysReg Half) {
     switch (Half) {
-    case V6CLANG::H: case V6CLANG::L: return V6CLANG::HL;
-    case V6CLANG::D: case V6CLANG::E: return V6CLANG::DE;
-    case V6CLANG::B: case V6CLANG::C: return V6CLANG::BC;
+    case V6Clang::H: case V6Clang::L: return V6Clang::HL;
+    case V6Clang::D: case V6Clang::E: return V6Clang::DE;
+    case V6Clang::B: case V6Clang::C: return V6Clang::BC;
     default:                  return MCRegister::NoRegister;
     }
   }
 
 public:
   V6ClangArgAllocator()
-      : FreeI8{V6CLANG::A, V6CLANG::B, V6CLANG::C, V6CLANG::D, V6CLANG::E, V6CLANG::L, V6CLANG::H},
-        FreeI16{V6CLANG::HL, V6CLANG::DE, V6CLANG::BC} {}
+      : FreeI8{V6Clang::A, V6Clang::B, V6Clang::C, V6Clang::D, V6Clang::E, V6Clang::L, V6Clang::H},
+        FreeI16{V6Clang::HL, V6Clang::DE, V6Clang::BC} {}
 
   MCPhysReg takeI8() {
     if (FreeI8.empty())
@@ -1355,7 +1355,7 @@ SDValue V6ClangTargetLowering::LowerFormalArguments(
     if (PReg) {
       // Register argument.
       const TargetRegisterClass *RC =
-          (VT == MVT::i8) ? &V6CLANG::GR8RegClass : &V6CLANG::GR16RegClass;
+          (VT == MVT::i8) ? &V6Clang::GR8RegClass : &V6Clang::GR16RegClass;
       Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(PReg, VReg);
       SDValue ArgVal = DAG.getCopyFromReg(Chain, DL, VReg, VT);
@@ -1398,7 +1398,7 @@ SDValue V6ClangTargetLowering::LowerReturn(
 
   // Return register assignment: i8→A, i16→HL (first), DE (second).
   // For i32 returns (type-legalized to two i16), this gives DE:HL.
-  static const MCPhysReg RetRegsI16[] = {V6CLANG::HL, V6CLANG::DE};
+  static const MCPhysReg RetRegsI16[] = {V6Clang::HL, V6Clang::DE};
   unsigned I16RetIdx = 0;
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
@@ -1406,9 +1406,9 @@ SDValue V6ClangTargetLowering::LowerReturn(
     SDValue Val = OutVals[i];
 
     if (VT == MVT::i8) {
-      Chain = DAG.getCopyToReg(Chain, DL, V6CLANG::A, Val, Glue);
+      Chain = DAG.getCopyToReg(Chain, DL, V6Clang::A, Val, Glue);
       Glue = Chain.getValue(1);
-      RetOps.push_back(DAG.getRegister(V6CLANG::A, MVT::i8));
+      RetOps.push_back(DAG.getRegister(V6Clang::A, MVT::i8));
     } else if (VT == MVT::i16) {
       if (I16RetIdx >= 2)
         report_fatal_error("V6CLANG: too many i16 return values");
@@ -1494,7 +1494,7 @@ SDValue V6ClangTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       // We store to the outgoing argument area of the current frame.
       unsigned Size = VT.getSizeInBits() / 8;
       SDValue PtrOff = DAG.getIntPtrConstant(StackOffset, DL);
-      SDValue SPAddr = DAG.getCopyFromReg(Chain, DL, V6CLANG::SP, MVT::i16);
+      SDValue SPAddr = DAG.getCopyFromReg(Chain, DL, V6Clang::SP, MVT::i16);
       SDValue Addr = DAG.getNode(ISD::ADD, DL, MVT::i16, SPAddr, PtrOff);
       SDValue Store = DAG.getStore(Chain, DL, Arg, Addr,
                                    MachinePointerInfo());
@@ -1552,9 +1552,9 @@ SDValue V6ClangTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     MVT VT = Ins[i].VT;
     MCPhysReg RetReg;
     if (VT == MVT::i8)
-      RetReg = V6CLANG::A;
+      RetReg = V6Clang::A;
     else if (VT == MVT::i16)
-      RetReg = V6CLANG::HL;
+      RetReg = V6Clang::HL;
     else
       report_fatal_error("V6CLANG: unsupported call return type");
 
@@ -1598,8 +1598,8 @@ V6ClangTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   switch (MI.getOpcode()) {
   default:
     llvm_unreachable("Unexpected instr type to insert");
-  case V6CLANG::V6CLANG_SELECT_CC:
-  case V6CLANG::V6CLANG_SELECT_CC16: {
+  case V6Clang::V6CLANG_SELECT_CC:
+  case V6Clang::V6CLANG_SELECT_CC16: {
     // Expand V6CLANG_SELECT_CC into a diamond control flow:
     //   BB:
     //     ... (FLAGS set by preceding CMP)
@@ -1632,15 +1632,15 @@ V6ClangTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
       if (!R.isVirtual()) return nullptr;
       MachineInstr *Def = MRI.getUniqueVRegDef(R);
       if (!Def || Def->getParent() != BB) return nullptr;
-      if (Def->getOpcode() != V6CLANG::MVIr) return nullptr;
+      if (Def->getOpcode() != V6Clang::MVIr) return nullptr;
       if (!MRI.hasOneNonDBGUse(R)) return nullptr;
       return Def;
     };
 
-    if (MI.getOpcode() == V6CLANG::V6CLANG_SELECT_CC) {
+    if (MI.getOpcode() == V6Clang::V6CLANG_SELECT_CC) {
       MachineInstr *TrueDef  = isImmRemat(TrueReg);
       MachineInstr *FalseDef = isImmRemat(FalseReg);
-      if (TrueDef && FalseDef && isPhysRegDeadAtMI(V6CLANG::A, MI, *BB, TRI)) {
+      if (TrueDef && FalseDef && isPhysRegDeadAtMI(V6Clang::A, MI, *BB, TRI)) {
         int64_t TrueImm  = TrueDef->getOperand(1).getImm();
         int64_t FalseImm = FalseDef->getOperand(1).getImm();
 
@@ -1664,33 +1664,33 @@ V6ClangTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
         unsigned JccOpc;
         switch (CC) {
         default: llvm_unreachable("Unknown V6CLANG condition code");
-        case V6ClangCC::COND_NZ: JccOpc = V6CLANG::JNZ; break;
-        case V6ClangCC::COND_Z:  JccOpc = V6CLANG::JZ;  break;
-        case V6ClangCC::COND_NC: JccOpc = V6CLANG::JNC; break;
-        case V6ClangCC::COND_C:  JccOpc = V6CLANG::JC;  break;
-        case V6ClangCC::COND_PO: JccOpc = V6CLANG::JPO; break;
-        case V6ClangCC::COND_PE: JccOpc = V6CLANG::JPE; break;
-        case V6ClangCC::COND_P:  JccOpc = V6CLANG::JP;  break;
-        case V6ClangCC::COND_M:  JccOpc = V6CLANG::JM;  break;
+        case V6ClangCC::COND_NZ: JccOpc = V6Clang::JNZ; break;
+        case V6ClangCC::COND_Z:  JccOpc = V6Clang::JZ;  break;
+        case V6ClangCC::COND_NC: JccOpc = V6Clang::JNC; break;
+        case V6ClangCC::COND_C:  JccOpc = V6Clang::JC;  break;
+        case V6ClangCC::COND_PO: JccOpc = V6Clang::JPO; break;
+        case V6ClangCC::COND_PE: JccOpc = V6Clang::JPE; break;
+        case V6ClangCC::COND_P:  JccOpc = V6Clang::JP;  break;
+        case V6ClangCC::COND_M:  JccOpc = V6Clang::JM;  break;
         }
         BuildMI(BB, DL, TII.get(JccOpc)).addMBB(TrueBBNew);
         BB->addSuccessor(FalseBBNew);
         BB->addSuccessor(TrueBBNew);
 
         // FalseBB: materialize false arm into A, then jump to SinkBB.
-        BuildMI(FalseBBNew, DL, TII.get(V6CLANG::MVIr), V6CLANG::A).addImm(FalseImm);
-        BuildMI(FalseBBNew, DL, TII.get(V6CLANG::JMP)).addMBB(SinkBB);
+        BuildMI(FalseBBNew, DL, TII.get(V6Clang::MVIr), V6Clang::A).addImm(FalseImm);
+        BuildMI(FalseBBNew, DL, TII.get(V6Clang::JMP)).addMBB(SinkBB);
         FalseBBNew->addSuccessor(SinkBB);
 
         // TrueBB: materialize true arm into A; fall through to SinkBB.
-        BuildMI(TrueBBNew, DL, TII.get(V6CLANG::MVIr), V6CLANG::A).addImm(TrueImm);
+        BuildMI(TrueBBNew, DL, TII.get(V6Clang::MVIr), V6Clang::A).addImm(TrueImm);
         TrueBBNew->addSuccessor(SinkBB);
 
         // SinkBB: COPY physreg A → vreg DstReg (RegisterCoalescer eliminates).
-        SinkBB->addLiveIn(V6CLANG::A);
+        SinkBB->addLiveIn(V6Clang::A);
         BuildMI(*SinkBB, SinkBB->begin(), DL,
                 TII.get(TargetOpcode::COPY), DstReg)
-            .addReg(V6CLANG::A, RegState::Kill);
+            .addReg(V6Clang::A, RegState::Kill);
 
         MI.eraseFromParent();
         return SinkBB;
@@ -1716,14 +1716,14 @@ V6ClangTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     unsigned InvJccOpc;
     switch (CC) {
     default: llvm_unreachable("Unknown V6CLANG condition code");
-    case V6ClangCC::COND_NZ: InvJccOpc = V6CLANG::JZ;  break;
-    case V6ClangCC::COND_Z:  InvJccOpc = V6CLANG::JNZ; break;
-    case V6ClangCC::COND_NC: InvJccOpc = V6CLANG::JC;  break;
-    case V6ClangCC::COND_C:  InvJccOpc = V6CLANG::JNC; break;
-    case V6ClangCC::COND_PO: InvJccOpc = V6CLANG::JPE; break;
-    case V6ClangCC::COND_PE: InvJccOpc = V6CLANG::JPO; break;
-    case V6ClangCC::COND_P:  InvJccOpc = V6CLANG::JM;  break;
-    case V6ClangCC::COND_M:  InvJccOpc = V6CLANG::JP;  break;
+    case V6ClangCC::COND_NZ: InvJccOpc = V6Clang::JZ;  break;
+    case V6ClangCC::COND_Z:  InvJccOpc = V6Clang::JNZ; break;
+    case V6ClangCC::COND_NC: InvJccOpc = V6Clang::JC;  break;
+    case V6ClangCC::COND_C:  InvJccOpc = V6Clang::JNC; break;
+    case V6ClangCC::COND_PO: InvJccOpc = V6Clang::JPE; break;
+    case V6ClangCC::COND_PE: InvJccOpc = V6Clang::JPO; break;
+    case V6ClangCC::COND_P:  InvJccOpc = V6Clang::JM;  break;
+    case V6ClangCC::COND_M:  InvJccOpc = V6Clang::JP;  break;
     }
 
     BuildMI(BB, DL, TII.get(InvJccOpc)).addMBB(SinkBB);
@@ -1772,13 +1772,13 @@ V6ClangTargetLowering::getRegForInlineAsmConstraint(
   if (Constraint.size() == 1) {
     switch (Constraint[0]) {
     case 'a': // Accumulator
-      return std::make_pair(V6CLANG::A, &V6CLANG::AccRegClass);
+      return std::make_pair(V6Clang::A, &V6Clang::AccRegClass);
     case 'r': // Any 8-bit GPR
       if (VT == MVT::i16)
-        return std::make_pair(0U, &V6CLANG::GR16RegClass);
-      return std::make_pair(0U, &V6CLANG::GR8RegClass);
+        return std::make_pair(0U, &V6Clang::GR16RegClass);
+      return std::make_pair(0U, &V6Clang::GR8RegClass);
     case 'p': // 16-bit register pair
-      return std::make_pair(0U, &V6CLANG::GR16RegClass);
+      return std::make_pair(0U, &V6Clang::GR16RegClass);
     default:
       break;
     }

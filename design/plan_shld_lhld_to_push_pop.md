@@ -74,7 +74,7 @@ found with SP delta == 0, replace both.
 
 ### Step 3.1 — Add `foldShldLhldToPushPop()` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a helper to compare SHLD/LHLD address operands, then the main method:
 
@@ -190,7 +190,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `shld-lhld-push-pop-peephole.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/shld-lhld-push-pop-peephole.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/shld-lhld-push-pop-peephole.ll`
 
 Positive test: function with short-lived HL spill between non-SP instructions.
 Verify SHLD/LHLD are replaced with PUSH HL/POP HL.

@@ -117,7 +117,7 @@ Verify:
 
 ### Step 6 — Lit test for frame pointer behavior [x]
 
-**File**: `tests/lit/Clang/V6CLANG/frame-pointer-default.c`
+**File**: `tests/lit/Clang/V6Clang/frame-pointer-default.c`
 
 ```c
 // RUN: %clang -target i8080-unknown-v6clang -O2 -S -emit-llvm %s -o - | FileCheck %s
@@ -126,7 +126,7 @@ Verify:
 int simple(int x) { return x + 1; }
 ```
 
-**File**: `tests/lit/Clang/V6CLANG/frame-pointer-explicit.c`
+**File**: `tests/lit/Clang/V6Clang/frame-pointer-explicit.c`
 
 ```c
 // RUN: %clang -target i8080-unknown-v6clang -O2 -fno-omit-frame-pointer -S -emit-llvm %s -o - | FileCheck %s

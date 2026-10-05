@@ -112,10 +112,10 @@ loops that benefit, or to A/B re-test on a different corpus).
 
 ## Files added/modified
 
-  llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h       (Func member)
-  llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp     (cl::opt + helpers)
-  llvm-project/llvm/test/CodeGen/V6CLANG/lsr-strategy-speed.ll        (opt-in path)
-  llvm-project/llvm/test/CodeGen/V6CLANG/lsr-strategy-size.ll         (auto path)
+  llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.h       (Func member)
+  llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp     (cl::opt + helpers)
+  llvm-project/llvm/test/CodeGen/V6Clang/lsr-strategy-speed.ll        (opt-in path)
+  llvm-project/llvm/test/CodeGen/V6Clang/lsr-strategy-size.ll         (auto path)
   tests/features/43/                                              (this dir)
   scripts/o51_ab_measure.py                                       (A/B harness)
   design/plan_O51_lsr_cost_tuning.md                              (this plan)

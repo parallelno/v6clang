@@ -97,9 +97,9 @@ and per-byte identity folding frequently makes one or both bytes free.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll` | New lit test |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
+| `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-imm.ll` | New lit test |
 | `tests/features/77/` | Feature test: C source, baseline, new asm, result.txt |
 | `design/future_plans/O93_bitwise16_immediate_pseudos.md` | Mark complete |
 | `design/future_plans/README.md` | ✅ O93 |
@@ -155,7 +155,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: bitwise16-imm.ll [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll`. Per op:
+Create `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-imm.ll`. Per op:
 - generic constant (both bytes non-trivial) → `MVI A,lo; <op> reglo; MOV reglo,A; MVI A,hi; <op> reghi; MOV reghi,A`, **no `LXI`**.
 - XOR/OR `0x00` byte → that byte's triple absent.
 - AND `0xFF` byte absent; AND `0x00` byte → `MVI reg,0`.
@@ -164,7 +164,7 @@ Create `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll`. Per op:
 - control: a narrowable zero-test case still emits `ANI/ORI/XRI` via O90, not `_IMM`.
 
 > **Implementation Notes**: Created
-> `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll`. Discovered the
+> `llvm-project/llvm/test/CodeGen/V6Clang/bitwise16-imm.ll`. Discovered the
 > dead-hi `(u8)(x ^ C)` case is narrowed by DAGCombiner straight to `XRI 0x3c`
 > (i8 path) — strictly better than the `_IMM` expansion — and updated the
 > expectation accordingly. LIT PASS.
@@ -211,7 +211,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
 > **Implementation Notes**: Mirror synced; `tests/lit/` and the git-tracked
-> `llvm/lib/Target/V6CLANG/` mirror updated to match `llvm-project/`.
+> `llvm/lib/Target/V6Clang/` mirror updated to match `llvm-project/`.
 
 ---
 

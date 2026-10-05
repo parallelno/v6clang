@@ -149,7 +149,7 @@ Cheap-first preservation order, identical to O71:
 
 ### Step 3.1 — Drop `Defs` from `V6CLANG_STORE16_P` td declaration [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Remove `Defs = [HL, A]` from the `V6CLANG_STORE16_P` declaration:
 
@@ -168,7 +168,7 @@ def V6CLANG_STORE16_P : V6ClangPseudo<(outs), (ins GR16:$val, GR16:$addr),
 
 ### Step 3.2 — Rewrite expander: row 2 (`addr=HL, val∈{BC,DE}`) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_STORE16_P:` (currently around line 1564).
 
 Anchor the new structure with the simplest row:
@@ -447,7 +447,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.9 — Lit test: store16p-shapes (rows 1, 4, 6) [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/store16p-shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/store16p-shapes.ll`
 
 Pin the highest-value shapes:
 
@@ -467,7 +467,7 @@ by GR8 pressure; verifying them would need a hand-crafted MIR
 test, deferred unless the feature test surfaces a regression.
 
 > **Implementation Notes**: Created `store16p-shapes.ll` in both
-> `tests/lit/CodeGen/V6CLANG/` and `llvm-project/llvm/test/CodeGen/V6CLANG/`
+> `tests/lit/CodeGen/V6Clang/` and `llvm-project/llvm/test/CodeGen/V6Clang/`
 > with three functions (row1_hl_hl, row4_de_de,
 > row6a_bc_bc_hl_dead). Lit run: PASS.
 

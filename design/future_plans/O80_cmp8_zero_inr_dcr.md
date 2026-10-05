@@ -194,7 +194,7 @@ reductions on bsort, sieve, and fib_crc.
 
 ## Verification plan
 
-- Lit test `tests/lit/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll` covering all three
+- Lit test `tests/lit/CodeGen/V6Clang/cmp8-zero-inr-dcr.ll` covering all three
   shapes. Use IR + `register asm` pinning of the source operand and an
   A-live-after pattern to deterministically materialise each row. Verify
   that the `INR/DCR` pair appears for shape 3 and that the surrounding

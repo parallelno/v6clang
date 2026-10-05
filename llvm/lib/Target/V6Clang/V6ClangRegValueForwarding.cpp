@@ -149,11 +149,11 @@ static bool isO61PatchedImm(const MachineInstr &MI) {
 
 bool V6ClangRegValueForwarding::isValuePreservingAccOp(const MachineInstr &MI) {
   unsigned Op = MI.getOpcode();
-  if (Op != V6CLANG::ORAr && Op != V6CLANG::ANAr)
+  if (Op != V6Clang::ORAr && Op != V6Clang::ANAr)
     return false;
   // Operands: (dst=A, lhs=A, rs).  `ORA A` / `ANA A` iff rs == A.
   return MI.getNumOperands() >= 3 && MI.getOperand(2).isReg() &&
-         MI.getOperand(2).getReg() == V6CLANG::A;
+         MI.getOperand(2).getReg() == V6Clang::A;
 }
 
 void V6ClangRegValueForwarding::clobberReg(StateMap &S, Register Reg) const {
@@ -195,7 +195,7 @@ StateMap V6ClangRegValueForwarding::transfer(MachineBasicBlock &MBB,
     unsigned Op = MI.getOpcode();
 
     // --- Redundant register-to-register move ---------------------------
-    if (Op == V6CLANG::MOVrr) {
+    if (Op == V6Clang::MOVrr) {
       Register Rd = MI.getOperand(0).getReg();
       Register Rs = MI.getOperand(1).getReg();
       ValState Cs = getCanon(S, Rs);
@@ -215,7 +215,7 @@ StateMap V6ClangRegValueForwarding::transfer(MachineBasicBlock &MBB,
     }
 
     // --- Redundant immediate load --------------------------------------
-    if (Op == V6CLANG::MVIr) {
+    if (Op == V6Clang::MVIr) {
       Register Rd = MI.getOperand(0).getReg();
       if (isO61PatchedImm(MI) || !MI.getOperand(1).isImm()) {
         // Runtime-patched or symbolic: value not statically known.

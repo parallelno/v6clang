@@ -107,8 +107,8 @@ baseline negate-focused testcase.
 
 ### Step 3.2 — Add `V6CLANG_NEG16` pseudo and selection [x]
 
-**Files**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`,
-`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**Files**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`,
+`llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Recognize canonical i16 `sub 0, x` and select a dedicated negate pseudo before
 RA.
@@ -118,7 +118,7 @@ RA.
 
 ### Step 3.3 — Add `V6CLANG_NEG16` post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Expand `V6CLANG_NEG16` to the 36cc `XRA/SUB/MVI/SBB` sequence.
 
@@ -126,8 +126,8 @@ Expand `V6CLANG_NEG16` to the 36cc `XRA/SUB/MVI/SBB` sequence.
 
 ### Step 3.4 — Add `V6CLANG_NEG8` pseudo and selection [x]
 
-**Files**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`,
-`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**Files**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`,
+`llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Recognize result-only i8 `sub 0, x` and select a dedicated negate pseudo.
 
@@ -136,7 +136,7 @@ Recognize result-only i8 `sub 0, x` and select a dedicated negate pseudo.
 
 ### Step 3.5 — Add `V6CLANG_NEG8` post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Use `CMA; INR A` only for the `src == A` case. Keep subtract-based emission for
 other shapes.
@@ -164,13 +164,13 @@ Add a focused CodeGen lit test covering:
 - non-`A`/memory-source non-regression
 - flag-sensitive i8 subtract non-match
 
-> **Implementation Notes**: Added `llvm-project/llvm/test/CodeGen/V6CLANG/negate-specialization.ll`. It locks in i16 canonical negates, i8 accumulator specialization, non-`A` i8 fallback, and memory-source non-regression. Front-end spellings (`-x`, `-1*x`, `x*(-1)`) are covered by feature test 69. A temporary `temp\neg8_flag_check.ll` spot-check confirmed the flag-consuming zero-compare path did not form `V6CLANG_NEG8`.
+> **Implementation Notes**: Added `llvm-project/llvm/test/CodeGen/V6Clang/negate-specialization.ll`. It locks in i16 canonical negates, i8 accumulator specialization, non-`A` i8 fallback, and memory-source non-regression. Front-end spellings (`-x`, `-1*x`, `x*(-1)`) are covered by feature test 69. A temporary `temp\neg8_flag_check.ll` spot-check confirmed the flag-consuming zero-compare path did not form `V6CLANG_NEG8`.
 
 ### Step 3.8 — Run regression tests [x]
 
 Run the relevant regression scope at minimum, and widen if needed.
 
-> **Implementation Notes**: `python tests\run_all.py` passed all 3 suites. During the run, `tests\lit\CodeGen\V6CLANG\conditional-call.ll` exposed stale signed zero-condition expectations (`CM`/`CP` were reversed); updated the checks and reran the full suite to green.
+> **Implementation Notes**: `python tests\run_all.py` passed all 3 suites. During the run, `tests\lit\CodeGen\V6Clang\conditional-call.ll` exposed stale signed zero-condition expectations (`CM`/`CP` were reversed); updated the checks and reran the full suite to green.
 
 ### Step 3.9 — Verification assembly steps from `tests\features\README.md` [x]
 

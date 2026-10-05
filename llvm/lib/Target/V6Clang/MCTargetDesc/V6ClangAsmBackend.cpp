@@ -37,18 +37,18 @@ public:
     if (Name == "R_V6CLANG_32")
       return FK_Data_4;
     if (Name == "R_V6CLANG_LO8")
-      return static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_lo8);
+      return static_cast<MCFixupKind>(V6Clang::fixup_v6clang_lo8);
     if (Name == "R_V6CLANG_HI8")
-      return static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_hi8);
+      return static_cast<MCFixupKind>(V6Clang::fixup_v6clang_hi8);
     return std::nullopt;
   }
 
   unsigned getNumFixupKinds() const override {
-    return V6CLANG::NumTargetFixupKinds;
+    return V6Clang::NumTargetFixupKinds;
   }
 
   const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
-    const static MCFixupKindInfo Infos[V6CLANG::NumTargetFixupKinds] = {
+    const static MCFixupKindInfo Infos[V6Clang::NumTargetFixupKinds] = {
         // name              offset  size  flags
         {"fixup_v6clang_8",   0, 8, 0},
         {"fixup_v6clang_16",  0, 16, 0},
@@ -72,21 +72,21 @@ public:
     MCFixupKind Kind = Fixup.getKind();
 
     if (Kind == FK_Data_1 ||
-        Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_8)) {
+        Kind == static_cast<MCFixupKind>(V6Clang::fixup_v6clang_8)) {
       // 8-bit value, single byte.
       assert(Offset < Data.size() && "Fixup offset out of range");
       Data[Offset] = static_cast<char>(Value & 0xFF);
       return;
     }
 
-    if (Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_lo8)) {
+    if (Kind == static_cast<MCFixupKind>(V6Clang::fixup_v6clang_lo8)) {
       // Low byte of 16-bit value.
       assert(Offset < Data.size() && "Fixup offset out of range");
       Data[Offset] = static_cast<char>(Value & 0xFF);
       return;
     }
 
-    if (Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_hi8)) {
+    if (Kind == static_cast<MCFixupKind>(V6Clang::fixup_v6clang_hi8)) {
       // High byte of 16-bit value.
       assert(Offset < Data.size() && "Fixup offset out of range");
       Data[Offset] = static_cast<char>((Value >> 8) & 0xFF);
@@ -94,7 +94,7 @@ public:
     }
 
     if (Kind == FK_Data_2 ||
-        Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_16)) {
+        Kind == static_cast<MCFixupKind>(V6Clang::fixup_v6clang_16)) {
       // 16-bit value, little-endian.
       assert(Offset + 1 < Data.size() && "Fixup offset out of range");
       Data[Offset] = static_cast<char>(Value & 0xFF);         // low byte
@@ -152,19 +152,19 @@ public:
     MCFixupKind Kind = Fixup.getKind();
     switch (static_cast<unsigned>(Kind)) {
     case FK_Data_1:
-    case V6CLANG::fixup_v6clang_8:
-      return V6CLANG::R_V6CLANG_8;
+    case V6Clang::fixup_v6clang_8:
+      return V6Clang::R_V6CLANG_8;
     case FK_Data_2:
-    case V6CLANG::fixup_v6clang_16:
-      return V6CLANG::R_V6CLANG_16;
+    case V6Clang::fixup_v6clang_16:
+      return V6Clang::R_V6CLANG_16;
     case FK_Data_4:
-      return V6CLANG::R_V6CLANG_32;
-    case V6CLANG::fixup_v6clang_lo8:
-      return V6CLANG::R_V6CLANG_LO8;
-    case V6CLANG::fixup_v6clang_hi8:
-      return V6CLANG::R_V6CLANG_HI8;
+      return V6Clang::R_V6CLANG_32;
+    case V6Clang::fixup_v6clang_lo8:
+      return V6Clang::R_V6CLANG_LO8;
+    case V6Clang::fixup_v6clang_hi8:
+      return V6Clang::R_V6CLANG_HI8;
     default:
-      return V6CLANG::R_V6CLANG_NONE;
+      return V6Clang::R_V6CLANG_NONE;
     }
   }
 };

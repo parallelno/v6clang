@@ -118,7 +118,7 @@ Priority 3 (`A dead`) is unchanged.
 |------|-----------------------------------------------------------|------------------------------------------------|
 | Rewrite expander | Three-way dispatch in priority-4 arm           | V6ClangInstrInfo.cpp `case V6CLANG::V6CLANG_STORE8_P:`     |
 | (No change) | `V6CLANG_STORE8_P` td declaration unchanged             | V6ClangInstrInfo.td                                |
-| Test coverage | Lit test pinning each new shape + feature test    | tests/lit/CodeGen/V6CLANG/, tests/features/59/     |
+| Test coverage | Lit test pinning each new shape + feature test    | tests/lit/CodeGen/V6Clang/, tests/features/59/     |
 | Doc updates | Mark O77 done in `design/future_plans/README.md`    | design/future_plans/                           |
 
 ---
@@ -127,7 +127,7 @@ Priority 3 (`A dead`) is unchanged.
 
 ### Step 3.1 — Rewrite expander: priority-4 three-way dispatch [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_STORE8_P:` (currently line ~2325).
 
 Replace the existing `else` (priority-4) branch with:
@@ -165,7 +165,7 @@ Replace the existing `else` (priority-4) branch with:
     // addr=BC. SpareR must survive the body unchanged — exclude
     // A and SrcReg.
     Register SpareR = findDeadGR8AtMI(MI, MBB, &RI,
-                                      /*Exclude1=*/V6CLANG::A,
+                                      /*Exclude1=*/V6Clang::A,
                                       /*Exclude2=*/SrcReg);
     if (SpareR) {
       // 6a: MOV sR,A; MOV A,src; STAX B; MOV A,sR.
@@ -196,7 +196,7 @@ Replace the existing `else` (priority-4) branch with:
 > outer chain already excluded `A dead` in priority 3).
 >
 > `findDeadGR8AtMI` already exists at
-> [V6ClangInstrInfo.cpp:506](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L506).
+> [V6ClangInstrInfo.cpp:506](../llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L506).
 > It excludes `A` automatically and accepts up-to-two extra exclude
 > registers. The `Exclude2=SrcReg` argument is essential: SpareR must
 > survive the entire envelope including the `MOV A,src` step, so it
@@ -219,7 +219,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.3 — Lit test: store8p-shape-redesign.ll [ ]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/store8p-shape-redesign.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/store8p-shape-redesign.ll`
 
 Pin each priority-4 sub-shape with IR + register-asm constraints.
 Coverage matrix:
@@ -253,7 +253,7 @@ fully.
 
 ```
 cd llvm-project
-llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6CLANG
+llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6Clang
 ```
 
 Diagnose and fix any failure. Pre-existing tests that pin

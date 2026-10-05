@@ -58,8 +58,8 @@ Three independent gaps in the backend combine to produce the shuffles:
    swaps operands to avoid a tied-operand copy; the register coalescer
    never retries coalescing through a commuted form; and MachineCSE
    cannot canonicalize operand order across uses. See
-   [V6ClangInstrInfo.td#L259](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L259) (8-bit)
-   and [V6ClangInstrInfo.td#L721](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L721) (16-bit).
+   [V6ClangInstrInfo.td#L259](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L259) (8-bit)
+   and [V6ClangInstrInfo.td#L721](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L721) (16-bit).
 
 2. **ISel does not prefer A-aligned LHS.** When a function argument or
    the result of a prior ALU op already sits in `A`, ISel still emits
@@ -110,7 +110,7 @@ eliminate one of the two possible copies).
 **Layer 3 — Post-RA commute in `V6ClangAccumulatorPlanning`**
 
 Add a new method `commuteMatchingAccALU()` to
-[V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6CLANG/V6ClangAccumulatorPlanning.cpp)
+[V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6Clang/V6ClangAccumulatorPlanning.cpp)
 that walks each MBB post-RA, maintains `A`-value tracking (already
 present), and when it encounters a commutative ALU op whose current
 LHS is NOT what `A` holds but whose RHS IS, swaps them by rewriting
@@ -134,10 +134,10 @@ scheduler that Layers 1 and 2 cannot reach.
 
 | File | Layer | Change |
 |------|-------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` | 1 | Add `isCommutable = 1` to `ADDr`, `ADCr`, `ANAr`, `ORAr`, `XRAr` |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` | 1 | Add `isCommutable = 1` to `V6CLANG_ADD16`, `V6CLANG_AND16`, `V6CLANG_OR16`, `V6CLANG_XOR16` |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp` | 2 | Prefer A-aligned LHS when selecting commutative ALU ops |
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangAccumulatorPlanning.cpp` | 3 | Add `commuteMatchingAccALU()` walker using existing A-value tracking |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` | 1 | Add `isCommutable = 1` to `ADDr`, `ADCr`, `ANAr`, `ORAr`, `XRAr` |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` | 1 | Add `isCommutable = 1` to `V6CLANG_ADD16`, `V6CLANG_AND16`, `V6CLANG_OR16`, `V6CLANG_XOR16` |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp` | 2 | Prefer A-aligned LHS when selecting commutative ALU ops |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangAccumulatorPlanning.cpp` | 3 | Add `commuteMatchingAccALU()` walker using existing A-value tracking |
 | `llvm/...` (mirror) | — | Run `scripts\sync_llvm_mirror.ps1` |
 | `design/future_plans/README.md` | — | Add O60 row |
 
@@ -173,7 +173,7 @@ is. `SUBr`/`SBBr`/`CMPr` must remain non-commutable.
 
 **Abandoned — the change regressed codegen.**
 
-In [V6ClangInstrInfo.td](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td), wrap
+In [V6ClangInstrInfo.td](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td), wrap
 `ADDr`, `ADCr`, `ANAr`, `ORAr`, `XRAr` in an additional
 `let isCommutable = 1 in { ... }` scope. `SUBr`, `SBBr`, and `CMPr`
 must NOT receive the flag.
@@ -221,7 +221,7 @@ must NOT receive the flag.
 
 ### Step 3.3 — Layer 1b: Mark 16-bit ALU pseudos commutable [x]
 
-In [V6ClangInstrInfo.td](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td), add
+In [V6ClangInstrInfo.td](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td), add
 `isCommutable = 1` to `V6CLANG_ADD16`, `V6CLANG_AND16`, `V6CLANG_OR16`,
 `V6CLANG_XOR16`. `V6CLANG_SUB16` stays non-commutable.
 
@@ -255,7 +255,7 @@ changes before proceeding to Layers 2/3.
 
 ### Step 3.5 — Layer 1 lit test: `commute-alu-tied.ll` [ ]
 
-Create `tests/lit/CodeGen/V6CLANG/commute-alu-tied.ll` asserting the
+Create `tests/lit/CodeGen/V6Clang/commute-alu-tied.ll` asserting the
 `sum`-style case:
 
 ```
@@ -277,7 +277,7 @@ Add parallel cases for `and`, `or`, `xor` (all 8-bit commutative ops).
 
 ### Step 3.6 — Layer 2: A-aligned LHS preference in ISel [x]
 
-In [V6ClangISelDAGToDAG.cpp](llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp),
+In [V6ClangISelDAGToDAG.cpp](llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp),
 add a `preferAccLHS()` helper used in `Select()` before falling
 through to the TableGen-generated selector. For commutative 8-bit
 ALU nodes (`ISD::ADD`/`AND`/`OR`/`XOR` with i8 result), if operand 1
@@ -414,7 +414,7 @@ Same command as Step 3.4.
 > warnings. No TableGen changes needed beyond Step 3.3.
 ### Step 3.8 — Layer 2 lit test: `commute-alu-isel.ll` [ ]
 
-Create `tests/lit/CodeGen/V6CLANG/commute-alu-isel.ll` targeting cases
+Create `tests/lit/CodeGen/V6Clang/commute-alu-isel.ll` targeting cases
 Layer 1 cannot reach — both operands live past the ALU op, but one
 is already in A from a prior use. Example: `r = a + b; use(a);
 use(b); use(r)`.
@@ -426,7 +426,7 @@ use(b); use(r)`.
 
 ### Step 3.9 — Layer 3: `commuteMatchingAccALU()` in AccumulatorPlanning [ ]
 
-In [V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6CLANG/V6ClangAccumulatorPlanning.cpp),
+In [V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6Clang/V6ClangAccumulatorPlanning.cpp),
 add a new method that walks MBBs post-RA. Maintain the existing
 `A`-value tracking (pass already has this for `eliminateRedundantAccMoves`).
 
@@ -459,7 +459,7 @@ Same command as Step 3.4.
 
 ### Step 3.11 — Layer 3 lit test: `commute-alu-post-ra.ll` [ ]
 
-Create `tests/lit/CodeGen/V6CLANG/commute-alu-post-ra.ll` targeting
+Create `tests/lit/CodeGen/V6Clang/commute-alu-post-ra.ll` targeting
 spill-induced residuals. Construct a function with enough register
 pressure that the spiller introduces a late `MOV A, X` where `A`
 already held the correct RHS pre-spill.
@@ -675,9 +675,9 @@ for data-movement-dominated ones (`memcpy`, `sprintf`-style).
 * [V6CLANG Optimization](docs/V6ClangOptimization.md)
 * [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](design/future_plans/README.md)
-* [V6ClangInstrInfo.td — 8-bit ALU defs](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L243)
-* [V6ClangInstrInfo.td — 16-bit ALU pseudos](llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L720)
-* [V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6CLANG/V6ClangAccumulatorPlanning.cpp)
-* [V6ClangISelDAGToDAG.cpp](llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp)
+* [V6ClangInstrInfo.td — 8-bit ALU defs](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L243)
+* [V6ClangInstrInfo.td — 16-bit ALU pseudos](llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L720)
+* [V6ClangAccumulatorPlanning.cpp](llvm/lib/Target/V6Clang/V6ClangAccumulatorPlanning.cpp)
+* [V6ClangISelDAGToDAG.cpp](llvm/lib/Target/V6Clang/V6ClangISelDAGToDAG.cpp)
 * LLVM `TwoAddressInstructionPass` — consumes `isCommutable`
 * LLVM `TargetInstrInfo::commuteInstructionImpl` — default commute impl

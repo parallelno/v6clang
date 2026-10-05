@@ -137,7 +137,7 @@ For `COND_NZ`: replace in the **fallthrough** MBB's PHI.
 
 | Step | What | Where |
 |------|------|-------|
-| New pass | `V6ClangDeadPhiConst.cpp` | `llvm-project/llvm/lib/Target/V6CLANG/` |
+| New pass | `V6ClangDeadPhiConst.cpp` | `llvm-project/llvm/lib/Target/V6Clang/` |
 | Declaration | `createV6ClangDeadPhiConstPass()` | `V6Clang.h` |
 | Registration | `addPreRegAlloc()` | `V6ClangTargetMachine.cpp` |
 | Build list | Add source file | `CMakeLists.txt` |
@@ -148,7 +148,7 @@ For `COND_NZ`: replace in the **fallthrough** MBB's PHI.
 
 ### Step 3.1 — Create V6ClangDeadPhiConst.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangDeadPhiConst.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangDeadPhiConst.cpp`
 
 A `MachineFunctionPass` that:
 - Iterates all basic blocks.
@@ -222,7 +222,7 @@ Expected: clean build.
 
 ### Step 3.4 — Lit test: dead PHI constant elimination [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/dead-phi-const.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/dead-phi-const.ll`
 
 Test cases:
 1. `phi [0, entry]` + `br eq 0` (COND_Z, taken edge) → constant eliminated

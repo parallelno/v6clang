@@ -69,20 +69,20 @@ public:
 private:
   /// Return true if MI is ORA A (identity OR on accumulator).
   static bool isOraA(const MachineInstr &MI) {
-    if (MI.getOpcode() != V6CLANG::ORAr)
+    if (MI.getOpcode() != V6Clang::ORAr)
       return false;
     // ORAr operands: (outs Acc:$dst), (ins Acc:$lhs, GR8:$rs)
     // ORA A means $rs is A.
-    return MI.getOperand(2).getReg() == V6CLANG::A;
+    return MI.getOperand(2).getReg() == V6Clang::A;
   }
 
   /// Return true if MI is ANA A (identity AND on accumulator).
   static bool isAnaA(const MachineInstr &MI) {
-    if (MI.getOpcode() != V6CLANG::ANAr)
+    if (MI.getOpcode() != V6Clang::ANAr)
       return false;
     // ANAr operands: (outs Acc:$dst), (ins Acc:$lhs, GR8:$rs)
     // ANA A means $rs is A.
-    return MI.getOperand(2).getReg() == V6CLANG::A;
+    return MI.getOperand(2).getReg() == V6Clang::A;
   }
 
   /// Return true if MI is an ALU instruction that writes A AND sets FLAGS.
@@ -90,35 +90,35 @@ private:
   static bool isAluWritesAAndFlags(const MachineInstr &MI) {
     switch (MI.getOpcode()) {
     // Register-source ALU ops (A = A op r, sets FLAGS)
-    case V6CLANG::ADDr:
-    case V6CLANG::ADCr:
-    case V6CLANG::SUBr:
-    case V6CLANG::SBBr:
-    case V6CLANG::ANAr:
-    case V6CLANG::XRAr:
-    case V6CLANG::ORAr:
+    case V6Clang::ADDr:
+    case V6Clang::ADCr:
+    case V6Clang::SUBr:
+    case V6Clang::SBBr:
+    case V6Clang::ANAr:
+    case V6Clang::XRAr:
+    case V6Clang::ORAr:
     // Memory-source ALU ops (A = A op [HL], sets FLAGS)
-    case V6CLANG::ADDM:
-    case V6CLANG::ADCM:
-    case V6CLANG::SUBM:
-    case V6CLANG::SBBM:
-    case V6CLANG::ANAM:
-    case V6CLANG::XRAM:
-    case V6CLANG::ORAM:
+    case V6Clang::ADDM:
+    case V6Clang::ADCM:
+    case V6Clang::SUBM:
+    case V6Clang::SBBM:
+    case V6Clang::ANAM:
+    case V6Clang::XRAM:
+    case V6Clang::ORAM:
     // Immediate ALU ops (A = A op imm, sets FLAGS)
-    case V6CLANG::ADI:
-    case V6CLANG::ACI:
-    case V6CLANG::SUI:
-    case V6CLANG::SBI:
-    case V6CLANG::ANI:
-    case V6CLANG::XRI:
-    case V6CLANG::ORI:
+    case V6Clang::ADI:
+    case V6Clang::ACI:
+    case V6Clang::SUI:
+    case V6Clang::SBI:
+    case V6Clang::ANI:
+    case V6Clang::XRI:
+    case V6Clang::ORI:
       return true;
 
     // INR/DCR with dst=A: writes A and sets FLAGS (except CY, but Z is set)
-    case V6CLANG::INRr:
-    case V6CLANG::DCRr:
-      return MI.getOperand(0).getReg() == V6CLANG::A;
+    case V6Clang::INRr:
+    case V6Clang::DCRr:
+      return MI.getOperand(0).getReg() == V6Clang::A;
 
     default:
       return false;
@@ -130,15 +130,15 @@ private:
   static bool isWritesANoFlags(const MachineInstr &MI) {
     switch (MI.getOpcode()) {
     // MOV A, r / MOV A, M / MVI A, imm / LDA addr / LDAX rp / POP PSW
-    case V6CLANG::MOVrr:
-      return MI.getOperand(0).getReg() == V6CLANG::A;
-    case V6CLANG::MOVrM:
-      return MI.getOperand(0).getReg() == V6CLANG::A;
-    case V6CLANG::MVIr:
-      return MI.getOperand(0).getReg() == V6CLANG::A;
-    case V6CLANG::LDA:
+    case V6Clang::MOVrr:
+      return MI.getOperand(0).getReg() == V6Clang::A;
+    case V6Clang::MOVrM:
+      return MI.getOperand(0).getReg() == V6Clang::A;
+    case V6Clang::MVIr:
+      return MI.getOperand(0).getReg() == V6Clang::A;
+    case V6Clang::LDA:
       return true; // Always writes A
-    case V6CLANG::LDAX:
+    case V6Clang::LDAX:
       return true; // Always writes A
     default:
       break;
@@ -147,9 +147,9 @@ private:
     // POP PSW writes both A and FLAGS, but the Z flag after POP PSW
     // reflects the saved flags, not necessarily A's new value.
     // Conservatively invalidate.
-    if (MI.getOpcode() == V6CLANG::POP) {
+    if (MI.getOpcode() == V6Clang::POP) {
       Register Reg = MI.getOperand(0).getReg();
-      return Reg == V6CLANG::PSW;
+      return Reg == V6Clang::PSW;
     }
 
     return false;
@@ -160,39 +160,39 @@ private:
   static bool isWritesFlagsNoA(const MachineInstr &MI) {
     switch (MI.getOpcode()) {
     // INR/DCR on non-A register: sets FLAGS, doesn't touch A
-    case V6CLANG::INRr:
-    case V6CLANG::DCRr:
-      return MI.getOperand(0).getReg() != V6CLANG::A;
+    case V6Clang::INRr:
+    case V6Clang::DCRr:
+      return MI.getOperand(0).getReg() != V6Clang::A;
 
     // INR M / DCR M: sets FLAGS, doesn't touch A
-    case V6CLANG::INRM:
-    case V6CLANG::DCRM:
+    case V6Clang::INRM:
+    case V6Clang::DCRM:
       return true;
 
     // DAD: sets CY flag (and on real 8080, only CY — but we model Defs=[FLAGS])
-    case V6CLANG::DAD:
+    case V6Clang::DAD:
       return true;
 
     // CMP/CMPM/CPI: set FLAGS based on A-operand comparison, don't write A.
     // Z reflects comparison result, not A's own value.
-    case V6CLANG::CMPr:
-    case V6CLANG::CMPM:
-    case V6CLANG::CPI:
+    case V6Clang::CMPr:
+    case V6Clang::CMPM:
+    case V6Clang::CPI:
       return true;
 
     // Rotate instructions: modify A and set CY
     // These both write A AND set FLAGS, but only CY — Z is unchanged on 8080.
     // However, our TableGen models them as Defs=[FLAGS], so conservatively
     // treat as FLAGS-modifying.
-    case V6CLANG::RLC:
-    case V6CLANG::RRC:
-    case V6CLANG::RAL:
-    case V6CLANG::RAR:
+    case V6Clang::RLC:
+    case V6Clang::RRC:
+    case V6Clang::RAL:
+    case V6Clang::RAR:
       return true;
 
     // STC/CMC: only affect CY
-    case V6CLANG::STC:
-    case V6CLANG::CMC:
+    case V6Clang::STC:
+    case V6Clang::CMC:
       return true;
 
     default:
@@ -207,23 +207,23 @@ private:
 
   /// Return true if MI is XRA A (XOR accumulator with itself — zero A).
   static bool isXraA(const MachineInstr &MI) {
-    if (MI.getOpcode() != V6CLANG::XRAr)
+    if (MI.getOpcode() != V6Clang::XRAr)
       return false;
     // XRAr: (outs Acc:$dst), (ins Acc:$lhs, GR8:$rs)
-    return MI.getOperand(2).getReg() == V6CLANG::A;
+    return MI.getOperand(2).getReg() == V6Clang::A;
   }
 
   /// If MI is "MOV R, A" (MOVrr with src=A, dst≠A, no patched-imm target
   /// flags), return the destination register. Otherwise return NoRegister.
   static Register getMOVrADest(const MachineInstr &MI) {
-    if (MI.getOpcode() != V6CLANG::MOVrr)
+    if (MI.getOpcode() != V6Clang::MOVrr)
       return Register();
     // MOVrr: (outs GR8:$dst), (ins GR8:$src)
     const MachineOperand &Dst = MI.getOperand(0);
     const MachineOperand &Src = MI.getOperand(1);
     if (!Dst.isReg() || !Src.isReg())
       return Register();
-    if (Src.getReg() != V6CLANG::A || Dst.getReg() == V6CLANG::A)
+    if (Src.getReg() != V6Clang::A || Dst.getReg() == V6Clang::A)
       return Register();
     // Skip MOVs that carry a patched-imm target flag (O61 spill-patched).
     if (Src.getTargetFlags() != 0 || Dst.getTargetFlags() != 0)
@@ -289,7 +289,7 @@ bool V6ClangRedundantFlagElim::runOnMachineFunction(MachineFunction &MF) {
       // V6CLANG_CMP8_ZERO shape 2 (XRA A; CMP R).  Z is already valid,
       // so the entire triple is redundant.
       if (ZFlagValid && isXraA(MI) && NextMI != MBB.end() &&
-          NextMI->getOpcode() == V6CLANG::CMPr) {
+          NextMI->getOpcode() == V6Clang::CMPr) {
         // CMPr: (outs), (ins Acc:$lhs, GR8:$rs)
         Register CmpSrc = NextMI->getOperand(1).getReg();
         if (AValueRegs.count(CmpSrc)) {
@@ -319,7 +319,7 @@ bool V6ClangRedundantFlagElim::runOnMachineFunction(MachineFunction &MF) {
         ZFlagValid = true;
         AValueRegs.clear();
         AValueSrc.clear();
-        AValueRegs.insert(V6CLANG::A); // A itself holds the fresh result
+        AValueRegs.insert(V6Clang::A); // A itself holds the fresh result
       } else if (ZFlagValid) {
         // Track MOV R, A copies that propagate the ALU result value.
         Register MovDst = getMOVrADest(MI);

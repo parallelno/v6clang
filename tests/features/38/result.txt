@@ -232,4 +232,4 @@ Delta
 * The O64 ladder also covers Shape C (H/L sites) and Shape B Row 2
   (A dead), which this test does not exercise. Coverage for those
   rows is provided by the O64 lit test
-  `llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll`.
+  `llvm/test/CodeGen/V6Clang/spill-reload-i8-static-shapes.ll`.

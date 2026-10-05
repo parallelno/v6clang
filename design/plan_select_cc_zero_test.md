@@ -81,11 +81,11 @@ against zero and emit `CMP_ZERO` instead of `CMP`. The pseudo
 
 ### Step 3.1 — Add V6ClangISD::CMP_ZERO node [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
 
 Add `CMP_ZERO` to the `V6ClangISD::NodeType` enum (after `CMP`).
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Add `"V6ClangISD::CMP_ZERO"` to `getTargetNodeName()`.
 
@@ -93,7 +93,7 @@ Add `"V6ClangISD::CMP_ZERO"` to `getTargetNodeName()`.
 
 ### Step 3.2 — Add V6CLANG_CMP16_ZERO pseudo in TableGen [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add:
 - `SDT_V6ClangCmpZero` type profile: `<0, 1, [SDTCisVT<0, i16>]>`
@@ -105,7 +105,7 @@ Add:
 
 ### Step 3.3 — Detect zero in LowerSELECT_CC [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 In `LowerSELECT_CC()`, after the GT/LE swap and `getV6ClangCC()`, add:
 
@@ -124,7 +124,7 @@ if (LHS.getValueType() == MVT::i16 && isNullConstant(RHS) &&
 
 ### Step 3.4 — Expand V6CLANG_CMP16_ZERO in expandPostRAPseudo [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add case for `V6CLANG::V6CLANG_CMP16_ZERO` before the `V6CLANG_CMP16` case:
 
@@ -154,7 +154,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: SELECT_CC zero-test [x]
 
-**File**: `llvm/lib/Target/V6CLANG/tests/select-cc-zero-test.ll`
+**File**: `llvm/lib/Target/V6Clang/tests/select-cc-zero-test.ll`
 
 Test that i16 SELECT_CC against zero produces MOV+ORA instead of LXI+SUB+SBB.
 

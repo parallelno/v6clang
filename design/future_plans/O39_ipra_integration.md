@@ -191,7 +191,7 @@ IPRA has **no effect** on:
 - Indirect calls through function pointers
 - Separately compiled translation units (without LTO)
 
-For V6CLANG/i8080 programs, single-TU builds are the norm (small programs,
+For V6Clang/i8080 programs, single-TU builds are the norm (small programs,
 no OS, everything linked statically), making IPRA highly applicable.
 
 ## Risks

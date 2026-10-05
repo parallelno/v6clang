@@ -382,7 +382,7 @@ each callee.
 7. Test status
 ================================================================
 
-- Lit: `llvm-project/llvm/test/CodeGen/V6CLANG/store8imm-shape-redesign.ll`
+- Lit: `llvm-project/llvm/test/CodeGen/V6Clang/store8imm-shape-redesign.ll`
        (7 CHECK blocks, one per row) — PASS.
 - `python tests\run_all.py` → 134/134 PASS (lit + golden).
 - Benchmarks (bsort/sieve/fib_crc/fannkuch/lfsr16) — all checksums

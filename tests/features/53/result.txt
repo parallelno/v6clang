@@ -65,7 +65,7 @@ RA happens to place the address in DE (because HL is already pinned
 by the `sum_in_hl` argument). Cases 3 / 5 / 6 are exercised
 indirectly by other O-pass tests and the `temp/asm_inline/custom_cc.c`
 end-to-end runner; granular per-shape pinning lives in the lit test
-`llvm/test/CodeGen/V6CLANG/load16p-shapes.ll`.
+`llvm/test/CodeGen/V6Clang/load16p-shapes.ll`.
 
 
 c8080 reference (i8080 mnemonics, only main + key callees)
@@ -231,7 +231,7 @@ V6CLANG ABI places i16/ptr arguments 1 and 2 in HL and DE. None of the
 functions here changes asm output as a result of Phase 4. Per-shape
 verification of the new sequences lives in the lit tests:
 
-    llvm-project/llvm/test/CodeGen/V6CLANG/load16p-shapes.ll
+    llvm-project/llvm/test/CodeGen/V6Clang/load16p-shapes.ll
       * case6_bc_hl_simple:  `LDAX B; MOV L,A; INX B; LDAX B; MOV H,A` (5B/40cc)
       * case5a_bc_de:        `LDAX B; MOV E,A; INX B; LDAX B; MOV D,A` (5B/40cc)
 

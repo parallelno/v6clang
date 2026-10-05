@@ -107,7 +107,7 @@ Notes:
 |------|------|-------|
 | Path A (A1-DE, A2-DE, A-general) | DAD + XCHG or MOV-pair when HL is operand, dst≠HL | V6ClangInstrInfo.cpp |
 | Path B (B1-DE, B-general) | XCHG+DAD or MOV-pair+DAD when dst=HL, neither source is HL | V6ClangInstrInfo.cpp |
-| Lit test | Verify all sub-paths in assembly output | tests/lit/CodeGen/V6CLANG/ |
+| Lit test | Verify all sub-paths in assembly output | tests/lit/CodeGen/V6Clang/ |
 
 ---
 
@@ -115,7 +115,7 @@ Notes:
 
 ### Step 3.1 — Add Path A: dst≠HL, one operand is HL [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Insert after the existing `DstReg == HL` DAD checks (around line 536),
 before the general byte-chain fallback. Contains three sub-cases ordered
@@ -178,7 +178,7 @@ if (DstReg != V6CLANG::HL &&
 
 ### Step 3.2 — Add Path B: dst=HL, neither operand is HL [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Insert immediately after Path A, still before the byte-chain fallback.
 
@@ -237,7 +237,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: add16-dad-expansion.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll`
+**File**: `tests/lit/CodeGen/V6Clang/add16-dad-expansion.ll`
 
 Test cases:
 1. **A1-DE** — `DE = HL + rp`, HL dead: expect `DAD; XCHG`

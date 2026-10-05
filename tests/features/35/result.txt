@@ -263,7 +263,7 @@ Per-slot impact, `de_one_reload`:
   Net      : -12 cc, -1 B.
 
 Mechanism: Stage 2 runs after V6ClangSpillForwarding, scans each static-
-stack-eligible function for V6CLANG_SPILL16/V6CLANG_RELOAD16 groups, and for
+stack-eligible function for V6CLANG_SPILL16/V6Clang_RELOAD16 groups, and for
 each single-source HL spill with all reload dsts in {HL,DE,BC}, scores
 candidate reloads by BlockFrequency × Δ from the per-target table. The
 winning reload is rewritten as `LXI <DstRP>, 0` with a pre-instr label

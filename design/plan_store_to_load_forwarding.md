@@ -140,7 +140,7 @@ for each MI in MBB:
 
 ### Step 3.1 — Create V6ClangSpillForwarding.cpp skeleton [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillForwarding.cpp` (new)
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillForwarding.cpp` (new)
 
 Create the `MachineFunctionPass` skeleton:
 - `class V6ClangSpillForwarding : public MachineFunctionPass`
@@ -157,9 +157,9 @@ Model on `V6ClangLoadImmCombine.cpp`.
 ### Step 3.2 — Declare pass and register in the pipeline [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h` — add declaration
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` — add `addPostRegAlloc()` override with the new pass
-- `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add `V6ClangSpillForwarding.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6Clang.h` — add declaration
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp` — add `addPostRegAlloc()` override with the new pass
+- `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt` — add `V6ClangSpillForwarding.cpp`
 
 > **Design Note**: The pass runs in `addPostRegAlloc()`, after RA but before
 > `ExpandPostRAPseudos` and `PrologEpilogInserter`.  This ensures SPILL/RELOAD
@@ -233,7 +233,7 @@ Rebuild after core implementation.
 
 ### Step 3.7 — Lit test: spill-forwarding.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/spill-forwarding.ll`
+**File**: `tests/lit/CodeGen/V6Clang/spill-forwarding.ll`
 
 Test cases:
 1. **8-bit forwarding**: SPILL8 + ALU + RELOAD8 same slot → expect MOV.
@@ -465,4 +465,4 @@ Beyond V2, additional forwarding opportunities:
 * [Future Improvements](design\future_plans\README.md)
 * [O16 Design](design\future_plans\O16_store_to_load_forwarding.md)
 * [Z80 Backend Analysis](design\future_plans\llvm_z80_analysis.md) — §S5, §S6
-* [V6ClangLoadImmCombine.cpp](llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp) — pass structure reference
+* [V6ClangLoadImmCombine.cpp](llvm\lib\Target\V6Clang\V6ClangLoadImmCombine.cpp) — pass structure reference

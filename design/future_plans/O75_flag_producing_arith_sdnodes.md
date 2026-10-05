@@ -13,7 +13,7 @@ SBB, ANA, ORA, XRA, RLC, RRC, RAL, RAR, …) is matched from a plain
 arithmetic SDAG pattern that produces only an `i8`/`i16` value and discards
 its FLAGS at the SDAG level.
 
-`LowerBR_CC` ([V6ClangISelLowering.cpp:471](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L471))
+`LowerBR_CC` ([V6ClangISelLowering.cpp:471](../../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp#L471))
 unconditionally creates a fresh `V6ClangISD::CMP` node from the icmp's LHS/RHS,
 even when LHS is itself an arithmetic result that already set the right
 flags:

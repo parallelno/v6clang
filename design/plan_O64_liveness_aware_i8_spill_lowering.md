@@ -15,7 +15,7 @@
 ### Current behavior
 
 `V6ClangRegisterInfo::eliminateFrameIndex`, static-stack branch
-([V6ClangRegisterInfo.cpp lines ~143–250](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp)):
+([V6ClangRegisterInfo.cpp lines ~143–250](../llvm-project/llvm/lib/Target/V6Clang/V6ClangRegisterInfo.cpp)):
 
 * **Shape A** (src/dst == `A`): `STA addr` / `LDA addr` — already optimal
   (16 cc, 3 B).
@@ -102,8 +102,8 @@ Both `V6ClangRegisterInfo::eliminateFrameIndex` (slot-address form) and
 need the same decision ladder. To avoid copy-paste drift, factor the
 ladder and its helpers into a new compilation unit:
 
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.h` — declarations.
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.cpp` — impl.
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillExpand.h` — declarations.
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillExpand.cpp` — impl.
 
 Public API (free functions in namespace `llvm`):
 
@@ -203,7 +203,7 @@ Three reasons to keep one pseudo per width:
 
 | Step | What | Where |
 |------|------|-------|
-| New shared module | `V6ClangSpillExpand.h` + `V6ClangSpillExpand.cpp`; add to `CMakeLists.txt`. | `llvm-project/llvm/lib/Target/V6CLANG/` |
+| New shared module | `V6ClangSpillExpand.h` + `V6ClangSpillExpand.cpp`; add to `CMakeLists.txt`. | `llvm-project/llvm/lib/Target/V6Clang/` |
 | Consolidate `isRegDeadAfterMI` | Move from its two duplicate static definitions into the shared module. | `V6ClangSpillExpand.{h,cpp}` |
 | Add helper `findDeadSpareGPR8` | Walks {B,C,D,E}\Excluded, returns first dead after MI; `Register()` on failure. | `V6ClangSpillExpand.{h,cpp}` |
 | Implement `expandSpill8Static` / `expandReload8Static` | Emit the decision ladder using `AppendAddrFn` for the address operand. | `V6ClangSpillExpand.cpp` |
@@ -211,7 +211,7 @@ Three reasons to keep one pseudo per width:
 | Rewire `V6ClangSpillPatchedReload` non-winner emitter | Replace the duplicated classical i8 reload emission with a call to `expandReload8Static` (pass a `Syms[0] + MO_PATCH_IMM` appender). Keep winner emission (MVI) and spill rewrite (STA Sym+1) untouched. | `V6ClangSpillPatchedReload.cpp` |
 | Drop H/L DE-detour spill path | Replaced by Shape C ladder (A-routed) inside the shared helper. | `V6ClangSpillExpand.cpp` |
 | Add H/L reload rows 2–4 | Keep current "other-half dead" fast path as row 1; add A-dead / spare-GPR / `PUSH PSW` rows. | `V6ClangSpillExpand.cpp` |
-| Lit test | One function per decision row with exact `CHECK` sequences. | `llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll` |
+| Lit test | One function per decision row with exact `CHECK` sequences. | `llvm/test/CodeGen/V6Clang/spill-reload-i8-static-shapes.ll` |
 | Regression | All existing O42/O43/O61 lit tests pass unchanged, or with `CHECK` lines tightened to the shorter sequences. Re-verify `spill-patched-reload-i8.ll` in particular — its non-winner reload sequences will change. | existing `.ll` files |
 | Feature test | `tests/features/38/` — a function with an HL-live-but-A-dead i8 spill/reload site. | new folder |
 
@@ -222,9 +222,9 @@ Three reasons to keep one pseudo per width:
 ### Step 3.1 — Create shared module `V6ClangSpillExpand.{h,cpp}` [x]
 
 **Files**:
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.h`
-* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.cpp`
-* `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillExpand.h`
+* `llvm-project/llvm/lib/Target/V6Clang/V6ClangSpillExpand.cpp`
+* `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt` — add
   `V6ClangSpillExpand.cpp` to the `add_llvm_target(V6ClangCodeGen …)` list.
 
 Declare the public API shown in §2 (`isRegDeadAfterMI`,
@@ -414,7 +414,7 @@ O64's scope is static stack only.
 **File**: `V6ClangSpillPatchedReload.cpp`
 
 In the non-winner i8 reload loop (currently
-[lines 474–534](../llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp#L474)),
+[lines 474–534](../llvm/lib/Target/V6Clang/V6ClangSpillPatchedReload.cpp#L474)),
 replace the inline A / H|L / B..E branches with:
 
 ```cpp
@@ -451,7 +451,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.8 — Lit test: `spill-reload-i8-static-shapes.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/spill-reload-i8-static-shapes.ll`
 
 One small non-reentrant function per decision row, with precise
 `CHECK` sequences:

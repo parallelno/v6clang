@@ -8,7 +8,7 @@ The V6CLANG toolchain currently maintains **two** include directories:
 
 | Directory | Headers |
 |---|---|
-| `clang/lib/Driver/ToolChains/V6CLANG/include/` | `string.h` (decls only), `stdlib.h` (abort/exit), `v6clang.h` |
+| `clang/lib/Driver/ToolChains/V6Clang/include/` | `string.h` (decls only), `stdlib.h` (abort/exit), `v6clang.h` |
 | `compiler-rt/lib/builtins/v6clang/include/` | `string.h` (full V6CLANG_RT definitions), `stdlib.h` (min/max/abs/labs), `v6clang_arith.h`, `v6clang_rt_macros.h` |
 
 Both are added as `-internal-isystem`, resource-dir first. This means:
@@ -28,7 +28,7 @@ scripts) flips precedence but is fragile and surprising.
 ### 1. Single header location: `compiler-rt/lib/builtins/v6clang/include/`
 
 This is where the runtime lives (alongside `crt0.s`), and where `v6clang_arith.h`
-and `v6clang_rt_macros.h` already live. `clang/lib/Driver/ToolChains/V6CLANG/include/`
+and `v6clang_rt_macros.h` already live. `clang/lib/Driver/ToolChains/V6Clang/include/`
 is deleted entirely: its `string.h` is a dead declarations-only stub, and its
 `stdlib.h` and `v6clang.h` are moved/merged into the compiler-rt directory.
 
@@ -88,10 +88,10 @@ directory becomes a **pure install artifact**, never authored by hand.
 
 | Action | File |
 |---|---|
-| **Delete** | `clang/lib/Driver/ToolChains/V6CLANG/include/` (entire directory) |
+| **Delete** | `clang/lib/Driver/ToolChains/V6Clang/include/` (entire directory) |
 | **Edit** | `clang/lib/Driver/ToolChains/V6Clang.cpp` — remove `findV6ClangIncludeDir` and its `-internal-isystem` push from `AddClangSystemIncludeArgs` |
 | **Edit** | `compiler-rt/lib/builtins/v6clang/include/stdlib.h` — add `EXIT_SUCCESS`/`EXIT_FAILURE`, `abort()`, `exit()` (moved from resource-dir); `abs`/`labs`/`min`/`max` already present |
-| **New** | `compiler-rt/lib/builtins/v6clang/include/v6clang.h` — moved verbatim from `clang/lib/Driver/ToolChains/V6CLANG/include/v6clang.h` |
+| **New** | `compiler-rt/lib/builtins/v6clang/include/v6clang.h` — moved verbatim from `clang/lib/Driver/ToolChains/V6Clang/include/v6clang.h` |
 | **Edit** | `temp/demo/build.bat` — remove `-isystem compiler-rt\lib\builtins\v6clang\include` |
 | **Edit** | `docs/V6ClangUsage.md` — update header table and location notes |
 
@@ -109,7 +109,7 @@ The file already has `abs`/`labs`/`min`/`max` — leave them as-is.
 
 ### Step 2 — Move `v6clang.h`
 
-Copy `clang/lib/Driver/ToolChains/V6CLANG/include/v6clang.h` verbatim to
+Copy `clang/lib/Driver/ToolChains/V6Clang/include/v6clang.h` verbatim to
 `compiler-rt/lib/builtins/v6clang/include/v6clang.h`. No content changes.
 
 ### Step 3 — Edit `V6Clang.cpp`
@@ -118,7 +118,7 @@ In `AddClangSystemIncludeArgs`, remove the `findV6ClangIncludeDir` block and
 its two `CC1Args.push_back` calls. Delete `findV6ClangIncludeDir` entirely.
 `findV6ClangRuntimeIncludeDir` and its push remain unchanged.
 
-### Step 4 — Delete `clang/lib/Driver/ToolChains/V6CLANG/include/`
+### Step 4 — Delete `clang/lib/Driver/ToolChains/V6Clang/include/`
 
 Remove all three files (`string.h`, `stdlib.h`, `v6clang.h`) and the directory.
 
@@ -132,7 +132,7 @@ remove it there too.
 
 - Update the header table: single-source note, add `<v6clang.h>` row, update
   `<stdlib.h>` row to list all contents.
-- Remove any mention of `clang/lib/Driver/ToolChains/V6CLANG/include/`.
+- Remove any mention of `clang/lib/Driver/ToolChains/V6Clang/include/`.
 
 ### Step 7 — Extend `scripts/validate_dist.ps1` (CI smoke test)
 
@@ -145,7 +145,7 @@ and `v6clang.h` — none of which are tested by the current smoke test.
 **Why `make_dist.ps1` needs no changes**: it already copies
 `compiler-rt/lib/builtins/v6clang/include/*` → `<stage>/lib/clang/<ver>/lib/v6clang/include/`
 (the `$RtIncSrcDir` block, added in O80). It never referenced
-`clang/lib/Driver/ToolChains/V6CLANG/include/`, so deleting that directory
+`clang/lib/Driver/ToolChains/V6Clang/include/`, so deleting that directory
 does not affect the packaging script at all.
 
 **Add two new tests to `validate_dist.ps1`**, after the existing smoke

@@ -87,11 +87,11 @@ subsequent patterns). Running before Peephole maximizes cleanup opportunities.
 
 | Step | What | Where |
 |------|------|-------|
-| Create pass file | V6ClangLoadImmCombine.cpp | llvm/lib/Target/V6CLANG/ |
+| Create pass file | V6ClangLoadImmCombine.cpp | llvm/lib/Target/V6Clang/ |
 | Declare factory | createV6ClangLoadImmCombinePass() | V6Clang.h |
 | Register in pipeline | After AccumulatorPlanning, before Peephole | V6ClangTargetMachine.cpp |
-| Add to build | CMakeLists.txt | llvm/lib/Target/V6CLANG/ |
-| Lit test | load-imm-combine.ll | tests/lit/CodeGen/V6CLANG/ |
+| Add to build | CMakeLists.txt | llvm/lib/Target/V6Clang/ |
+| Lit test | load-imm-combine.ll | tests/lit/CodeGen/V6Clang/ |
 
 ---
 
@@ -99,7 +99,7 @@ subsequent patterns). Running before Peephole maximizes cleanup opportunities.
 
 ### Step 3.1 — Create V6ClangLoadImmCombine.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 Implement the post-RA pass:
 
@@ -132,7 +132,7 @@ Implement the post-RA pass:
 
 ### Step 3.2 — Declare factory in V6Clang.h [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6Clang.h`
 
 Add:
 ```cpp
@@ -143,7 +143,7 @@ FunctionPass *createV6ClangLoadImmCombinePass();
 
 ### Step 3.3 — Register in pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangTargetMachine.cpp`
 
 Add `addPass(createV6ClangLoadImmCombinePass())` after AccumulatorPlanning,
 before Peephole in `addPreEmitPass()`.
@@ -152,7 +152,7 @@ before Peephole in `addPreEmitPass()`.
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/CMakeLists.txt`
 
 Add `V6ClangLoadImmCombine.cpp` to the source list.
 
@@ -168,7 +168,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: load-imm-combine.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/load-imm-combine.ll`
+**File**: `tests/lit/CodeGen/V6Clang/load-imm-combine.ll`
 
 Test cases:
 1. Two `MVI r, 0` → second replaced with `MOV r, r'`

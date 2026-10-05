@@ -6,8 +6,8 @@
 
 `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` constant shifts still use broad,
 accumulator-heavy expansion strategies in
-`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` and
-`llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`.
+`llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp` and
+`llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`.
 
 Current gaps from the design:
 
@@ -88,7 +88,7 @@ shift amount:
 | 2 | Lower constant `SHL16` through the dedicated target node | `V6ClangISelLowering.cpp` |
 | 3 | Split broad shift pseudos into strategy-specific variants with truthful `Defs` | `V6ClangInstrInfo.td` |
 | 4 | Specialize `SHL16 1..7` expansion via the DAD strategy variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
-| 5 | Add lit coverage for `SHL16 1..7` | `llvm-project/llvm/test/CodeGen/V6CLANG/` |
+| 5 | Add lit coverage for `SHL16 1..7` | `llvm-project/llvm/test/CodeGen/V6Clang/` |
 | 6 | Specialize `SHL16 9..15` via ADD-A / RRC+ANI variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
 | 7 | Specialize `SRL16 3..7` and `9..15` via dedicated variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
 | 8 | Specialize `SRA16 3..7` and `9..15` via dedicated variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
@@ -115,8 +115,8 @@ Read:
 
 Files:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Replace the current `LowerSHL_i16` ADD-chain lowering with a dedicated target
 node for constant amounts `1..15`.
@@ -134,8 +134,8 @@ node for constant amounts `1..15`.
 
 Files:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 Replace the single `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` pseudo family with
 strategy-specific variants so the allocator sees the real clobbers for each
@@ -161,8 +161,8 @@ Implement at least these families explicitly:
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Implement:
 
@@ -205,7 +205,7 @@ Add focused CodeGen coverage that checks `<<1`, `<<3`, and `<<7` for:
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Implement:
 
@@ -234,7 +234,7 @@ Check `<<9`, `<<13`, `<<14`, `<<15` for the expected sequence families.
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Implement:
 
@@ -265,7 +265,7 @@ Check `>>1`, `>>2`, `>>7`, `>>9`, `>>15`.
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Implement arithmetic versions of the `3..7` and `9..15` strategies.
 

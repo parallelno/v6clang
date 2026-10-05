@@ -78,7 +78,7 @@ Two modes:
 
 ### Step 3.1 — Add `cancelAdjacentXchg()` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a new private method `cancelAdjacentXchg(MachineBasicBlock &MBB)`:
 
@@ -171,7 +171,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `xchg-cancel-peephole.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/xchg-cancel-peephole.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/xchg-cancel-peephole.ll`
 
 Create a lit test that checks adjacent XCHG pairs are removed from
 the output assembly. Use a function with adjacent DE spill/reload

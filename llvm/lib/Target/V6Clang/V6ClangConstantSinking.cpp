@@ -50,7 +50,7 @@ char V6ClangConstantSinking::ID = 0;
 
 /// Return true if Opc is a constant materialization we want to sink.
 static bool isConstantMat(unsigned Opc) {
-  return Opc == V6CLANG::LXI || Opc == V6CLANG::MVIr;
+  return Opc == V6Clang::LXI || Opc == V6Clang::MVIr;
 }
 
 bool V6ClangConstantSinking::runOnMachineFunction(MachineFunction &MF) {

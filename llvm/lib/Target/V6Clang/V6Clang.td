@@ -1,4 +1,4 @@
-// V6CLANG.td - Top-level TableGen description for the V6CLANG (Vector 06c) target
+// V6Clang.td - Top-level TableGen description for the V6CLANG (Vector 06c) target
 //
 // This is the root TableGen file for the Intel 8080-based Vector 06c backend.
 // It includes all target-specific definitions: registers, instructions,
@@ -38,7 +38,7 @@ def V6ClangAsmParser : AsmParser {
   // such as "M" appear as literal mnemonic text in the .td asm strings.
 }
 
-def V6CLANG : Target {
+def V6Clang : Target {
   let InstructionSet = V6ClangInstrInfo;
   let AssemblyWriters = [V6ClangAsmWriter];
   let AssemblyParsers = [V6ClangAsmParser];

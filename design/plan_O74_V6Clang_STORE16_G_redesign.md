@@ -135,9 +135,9 @@ Three coordinated changes:
 
 | Step | What                                                                 | Where                                          |
 |------|----------------------------------------------------------------------|------------------------------------------------|
-| TD   | Drop `Defs = [HL]`; repoint isel `SHLD` → `V6CLANG_STORE16_G`            | `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`          |
+| TD   | Drop `Defs = [HL]`; repoint isel `SHLD` → `V6CLANG_STORE16_G`            | `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`          |
 | C++  | Three-way `val=BC` dispatch + DE liveness dispatch                   | `V6ClangInstrInfo.cpp` `case V6CLANG::V6CLANG_STORE16_G:`  |
-| Lit  | `store16g-shapes.ll` pinning each row                                | `llvm/test/CodeGen/V6CLANG/`                       |
+| Lit  | `store16g-shapes.ll` pinning each row                                | `llvm/test/CodeGen/V6Clang/`                       |
 | Feat | `tests/features/56/` — c8080 + v6clang reference + result.txt        | `tests/features/56/`                           |
 | Doc  | Mark O74 done in `design/future_plans/README.md`                     | `design/future_plans/`                         |
 
@@ -147,7 +147,7 @@ Three coordinated changes:
 
 ### Step 3.1 — TD changes: drop `Defs`, repoint isel pattern [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`,
 near lines 897–913.
 
 ```tablegen
@@ -177,7 +177,7 @@ def : Pat<(store i16:$val, (V6Clangwrapper tglobaladdr:$addr)),
 
 ### Step 3.2 — Expander: rewrite `V6CLANG_STORE16_G` arm [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`,
 `case V6CLANG::V6CLANG_STORE16_G:` (currently line ~1968).
 
 Replace the existing two-arm body with:
@@ -276,7 +276,7 @@ Fix any compile errors, then proceed.
 
 ### Step 3.4 — Lit test: store16g-shapes.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/store16g-shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/store16g-shapes.ll`
 
 Mirror `load16g-shapes.ll`. Construct each dispatch outcome
 directly in IR; force the value-register class via the V6CLANG
@@ -377,7 +377,7 @@ define i16 @case3c_val_bc_a_live(i16 %hl_keep, i16 %unused_de, i16 %v, i8 %a_kee
 
 ```
 cd llvm-project
-llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6CLANG
+llvm-build\bin\llvm-lit -v llvm/test/CodeGen/V6Clang
 ```
 
 Diagnose and fix any failure. Pre-existing global-store lit

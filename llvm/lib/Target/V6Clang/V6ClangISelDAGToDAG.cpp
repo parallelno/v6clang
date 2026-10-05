@@ -66,8 +66,8 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
 
     SDValue TFI = CurDAG->getTargetFrameIndex(FI->getIndex(), MVT::i16);
     SmallVector<SDValue, 2> Ops = {TFI, LD->getChain()};
-    unsigned LoadOpc = (VT == MVT::i8) ? V6CLANG::V6CLANG_LOAD8_FI
-                                       : V6CLANG::V6CLANG_LOAD16_FI;
+    unsigned LoadOpc = (VT == MVT::i8) ? V6Clang::V6CLANG_LOAD8_FI
+                                       : V6Clang::V6CLANG_LOAD16_FI;
     SDNode *Load = CurDAG->getMachineNode(
         LoadOpc, DL, CurDAG->getVTList(VT, MVT::Other), Ops);
     CurDAG->setNodeMemRefs(cast<MachineSDNode>(Load), {LD->getMemOperand()});
@@ -88,8 +88,8 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
 
     SDValue TFI = CurDAG->getTargetFrameIndex(FI->getIndex(), MVT::i16);
     SmallVector<SDValue, 3> Ops = {ST->getValue(), TFI, ST->getChain()};
-    unsigned StoreOpc = (VT == MVT::i8) ? V6CLANG::V6CLANG_STORE8_FI
-                                        : V6CLANG::V6CLANG_STORE16_FI;
+    unsigned StoreOpc = (VT == MVT::i8) ? V6Clang::V6CLANG_STORE8_FI
+                                        : V6Clang::V6CLANG_STORE16_FI;
     SDNode *Store = CurDAG->getMachineNode(StoreOpc, DL, MVT::Other, Ops);
     CurDAG->setNodeMemRefs(cast<MachineSDNode>(Store), {ST->getMemOperand()});
     ReplaceNode(N, Store);
@@ -99,7 +99,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
   case ISD::FrameIndex: {
     int FI = cast<FrameIndexSDNode>(N)->getIndex();
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i16);
-    ReplaceNode(N, CurDAG->getMachineNode(V6CLANG::V6CLANG_LEA_FI, DL,
+    ReplaceNode(N, CurDAG->getMachineNode(V6Clang::V6CLANG_LEA_FI, DL,
                                            MVT::i16, TFI));
     return;
   }
@@ -109,7 +109,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
     SDValue Amt2 = N->getOperand(2);
     SDValue Chain = N->getOperand(0);
     SmallVector<SDValue, 4> Ops = {Amt, Amt2, Chain};
-    ReplaceNode(N, CurDAG->getMachineNode(V6CLANG::ADJCALLSTACKDOWN, DL,
+    ReplaceNode(N, CurDAG->getMachineNode(V6Clang::ADJCALLSTACKDOWN, DL,
                                            MVT::Other, MVT::Glue, Ops));
     return;
   }
@@ -123,7 +123,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
     if (N->getNumOperands() > 3 &&
         N->getOperand(N->getNumOperands() - 1).getValueType() == MVT::Glue)
       Ops.push_back(N->getOperand(N->getNumOperands() - 1));
-    ReplaceNode(N, CurDAG->getMachineNode(V6CLANG::ADJCALLSTACKUP, DL,
+    ReplaceNode(N, CurDAG->getMachineNode(V6Clang::ADJCALLSTACKUP, DL,
                                            MVT::Other, MVT::Glue, Ops));
     return;
   }
@@ -150,7 +150,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
       Ops.push_back(N->getOperand(NumOps - 1));
 
     SDNode *Call = CurDAG->getMachineNode(
-        V6CLANG::CALL, DL, MVT::Other, MVT::Glue, Ops);
+        V6Clang::CALL, DL, MVT::Other, MVT::Glue, Ops);
     ReplaceNode(N, Call);
     return;
   }
@@ -166,7 +166,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
 
     // Check if RHS (or LHS) is a constant or wrapped global address.
     // If so, use V6CLANG_BR_CC16_IMM to avoid allocating a register pair.
-    unsigned Opc = V6CLANG::V6CLANG_BR_CC16;
+    unsigned Opc = V6Clang::V6CLANG_BR_CC16;
     SDValue RhsOp = RHS;
 
     auto CCVal = cast<ConstantSDNode>(CC)->getZExtValue();
@@ -176,10 +176,10 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
       if (RHS.getOpcode() == V6ClangISD::Wrapper &&
           (isa<GlobalAddressSDNode>(RHS.getOperand(0)) ||
            isa<ExternalSymbolSDNode>(RHS.getOperand(0)))) {
-        Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+        Opc = V6Clang::V6CLANG_BR_CC16_IMM;
         RhsOp = RHS.getOperand(0);
       } else if (auto *C = dyn_cast<ConstantSDNode>(RHS)) {
-        Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+        Opc = V6Clang::V6CLANG_BR_CC16_IMM;
         RhsOp = CurDAG->getTargetConstant(C->getSExtValue(), DL, MVT::i16);
       }
     }
@@ -192,13 +192,13 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
       // MVI+SUB computes const-reg, which matches the register path's
       // direction after the swap. Keep CC unchanged.
       if (auto *CL = dyn_cast<ConstantSDNode>(LHS)) {
-        Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+        Opc = V6Clang::V6CLANG_BR_CC16_IMM;
         RhsOp = CurDAG->getTargetConstant(CL->getSExtValue(), DL, MVT::i16);
         LHS = RHS; // register becomes $lhs
       } else if (LHS.getOpcode() == V6ClangISD::Wrapper &&
                  (isa<GlobalAddressSDNode>(LHS.getOperand(0)) ||
                   isa<ExternalSymbolSDNode>(LHS.getOperand(0)))) {
-        Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+        Opc = V6Clang::V6CLANG_BR_CC16_IMM;
         RhsOp = LHS.getOperand(0);
         LHS = RHS;
       }
@@ -212,7 +212,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
         bool CanAdjust = IsUnsigned ? ((K & 0xFFFF) != 0)
                                     : ((K & 0xFFFF) != 0x8000);
         if (CanAdjust) {
-          Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+          Opc = V6Clang::V6CLANG_BR_CC16_IMM;
           int64_t Km1 = (K - 1) & 0xFFFF;
           RhsOp = CurDAG->getTargetConstant(Km1, DL, MVT::i16);
           // Invert CC: C↔NC, M↔P
@@ -232,7 +232,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
         auto *GA = cast<GlobalAddressSDNode>(RHS.getOperand(0));
         int64_t Offset = GA->getOffset();
         if (Offset != 0 || true) { // Always valid for globals (address > 0)
-          Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
+          Opc = V6Clang::V6CLANG_BR_CC16_IMM;
           RhsOp = CurDAG->getTargetGlobalAddress(
               GA->getGlobal(), DL, MVT::i16, Offset - 1);
           unsigned NewCC;
@@ -265,7 +265,7 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
     // Combine two i8 values into an i16 register pair.
     SDValue Lo = N->getOperand(0);
     SDValue Hi = N->getOperand(1);
-    SDNode *Pair = CurDAG->getMachineNode(V6CLANG::V6CLANG_BUILD_PAIR, DL,
+    SDNode *Pair = CurDAG->getMachineNode(V6Clang::V6CLANG_BUILD_PAIR, DL,
                                            MVT::i16, Lo, Hi);
     ReplaceNode(N, Pair);
     return;
@@ -284,10 +284,10 @@ void V6ClangDAGToDAGISel::Select(SDNode *N) {
     SDValue RHS = N->getOperand(1);
 
     auto emitCmp16Imm = [&](SDValue ImmOp) {
-      SDNode *CmpImm = CurDAG->getMachineNode(V6CLANG::V6CLANG_CMP16_IMM, DL,
+      SDNode *CmpImm = CurDAG->getMachineNode(V6Clang::V6CLANG_CMP16_IMM, DL,
                                                 MVT::Glue, LHS, ImmOp);
       SDValue Flags = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), DL,
-                                              V6CLANG::FLAGS, MVT::i8,
+                                              V6Clang::FLAGS, MVT::i8,
                                               SDValue(CmpImm, 0));
       ReplaceUses(SDValue(N, 0), Flags);
       CurDAG->RemoveDeadNode(N);

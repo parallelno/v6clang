@@ -162,4 +162,4 @@ Stage 3 invoked via:
                                                ; SHLD/LHLD peephole off
 
 Regression: 105/105 lit tests, golden tests all pass.
-New lit test: llvm-project\llvm\test\CodeGen\V6CLANG\spill-patched-reload-k2.ll
+New lit test: llvm-project\llvm\test\CodeGen\V6Clang\spill-patched-reload-k2.ll

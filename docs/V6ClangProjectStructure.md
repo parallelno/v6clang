@@ -4,7 +4,7 @@
 v6clang/
 ├── llvm-project/                 # Full LLVM monorepo (gitignored, build source)
 ├── llvm/                         # Git-tracked mirror of V6CLANG changes
-│   ├── lib/Target/V6CLANG/           # Full mirror of V6CLANG backend
+│   ├── lib/Target/V6Clang/           # Full mirror of V6CLANG backend
 │   ├── include/llvm/TargetParser/ # Modified upstream: Triple.h
 │   └── lib/TargetParser/         # Modified upstream: Triple.cpp
 ├── llvm-build/                   # Build output directory (gitignored)
@@ -15,7 +15,7 @@ v6clang/
 │   └── populate_llvm_project.ps1  # mirrors → llvm-project/ (new contributor setup)
 ├── clang/lib/Basic/Targets/      # Clang frontend integration
 ├── compiler-rt/lib/builtins/v6clang/ # Runtime library
-├── lld/V6CLANG/                      # Linker
+├── lld/V6Clang/                      # Linker
 ├── tests/
 │   ├── golden/                   # Emulator trust baseline (15 programs)
 │   ├── lit/                      # LLVM FileCheck tests (mirror of llvm-project/ sources)

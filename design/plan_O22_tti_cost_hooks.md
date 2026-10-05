@@ -7,7 +7,7 @@
 ### Current behavior
 
 The V6CLANG `TargetTransformInfo` (TTI) implementation
-([V6ClangTargetTransformInfo.cpp](../llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp))
+([V6ClangTargetTransformInfo.cpp](../llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp))
 only customizes a small set of hooks needed by O7 (Loop Strength
 Reduction):
 
@@ -113,7 +113,7 @@ inliner, SLP, …), so the opt-out flag is mandatory.
 | 3.4 | Define `getCmpSelInstrCost` | `V6ClangTargetTransformInfo.cpp` |
 | 3.5 | Define `getScalingFactorCost` | `V6ClangTargetTransformInfo.cpp` |
 | 3.6 | Build & sync mirror | — |
-| 3.7 | Lit test (negative/positive, opt-out) | `llvm-project/llvm/test/CodeGen/V6CLANG/` |
+| 3.7 | Lit test (negative/positive, opt-out) | `llvm-project/llvm/test/CodeGen/V6Clang/` |
 | 3.8 | Run regression tests | `tests\run_all.py` |
 | 3.9 | Verification assembly | `tests\features\51\` |
 | 3.10 | result.txt + future_plans README | — |
@@ -125,7 +125,7 @@ inliner, SLP, …), so the opt-out flag is mandatory.
 
 ### Step 3.1 — Declare hooks and cl::opts in `V6ClangTargetTransformInfo.h` [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.h`
 
 Add the four method declarations to `class V6ClangTTIImpl`, matching the
 BasicTTI signatures verbatim:
@@ -168,7 +168,7 @@ Include `llvm/IR/InstrTypes.h` if `CmpInst` is not already visible.
 
 ### Step 3.2 — Define `getArithmeticInstrCost` [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`
 
 Add a top-level cl::opt and the override:
 
@@ -212,7 +212,7 @@ InstructionCost V6ClangTTIImpl::getArithmeticInstrCost(
 
 ### Step 3.3 — Define `getMemoryOpCost` [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`
 
 ```cpp
 static cl::opt<bool> EnableMemCost(
@@ -251,7 +251,7 @@ InstructionCost V6ClangTTIImpl::getMemoryOpCost(
 
 ### Step 3.4 — Define `getCmpSelInstrCost` [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`
 
 ```cpp
 static cl::opt<bool> EnableCmpCost(
@@ -285,7 +285,7 @@ InstructionCost V6ClangTTIImpl::getCmpSelInstrCost(
 
 ### Step 3.5 — Define `getScalingFactorCost` and master flag [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangTargetTransformInfo.cpp`
 
 Place the **master** opt-out flag near the top of the file (next to the
 existing `LSRStrategyOpt`):
@@ -349,7 +349,7 @@ Iterate on Steps 3.1–3.5 if the build fails.
 
 ### Step 3.7 — Lit test: cost hooks observable via `print<cost-model>` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/tti-cost-hooks.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/tti-cost-hooks.ll`
 
 A minimal lit test that compiles a small loop with `-debug-only=...`
 or via the `print<cost-model>` analysis pass, asserting:
@@ -364,10 +364,10 @@ or via the `print<cost-model>` analysis pass, asserting:
 Run:
 
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\tti-cost-hooks.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6Clang\tti-cost-hooks.ll
 ```
 
-After authoring, sync the mirror and confirm `tests/lit/llvm/.../V6CLANG/`
+After authoring, sync the mirror and confirm `tests/lit/llvm/.../V6Clang/`
 has the new file.
 
 > **Design Note**: we use `opt -passes='print<cost-model>'` rather than
@@ -376,7 +376,7 @@ has the new file.
 > tests for prior art).
 >
 > **Implementation Notes**: Done.
-> [tti-cost-hooks.ll](../llvm-project/llvm/test/CodeGen/V6CLANG/tti-cost-hooks.ll)
+> [tti-cost-hooks.ll](../llvm-project/llvm/test/CodeGen/V6Clang/tti-cost-hooks.ll)
 > verifies all four hooks ON (default) and OFF (`-v6clang-tti-cost-hooks=0`).
 > PASS on first run.
 

@@ -89,8 +89,8 @@ place of the `MOV` and (if the full pair is now dead) erase the `LXI` too.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `LXI`-producer loop in `collapseMovChain`; local `pairHalves(RP)` helper |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll` | New lit test (CHECK + DISABLED) |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp` | Add `LXI`-producer loop in `collapseMovChain`; local `pairHalves(RP)` helper |
+| `llvm-project/llvm/test/CodeGen/V6Clang/peephole-lxi-half-mov-collapse.ll` | New lit test (CHECK + DISABLED) |
 | `tests/features/75/` | C source, baseline asm, post-fix asm, `result.txt` |
 | `design/future_plans/README.md` | Mark O92 `[x]` after completion |
 
@@ -100,7 +100,7 @@ place of the `MOV` and (if the full pair is now dead) erase the `LXI` too.
 
 ### Step 3.1 — Add `pairHalves(RP)` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a file-static helper near `isO61PatchedImm` returning `{Hi, Lo}` for an
 i16 pair physical register, or `{NoRegister, NoRegister}` for any other
@@ -126,7 +126,7 @@ static std::pair<Register, Register> pairHalves(Register RP) {
 
 ### Step 3.2 — Add `LXI`-producer loop in `collapseMovChain` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 After the existing O88 `MVIr`-producer loop (ends before `return Changed;`),
 insert:
@@ -240,7 +240,7 @@ If the build fails, diagnose and fix, then rebuild.
 
 ### Step 3.4 — Lit test: `peephole-lxi-half-mov-collapse.ll` [ ]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/peephole-lxi-half-mov-collapse.ll`
 
 Cover four cases:
 

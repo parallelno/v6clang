@@ -208,7 +208,7 @@ Per-row dispatch matrix (post-O73)
 
 Lit coverage
 ------------
-`llvm-project/llvm/test/CodeGen/V6CLANG/load16g-shapes.ll` pins all
+`llvm-project/llvm/test/CodeGen/V6Clang/load16g-shapes.ll` pins all
 six rows above. Each `CHECK-LABEL` block asserts the literal
 expected mnemonics and a `CHECK-NOT` exclusion of shapes that
 must not appear:

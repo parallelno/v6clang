@@ -294,7 +294,7 @@ prioritised first.
    - `p2_nonzero_lo`: `MOV A, E` → `MVI A, 0xFF`
    - `p3_nonzero_hi`: `MOV A, D` → `MVI A, 0xB4`
 
-2. **Lit test**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll`
+2. **Lit test**: `llvm-project/llvm/test/CodeGen/V6Clang/peephole-lxi-half-mov-collapse.ll`
    — at minimum two IR test cases:
    - i16 constant used in XOR + lo byte extracted separately
    - i16 constant used in XOR + hi byte extracted separately

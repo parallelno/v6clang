@@ -165,7 +165,7 @@ the bottom 16 bits.
 
 Two coordinated edits, both confined to the V6CLANG target.
 
-### 1. `expandPostRAPseudo` in [V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp)
+### 1. `expandPostRAPseudo` in [V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp)
 
 For `V6CLANG_SHL16` with constant amount `1`, replace the existing
 `MOV A,L; RAL; MOV L,A; MOV A,H; RAL; MOV H,A` sequence with:
@@ -319,11 +319,11 @@ rotate/wide cases ride on the same primitive at incremental cost.
 
 - **Phase 1** — `i16 x << 1`: **already de-facto implemented** at
   `-O2` and not worth a dedicated patch. The chain `LowerSHL_i16`
-  ([V6ClangISelLowering.cpp lines 778-810](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L778))
+  ([V6ClangISelLowering.cpp lines 778-810](../../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp#L778))
   rewrites `shl x, 1` as `add x, x` (an i16 SDAG `ADD`), which is
   legal; the post-RA `V6CLANG_ADD16` expander already contains the
   `DstReg == HL && (Lhs == HL || Rhs == HL) → DAD rp` fast path
-  ([V6ClangInstrInfo.cpp ≈ line 670](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L670))
+  ([V6ClangInstrInfo.cpp ≈ line 670](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp#L670))
   introduced by [O40](O40_add16_dad_expansion.md). RA already prefers
   HL for shifted/added i16 values, so the predominant shape is
   `add hl, hl` → `DAD H` (1B / 12cc). Verified end-to-end on a
@@ -344,7 +344,7 @@ rotate/wide cases ride on the same primitive at incremental cost.
 
 - **Phase 3** — i24/i32 shift + i24 rotate: revised estimate
   **~150–200 LOC**, not the original ~80. Deeper investigation of
-  the V6CLANG target ([V6ClangISelLowering.cpp:53](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L53))
+  the V6CLANG target ([V6ClangISelLowering.cpp:53](../../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp#L53))
   shows there is **no existing i32 ALU customisation at all**: no
   `setOperationAction` for any i32 op, no `ReplaceNodeResults` hook,
   no `ADDC`/`ADDE`/`UADDO`/`SHL_PARTS` handling, no `SHL_I32`/`SRL_I32`

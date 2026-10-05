@@ -3,7 +3,7 @@
  * O74 — V6CLANG_STORE16_G redesign integration test.
  *
  * Granular per-shape CHECK coverage lives in
- *   llvm-project/llvm/test/CodeGen/V6CLANG/store16g-shapes.ll
+ *   llvm-project/llvm/test/CodeGen/V6Clang/store16g-shapes.ll
  * (constructed directly in LLVM IR so we can pin the val register).
  *
  * This file is the runtime cross-check: it verifies that

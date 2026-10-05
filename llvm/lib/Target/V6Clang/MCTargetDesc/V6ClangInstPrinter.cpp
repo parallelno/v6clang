@@ -31,7 +31,7 @@ void V6ClangInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Op = MI->getOperand(OpNo);
 
   if (Op.isReg()) {
-    O << getRegisterName(Op.getReg(), V6CLANG::NoRegAltName);
+    O << getRegisterName(Op.getReg(), V6Clang::NoRegAltName);
   } else if (Op.isImm()) {
     // Print immediates as hex with 0x prefix for v6asm compatibility.
     // Mask to 16 bits — the widest immediate the 8080 supports.
@@ -79,7 +79,7 @@ void V6ClangInstPrinter::printRegPair8080(const MCInst *MI, unsigned OpNo,
                                        raw_ostream &O) {
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.isReg())
-    O << getRegisterName(Op.getReg(), V6CLANG::Pair8080);
+    O << getRegisterName(Op.getReg(), V6Clang::Pair8080);
   else
     printOperand(MI, OpNo, O);
 }

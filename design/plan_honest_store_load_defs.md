@@ -92,7 +92,7 @@ Two changes:
 
 ### Step 3.1 — Remove `Defs = [HL]` from V6CLANG_STORE8_P and V6CLANG_LOAD8_P [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` (lines ~584-595)
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td` (lines ~584-595)
 
 Change:
 ```tablegen
@@ -127,7 +127,7 @@ def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr),
 
 ### Step 3.2 — Add `isRegDeadAt()` liveness helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a static helper near the top of the file (before `expandPostRAPseudo`),
 modeled after `isRegDeadAfter()` in V6ClangXchgOpt.cpp:
@@ -174,7 +174,7 @@ static bool isRegDeadAt(unsigned Reg, const MachineInstr &MI,
 
 ### Step 3.3 — Rewrite V6CLANG_STORE8_P expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (lines ~1409-1444)
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` (lines ~1409-1444)
 
 Replace the existing `case V6CLANG::V6CLANG_STORE8_P:` with a 4-priority chain:
 
@@ -225,7 +225,7 @@ case V6CLANG::V6CLANG_STORE8_P: {
 
 ### Step 3.4 — Rewrite V6CLANG_LOAD8_P expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (lines ~1378-1407)
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp` (lines ~1378-1407)
 
 Replace the existing `case V6CLANG::V6CLANG_LOAD8_P:` with a 4-priority chain:
 
@@ -290,7 +290,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: store-load-honest-defs.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/store-load-honest-defs.ll`
+**File**: `tests/lit/CodeGen/V6Clang/store-load-honest-defs.ll`
 
 Test cases:
 1. **store_via_hl**: Store through pointer — expect `MOV M, r` with HL, no copy
@@ -392,4 +392,4 @@ Load: `LDAX BC` (Priority 2, dst=A). Store: `MOV M, A` (Priority 1, addr=HL).
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O20 Design](design\future_plans\O20_honest_store_load_defs.md)
-* [V6ClangXchgOpt isRegDeadAfter](llvm\lib\Target\V6CLANG\V6ClangXchgOpt.cpp) — liveness helper reference
+* [V6ClangXchgOpt isRegDeadAfter](llvm\lib\Target\V6Clang\V6ClangXchgOpt.cpp) — liveness helper reference

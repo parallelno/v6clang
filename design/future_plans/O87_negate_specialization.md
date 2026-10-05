@@ -11,7 +11,7 @@ The current backend already canonicalizes all three source spellings
 to the same machine-level shape: subtract `x` from a materialized zero.
 
 That is semantically fine, but the current lowering burns more registers than
-necessary, which is especially expensive on i8080/V6CLANG because there are only
+necessary, which is especially expensive on i8080/V6Clang because there are only
 three usable 16-bit pairs (`HL`, `DE`, `BC`) and very few spare 8-bit
 registers once `A` and live pair halves are spoken for.
 
@@ -260,11 +260,11 @@ existing flag-producing O75 `*F` family.
 
 ## Files likely touched
 
-- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
-- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
-- `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
-- `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
-- `llvm/test/CodeGen/V6CLANG/...` (source of truth)
+- `llvm/lib/Target/V6Clang/V6ClangISelLowering.h`
+- `llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
+- `llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
+- `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
+- `llvm/test/CodeGen/V6Clang/...` (source of truth)
 
 The annotator path in `V6ClangInstrInfo.cpp` should also learn the new pseudo names
 so `-mllvm -mv6clang-annotate-pseudos` prints `V6CLANG_NEG16` / `V6CLANG_NEG8` instead of
@@ -330,7 +330,7 @@ Guard:
 
 Add a new lit test, for example:
 
-- `llvm/test/CodeGen/V6CLANG/negate-specialization.ll`
+- `llvm/test/CodeGen/V6Clang/negate-specialization.ll`
 
 Coverage should include:
 
@@ -359,5 +359,5 @@ This is a good optimization target, but the two widths are not symmetric.
   a result-only specialization and must not be generalized to non-`A` or
   memory-source shapes.
 
-The common theme is the same in both cases: on i8080/V6CLANG, avoiding unnecessary
+The common theme is the same in both cases: on i8080/V6Clang, avoiding unnecessary
 temporary registers is as important as shaving raw cycles.

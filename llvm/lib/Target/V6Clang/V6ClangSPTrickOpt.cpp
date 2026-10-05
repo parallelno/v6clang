@@ -101,7 +101,7 @@ unsigned V6ClangSPTrickOpt::detectByteCopySequence(
 
   while (I != End) {
     // Pattern: LXI HL, src; MOV A, M; LXI HL, dst; MOV M, A
-    if (I->getOpcode() != V6CLANG::LXI || I->getOperand(0).getReg() != V6CLANG::HL)
+    if (I->getOpcode() != V6Clang::LXI || I->getOperand(0).getReg() != V6Clang::HL)
       break;
     if (!I->getOperand(1).isImm())
       break;
@@ -111,14 +111,14 @@ unsigned V6ClangSPTrickOpt::detectByteCopySequence(
       break;
 
     // MOV A, M
-    if (Next1->getOpcode() != V6CLANG::MOVrM || Next1->getOperand(0).getReg() != V6CLANG::A)
+    if (Next1->getOpcode() != V6Clang::MOVrM || Next1->getOperand(0).getReg() != V6Clang::A)
       break;
     auto Next2 = std::next(Next1);
     if (Next2 == End)
       break;
 
     // LXI HL, dst
-    if (Next2->getOpcode() != V6CLANG::LXI || Next2->getOperand(0).getReg() != V6CLANG::HL)
+    if (Next2->getOpcode() != V6Clang::LXI || Next2->getOperand(0).getReg() != V6Clang::HL)
       break;
     if (!Next2->getOperand(1).isImm())
       break;
@@ -128,7 +128,7 @@ unsigned V6ClangSPTrickOpt::detectByteCopySequence(
       break;
 
     // MOV M, A
-    if (Next3->getOpcode() != V6CLANG::MOVMr || Next3->getOperand(0).getReg() != V6CLANG::A)
+    if (Next3->getOpcode() != V6Clang::MOVMr || Next3->getOperand(0).getReg() != V6Clang::A)
       break;
 
     Pairs.push_back({SrcAddr, DstAddr});
@@ -183,39 +183,39 @@ bool V6ClangSPTrickOpt::tryTransformMemcpy(MachineBasicBlock &MBB,
   auto InsertPt = I;
 
   // DI
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::DI));
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::DI));
 
   // Save SP: LXI H, 0; DAD SP; XCHG → DE = old SP
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::LXI), V6CLANG::HL).addImm(0);
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::DAD)).addReg(V6CLANG::SP);
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::XCHG));
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::LXI), V6Clang::HL).addImm(0);
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::DAD)).addReg(V6Clang::SP);
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::XCHG));
 
   // LXI SP, src_base
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::LXI), V6CLANG::SP).addImm(SrcBase);
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::LXI), V6Clang::SP).addImm(SrcBase);
 
   // For each 2-byte chunk: POP H; SHLD dst
   for (unsigned i = 0; i < EvenCount; i += 2) {
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::POP), V6CLANG::HL);
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::SHLD))
-        .addReg(V6CLANG::HL)
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::POP), V6Clang::HL);
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::SHLD))
+        .addReg(V6Clang::HL)
         .addImm(DstBase + i);
   }
 
   // Restore SP: XCHG; SPHL
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::XCHG));
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::SPHL));
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::XCHG));
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::SPHL));
 
   // EI
-  BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::EI));
+  BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::EI));
 
   // Handle remaining odd byte if any.
   if (Count > EvenCount) {
     int64_t RemSrc = Pairs[EvenCount].SrcAddr;
     int64_t RemDst = Pairs[EvenCount].DstAddr;
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::LXI), V6CLANG::HL).addImm(RemSrc);
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::MOVrM), V6CLANG::A);
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::LXI), V6CLANG::HL).addImm(RemDst);
-    BuildMI(MBB, InsertPt, DL, TII.get(V6CLANG::MOVMr)).addReg(V6CLANG::A);
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::LXI), V6Clang::HL).addImm(RemSrc);
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::MOVrM), V6Clang::A);
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::LXI), V6Clang::HL).addImm(RemDst);
+    BuildMI(MBB, InsertPt, DL, TII.get(V6Clang::MOVMr)).addReg(V6Clang::A);
   }
 
   // Erase original instructions.

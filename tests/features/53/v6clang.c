@@ -15,7 +15,7 @@
  *      bug 3.
  *
  * Per-shape granular CHECK coverage is in the lit tests
- * (llvm-project/llvm/test/CodeGen/V6CLANG/load16p_*.ll); this file is
+ * (llvm-project/llvm/test/CodeGen/V6Clang/load16p_*.ll); this file is
  * the integration-level cross-check.
  */
 

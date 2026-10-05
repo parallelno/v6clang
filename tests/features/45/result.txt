@@ -136,7 +136,7 @@ intrinsics) rather than CRC-style bit-banged loops.
 
 ## Verification
 
-- New lit test: `llvm-project/llvm/test/CodeGen/V6CLANG/rotl-i16-dad-h.ll`
+- New lit test: `llvm-project/llvm/test/CodeGen/V6Clang/rotl-i16-dad-h.ll`
   -- 3 cases (rotl_u16_1 exact-sequence assert, rotl_u16_2 Expand
   fall-back assert, fshl_u16_1 funnel-shift recognition assert).
 - Full lit suite: 119/119 PASS.

@@ -22,7 +22,7 @@
 //     that was never initialized by a real crt0.
 //   * SP at v6emul reset is 0x0000; the first CALL pushes the return
 //     address at 0xFFFE/F (RAM), which matches the canonical
-//     `__stack_top = 0x0000` convention from clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld.
+//     `__stack_top = 0x0000` convention from clang/lib/Driver/ToolChains/V6Clang/v6clang.ld.
 
 #include <stdint.h>
 

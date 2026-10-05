@@ -53,7 +53,7 @@ bool V6ClangZeroTestOpt::runOnMachineFunction(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF) {
     for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
       // Look for CPI with immediate operand == 0.
-      if (MI.getOpcode() != V6CLANG::CPI)
+      if (MI.getOpcode() != V6Clang::CPI)
         continue;
 
       // CPI has operands: (Acc:$lhs, imm8:$imm)
@@ -72,9 +72,9 @@ bool V6ClangZeroTestOpt::runOnMachineFunction(MachineFunction &MF) {
 
       // Replace CPI 0 with ORA A (which is: A = A | A, sets Z/S flags).
       DebugLoc DL = MI.getDebugLoc();
-      BuildMI(MBB, MI, DL, TII.get(V6CLANG::ORAr), V6CLANG::A)
-          .addReg(V6CLANG::A)
-          .addReg(V6CLANG::A);
+      BuildMI(MBB, MI, DL, TII.get(V6Clang::ORAr), V6Clang::A)
+          .addReg(V6Clang::A)
+          .addReg(V6Clang::A);
       MI.eraseFromParent();
       Changed = true;
     }

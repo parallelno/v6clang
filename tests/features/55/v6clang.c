@@ -3,7 +3,7 @@
  * O73 — V6CLANG_LOAD16_G redesign integration test.
  *
  * Granular per-shape CHECK coverage lives in
- *   llvm-project/llvm/test/CodeGen/V6CLANG/load16g_shapes.ll
+ *   llvm-project/llvm/test/CodeGen/V6Clang/load16g_shapes.ll
  * (constructed directly in LLVM IR so we can pin the dst register).
  *
  * This file is the runtime cross-check: it verifies that V6CLANG_LOAD16_G

@@ -96,7 +96,7 @@ directly before expansion.
 
 ### Step 3.1 — Add helper: find constant-defining LXI [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a static helper function before `expandPostRAPseudo`:
 
@@ -129,7 +129,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
 
 ### Step 3.2 — Add helper: check FLAGS is dead [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a helper to check whether the FLAGS implicit-def is marked dead on a
 MachineInstr:
@@ -148,7 +148,7 @@ static bool isFlagsDefDead(const MachineInstr &MI) {
 
 ### Step 3.3 — Add helper: check register is dead after instruction [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 To safely erase the LXI, we need to know whether the constant register has
 any remaining uses. Add a simple forward-scan helper:
@@ -178,7 +178,7 @@ static bool isRegDeadAfter(MachineBasicBlock &MBB,
 
 ### Step 3.4 — INX/DCX expansion in V6CLANG_ADD16 [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 In the `case V6CLANG::V6CLANG_ADD16:` block of `expandPostRAPseudo`, insert the
 INX/DCX check **before** the DAD checks. This way HL benefits from INX
@@ -283,7 +283,7 @@ too (8cc beats LXI+DAD at 24cc for small constants):
 
 ### Step 3.5 — DCX expansion in V6CLANG_SUB16 [x]
 
-**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Apply the same pattern to the `case V6CLANG::V6CLANG_SUB16:` block. Subtraction is
 **not** commutative, so only RhsReg can be the constant:
@@ -332,7 +332,7 @@ Apply the same pattern to the `case V6CLANG::V6CLANG_SUB16:` block. Subtraction 
 
 ### Step 3.6 — Lit test: INX/DCX chains [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/inx-dcx-peephole.ll`
+**File**: `tests/lit/CodeGen/V6Clang/inx-dcx-peephole.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
@@ -428,7 +428,7 @@ define i16 @inc16_with_flags(i16 %x, i16 %y) {
 
 ### Step 3.7 — Lit test: loop with pointer increment [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/loop-pointer-inx.ll`
+**File**: `tests/lit/CodeGen/V6Clang/loop-pointer-inx.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s

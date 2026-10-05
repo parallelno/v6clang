@@ -110,7 +110,7 @@ then Pattern B.
 
 ### Step 3.1 — Add `eliminateDeadMVI` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a new private method after `foldMviZeroToXraA`:
 
@@ -165,7 +165,7 @@ Also add the declaration to the `V6ClangPeephole` class private section:
 
 ### Step 3.2 — Add `collapseMovChain` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add after `eliminateDeadMVI`:
 
@@ -280,7 +280,7 @@ Add declaration to class:
 
 ### Step 3.3 — Wire both helpers into `runOnMachineFunction` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 In `runOnMachineFunction`, add after `eliminateRedundantMov`:
 
@@ -442,4 +442,4 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 - [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 - [Future Improvements](design/future_plans/README.md)
 - [O82 Design](design/future_plans/O82_mov_chain_collapse_dead_hi.md)
-- [V6ClangPeephole.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp)
+- [V6ClangPeephole.cpp](llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp)

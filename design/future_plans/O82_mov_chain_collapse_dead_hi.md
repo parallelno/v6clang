@@ -188,7 +188,7 @@ cost; the deleted I1 `MOV X, Y` saves 8cc, 1B).
 ## Implementation location
 
 Both patterns live in
-[`V6ClangPeephole.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp):
+[`V6ClangPeephole.cpp`](../../llvm/lib/Target/V6Clang/V6ClangPeephole.cpp):
 
 - Pattern A: new helper `eliminateDeadMVI()`, called from `runOnMachineFunction`.
 - Pattern B: extension of the existing `eliminateRedundantMov()`.

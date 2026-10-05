@@ -78,7 +78,7 @@ Recognized patterns:
 
 ### Step 3.1 — Add `seedPredecessorValues()` to V6ClangLoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 Add a new private method `seedPredecessorValues(MachineBasicBlock &MBB)`
 that:
@@ -115,7 +115,7 @@ because their fallthrough path means the zero condition was TRUE.
 
 ### Step 3.2 — Integrate seeding into processBlock [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadImmCombine.cpp`
 
 In `processBlock()`, replace:
 ```cpp
@@ -140,7 +140,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: load-imm-combine-branch-seed.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/load-imm-combine-branch-seed.ll`
+**File**: `tests/lit/CodeGen/V6Clang/load-imm-combine-branch-seed.ll`
 
 Tests:
 - Test 1: 16-bit zero-test + RNZ → LXI HL,0 eliminated.
@@ -245,4 +245,4 @@ all three patterns (16-bit zero-test, 8-bit zero-test, CPI imm).
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O36 Design](design\future_plans\O36_redundant_lxi_after_zero_test.md)
-* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp)
+* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6Clang\V6ClangLoadImmCombine.cpp)

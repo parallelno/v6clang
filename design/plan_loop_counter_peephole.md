@@ -101,7 +101,7 @@ instructions, leaving just `DCR r`/`INR r` + `Jcc`.
 
 ### Step 3.1 — Add `isRegDeadAfter` helper and `foldCounterBranch` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a static `isRegDeadAfter` helper (same pattern as V6ClangXchgOpt.cpp)
 and a new `foldCounterBranch` method to the V6ClangPeephole class.
@@ -145,7 +145,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: loop-counter-peephole.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/loop-counter-peephole.ll`
+**File**: `tests/lit/CodeGen/V6Clang/loop-counter-peephole.ll`
 
 Test cases:
 1. `@dcr_a_loop` — counter in A, Pattern A: verify `DCR A` immediately

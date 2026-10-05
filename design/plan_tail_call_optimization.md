@@ -104,7 +104,7 @@ passes correctly treat it as a return terminator and skip it.
 
 ### Step 3.1 — Fix IsTailCall bug in LowerCall [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp`
 
 At the start of `V6ClangTargetLowering::LowerCall`, reset the tail call flag
 so LLVM always emits `CALL + RET` (instead of CALL without RET):
@@ -131,7 +131,7 @@ SDValue V6ClangTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
 ### Step 3.2 — Define V6CLANG_TAILJMP instruction [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add after the RET/conditional-return definitions:
 
@@ -156,7 +156,7 @@ def V6CLANG_TAILJMP : V6ClangInstImm16Opc<0xC3,
 
 ### Step 3.3 — Add eliminateTailCall to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp`
 
 Add a new method to the V6ClangPeephole class and call it from `runOnMachineFunction`:
 
@@ -230,7 +230,7 @@ Expected: clean build.
 
 ### Step 3.5 — Lit test: tail-call-opt.ll [x]
 
-**File**: `tests/lit/CodeGen/V6CLANG/tail-call-opt.ll`
+**File**: `tests/lit/CodeGen/V6Clang/tail-call-opt.ll`
 
 ```llvm
 ; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
@@ -441,5 +441,5 @@ Two tail calls optimized — saves 48cc and 2 bytes total.
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [llvm-mos Analysis — §S9 tailJMP](design\future_plans\llvm_mos_analysis.md)
-* [V6ClangPeephole.cpp](llvm\lib\Target\V6CLANG\V6ClangPeephole.cpp) — target pass for the new pattern
-* [V6ClangInstrInfo.td](llvm\lib\Target\V6CLANG\V6ClangInstrInfo.td) — instruction definitions
+* [V6ClangPeephole.cpp](llvm\lib\Target\V6Clang\V6ClangPeephole.cpp) — target pass for the new pattern
+* [V6ClangInstrInfo.td](llvm\lib\Target\V6Clang\V6ClangInstrInfo.td) — instruction definitions

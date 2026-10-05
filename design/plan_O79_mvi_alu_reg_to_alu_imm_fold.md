@@ -108,8 +108,8 @@ helper already used by other peepholes in this file.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `foldMviAluImm` method + opcode map + CLI flag; wire into `runOnMachineFunction` |
-| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-alu-imm-fold.ll` | New lit test covering all 8 ALU ops + 5 edge cases |
+| `llvm-project/llvm/lib/Target/V6Clang/V6ClangPeephole.cpp` | Add `foldMviAluImm` method + opcode map + CLI flag; wire into `runOnMachineFunction` |
+| `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-alu-imm-fold.ll` | New lit test covering all 8 ALU ops + 5 edge cases |
 | `tests/features/61/` | Feature regression test (c8080.c, v6clang.c, asms, result.txt) |
 | `design/future_plans/README.md` | Mark O79 complete |
 | `design/future_plans/O79_mvi_alu_reg_to_alu_imm_fold.md` | (already authored) — implementation reference |
@@ -198,7 +198,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: `peephole-mvi-alu-imm-fold.ll` [x]
 
-New file at `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-alu-imm-fold.ll`.
+New file at `llvm-project/llvm/test/CodeGen/V6Clang/peephole-mvi-alu-imm-fold.ll`.
 
 Cases (one per CHECK label):
 1. `add_l`: `MVI L,5; ADD L; A live` → `ADI 5`.

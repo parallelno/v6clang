@@ -208,7 +208,7 @@ peephole change and observing the same failure).
 
 ## Verification
 
-- New lit test: `llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll`
+- New lit test: `llvm/test/CodeGen/V6Clang/peephole-mvi-zero-to-xra.ll`
   -- 3 cases:
     * `const_zero`     -- positive (trailing zero -> RET).
     * `cold_zero`      -- positive (zero on JP-not-taken arm).

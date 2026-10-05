@@ -930,7 +930,7 @@ def AVRSignal : InheritableAttr, TargetSpecificAttr<TargetAVR> {
 }
 
 // V6CLANG: tags a function as a runtime helper (e.g. those defined by the
-// V6CLANG_RT/V6CLANG_NOINLINE/V6CLANG_INLINE macros). Lowered to the LLVM string
+// V6CLANG_RT/V6Clang_NOINLINE/V6Clang_INLINE macros). Lowered to the LLVM string
 // function attribute "v6clang-rt-helper". The V6CLANG AsmPrinter uses this tag
 // to suppress the function body from `-S` text output unless
 // `-mllvm -mv6clang-print-rt-helpers` is on. Unlike __attribute__((annotate))

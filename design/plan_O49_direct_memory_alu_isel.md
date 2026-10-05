@@ -120,7 +120,7 @@ fallback pattern already proven in-tree.
 
 ### Step 3.1 — Define ALU M pseudos (ADD/ADC/SUB/SBB/ANA/ORA/XRA) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 Add seven pseudos next to the existing 8-bit ALU block. Each takes the
 accumulator (tied input/output) and a `GR16:$addr` pointer. The load is
@@ -163,7 +163,7 @@ let mayLoad = 1, Defs = [FLAGS] in {
 
 ### Step 3.2 — Define CMP M pseudo [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 ```tablegen
 let mayLoad = 1, Defs = [FLAGS] in
@@ -179,7 +179,7 @@ def V6CLANG_CMP_M_P : V6ClangPseudo<(outs), (ins Acc:$lhs, GR16:$addr),
 
 ### Step 3.3 — Define MVI M pseudo (V6CLANG_STORE8_IMM_P) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 ```tablegen
 let mayStore = 1 in
@@ -199,7 +199,7 @@ def V6CLANG_STORE8_IMM_P : V6ClangPseudo<(outs), (ins imm8:$imm, GR16:$addr),
 
 ### Step 3.4 — Define INR M / DCR M pseudos [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.td`
 
 ```tablegen
 let mayLoad = 1, mayStore = 1, Defs = [FLAGS] in {
@@ -238,7 +238,7 @@ that is addressed in Step 3.6.
 
 ### Step 3.6 — Shared expansion helper `expandMemOpM()` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add a file-local helper above `V6ClangInstrInfo::expandPostRAPseudo`.
 Takes the physical M-opcode, the address reg, and optional extra
@@ -292,7 +292,7 @@ static void expandMemOpM(MachineBasicBlock &MBB, MachineInstr &MI,
 
 ### Step 3.7 — Wire the 11 pseudos into `expandPostRAPseudo` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangInstrInfo.cpp`
 
 Add cases next to the existing `V6CLANG_LOAD8_P` / `V6CLANG_STORE8_P` cases.
 Each case:
@@ -376,7 +376,7 @@ Run the build command from Step 3.5. Expect a clean build.
 
 ### Step 3.9 — Lit test: `mem-alu-isel.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/mem-alu-isel.ll` (create)
+**File**: `llvm-project/llvm/test/CodeGen/V6Clang/mem-alu-isel.ll` (create)
 
 Add FileCheck lit tests that:
 
@@ -393,7 +393,7 @@ Add FileCheck lit tests that:
 
 ### Step 3.10 — Update `V6ClangLoadStoreOpt` / `V6ClangRedundantFlagElim` coverage [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadStoreOpt.cpp`,
+**File**: `llvm-project/llvm/lib/Target/V6Clang/V6ClangLoadStoreOpt.cpp`,
 `V6ClangRedundantFlagElim.cpp`
 
 These passes already switch on the physical `ADDM/…/INRM/DCRM/MVIM`
@@ -550,7 +550,7 @@ Implemented — all 14 steps green.
     `isRegDeadAtMI(V6CLANG::HL, MI, MBB, &RI)` gating the PUSH/POP pair.
   11 `case` arms in `expandPostRAPseudo` invoke the helper with tiny
   emit lambdas that call `BuildMI(...get(V6CLANG::ADDM/SUBM/ANAM/ORAM/XRAM/ADCM/SBBM/CMPM/MVIM/INRM/DCRM))`.
-- **Lit test:** `llvm-project/llvm/test/CodeGen/V6CLANG/mem-alu-isel.ll` —
+- **Lit test:** `llvm-project/llvm/test/CodeGen/V6Clang/mem-alu-isel.ll` —
   9 functions covering ADD/SUB/ANA/ORA/XRA M (DE path), MVI M, INR M, DCR M,
   plus CMP M via branch form (`cmp_m_br`). Passes.
 - **Regression:** `python tests\run_all.py` — 110/110 lit PASS, golden PASS,

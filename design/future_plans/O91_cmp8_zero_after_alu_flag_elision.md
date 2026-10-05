@@ -209,7 +209,7 @@ xor16_cmp_zero:
 
 ## Implementation location
 
-**File:** `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
+**File:** `llvm-project/llvm/lib/Target/V6Clang/V6ClangRedundantFlagElim.cpp`
 
 Add `AValueRegs` + `AValueSrc` alongside `ZFlagValid` in `runOnMachineFunction`.
 Extend the four state-transition branches.  Add one new elimination branch for

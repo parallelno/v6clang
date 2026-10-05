@@ -64,7 +64,7 @@ crash; the layout/cost-model refinements below are stacked on top.
 ## Problem
 
 `ISD::BR_JT` and `ISD::BRIND` are not customised by the V6CLANG backend.
-[`V6ClangISelLowering.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L70)
+[`V6ClangISelLowering.cpp`](../../llvm/lib/Target/V6Clang/V6ClangISelLowering.cpp#L70)
 sets no action for either node and provides no `LowerBR_JT`.
 With `-fno-jump-tables` the mid-end's `SwitchLoweringUtils` falls
 through to a **balanced binary-search tree** of `CPI/JP/JZ` tests
@@ -93,7 +93,7 @@ constant-time dispatch trivial — but only if the backend *emits*
 the indexed-load + `PCHL` sequence and a corresponding rodata table.
 
 `PCHL` is already defined in
-[V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L439)
+[V6ClangInstrInfo.td](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L439)
 with empty pattern `[]` and is unreferenced anywhere in the backend.
 
 
@@ -168,7 +168,7 @@ entry.
 | `-Oz` | A (address table) | 2 B | 84 cc |
 
 The cost-model decision is exposed through
-[`V6ClangInstrCost.h`](../../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h) in the
+[`V6ClangInstrCost.h`](../../llvm/lib/Target/V6Clang/V6ClangInstrCost.h) in the
 existing dual-cost framework (O11).
 
 ### Why JMP-table (Layout B default) beats the address table
@@ -332,13 +332,13 @@ cascade would have been re-ordered for free.
 
 ### Step 6 — Tests
 
-* `llvm/test/CodeGen/V6CLANG/switch-jt-basic.ll` — 8-case dense
+* `llvm/test/CodeGen/V6Clang/switch-jt-basic.ll` — 8-case dense
   switch, `CHECK` exact dispatch sequence and table layout.
-* `llvm/test/CodeGen/V6CLANG/switch-jt-cascade.ll` — 3-case switch,
+* `llvm/test/CodeGen/V6Clang/switch-jt-cascade.ll` — 3-case switch,
   must remain a cascade (below threshold).
-* `llvm/test/CodeGen/V6CLANG/switch-jt-sparse.ll` — sparse switch,
+* `llvm/test/CodeGen/V6Clang/switch-jt-sparse.ll` — sparse switch,
   must split into cascade + JT or remain cascade.
-* `llvm/test/CodeGen/V6CLANG/switch-jt-os.ll` — `attributes optsize`,
+* `llvm/test/CodeGen/V6Clang/switch-jt-os.ll` — `attributes optsize`,
   must pick Layout B tight.
 * `tests/golden/switch_jt/` — runtime emulator round-trip:
   10-case dispatcher returning unique `OUT 0xED, imm` per case,
@@ -884,13 +884,13 @@ or mode 1.
 ## References
 
 * Existing `PCHL` definition —
-  [V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L436)
+  [V6ClangInstrInfo.td](../../llvm/lib/Target/V6Clang/V6ClangInstrInfo.td#L436)
   (currently unreferenced).
 * `ISD::BR_JT` lowering reference: AVR backend
   (`AVRISelLowering.cpp::LowerBR_JT`) and MSP430 backend
   (`MSP430ISelLowering.cpp`) — both small, instructive, sub-300-LOC
   examples.
-* Cost model — [V6ClangInstrCost.h](../../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h).
+* Cost model — [V6ClangInstrCost.h](../../llvm/lib/Target/V6Clang/V6ClangInstrCost.h).
 * SwitchLowering hooks documented in
   `llvm/include/llvm/CodeGen/TargetLoweringBase.h`:
   `setMinimumJumpTableEntries`, `isSuitableForJumpTable`,
