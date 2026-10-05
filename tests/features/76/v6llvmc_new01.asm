@@ -4,8 +4,8 @@
 repro:                                  ; @repro
 ; %bb.0:
 	MVI	A, 7
-	STA	__v6c_a.repro
-	LDA	__v6c_a.repro
+	STA	__v6clang_a.repro
+	LDA	__v6clang_a.repro
 	MOV	D, A
 	ORA	A
 	JZ	.LBB15_3
@@ -48,8 +48,8 @@ repro:                                  ; @repro
 	.globl	walk16                          ; -- Begin function walk16
 walk16:                                 ; @walk16
 ; %bb.0:
-	STA	__v6c_a.walk16
-	LDA	__v6c_a.walk16
+	STA	__v6clang_a.walk16
+	LDA	__v6clang_a.walk16
 	ORA	A
 	JZ	.LBB16_5
 ; %bb.1:
@@ -108,8 +108,8 @@ walk16:                                 ; @walk16
 main:                                   ; @main
 ; %bb.0:
 	MVI	A, 7
-	STA	__v6c_a.main+1
-	LDA	__v6c_a.main+1
+	STA	__v6clang_a.main+1
+	LDA	__v6clang_a.main+1
 	MOV	D, A
 	ORA	A
 	JZ	.LBB17_3
@@ -148,10 +148,10 @@ main:                                   ; @main
 	MVI	A, 2
 	JMP	.LBB17_4
 .LBB17_8:
-	STA	__v6c_a.main+2
+	STA	__v6clang_a.main+2
 	MVI	A, 4
-	STA	__v6c_a.main
-	LDA	__v6c_a.main
+	STA	__v6clang_a.main
+	LDA	__v6clang_a.main
 	ORA	A
 	JZ	.LBB17_12
 ; %bb.9:
@@ -164,7 +164,7 @@ main:                                   ; @main
 	JNZ	.LBB17_11
 .LBB17_12:
 	LXI	H, 0
-	SHLD	__v6c_a.main+3
+	SHLD	__v6clang_a.main+3
 	RET
                                         ; -- End function
 	.section	.bss,"aw",@nobits
@@ -174,28 +174,28 @@ perm1:
 	.globl	count                           ; @count
 count:
 
-	.local	__v6c_a.repro                   ; @__v6c_a.repro
-	.comm	__v6c_a.repro,1,1
-	.local	__v6c_a.walk16                  ; @__v6c_a.walk16
-	.comm	__v6c_a.walk16,1,1
-	.local	__v6c_a.main                    ; @__v6c_a.main
-	.comm	__v6c_a.main,5,1
+	.local	__v6clang_a.repro                   ; @__v6clang_a.repro
+	.comm	__v6clang_a.repro,1,1
+	.local	__v6clang_a.walk16                  ; @__v6clang_a.walk16
+	.comm	__v6clang_a.walk16,1,1
+	.local	__v6clang_a.main                    ; @__v6clang_a.main
+	.comm	__v6clang_a.main,5,1
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3
 	.addrsig_sym __lshrhi3
 	.addrsig_sym __ashrhi3
-	.addrsig_sym __v6c_a.repro
-	.addrsig_sym __v6c_a.walk16
-	.addrsig_sym __v6c_a.main
+	.addrsig_sym __v6clang_a.repro
+	.addrsig_sym __v6clang_a.walk16
+	.addrsig_sym __v6clang_a.main

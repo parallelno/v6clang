@@ -7,7 +7,7 @@
 
 The 8080 instruction set includes conditional return instructions (`RZ`, `RNZ`,
 `RC`, `RNC`, `RPO`, `RPE`, `RP`, `RM`) — each 1 byte, 11 cycles if taken,
-5 cycles if not taken. The V6C backend defines them in `V6CInstrInfo.td` but
+5 cycles if not taken. The V6CLANG backend defines them in `V6ClangInstrInfo.td` but
 never emits them — all returns go through unconditional `RET`.
 
 The pattern `Jcc .Lret; ...; .Lret: RET` appears frequently. When the
@@ -74,18 +74,18 @@ Estimated frequency: Medium-High (1-3 instances per non-trivial function).
 | JP  | RP  | Plus (Sign=0) |
 | JM  | RM  | Minus (Sign=1) |
 
-All Rcc instructions are already defined in `V6CInstrInfo.td` (lines 454-465)
+All Rcc instructions are already defined in `V6ClangInstrInfo.td` (lines 454-465)
 with `isReturn = 1, isTerminator = 1, Uses = [SP, FLAGS]`.
 
 ## Implementation
 
-### Approach: Add to V6CBranchOpt peephole pass
+### Approach: Add to V6ClangBranchOpt peephole pass
 
-Add a new method `foldConditionalReturns()` to `V6CBranchOpt.cpp`:
+Add a new method `foldConditionalReturns()` to `V6ClangBranchOpt.cpp`:
 
 ```cpp
 /// Replace `Jcc .Lret` with `Rcc` when .Lret contains only `RET`.
-bool V6CBranchOpt::foldConditionalReturns(MachineFunction &MF) {
+bool V6ClangBranchOpt::foldConditionalReturns(MachineFunction &MF) {
   bool Changed = false;
 
   for (MachineBasicBlock &MBB : MF) {
@@ -111,14 +111,14 @@ bool V6CBranchOpt::foldConditionalReturns(MachineFunction &MF) {
 
 static unsigned getConditionalReturn(unsigned JccOpc) {
   switch (JccOpc) {
-  case V6C::JZ:  return V6C::RZ;
-  case V6C::JNZ: return V6C::RNZ;
-  case V6C::JC:  return V6C::RC;
-  case V6C::JNC: return V6C::RNC;
-  case V6C::JPE: return V6C::RPE;
-  case V6C::JPO: return V6C::RPO;
-  case V6C::JP:  return V6C::RP;
-  case V6C::JM:  return V6C::RM;
+  case V6CLANG::JZ:  return V6CLANG::RZ;
+  case V6CLANG::JNZ: return V6CLANG::RNZ;
+  case V6CLANG::JC:  return V6CLANG::RC;
+  case V6CLANG::JNC: return V6CLANG::RNC;
+  case V6CLANG::JPE: return V6CLANG::RPE;
+  case V6CLANG::JPO: return V6CLANG::RPO;
+  case V6CLANG::JP:  return V6CLANG::RP;
+  case V6CLANG::JM:  return V6CLANG::RM;
   default: return 0;
   }
 }
@@ -127,7 +127,7 @@ static bool isReturnOnlyBlock(const MachineBasicBlock &MBB) {
   auto I = MBB.begin();
   while (I != MBB.end() && I->isDebugInstr())
     ++I;
-  return I != MBB.end() && I->getOpcode() == V6C::RET &&
+  return I != MBB.end() && I->getOpcode() == V6CLANG::RET &&
          std::next(I) == MBB.end();
 }
 ```
@@ -143,7 +143,7 @@ the RET block.
 
 After replacing `JZ .Lret` with `RZ`, the `.Lret: RET` block may become
 unreachable (no remaining predecessors). The existing
-`removeDeadBlocks()` in V6CBranchOpt already handles this.
+`removeDeadBlocks()` in V6ClangBranchOpt already handles this.
 
 ## Complexity: Low
 

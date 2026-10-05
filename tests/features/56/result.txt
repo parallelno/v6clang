@@ -1,30 +1,30 @@
-O74 — V6C_STORE16_G redesign
+O74 — V6CLANG_STORE16_G redesign
 ============================
 
 Goal
 ----
-Make the i16-to-global store (`V6C_STORE16_G`) liveness-aware so the
+Make the i16-to-global store (`V6CLANG_STORE16_G`) liveness-aware so the
 register allocator no longer fails (or spills unnecessarily) when HL
 is live across the store.
 
 OLD scheme
-  - The `(store i16:$val, (V6Cwrapper tglobaladdr:$addr))` pattern
+  - The `(store i16:$val, (V6Clangwrapper tglobaladdr:$addr))` pattern
     selected the bare `SHLD` instruction. Because `SHLD` reads HL,
     the value MUST be in HL.
   - When the live HL contents must survive the store, RA has nowhere
     to evict HL to (DE/BC may be holding other args) and aborts with
     "ran out of registers during register allocation".
-  - On the post-RA pseudo `V6C_STORE16_G`, `Defs = [HL]` was declared
-    so any user of `V6C_STORE16_G` would see HL clobbered as well.
+  - On the post-RA pseudo `V6CLANG_STORE16_G`, `Defs = [HL]` was declared
+    so any user of `V6CLANG_STORE16_G` would see HL clobbered as well.
 
 NEW scheme
-  - The store pattern now selects `V6C_STORE16_G $val` with $val
+  - The store pattern now selects `V6CLANG_STORE16_G $val` with $val
     free to be any GR16 (HL/DE/BC). `Defs = [HL]` was dropped.
   - Post-RA expansion picks the optimal sequence per-shape and per
     HL/A liveness (see "Per-row dispatch comparison" below).
 
 
-C test source — `tests/features/56/v6llvmc.c`
+C test source — `tests/features/56/v6clang.c`
 ----------------------------------------------
 Four shapes are now exercised at runtime. `case2b_val_de_hl_live`
 **will not compile under the OLD scheme** — the very bug O74
@@ -62,15 +62,15 @@ OLD baseline produce comparable asm for the other three shapes.
     }
 
     int main(void) {
-        case1_val_hl(0x1234);            __builtin_v6c_out(0xDE, (uint8_t)g_a);
-        case2a_val_de_hl_dead(0, 0x55AA);__builtin_v6c_out(0xDE, (uint8_t)g_a);
+        case1_val_hl(0x1234);            __builtin_v6clang_out(0xDE, (uint8_t)g_a);
+        case2a_val_de_hl_dead(0, 0x55AA);__builtin_v6clang_out(0xDE, (uint8_t)g_a);
       #ifndef OLD_BASELINE_SKIP_HL_LIVE
         uint16_t r = case2b_val_de_hl_live(0x9988, 0x6677);
-        __builtin_v6c_out(0xDE, (uint8_t)g_a);
-        __builtin_v6c_out(0xDE, (uint8_t)r);
+        __builtin_v6clang_out(0xDE, (uint8_t)g_a);
+        __builtin_v6clang_out(0xDE, (uint8_t)r);
       #endif
         case3a_val_bc_hl_dead(0, 0, 0xABCD);
-        __builtin_v6c_out(0xDE, (uint8_t)g_a);
+        __builtin_v6clang_out(0xDE, (uint8_t)g_a);
         return 0;
     }
 
@@ -79,7 +79,7 @@ OLD baseline — concrete failure on case2b
 ------------------------------------------
 Compiling the unguarded source with the pre-O74 compiler:
 
-    > clang -target i8080-unknown-v6c -O3 -S tests\features\56\v6llvmc.c
+    > clang -target i8080-unknown-v6clang -O3 -S tests\features\56\v6clang.c
     error: ran out of registers during register allocation
     1 error generated.
 
@@ -152,7 +152,7 @@ c8080 stats (worst-case CPU cycles / length in bytes)
     main                   : 332cc / 55B
 
 
-v6llvmc — BASELINE (`v6llvmc_old.asm`, before O74)
+v6clang — BASELINE (`v6clang_old.asm`, before O74)
 ---------------------------------------------------
 NOTE: case2b_val_de_hl_live is ABSENT — the OLD compiler errors out
 with "ran out of registers during register allocation". The asm
@@ -200,7 +200,7 @@ main:                           ; case2b call elided
                                 ; ---------- 252cc / 40B
 
 
-v6llvmc — AFTER O74 (`v6llvmc_new01.asm`)
+v6clang — AFTER O74 (`v6clang_new01.asm`)
 ------------------------------------------
 case1_val_hl:
         SHLD g_a                ; 20cc / 3B
@@ -259,7 +259,7 @@ main:
 Comparison table
 ----------------
 +--------------------------+----------------+----------------+----------------+----------------+
-| Function                 | c8080          | v6llvmc OLD    | v6llvmc NEW    | NEW vs OLD     |
+| Function                 | c8080          | v6clang OLD    | v6clang NEW    | NEW vs OLD     |
 |                          | cycles / bytes | cycles / bytes | cycles / bytes |                |
 +--------------------------+----------------+----------------+----------------+----------------+
 | case1_val_hl             |   52 /   7     |   32 /   4     |   32 /   4     |    0 /  0      |
@@ -285,7 +285,7 @@ Bottom-line wins from O74:
 Per-row dispatch comparison (lit test `store16g-shapes.ll`)
 ------------------------------------------------------------
 +----+-------------------------+--------------------------------+--------------------------------+--------------+
-| #  | Shape                   | OLD (SHLD-only pattern)        | NEW (V6C_STORE16_G dispatch)   | Δ            |
+| #  | Shape                   | OLD (SHLD-only pattern)        | NEW (V6CLANG_STORE16_G dispatch)   | Δ            |
 +----+-------------------------+--------------------------------+--------------------------------+--------------+
 | 1  | val=HL                  | SHLD                  20cc/3B  | SHLD                  20cc/3B  |   0cc /  0B  |
 | 2a | val=DE, HL dead         | XCHG; SHLD            24cc/4B  | XCHG; SHLD            24cc/4B  |   0cc /  0B  |
@@ -301,11 +301,11 @@ Per-row dispatch comparison (lit test `store16g-shapes.ll`)
 Verification
 ------------
 - Direct empirical proof of the OLD bug: compiling the full
-  `tests/features/56/v6llvmc.c` (without the
+  `tests/features/56/v6clang.c` (without the
   `OLD_BASELINE_SKIP_HL_LIVE` guard) against HEAD~1 yields
   `error: ran out of registers during register allocation`.
-- `llvm/test/CodeGen/V6C/store16g-shapes.ll` — pins each row via the
-  V6C calling convention; all 6 cases match.
+- `llvm/test/CodeGen/V6CLANG/store16g-shapes.ll` — pins each row via the
+  V6CLANG calling convention; all 6 cases match.
 - `python tests\run_all.py` — golden + lit suites both PASS
   (132/132 tests).
 
@@ -321,6 +321,6 @@ Cycle budgets used (per docs/Vector_06c_instruction_timings.md)
 
 References
 ----------
-- Design: design/future_plans/O74_V6C_STORE16_G_redesign.md
-- Plan:   design/plan_O74_V6C_STORE16_G_redesign.md
-- Companion (load side): design/future_plans/O73_V6C_LOAD16_G_redesign.md
+- Design: design/future_plans/O74_V6CLANG_STORE16_G_redesign.md
+- Plan:   design/plan_O74_V6CLANG_STORE16_G_redesign.md
+- Companion (load side): design/future_plans/O73_V6CLANG_LOAD16_G_redesign.md

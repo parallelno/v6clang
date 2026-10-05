@@ -6,7 +6,7 @@ Status
 
 Implemented and validated:
 
-- O0 parameters and locals survive V6C alloca-to-global promotion.
+- O0 parameters and locals survive V6CLANG alloca-to-global promotion.
 - Promoted homes use final linked `DW_OP_addrx` plus `DW_OP_plus_uconst`.
 - Dynamic stack homes use `DW_OP_fbreg` relative to a CFA-based frame base.
 - Register parameters use the frozen byte/pair map.
@@ -19,8 +19,8 @@ Implemented and validated:
 Producer Changes
 ----------------
 
-`V6CStaticDebugValues` runs after all machine optimizations. It finds
-`llvm.dbg.declare` records rewritten by `V6CAllocaPromote`, removes stale
+`V6ClangStaticDebugValues` runs after all machine optimizations. It finds
+`llvm.dbg.declare` records rewritten by `V6ClangAllocaPromote`, removes stale
 `$noreg` machine records, and emits stable global memory locations.
 
 Generic DwarfDebug now accepts relocatable global-address operands in local
@@ -28,14 +28,14 @@ DBG_VALUE records and emits `DW_OP_addr`/`DW_OP_addrx` with an optional
 `DW_OP_plus_uconst` offset.
 
 In debug modules, accesses that maintain promoted local homes are volatile.
-O43 remains enabled but does not replace debug `__v6c_a.*` SHLD/LHLD homes
+O43 remains enabled but does not replace debug `__v6clang_a.*` SHLD/LHLD homes
 with transient PUSH/POP values. Release builds retain the existing
 optimization.
 
 Static Emulator Evidence
 ------------------------
 
-At the HLT in `static_probe`, `__v6c_a.static_probe` is at `0x0146`:
+At the HLT in `static_probe`, `__v6clang_a.static_probe` is at `0x0146`:
 
     parameter   DW_OP_addrx base       -> [0x0146] = 0x1122
     local       base + 2               -> [0x0148] = 0x1245
@@ -77,7 +77,7 @@ Permanent lit tests additionally cover:
 Assembly and Performance
 ------------------------
 
-`v6llvmc_old.asm` and `v6llvmc_new01.asm` are identical release assembly.
+`v6clang_old.asm` and `v6clang_new01.asm` are identical release assembly.
 Debug builds intentionally retain observable homes for declared variables.
 Full release benchmark and regression results are recorded in the Milestone 3
 implementation plan.

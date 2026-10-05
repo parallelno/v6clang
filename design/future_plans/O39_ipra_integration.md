@@ -2,7 +2,7 @@
 
 ## Problem
 
-V6C has zero callee-saved registers. Every CALL instruction is treated as
+V6CLANG has zero callee-saved registers. Every CALL instruction is treated as
 clobbering A, B, C, D, E, H, L, and FLAGS. The register allocator must
 spill all live registers to the stack before every call and reload them
 after, even when the callee only touches a small subset.
@@ -33,12 +33,12 @@ around each call — 13 extra instructions for a 3-instruction callee.
 
 LLVM has a built-in IPRA infrastructure (`-enable-ipra`) that collects
 per-function register usage and propagates it to callers. However, it
-currently has **no effect** on V6C due to how the CALL instruction is
+currently has **no effect** on V6CLANG due to how the CALL instruction is
 defined.
 
 ## Root Cause
 
-The V6C CALL instruction has two redundant clobber signals:
+The V6CLANG CALL instruction has two redundant clobber signals:
 
 1. **Register mask** from `getCallPreservedMask()` — returns all-zero
    (no preserved registers). IPRA's `RegUsageInfoPropagation` pass can
@@ -66,20 +66,20 @@ which registers are clobbered.
 
 | File | Change |
 |------|--------|
-| `V6CInstrInfo.td` | Change CALL `Defs` from `[SP, A, B, C, D, E, H, L, FLAGS]` to `[SP]` |
-| `V6CTargetMachine.h` | Add `bool useIPRA() const override { return true; }` to enable IPRA by default |
-| `V6CISelLowering.cpp` | Verify `LowerCall` attaches register mask via `getCallPreservedMask()` (already does) |
-| `V6CRegisterInfo.cpp` | No change — all-zero mask is correct default; IPRA replaces it per call site |
+| `V6ClangInstrInfo.td` | Change CALL `Defs` from `[SP, A, B, C, D, E, H, L, FLAGS]` to `[SP]` |
+| `V6ClangTargetMachine.h` | Add `bool useIPRA() const override { return true; }` to enable IPRA by default |
+| `V6ClangISelLowering.cpp` | Verify `LowerCall` attaches register mask via `getCallPreservedMask()` (already does) |
+| `V6ClangRegisterInfo.cpp` | No change — all-zero mask is correct default; IPRA replaces it per call site |
 
 ### Enabling IPRA
 
 IPRA can be enabled in two ways:
 
-1. **Per-target default** (recommended): override `useIPRA()` in `V6CTargetMachine`:
+1. **Per-target default** (recommended): override `useIPRA()` in `V6ClangTargetMachine`:
    ```cpp
    bool useIPRA() const override { return true; }
    ```
-   This makes IPRA always active for V6C at `-O1` and above.
+   This makes IPRA always active for V6CLANG at `-O1` and above.
 
 2. **Command-line flag**: pass `-mllvm -enable-ipra` to clang (or `-enable-ipra` to llc).
    This overrides the per-target default. Use `-mllvm -enable-ipra=false` to disable.
@@ -191,7 +191,7 @@ IPRA has **no effect** on:
 - Indirect calls through function pointers
 - Separately compiled translation units (without LTO)
 
-For V6C/i8080 programs, single-TU builds are the norm (small programs,
+For V6CLANG/i8080 programs, single-TU builds are the norm (small programs,
 no OS, everything linked statically), making IPRA highly applicable.
 
 ## Risks
@@ -200,7 +200,7 @@ no OS, everything linked statically), making IPRA highly applicable.
 |------|------------|
 | Removing Defs from CALL breaks correctness if mask missing | Audit all paths that create CALL MachineInstrs; verify mask attached |
 | Pseudos expanding to CALL may not attach mask | Search for BuildMI(CALL) outside LowerCall; add masks if missing |
-| Performance regression if IPRA analysis is slow | Unlikely — V6C programs are small; IPRA scales with call graph size |
+| Performance regression if IPRA analysis is slow | Unlikely — V6CLANG programs are small; IPRA scales with call graph size |
 | Interaction with existing optimizations (LoadImmCombine, etc.) | These run post-RA; IPRA affects RA decisions, not post-RA passes |
 
 ## Dependencies
@@ -213,5 +213,5 @@ no OS, everything linked statically), making IPRA highly applicable.
 
 - LLVM IPRA: `llvm/lib/CodeGen/RegUsageInfoCollector.cpp`, `RegUsageInfoPropagate.cpp`
 - Pass config: `TargetPassConfig.cpp` — enabled via `-enable-ipra` or `useIPRA()` override
-- V6C call lowering: `V6CISelLowering.cpp` lines ~849–852
-- V6C register mask: `V6CRegisterInfo.cpp` `getCallPreservedMask()`
+- V6CLANG call lowering: `V6ClangISelLowering.cpp` lines ~849–852
+- V6CLANG register mask: `V6ClangRegisterInfo.cpp` `getCallPreservedMask()`

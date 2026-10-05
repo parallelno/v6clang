@@ -23,7 +23,7 @@ So LDA saves 2cc AND 1 byte.
 ## Implementation
 
 ISel pattern: when loading `i8` from a constant address into A, select
-`LDA` instead of `LXI` + `V6C_LOAD8_P`. Similarly `STA` for stores.
+`LDA` instead of `LXI` + `V6CLANG_LOAD8_P`. Similarly `STA` for stores.
 
 ## Benefit
 

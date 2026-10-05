@@ -16,7 +16,7 @@ return_second:
 Total: 4B, 32cc
 Note: c8080 uses static allocation, not registers for args.
 
-v6llvmc assembly (before, return_second):
+v6clang assembly (before, return_second):
 -----------------------------------------
 return_second:
     MOV  H, D                  ; 1B  8cc
@@ -25,7 +25,7 @@ return_second:
 
 Total: 3B, 28cc
 
-v6llvmc assembly (after, return_second):
+v6clang assembly (after, return_second):
 ----------------------------------------
 return_second:
     XCHG                       ; 1B  4cc

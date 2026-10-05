@@ -2,7 +2,7 @@
 // c8080 reference version.
 
 void use8(unsigned char x) {
-    /* extern in v6llvmc version; stub here for c8080 */
+    /* extern in v6clang version; stub here for c8080 */
 }
 
 unsigned char get8(void) {

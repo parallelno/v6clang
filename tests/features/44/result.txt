@@ -2,7 +2,7 @@ O67 -- i8 Rotate ISel via RLC/RRC -- feature test 44
 =====================================================
 
 Switches `ISD::ROTL` / `ISD::ROTR` for i8 from `Expand` to `Custom` and
-introduces two target ISD nodes -- `V6CISD::ROTL8` and `V6CISD::ROTR8`
+introduces two target ISD nodes -- `V6ClangISD::ROTL8` and `V6ClangISD::ROTR8`
 -- that map 1:1 to the 8080 `RLC` / `RRC` instructions via TableGen
 `Pat<>` matchers. Constant-amount rotates lower into a chain of these
 1-bit rotates, with the direction canonicalised to the shorter chain
@@ -10,13 +10,13 @@ introduces two target ISD nodes -- `V6CISD::ROTL8` and `V6CISD::ROTR8`
 N=4 keeps the requested direction).
 
 Implementation:
-  V6CISelLowering.h      -- enum entries V6CISD::ROTL8, ROTR8;
+  V6ClangISelLowering.h      -- enum entries V6ClangISD::ROTL8, ROTR8;
                             LowerROTL/LowerROTR declarations.
-  V6CISelLowering.cpp    -- ISD::ROTL/ROTR i8 -> Custom; LowerROTL,
+  V6ClangISelLowering.cpp    -- ISD::ROTL/ROTR i8 -> Custom; LowerROTL,
                             LowerROTR; getTargetNodeName cases;
                             LowerOperation dispatch.
-  V6CInstrInfo.td        -- SDT_V6CRot8 profile; V6Crotl8 / V6Crotr8
-                            SDNodes; Pat<(V6Crotl8 Acc:$src), (RLC ...)>
+  V6ClangInstrInfo.td        -- SDT_V6ClangRot8 profile; V6Clangrotl8 / V6Clangrotr8
+                            SDNodes; Pat<(V6Clangrotl8 Acc:$src), (RLC ...)>
                             and the symmetric RRC matcher.
 
 Variable-amount rotates are vanishingly rare in real C; they fall back
@@ -24,7 +24,7 @@ to an i16-promotion synthesis ((x<<8)|x then SHL/SRL by amt, low byte).
 No new runtime helper is needed.
 
 
-## C source (tests/features/44/v6llvmc.c -- c8080.c is the same shape)
+## C source (tests/features/44/v6clang.c -- c8080.c is the same shape)
 
     typedef unsigned char u8;
     u8 rotl1(u8 x) { return (u8)((x << 1) | (x >> 7)); }
@@ -51,15 +51,15 @@ No new runtime helper is needed.
 
 ## Assembly outputs
 
-  v6llvmc_old.asm    baseline before O67 (ROTL/ROTR i8 = Expand path)
-  v6llvmc_new01.asm  O67 enabled (Custom lowering -> RLC/RRC chains)
+  v6clang_old.asm    baseline before O67 (ROTL/ROTR i8 = Expand path)
+  v6clang_new01.asm  O67 enabled (Custom lowering -> RLC/RRC chains)
 
 
 ## File sizes
 
   c8080.asm           3770 B   (199 lines)   -- reference
-  v6llvmc_old.asm     5395 B   (484 lines)
-  v6llvmc_new01.asm   2119 B    (95 lines)   -- 60% smaller, 80% fewer lines
+  v6clang_old.asm     5395 B   (484 lines)
+  v6clang_new01.asm   2119 B    (95 lines)   -- 60% smaller, 80% fewer lines
 
 
 ## c8080 reference (z80 mnemonics: rlca = RLC, rrca = RRC)
@@ -91,7 +91,7 @@ No new runtime helper is needed.
             ret
 
 
-## v6llvmc -O2 + O67 (v6llvmc_new01.asm, post-lowering)
+## v6clang -O2 + O67 (v6clang_new01.asm, post-lowering)
 
     rotl1:  RLC                ; 1 B / 4cc
             RET
@@ -116,7 +116,7 @@ No new runtime helper is needed.
 
 ## Stats (function body length / cycles, excluding entry MOV E,A and RET)
 
-  Function   c8080            v6llvmc OLD      v6llvmc NEW (O67)
+  Function   c8080            v6clang OLD      v6clang NEW (O67)
   ---------  ---------------  ---------------  -----------------
   rotl1      1 B  / 4 cc      ~58 B / ~204 cc  1 B / 4 cc
   rotr1      1 B  / 4 cc      ~25 B /  ~92 cc  1 B / 4 cc
@@ -134,7 +134,7 @@ the same ADD-A-self chain (4 left == 4 right). Worst case is `rotl1`:
 
 DAGCombine recognises `(x<<1)|(x>>7)` as `ISD::ROTL` and the generic
 `Expand` action turns it back into `SHL i8 1 | SRL i8 7`. The i8 SRL
-constant path zero-extends to i16 and runs the slow `V6C_SRL16`
+constant path zero-extends to i16 and runs the slow `V6CLANG_SRL16`
 expansion -- 7 instructions per shift step (`MOV A,H; ORA A; RAR;
 MOV H,A; MOV A,L; RAR; MOV L,A`), times 7 steps for `>> 7`, plus the
 SHL chain and the OR-of-halves. ~50+ instructions for one rotate.
@@ -142,7 +142,7 @@ SHL chain and the OR-of-halves. ~50+ instructions for one rotate.
 
 ## Verification
 
-- New lit test: `llvm-project/llvm/test/CodeGen/V6C/rotate-i8.ll` --
+- New lit test: `llvm-project/llvm/test/CodeGen/V6CLANG/rotate-i8.ll` --
   6 cases (rotl/rotr by 1/3, rotl by 4 and 7) all pass.
 - Full lit suite: 118/118 PASS.
 - Golden trust baseline + lit suite: 2/2 suites PASS via run_all.py.

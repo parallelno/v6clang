@@ -7,7 +7,7 @@ the classical PUSH HL / LXI HL / MOV r,M / POP HL sequence (4 insns,
 saving 8cc and 1 byte per occurrence.
 
 ----------------------------------------------------------------
-1. Test case (v6llvmc.c = c8080.c, shared)
+1. Test case (v6clang.c = c8080.c, shared)
 ----------------------------------------------------------------
 
 __attribute__((leaf)) extern unsigned char op(unsigned char x);
@@ -96,62 +96,62 @@ c8080 stats
   many_i8    : 586cc   99B
 
 ----------------------------------------------------------------
-3. v6llvmc output with O64 (v6llvmc_new01.asm)
+3. v6clang output with O64 (v6clang_new01.asm)
 ----------------------------------------------------------------
 
 many_i8:
     LXI  HL, 0xfffe            ; 12cc 3B   prologue: reserve 2 dyn
     DAD  SP                    ; 12cc 1B
     SPHL                       ;  8cc 1B
-    LXI  HL, __v6c_ss.many_i8+2;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+2;12cc 3B
     MOV  M, C                  ;  8cc 1B
-    LXI  HL, __v6c_ss.many_i8+1;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+1;12cc 3B
     MOV  M, E                  ;  8cc 1B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.many_i8      ; 16cc 3B
-    LDA  __v6c_ss.many_i8+1    ; 16cc 3B
+    STA  __v6clang_ss.many_i8      ; 16cc 3B
+    LDA  __v6clang_ss.many_i8+1    ; 16cc 3B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.many_i8+1    ; 16cc 3B
-    LDA  __v6c_ss.many_i8+2    ; 16cc 3B
+    STA  __v6clang_ss.many_i8+1    ; 16cc 3B
+    LDA  __v6clang_ss.many_i8+2    ; 16cc 3B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.many_i8+2    ; 16cc 3B
+    STA  __v6clang_ss.many_i8+2    ; 16cc 3B
     LXI  HL, 2                 ; 12cc 3B   load `d` from dyn slot
     DAD  SP                    ; 12cc 1B
     XCHG                       ;  4cc 1B
     LDAX DE                    ;  8cc 1B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.many_i8+3    ; 16cc 3B
+    STA  __v6clang_ss.many_i8+3    ; 16cc 3B
     LXI  HL, 2                 ; 12cc 3B   load `e` from dyn slot
     DAD  SP                    ; 12cc 1B
     XCHG                       ;  4cc 1B
     LDAX DE                    ;  8cc 1B
     CALL op                    ; 18cc 3B
     MOV  E, A                  ;  8cc 1B
-    LXI  HL, __v6c_ss.many_i8+4;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+4;12cc 3B
     MOV  M, E                  ;  8cc 1B
     LXI  HL, 0                 ; 12cc 3B
     DAD  SP                    ; 12cc 1B
-    LDA  __v6c_ss.many_i8+3    ; 16cc 3B
+    LDA  __v6clang_ss.many_i8+3    ; 16cc 3B
     MOV  M, A                  ;  8cc 1B
     INX  HL                    ;  4cc 1B
     MOV  M, E                  ;  8cc 1B
-    LDA  __v6c_ss.many_i8      ; 16cc 3B
-    LXI  HL, __v6c_ss.many_i8+1;12cc 3B
+    LDA  __v6clang_ss.many_i8      ; 16cc 3B
+    LXI  HL, __v6clang_ss.many_i8+1;12cc 3B
     MOV  E, M                  ;  8cc 1B
-    LXI  HL, __v6c_ss.many_i8+2;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+2;12cc 3B
     MOV  C, M                  ;  8cc 1B
     CALL use5                  ; 18cc 3B
-    LDA  __v6c_ss.many_i8+1    ; 16cc 3B
-    LXI  HL, __v6c_ss.many_i8  ; 12cc 3B
+    LDA  __v6clang_ss.many_i8+1    ; 16cc 3B
+    LXI  HL, __v6clang_ss.many_i8  ; 12cc 3B
     MOV  L, M                  ;  8cc 1B
     XRA  L                     ;  4cc 1B
-    LXI  HL, __v6c_ss.many_i8+2;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+2;12cc 3B
     MOV  L, M                  ;  8cc 1B
     XRA  L                     ;  4cc 1B
-    LXI  HL, __v6c_ss.many_i8+3;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+3;12cc 3B
     MOV  L, M                  ;  8cc 1B
     XRA  L                     ;  4cc 1B
-    LXI  HL, __v6c_ss.many_i8+4;12cc 3B
+    LXI  HL, __v6clang_ss.many_i8+4;12cc 3B
     MOV  L, M                  ;  8cc 1B
     XRA  L                     ;  4cc 1B
     LXI  HL, 2                 ; 12cc 3B   epilogue
@@ -165,33 +165,33 @@ main:
     SPHL                       ;  8cc 1B
     MVI  A, 0x11               ;  8cc 2B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.main         ; 16cc 3B
+    STA  __v6clang_ss.main         ; 16cc 3B
     MVI  A, 0x22               ;  8cc 2B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.main+1       ; 16cc 3B
+    STA  __v6clang_ss.main+1       ; 16cc 3B
     MVI  A, 0x33               ;  8cc 2B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.main+2       ; 16cc 3B
+    STA  __v6clang_ss.main+2       ; 16cc 3B
     MVI  A, 0x44               ;  8cc 2B
     CALL op                    ; 18cc 3B
-    STA  __v6c_ss.main+3       ; 16cc 3B
+    STA  __v6clang_ss.main+3       ; 16cc 3B
     MVI  A, 0x55               ;  8cc 2B
     CALL op                    ; 18cc 3B
     LXI  HL, 0                 ; 12cc 3B
     DAD  SP                    ; 12cc 1B
     ;--- O64 Shape B Row 3 (HL live, A live, B dead): ---
     MOV  B, A                  ;  8cc 1B   save A in spare B
-    LDA  __v6c_ss.main+3       ; 16cc 3B   reload byte via A
+    LDA  __v6clang_ss.main+3       ; 16cc 3B   reload byte via A
     MOV  E, A                  ;  8cc 1B   route into E
     MOV  A, B                  ;  8cc 1B   restore A
     ;----------------------------------------------------
     MOV  M, E                  ;  8cc 1B
     INX  HL                    ;  4cc 1B
     MOV  M, A                  ;  8cc 1B
-    LDA  __v6c_ss.main         ; 16cc 3B
-    LXI  HL, __v6c_ss.main+1   ; 12cc 3B
+    LDA  __v6clang_ss.main         ; 16cc 3B
+    LXI  HL, __v6clang_ss.main+1   ; 12cc 3B
     MOV  E, M                  ;  8cc 1B
-    LXI  HL, __v6c_ss.main+2   ; 12cc 3B
+    LXI  HL, __v6clang_ss.main+2   ; 12cc 3B
     MOV  C, M                  ;  8cc 1B
     CALL use5                  ; 18cc 3B
     LXI  HL, 0                 ; 12cc 3B   epilogue
@@ -202,11 +202,11 @@ main:
     XCHG                       ;  4cc 1B
     RET                        ; 10cc 1B
 
-v6llvmc stats (new, O64 on)
+v6clang stats (new, O64 on)
   many_i8    : 676cc  100B
   main       : 378cc   69B
 
-v6llvmc stats (old, O64 off = v6llvmc_old.asm)
+v6clang stats (old, O64 off = v6clang_old.asm)
   many_i8    : 676cc  100B   (unchanged: reloads already Shape A / HL-dead)
   main       : 386cc   70B   (O64 saved 8cc + 1B via Shape B Row 3)
 
@@ -221,7 +221,7 @@ Delta
 
 * c8080's main is smaller (30B vs 69B) and faster (160cc vs 378cc)
   because c8080 uses static-stack globals for EVERY argument and
-  local, with zero register allocation overhead. v6llvmc still pays
+  local, with zero register allocation overhead. v6clang still pays
   register-homing costs but O64 narrows the gap on every i8 reload
   site that meets the Row 3 precondition.
 
@@ -232,4 +232,4 @@ Delta
 * The O64 ladder also covers Shape C (H/L sites) and Shape B Row 2
   (A dead), which this test does not exercise. Coverage for those
   rows is provided by the O64 lit test
-  `llvm/test/CodeGen/V6C/spill-reload-i8-static-shapes.ll`.
+  `llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll`.

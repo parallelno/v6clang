@@ -1,6 +1,6 @@
 # O84 — INX/DCX-Through-Spill Round-Trip Fold (`MOV rp←HL / INX|DCX rp / MOV HL←rp / SHLD` → `INX|DCX H / SHLD`)
 
-**Source:** V6C — observed in `tests/features/64/v6llvmc_new01.asm` (outer-loop latch of `main`, post-O83)
+**Source:** V6CLANG — observed in `tests/features/64/v6clang_new01.asm` (outer-loop latch of `main`, post-O83)
 **Savings:** 4 instructions, 4 B, 32 cc per occurrence (four 8cc/1B MOV instructions removed)
 **Frequency:** Low–moderate — arises whenever a 16-bit increment or decrement is performed through an intermediate register pair that is dead after the subsequent store
 **Complexity:** Low — single-pass forward scan within a basic block, one liveness query
@@ -38,7 +38,7 @@ INX  H            ; increment HL directly  (or DCX H for the decrement variant)
 SHLD addr         ; store HL
 ```
 
-### Concrete instance (`tests/features/64/v6llvmc_new01.asm`, lines ~282–290)
+### Concrete instance (`tests/features/64/v6clang_new01.asm`, lines ~282–290)
 
 The outer-loop latch of `main` (Sieve benchmark) updates `i_sq` by incrementing
 the previously computed `i_sq + 2*i` by 1:
@@ -70,12 +70,12 @@ the previously computed `i_sq + 2*i` by 1:
 
 The pattern originates from three consecutive pseudo-instruction expansions:
 
-1. **V6C_SPILL16** (`HL → rp`): saves the current HL value into a scratch
+1. **V6CLANG_SPILL16** (`HL → rp`): saves the current HL value into a scratch
    register pair so that HL is free for the subsequent `DAD` operation.
    Expands to `MOV rl, L` / `MOV rh, H`.
-2. **V6C_INX16** (`rp++`) or **V6C_DCX16** (`rp--`): increments or decrements
+2. **V6CLANG_INX16** (`rp++`) or **V6CLANG_DCX16** (`rp--`): increments or decrements
    the spilled value in the register pair.  Expands to `INX rp` or `DCX rp`.
-3. **V6C_RELOAD16** (`rp → HL`) + **SHLD**: loads the modified value back
+3. **V6CLANG_RELOAD16** (`rp → HL`) + **SHLD**: loads the modified value back
    into HL so it can be stored to the spill slot.
    Expands to `MOV L, rl` / `MOV H, rh` / `SHLD addr`.
 
@@ -118,7 +118,7 @@ All of the following must hold:
 
 ## Algorithm
 
-Implement inside the existing `V6CPeephole` pass (post-RA, single basic block
+Implement inside the existing `V6ClangPeephole` pass (post-RA, single basic block
 forward scan).
 
 ```
@@ -180,7 +180,7 @@ entry as a second match arm or as a follow-on micro-optimization.
 
 ## Expected Output
 
-### Before O84 (`tests/features/64/v6llvmc_new01.asm`, inner-loop update)
+### Before O84 (`tests/features/64/v6clang_new01.asm`, inner-loop update)
 
 ```asm
         LHLD    .LLo61_12+1   ; 20cc 3B  reload i_sq
@@ -214,7 +214,7 @@ iteration ≈ 14 times for the SIZE=200 sieve).
    the SHLD is preceded by exactly `INX H` or `DCX H` and no other MOV
    instructions remain.
 
-2. **Regression** — `tests/features/64/v6llvmc_new01.asm` (current golden
+2. **Regression** — `tests/features/64/v6clang_new01.asm` (current golden
    output after O83); after O84 the sequence
    `MOV C,L / MOV B,H / INX B / MOV L,C / MOV H,B / SHLD .LLo61_12+1`
    must become `INX H / SHLD .LLo61_12+1`.

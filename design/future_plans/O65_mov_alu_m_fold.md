@@ -25,9 +25,9 @@ following for every instruction in between:
 **Stage 3 — INR/DCR/MVI M triad (peephole backstop to O46/O49)**:
 fold
 ```
-MOV  A, M      ; V6C::MOVrM, dst=A, Uses=[HL]
-INR/DCR A      ; V6C::INRr/DCRr, defs A+FLAGS
-MOV  M, A      ; V6C::MOVMr, uses A+HL
+MOV  A, M      ; V6CLANG::MOVrM, dst=A, Uses=[HL]
+INR/DCR A      ; V6CLANG::INRr/DCRr, defs A+FLAGS
+MOV  M, A      ; V6CLANG::MOVMr, uses A+HL
 ```
 into `INR M` / `DCR M`, and
 ```
@@ -70,20 +70,20 @@ In practice, several cases arrive at post-RA unfolded because:
 A local peephole is cheap to build, orthogonal to O49, and recovers the
 savings even when O49 ships — any case O49 misses falls through to it.
 
-### Example — `tests/features/38/v6llvmc_new01.asm` (function `many_i8`)
+### Example — `tests/features/38/v6clang_new01.asm` (function `many_i8`)
 
 ```asm
-LDA   __v6c_ss.many_i8+1
-LXI   HL, __v6c_ss.many_i8
+LDA   __v6clang_ss.many_i8+1
+LXI   HL, __v6clang_ss.many_i8
 MOV   L, M                     ; L = [HL]
 XRA   L                        ; A ^= L  (L dead after)
-LXI   HL, __v6c_ss.many_i8+2
+LXI   HL, __v6clang_ss.many_i8+2
 MOV   L, M
 XRA   L
-LXI   HL, __v6c_ss.many_i8+3
+LXI   HL, __v6clang_ss.many_i8+3
 MOV   L, M
 XRA   L
-LXI   HL, __v6c_ss.many_i8+4
+LXI   HL, __v6clang_ss.many_i8+4
 MOV   L, M
 XRA   L
 ```
@@ -91,14 +91,14 @@ XRA   L
 Each `MOV L, M; XRA L` pair becomes a single `XRA M`:
 
 ```asm
-LDA   __v6c_ss.many_i8+1
-LXI   HL, __v6c_ss.many_i8
+LDA   __v6clang_ss.many_i8+1
+LXI   HL, __v6clang_ss.many_i8
 XRA   M
-LXI   HL, __v6c_ss.many_i8+2
+LXI   HL, __v6clang_ss.many_i8+2
 XRA   M
-LXI   HL, __v6c_ss.many_i8+3
+LXI   HL, __v6clang_ss.many_i8+3
 XRA   M
-LXI   HL, __v6c_ss.many_i8+4
+LXI   HL, __v6clang_ss.many_i8+4
 XRA   M
 ```
 
@@ -109,14 +109,14 @@ Savings: **4 pairs × (4cc + 1B) = 16cc, 4B** in that function alone.
 Fold:
 
 ```
-MOV   r, M          ; V6C::MOVrM, defs r, uses HL
-OP    r             ; V6C::{ADDr|ADCr|SUBr|SBBr|ANAr|XRAr|ORAr|CMPr}, uses A+r
+MOV   r, M          ; V6CLANG::MOVrM, defs r, uses HL
+OP    r             ; V6CLANG::{ADDr|ADCr|SUBr|SBBr|ANAr|XRAr|ORAr|CMPr}, uses A+r
 ```
 
 into:
 
 ```
-OP    M             ; V6C::{ADDM|ADCM|SUBM|SBBM|ANAM|XRAM|ORAM|CMPM}, uses A+HL
+OP    M             ; V6CLANG::{ADDM|ADCM|SUBM|SBBM|ANAM|XRAM|ORAM|CMPM}, uses A+HL
 ```
 
 ### Opcode mapping
@@ -133,7 +133,7 @@ OP    M             ; V6C::{ADDM|ADCM|SUBM|SBBM|ANAM|XRAM|ORAM|CMPM}, uses A+HL
 | `CMPr` | `CMPM` | 0xBE |
 
 All eight definitions already exist in
-[V6CInstrInfo.td](../../llvm/lib/Target/V6C/V6CInstrInfo.td) lines 294–303
+[V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td) lines 294–303
 with empty pattern lists — no TableGen changes needed.
 
 ## Safety conditions
@@ -148,7 +148,7 @@ with empty pattern lists — no TableGen changes needed.
    mean `ADD A` (doubles A) ≠ `ADD M` (adds memory to A). `MOV A, M` is
    itself a legal 8080 form but the fold isn't valid with `r = A`.
 4. **`r` is dead after the OP.** Checked via `isRegDeadAfter()` (same
-   helper used by `V6CXchgOpt` — kill flag on the OP's use operand *or*
+   helper used by `V6ClangXchgOpt` — kill flag on the OP's use operand *or*
    no read below and not in any successor's livein).
 
    This single condition makes `r ∈ {H, L}` safe: deleting `MOVrM` means
@@ -175,7 +175,7 @@ between the MOV and the OP. For each MI `K`:
     disturbed.
 7d. `K` **is not a terminator, call, or control-flow boundary**
     (`isCall`, `isBranch`, `isReturn`, `isBarrier`, or
-    `modifiesRegister(V6C::SP)` for conservative CALL-seq handling).
+    `modifiesRegister(V6CLANG::SP)` for conservative CALL-seq handling).
 7e. `K` **is not `mayStore`** — a store could alias the `[HL]` slot we
     just loaded. Conservative veto matching the O49 design reasoning.
 
@@ -236,12 +236,12 @@ Kill flags:
 
 ## Where it lives
 
-`V6CPeepholePass` (`V6CPeephole.cpp`) — extend the existing post-RA
+`V6ClangPeepholePass` (`V6ClangPeephole.cpp`) — extend the existing post-RA
 peephole pass with a new pattern handler. Placed before the self-MOV and
 redundant-MOV patterns so the folded ALU becomes visible to any later
-pass that scans for ALU shapes (e.g. `V6CZeroTestOpt`).
+pass that scans for ALU shapes (e.g. `V6ClangZeroTestOpt`).
 
-CLI toggle: reuses existing `-v6c-disable-peephole`.
+CLI toggle: reuses existing `-v6clang-disable-peephole`.
 
 ### Pseudocode
 
@@ -252,7 +252,7 @@ for each MBB:
     if I is MOVrM with dst r:
       J = findAluConsumerFor(r, starting at next(I))
       if J found
-         && r != V6C::A
+         && r != V6CLANG::A
          && isRegDeadAfter(r, J)
          && scanBetweenSafe(next(I), J, r):   // Stage 2 conditions 7a-7e
         emit OPM(A, A) before J, carry HL kill from I
@@ -265,15 +265,15 @@ for each MBB:
       M = findMidInstr(A, starting at next(I))       // INR A / DCR A
       if M && next(M) is MOVMr with src=A
          && isRegDeadAfter(A, MOVMr)
-         && scanBetweenSafe(next(I), M, V6C::A, allowAWrite=false)
-         && scanBetweenSafe(next(M), MOVMr, V6C::A, allowAWrite=false):
+         && scanBetweenSafe(next(I), M, V6CLANG::A, allowAWrite=false)
+         && scanBetweenSafe(next(M), MOVMr, V6CLANG::A, allowAWrite=false):
         emit INRM/DCRM before MOVMr
         erase MOVMr, M, I
         continue
     if I is MVIr A, imm [Stage 3b]:
       K = findMovMr(A, starting at next(I))
       if K found && isRegDeadAfter(A, K)
-         && scanBetweenSafe(next(I), K, V6C::A, allowAWrite=false):
+         && scanBetweenSafe(next(I), K, V6CLANG::A, allowAWrite=false):
         emit MVIM imm before K
         erase K, I
         continue
@@ -306,7 +306,7 @@ three grounds, addressed here:
 1. *"Stale kill flags on the MOV destination — deleting while live
    elsewhere causes silent bugs."* → Condition (4) uses a proper
    `isRegDeadAfter` liveness walk (not just the kill flag), identical
-   to the mechanism `V6CXchgOpt` has used correctly since M8.
+   to the mechanism `V6ClangXchgOpt` has used correctly since M8.
 2. *"Cross-BB liveness isn't visible from a local scan."* → `isRegDeadAfter`
    checks block-end livens (successor liveins). Cross-BB visibility is
    exactly the information it was designed to surface.
@@ -325,13 +325,13 @@ three grounds, addressed here:
   instance (was 15cc/3B, becomes 10cc/2B).
 - Frequency: medium-high. Emerges naturally after O10 (static stack) and
   O20 (honest load/store defs) expose more single-use `[HL]` reads. The
-  reference example (`v6llvmc_new01.asm`) shows 4 Stage 1 folds in one
+  reference example (`v6clang_new01.asm`) shows 4 Stage 1 folds in one
   function body; Stage 3 triggers wherever a struct field or global byte
   is incremented/decremented/initialized in place.
 
 ## Implementation effort
 
-Stage 1: ~40–60 lines in `V6CPeephole.cpp`, one small opcode-map helper,
+Stage 1: ~40–60 lines in `V6ClangPeephole.cpp`, one small opcode-map helper,
 plus a lit test (`mov-alu-m-fold.ll`) covering each of the eight ALU
 variants and at least one negative case.
 
@@ -346,22 +346,22 @@ between the MOVs, A still live after store).
 
 ## Testing
 
-- Lit: new `tests/lit/CodeGen/V6C/mov-alu-m-fold.ll` with CHECK lines
+- Lit: new `tests/lit/CodeGen/V6CLANG/mov-alu-m-fold.ll` with CHECK lines
   per ALU variant; negative CHECK-NOTs for the `r` still-live and `r=A`
   cases.
 - Stage 2 lit: one positive (intervening independent MOV) + one negative
   (intervening store or HL-aliasing op).
-- Stage 3 lit: new `tests/lit/CodeGen/V6C/inc-dec-mvi-m-fold.ll` covering
+- Stage 3 lit: new `tests/lit/CodeGen/V6CLANG/inc-dec-mvi-m-fold.ll` covering
   `++global_byte`, `--global_byte`, `global_byte = 42`.
 - Feature test: `tests/features/38/` already exercises the `XRA` case —
   extend with round-trip validation before/after the pass.
 - Golden suite: full 15/15 must still pass.
-- Toggle test: `-v6c-disable-peephole` still produces the unfolded form.
+- Toggle test: `-v6clang-disable-peephole` still produces the unfolded form.
 
 ## Dependencies
 
 None. Composes cleanly with every existing pass. Runs inside the
-already-scheduled `V6CPeephole` pass so no new pipeline slot is needed.
+already-scheduled `V6ClangPeephole` pass so no new pipeline slot is needed.
 
 ## Risk
 

@@ -41,7 +41,7 @@ c8080 stats (body only, excluding static-stack overhead):
   copy_port:  32cc, 6B
   Total:      64cc, 12B
 
-=== v6llvmc Assembly ===
+=== v6clang Assembly ===
 
 read_port:
     LDA  0x100          ; 16cc, 3B
@@ -56,7 +56,7 @@ copy_port:
     STA  0x200          ; 16cc, 3B
     RET                 ; 12cc, 1B
 
-v6llvmc stats (body only):
+v6clang stats (body only):
   read_port:  16cc, 3B
   write_port: 16cc, 3B
   copy_port:  32cc, 6B
@@ -64,11 +64,11 @@ v6llvmc stats (body only):
 
 === Comparison ===
 
-| Function   | v6llvmc OLD       | v6llvmc NEW       | Savings     |
+| Function   | v6clang OLD       | v6clang NEW       | Savings     |
 |------------|-------------------|-------------------|-------------|
 | read_port  | 20cc, 4B (LXI+MOV) | 16cc, 3B (LDA)  | 4cc + 1B    |
 | write_port | 20cc, 4B (LXI+MOV) | 16cc, 3B (STA)  | 4cc + 1B    |
 | copy_port  | 40cc, 8B          | 32cc, 6B         | 8cc + 2B    |
 | Total      | 80cc, 16B         | 64cc, 12B        | 16cc + 4B   |
 
-v6llvmc now matches c8080 for constant-address loads/stores.
+v6clang now matches c8080 for constant-address loads/stores.

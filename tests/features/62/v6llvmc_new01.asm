@@ -5,7 +5,7 @@ shape_a:                                ; @shape_a
 	;=== char shape_a(char arg0) ===
 	;  arg0 = A
 ; %bb.0:
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	ORA	A
 	JZ	.LBB15_2
 ; %bb.1:
@@ -22,7 +22,7 @@ shape_a_dead:                           ; @shape_a_dead
 	;  arg0 = A
 	;  arg1 = B
 ; %bb.0:
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	INR	B
 	DCR	B
 	RNZ
@@ -38,7 +38,7 @@ shape_a_live:                           ; @shape_a_live
 	;  arg0 = A
 	;  arg1 = B
 ; %bb.0:
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	INR	B
 	DCR	B
 	JZ	.LBB17_2
@@ -48,13 +48,13 @@ shape_a_live:                           ; @shape_a_live
 .LBB17_2:
 	MVI	L, 0
 .LBB17_3:
-	;--- V6C_SPILL8 ---
+	;--- V6CLANG_SPILL8 ---
 	MOV	B, A
 	MOV	A, L
 	STA	.LLo61_0+1
 	MOV	A, B
 	CALL	op1
-	;--- V6C_RELOAD8 ---
+	;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
 	ADI	0
 	RET
@@ -66,21 +66,21 @@ shape_a_live_loop:                      ; @shape_a_live_loop
 	;  arg0 = A
 	;  arg1 = B
 ; %bb.0:
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	INR	B
 	DCR	B
-	;--- V6C_BRCOND ---
+	;--- V6CLANG_BRCOND ---
 	RZ
 .LBB18_1:                               ; =>This Inner Loop Header: Depth=1
-	;--- V6C_SPILL8 ---
+	;--- V6CLANG_SPILL8 ---
 	LXI	H, .LLo61_1+1
 	MOV	M, B
 	CALL	op1
-	;--- V6C_RELOAD8 ---
+	;--- V6CLANG_RELOAD8 ---
 .LLo61_1:
 	MVI	B, 0
 	DCR	B
-	;--- V6C_BRCOND ---
+	;--- V6CLANG_BRCOND ---
 	JNZ	.LBB18_1
 ; %bb.2:
 	RET
@@ -98,12 +98,12 @@ main:                                   ; @main
 	CALL	use2
 	MVI	A, 0x55
 	CALL	op1
-	;--- V6C_SPILL8 ---
+	;--- V6CLANG_SPILL8 ---
 	STA	.LLo61_2+1
 	MVI	A, 0x66
 	CALL	op1
 	MOV	B, A
-	;--- V6C_RELOAD8 ---
+	;--- V6CLANG_RELOAD8 ---
 .LLo61_2:
 	MVI	A, 0
 	INR	A
@@ -120,15 +120,15 @@ main:                                   ; @main
                                         ; -- End function
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

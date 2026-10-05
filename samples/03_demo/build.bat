@@ -6,7 +6,7 @@ REM
 set compiler=llvm-build\bin\clang
 set emulator=%V6EMUL%
 
-set target=-target i8080-unknown-v6c
+set target=-target i8080-unknown-v6clang
 set stack_addr=0x8000
 set stack_def=-Wl,--defsym=__stack_top=%stack_addr%
 

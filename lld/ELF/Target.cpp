@@ -89,8 +89,8 @@ TargetInfo *elf::getTarget() {
     return getSPARCV9TargetInfo();
   case EM_S390:
     return getSystemZTargetInfo();
-  case EM_V6C:
-    return getV6CTargetInfo();
+  case EM_V6Clang:
+    return getV6ClangTargetInfo();
   case EM_X86_64:
     return getX86_64TargetInfo();
   }

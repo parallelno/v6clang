@@ -2,11 +2,11 @@
 	.globl	a_spill_r8_reload               ; -- Begin function a_spill_r8_reload
 a_spill_r8_reload:                      ; @a_spill_r8_reload
 ; %bb.0:
-	LXI	HL, __v6c_ss.a_spill_r8_reload
+	LXI	HL, __v6clang_ss.a_spill_r8_reload
 	MOV	M, E
 	CALL	op1
 	STA	.LLo61_0+1
-	LDA	__v6c_ss.a_spill_r8_reload
+	LDA	__v6clang_ss.a_spill_r8_reload
 	CALL	op2
 .LLo61_0:
 	MVI	L, 0
@@ -16,13 +16,13 @@ a_spill_r8_reload:                      ; @a_spill_r8_reload
 	.globl	k2_i8                           ; -- Begin function k2_i8
 k2_i8:                                  ; @k2_i8
 ; %bb.0:
-	LXI	HL, __v6c_ss.k2_i8
+	LXI	HL, __v6clang_ss.k2_i8
 	MOV	M, C
-	LXI	HL, __v6c_ss.k2_i8+2
+	LXI	HL, __v6clang_ss.k2_i8+2
 	MOV	M, E
 	CALL	op1
 	STA	.LLo61_1+1
-	LDA	__v6c_ss.k2_i8+2
+	LDA	__v6clang_ss.k2_i8+2
 	CALL	op2
 	MOV	H, A
 .LLo61_1:
@@ -32,7 +32,7 @@ k2_i8:                                  ; @k2_i8
 	MOV	A, H
 	ADD	L
 	STA	.LLo61_1+1
-	LDA	__v6c_ss.k2_i8
+	LDA	__v6clang_ss.k2_i8
 	CALL	op2
 	MOV	L, A
 	LDA	.LLo61_1+1
@@ -42,7 +42,7 @@ k2_i8:                                  ; @k2_i8
 	.globl	multi_src_i8                    ; -- Begin function multi_src_i8
 multi_src_i8:                           ; @multi_src_i8
 ; %bb.0:
-	LXI	HL, __v6c_ss.multi_src_i8
+	LXI	HL, __v6clang_ss.multi_src_i8
 	MOV	M, E
 	MOV	L, A
 	XRA	A
@@ -57,7 +57,7 @@ multi_src_i8:                           ; @multi_src_i8
 	CALL	op2
 .LBB2_3:
 	STA	.LLo61_2+1
-	LDA	__v6c_ss.multi_src_i8
+	LDA	__v6clang_ss.multi_src_i8
 	CALL	op2
 .LLo61_2:
 	MVI	L, 0
@@ -68,7 +68,7 @@ multi_src_i8:                           ; @multi_src_i8
 mixed_widths:                           ; @mixed_widths
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.mixed_widths
+	LXI	HL, __v6clang_ss.mixed_widths
 	MOV	M, E
 	POP	HL
 	SHLD	.LLo61_3+1
@@ -81,7 +81,7 @@ mixed_widths:                           ; @mixed_widths
 	LXI	DE, 0
 	DAD	DE
 	SHLD	.LLo61_4+1
-	LDA	__v6c_ss.mixed_widths
+	LDA	__v6clang_ss.mixed_widths
 	CALL	op2
 	STA	.LLo61_5+1
 	LHLD	.LLo61_3+1
@@ -94,7 +94,7 @@ mixed_widths:                           ; @mixed_widths
 	LXI	DE, 0
 	DAD	DE
 	SHLD	.LLo61_3+1
-	LDA	__v6c_ss.mixed_widths
+	LDA	__v6clang_ss.mixed_widths
 	CALL	op1
 	LHLD	.LLo61_3+1
 	SHLD	g_u16
@@ -188,14 +188,14 @@ g_u16:
 g_u8:
 	DB	0                               ; 0x0
 
-	.local	__v6c_ss.a_spill_r8_reload      ; @__v6c_ss.a_spill_r8_reload
-	.comm	__v6c_ss.a_spill_r8_reload,2,1
-	.local	__v6c_ss.k2_i8                  ; @__v6c_ss.k2_i8
-	.comm	__v6c_ss.k2_i8,3,1
-	.local	__v6c_ss.multi_src_i8           ; @__v6c_ss.multi_src_i8
-	.comm	__v6c_ss.multi_src_i8,2,1
-	.local	__v6c_ss.mixed_widths           ; @__v6c_ss.mixed_widths
-	.comm	__v6c_ss.mixed_widths,6,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,4,1
+	.local	__v6clang_ss.a_spill_r8_reload      ; @__v6clang_ss.a_spill_r8_reload
+	.comm	__v6clang_ss.a_spill_r8_reload,2,1
+	.local	__v6clang_ss.k2_i8                  ; @__v6clang_ss.k2_i8
+	.comm	__v6clang_ss.k2_i8,3,1
+	.local	__v6clang_ss.multi_src_i8           ; @__v6clang_ss.multi_src_i8
+	.comm	__v6clang_ss.multi_src_i8,2,1
+	.local	__v6clang_ss.mixed_widths           ; @__v6clang_ss.mixed_widths
+	.comm	__v6clang_ss.mixed_widths,6,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,4,1
 	.addrsig

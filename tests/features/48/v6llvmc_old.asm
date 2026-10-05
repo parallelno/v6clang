@@ -12,11 +12,11 @@ load8_stack_arg:                        ; @load8_stack_arg
 	;  arg6 = H
 	;  arg7 = stack
 ; %bb.0:
-	;--- V6C_LEA_FI ---
+	;--- V6CLANG_LEA_FI ---
 	LXI	H, 2
 	DAD	SP
 	XCHG
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	LDAX	D
 	RET
                                         ; -- End function
@@ -29,23 +29,23 @@ load16_stack_arg:                       ; @load16_stack_arg
 	;  arg2 = BC
 	;  arg3 = stack
 ; %bb.0:
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	D
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	B
 	XCHG
-	;--- V6C_LEA_FI ---
+	;--- V6CLANG_LEA_FI ---
 	LXI	H, 2
 	DAD	SP
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_LOAD16_P ---
+	;--- V6CLANG_LOAD16_P ---
 	LDAX	B
 	MOV	L, A
 	INX	B
 	LDAX	B
 	MOV	H, A
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	D
 	RET
                                         ; -- End function
@@ -58,13 +58,13 @@ store8_local:                           ; @store8_local
 	LXI	H, 0xffff
 	DAD	SP
 	SPHL
-	;--- V6C_LEA_FI ---
+	;--- V6CLANG_LEA_FI ---
 	LXI	H, 0
 	DAD	SP
 	XCHG
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	STAX	D
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	LDAX	D
 	LXI	H, 1
 	DAD	SP
@@ -79,19 +79,19 @@ store16_local:                          ; @store16_local
 ; %bb.0:
 	PUSH	PSW
 	XCHG
-	;--- V6C_LEA_FI ---
+	;--- V6CLANG_LEA_FI ---
 	LXI	H, 0
 	DAD	SP
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, E
 	STAX	B
 	INX	B
 	MOV	A, D
 	STAX	B
 	DCX	B
-	;--- V6C_LOAD16_P ---
+	;--- V6CLANG_LOAD16_P ---
 	LDAX	B
 	MOV	L, A
 	INX	B
@@ -113,7 +113,7 @@ main:                                   ; @main
 	LXI	H, 0
 	DAD	SP
 	LXI	D, 4
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	M, E
 	INX	H
 	MOV	M, D
@@ -121,19 +121,19 @@ main:                                   ; @main
 	LXI	D, 2
 	LXI	B, 3
 	CALL	load16_stack_arg
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	PUSH	H
 	LDA	g8
 	CALL	store8_local
 	STA	g8
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	POP	H
 	CALL	store16_local
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	PUSH	H
 	LDA	g8
 	OUT	0xed
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	POP	H
 	MOV	A, L
 	OUT	0xed
@@ -153,15 +153,15 @@ g16:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

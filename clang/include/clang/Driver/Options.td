@@ -3178,8 +3178,8 @@ def fno_builtin : Flag<["-"], "fno-builtin">, Group<f_Group>,
 def fno_builtin_ : Joined<["-"], "fno-builtin-">, Group<f_Group>,
   Visibility<[ClangOption, CC1Option, CLOption, DXCOption]>,
   HelpText<"Disable implicit builtin knowledge of a specific function">;
-def fno_v6c_auto_include : Flag<["-"], "fno-v6c-auto-include">, Group<f_Group>,
-  HelpText<"Suppress auto-inclusion of v6c_arith.h on V6C targets (user must supply the runtime)">;
+def fno_v6clang_auto_include : Flag<["-"], "fno-v6clang-auto-include">, Group<f_Group>,
+  HelpText<"Suppress auto-inclusion of v6clang_arith.h on V6CLANG targets (user must supply the runtime)">;
 def fno_common : Flag<["-"], "fno-common">, Group<f_Group>,
   Visibility<[ClangOption, CC1Option]>,
     HelpText<"Compile common globals like normal definitions">;

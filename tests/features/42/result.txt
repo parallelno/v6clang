@@ -10,11 +10,11 @@ Three-stage post-RA peephole pass that folds:
 
 Where r != A and r is dead after the ALU op (Stage 3: A dead after the
 store). OP is one of ADD/ADC/SUB/SBB/ANA/XRA/ORA/CMP. The memory-form
-instructions already exist in V6CInstrInfo.td -- this peephole simply
+instructions already exist in V6ClangInstrInfo.td -- this peephole simply
 recovers folds that survive ISel/expansion to post-RA.
 
 Implementation: `foldMovAluM()` (stages 1+2) and `foldIncDecMviM()`
-(stage 3), plus the `scanBetweenSafe()` helper, in V6CPeephole.cpp.
+(stage 3), plus the `scanBetweenSafe()` helper, in V6ClangPeephole.cpp.
 
 Real-world Stage 3 hits are rare in clang-emitted code because O49
 already pattern-matches (*p)++ / *p = imm directly to INR M / MVI M
@@ -22,7 +22,7 @@ during ISel. Stage 3 is the post-RA backstop for triads emitted by
 expansion or post-scheduling passes.
 
 
-## C source (tests/features/42/v6llvmc.c -- c8080.c is the same shape)
+## C source (tests/features/42/v6clang.c -- c8080.c is the same shape)
 
     extern unsigned char op(unsigned char x);
     extern void use1(unsigned char);
@@ -61,7 +61,7 @@ expansion or post-scheduling passes.
 ## c8080 stores every byte through static-stack slots; HL-relative
 ## reads are coded as `xor (hl)` etc. directly, so c8080 already
 ## emits the `XRA M` / `ANA M` form. This baseline is for reference;
-## the feature only changes v6llvmc.
+## the feature only changes v6clang.
 
     main:
         ld   hl, 0
@@ -141,7 +141,7 @@ expansion or post-scheduling passes.
 ##   inc_via_ptr / dec_via_ptr / set_via_ptr -- 1-2 instr / RET
 
 
-## v6llvmc assembly with O65 enabled (v6llvmc_new01.asm)
+## v6clang assembly with O65 enabled (v6clang_new01.asm)
 ## =====================================================
 ## All 12 strict-adjacent and 0 non-adjacent candidates fold in this
 ## test. 3 MOV r, M instructions remain: 1 in add_bytes (blocked by an
@@ -150,25 +150,25 @@ expansion or post-scheduling passes.
 
     xor_bytes:
         ; ... arg setup + 5 calls to op() spilling results to static slots ...
-        LDA   __v6c_ss.xor_bytes
+        LDA   __v6clang_ss.xor_bytes
         CALL  use1
-        LDA   __v6c_ss.xor_bytes+1
-        LXI   HL, __v6c_ss.xor_bytes+2
+        LDA   __v6clang_ss.xor_bytes+1
+        LXI   HL, __v6clang_ss.xor_bytes+2
         XRA   M                        ; was MOV L, M ; XRA L
-        LXI   HL, __v6c_ss.xor_bytes+3
+        LXI   HL, __v6clang_ss.xor_bytes+3
         XRA   M                        ; was MOV L, M ; XRA L
-        LXI   HL, __v6c_ss.xor_bytes+4
+        LXI   HL, __v6clang_ss.xor_bytes+4
         XRA   M                        ; was MOV L, M ; XRA L
-        LXI   HL, __v6c_ss.xor_bytes
+        LXI   HL, __v6clang_ss.xor_bytes
         XRA   M                        ; was MOV L, M ; XRA L
         RET
 
     and_bytes:
         ; ...
-        LDA   __v6c_ss.and_bytes+2
-        LXI   HL, __v6c_ss.and_bytes+1
+        LDA   __v6clang_ss.and_bytes+2
+        LXI   HL, __v6clang_ss.and_bytes+1
         ANA   M                        ; was MOV L, M ; ANA L
-        LXI   HL, __v6c_ss.and_bytes
+        LXI   HL, __v6clang_ss.and_bytes
         ANA   M                        ; was MOV L, M ; ANA L
         RET
 
@@ -197,7 +197,7 @@ expansion or post-scheduling passes.
         RET
 
 
-## v6llvmc stats: post-fold instruction counts in the four ALU functions
+## v6clang stats: post-fold instruction counts in the four ALU functions
 ##   xor_bytes              -- 4 XRA M folds (-16 cc, -4 B)
 ##   and_bytes              -- 2 ANA M folds (-8 cc, -2 B)
 ##   or_bytes               -- 2 ORA M folds (-8 cc, -2 B)
@@ -216,4 +216,4 @@ expansion or post-scheduling passes.
 ##   - Lit suite:    91/91 PASS  (incl. mov-alu-m-fold.ll, inc-dec-mvi-m-fold.ll)
 ##   - Golden tests: PASS
 ##   - Full regression (tests/run_all.py): 110/110 PASS
-##   - tests/features/42/v6llvmc_new01.asm shows the 12 expected folds
+##   - tests/features/42/v6clang_new01.asm shows the 12 expected folds

@@ -5,12 +5,12 @@ hl_to_de:                               ; @hl_to_de
 	PUSH	HL
 	XCHG
 	CALL	op_hl
-	SHLD	__v6c_ss.hl_to_de
+	SHLD	__v6clang_ss.hl_to_de
 	XCHG
 	POP	HL
 	XCHG
 	CALL	use_de
-	LHLD	__v6c_ss.hl_to_de
+	LHLD	__v6clang_ss.hl_to_de
 	SHLD	g_after
 	RET
                                         ; -- End function
@@ -32,8 +32,8 @@ main:                                   ; @main
 g_after:
 	DW	0                               ; 0x0
 
-	.local	__v6c_ss.hl_to_de               ; @__v6c_ss.hl_to_de
-	.comm	__v6c_ss.hl_to_de,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,2,1
+	.local	__v6clang_ss.hl_to_de               ; @__v6clang_ss.hl_to_de
+	.comm	__v6clang_ss.hl_to_de,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,2,1
 	.addrsig

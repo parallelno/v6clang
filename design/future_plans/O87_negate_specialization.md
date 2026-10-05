@@ -11,14 +11,14 @@ The current backend already canonicalizes all three source spellings
 to the same machine-level shape: subtract `x` from a materialized zero.
 
 That is semantically fine, but the current lowering burns more registers than
-necessary, which is especially expensive on i8080/V6C because there are only
+necessary, which is especially expensive on i8080/V6CLANG because there are only
 three usable 16-bit pairs (`HL`, `DE`, `BC`) and very few spare 8-bit
 registers once `A` and live pair halves are spoken for.
 
 The primary design constraint for this optimization is therefore not just
 cycles and bytes, but also **avoiding extra live temporaries through RA**.
 
-All cycle counts below use `docs/V6CInstructionTimings.md`:
+All cycle counts below use `docs/V6ClangInstructionTimings.md`:
 
 - `MOV r,r` / `MVI r,imm8`: 8cc
 - `XRA r` / `SUB r` / `SBB r` / `CMA`: 4cc
@@ -27,13 +27,13 @@ All cycle counts below use `docs/V6CInstructionTimings.md`:
 
 ## Current observed emission
 
-### i16 result (`int` on V6C)
+### i16 result (`int` on V6CLANG)
 
 Observed in `temp/negate_mulminus_probe.s` for all three spellings:
 
 ```asm
 LXI D, 0
-;--- V6C_SUB16 ---
+;--- V6CLANG_SUB16 ---
 MOV A, E
 SUB L
 MOV L, A
@@ -95,16 +95,16 @@ Introduce a dedicated negate pseudo for the canonical DAG shape
 
 ```tablegen
 let isPseudo = 1, Defs = [A, FLAGS] in
-def V6C_NEG16 : V6CPseudo<(outs GR16:$dst), (ins GR16:$src),
+def V6CLANG_NEG16 : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src),
     "# NEG16 $dst, $src", []>;
 ```
 
 Important: this should be selected from the canonical subtract form before RA,
-not recovered later from `LXI rp, 0` plus `V6C_SUB16`.
+not recovered later from `LXI rp, 0` plus `V6CLANG_SUB16`.
 
 Reason: a post-RA peephole would recover some byte/cycle savings, but it would
 still force the extra zero pair to participate in register allocation, which is
-the main architectural problem on V6C.
+the main architectural problem on V6CLANG.
 
 ### Expansion
 
@@ -134,7 +134,7 @@ Savings vs current emission:
 
 This is the main win.
 
-### Why this shape is good for V6C
+### Why this shape is good for V6CLANG
 
 1. It clobbers only `A`, `FLAGS`, and the destination pair.
 2. It does not require a scratch pair.
@@ -145,7 +145,7 @@ This is the main win.
 
 ### Why not use complement-then-`INX` for i16?
 
-The runtime helper `__v6c_neg_hl_body` already uses:
+The runtime helper `__v6clang_neg_hl_body` already uses:
 
 ```asm
 MOV A, L
@@ -199,11 +199,11 @@ as subtraction flags.
 
 ```tablegen
 let isPseudo = 1, Defs = [A, FLAGS] in
-def V6C_NEG8 : V6CPseudo<(outs GR8:$dst), (ins GR8:$src),
+def V6CLANG_NEG8 : V6ClangPseudo<(outs GR8:$dst), (ins GR8:$src),
     "# NEG8 $dst, $src", []>;
 ```
 
-### Expansion table for `V6C_NEG8`
+### Expansion table for `V6CLANG_NEG8`
 
 | Shape | Expansion | Cost |
 |---|---|---|
@@ -220,7 +220,7 @@ would be slower.
 
 `CMA` does not write flags, and `INR` does not write `CY`.
 
-Therefore `V6C_NEG8` must be used only for **result-only** arithmetic. Any
+Therefore `V6CLANG_NEG8` must be used only for **result-only** arithmetic. Any
 flag-producing i8 subtract/compare shape must remain on the existing subtract
 path.
 
@@ -242,7 +242,7 @@ That keeps the implementation surface small and robust.
 
 ### i16
 
-Select `V6C_NEG16` before RA, either by:
+Select `V6CLANG_NEG16` before RA, either by:
 
 1. a direct TableGen pattern for `(sub (i16 0), i16:$src)`, or
 2. a small custom-lowering helper if the generic subtract pattern wins too
@@ -252,7 +252,7 @@ The crucial point is that RA must never see the extra zero pair.
 
 ### i8
 
-Select `V6C_NEG8` only for result-only subtracts. Keep flag-producing i8 nodes
+Select `V6CLANG_NEG8` only for result-only subtracts. Keep flag-producing i8 nodes
 on the existing subtract path.
 
 This likely means wiring it through ordinary arithmetic lowering rather than the
@@ -260,20 +260,20 @@ existing flag-producing O75 `*F` family.
 
 ## Files likely touched
 
-- `llvm/lib/Target/V6C/V6CISelLowering.h`
-- `llvm/lib/Target/V6C/V6CISelLowering.cpp`
-- `llvm/lib/Target/V6C/V6CInstrInfo.td`
-- `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
-- `llvm/test/CodeGen/V6C/...` (source of truth)
+- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+- `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+- `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
+- `llvm/test/CodeGen/V6CLANG/...` (source of truth)
 
-The annotator path in `V6CInstrInfo.cpp` should also learn the new pseudo names
-so `-mllvm -mv6c-annotate-pseudos` prints `V6C_NEG16` / `V6C_NEG8` instead of
+The annotator path in `V6ClangInstrInfo.cpp` should also learn the new pseudo names
+so `-mllvm -mv6clang-annotate-pseudos` prints `V6CLANG_NEG16` / `V6CLANG_NEG8` instead of
 opaque instruction sequences.
 
 ## Why a pure peephole is not enough
 
 For both widths, a late peephole can recover some local code-quality benefit.
-But it misses the most important V6C constraint:
+But it misses the most important V6CLANG constraint:
 
 - i16 peephole: RA already paid for the zero pair.
 - i8 peephole: RA already paid for the scratch GR8 in the `src == A` case.
@@ -291,7 +291,7 @@ temporaries in the first place.
 
 ### Indirect benefit
 
-On V6C the indirect gain may matter as much as the direct one:
+On V6CLANG the indirect gain may matter as much as the direct one:
 
 - fewer live pairs in tight i16 code
 - fewer scratch bytes in accumulator-heavy i8 code
@@ -308,7 +308,7 @@ on a 3-pair machine.
 
 Guard:
 
-- use `V6C_NEG8` only for result-only arithmetic nodes
+- use `V6CLANG_NEG8` only for result-only arithmetic nodes
 - keep all flag-producing or compare-related paths on existing subtract logic
 
 ### 2. Pessimizing non-`A` or memory i8 inputs
@@ -330,7 +330,7 @@ Guard:
 
 Add a new lit test, for example:
 
-- `llvm/test/CodeGen/V6C/negate-specialization.ll`
+- `llvm/test/CodeGen/V6CLANG/negate-specialization.ll`
 
 Coverage should include:
 
@@ -345,7 +345,7 @@ Coverage should include:
 Checks should assert:
 
 - no `LXI ?, 0` for the i16 negate path
-- `V6C_NEG16` annotated expansion uses the 32cc `XRA/SUB/SBB A/SUB` shape
+- `V6CLANG_NEG16` annotated expansion uses the 32cc `XRA/SUB/SBB A/SUB` shape
 - `CMA; INR A` appears for the accumulator i8 negate case
 - memory-source i8 negate remains on the `SUB M` shape
 
@@ -359,5 +359,5 @@ This is a good optimization target, but the two widths are not symmetric.
   a result-only specialization and must not be generalized to non-`A` or
   memory-source shapes.
 
-The common theme is the same in both cases: on i8080/V6C, avoiding unnecessary
+The common theme is the same in both cases: on i8080/V6CLANG, avoiding unnecessary
 temporary registers is as important as shaving raw cycles.

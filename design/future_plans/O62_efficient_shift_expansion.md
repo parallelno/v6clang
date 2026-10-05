@@ -2,8 +2,8 @@
 
 ## Problem
 
-`V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16` are expanded in
-[V6CInstrInfo.cpp](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp) by a
+`V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` are expanded in
+[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) by a
 generic template that:
 
 1. Emits an unconditional full 16-bit copy (`MOV DstHi, SrcHi; MOV DstLo, SrcLo`)
@@ -12,7 +12,7 @@ generic template that:
 
 For shift amounts that are a multiple of 8, stage (1) copies bytes that
 are immediately overwritten by the byte-lane move produced in stage (2).
-No later pass currently removes those dead copies, and `V6CLoadImmCombine`
+No later pass currently removes those dead copies, and `V6ClangLoadImmCombine`
 can only replace the `MVI r, 0` zero-fill with `MOV r, r'` (saving 1B)
 — it never touches the dead-copy issue.
 
@@ -22,7 +22,7 @@ From [temp/o61_test.asm](../../temp/o61_test.asm) (`arr_sum`,
 `tmp2 = (int)(arr) >> 8`, HL = `arr`, B = 0):
 
 ```asm
-;--- V6C_SRL16 ---    ; DE <- HL >> 8
+;--- V6CLANG_SRL16 ---    ; DE <- HL >> 8
   MOV D, H            ; DstHi <- SrcHi     (template copy)
   MOV E, L            ; DstLo <- SrcLo     ;; DEAD — overwritten next
   MOV E, D            ; DstLo <- SrcHi     (byte-lane move)
@@ -43,10 +43,10 @@ The same structural waste affects `SHL16` by 8..15 and `SRA16` by 8..15.
 ## Root Cause
 
 In
-[V6CInstrInfo.cpp:1465 (V6C_SHL16)](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L1465),
-[V6CInstrInfo.cpp:1512 (V6C_SRL16)](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L1512),
+[V6ClangInstrInfo.cpp:1465 (V6CLANG_SHL16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1465),
+[V6ClangInstrInfo.cpp:1512 (V6CLANG_SRL16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1512),
 and
-[V6CInstrInfo.cpp:1555 (V6C_SRA16)](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L1555),
+[V6ClangInstrInfo.cpp:1555 (V6CLANG_SRA16)](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L1555),
 the expander unconditionally does:
 
 ```cpp
@@ -104,23 +104,23 @@ the `DstReg != SrcReg` + `ShAmt % 8 == 0` (or >= 8) branch.
 ## Implementation
 
 All changes local to
-[V6CInstrInfo.cpp](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp) in the
-three `V6C_S*16` cases of `expandPostRAPseudo`. No TableGen, no new
+[V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) in the
+three `V6CLANG_S*16` cases of `expandPostRAPseudo`. No TableGen, no new
 pseudo, no ISel change, no new flag.
 
-Pseudocode for `V6C_SRL16` (mirror for `SHL16` and `SRA16` with the
+Pseudocode for `V6CLANG_SRL16` (mirror for `SHL16` and `SRA16` with the
 appropriate lane / zero-fill):
 
 ```cpp
-case V6C::V6C_SRL16: {
+case V6CLANG::V6CLANG_SRL16: {
   Register Dst = MI.getOperand(0).getReg();
   Register Src = MI.getOperand(1).getReg();
   unsigned Amt = MI.getOperand(2).getImm() & 0x0F;   // mod 16
 
-  MCRegister DstHi = RI.getSubReg(Dst, V6C::sub_hi);
-  MCRegister DstLo = RI.getSubReg(Dst, V6C::sub_lo);
-  MCRegister SrcHi = RI.getSubReg(Src, V6C::sub_hi);
-  MCRegister SrcLo = RI.getSubReg(Src, V6C::sub_lo);
+  MCRegister DstHi = RI.getSubReg(Dst, V6CLANG::sub_hi);
+  MCRegister DstLo = RI.getSubReg(Dst, V6CLANG::sub_lo);
+  MCRegister SrcHi = RI.getSubReg(Src, V6CLANG::sub_hi);
+  MCRegister SrcLo = RI.getSubReg(Src, V6CLANG::sub_lo);
 
   if (Amt >= 8) {
     // Byte-lane move: DstLo <- SrcHi, DstHi <- 0.
@@ -132,10 +132,10 @@ case V6C::V6C_SRL16: {
     // Per-bit right shift on DstLo only (A-routed RAR chain);
     // no hi-lo coupling needed because DstHi is known zero.
     for (unsigned i = 0; i < Amt; ++i) {
-      BuildMI(..., MOVrr, V6C::A).addReg(DstLo);
-      BuildMI(..., ORAr,  V6C::A).addReg(V6C::A).addReg(V6C::A); // CY = 0
-      BuildMI(..., RAR,   V6C::A).addReg(V6C::A);
-      BuildMI(..., MOVrr, DstLo).addReg(V6C::A);
+      BuildMI(..., MOVrr, V6CLANG::A).addReg(DstLo);
+      BuildMI(..., ORAr,  V6CLANG::A).addReg(V6CLANG::A).addReg(V6CLANG::A); // CY = 0
+      BuildMI(..., RAR,   V6CLANG::A).addReg(V6CLANG::A);
+      BuildMI(..., MOVrr, DstLo).addReg(V6CLANG::A);
     }
     MI.eraseFromParent();
     return true;
@@ -193,7 +193,7 @@ None. Depends on no other optimization. Compatible with:
 
 ## Cost Model Summary
 
-Per V6C timings ([docs/V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md)):
+Per V6CLANG timings ([docs/V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md)):
 
 | Ref | Cycles saved / occurrence | Bytes saved | Frequency |
 |-----|-----------------------|--------------|-----------|
@@ -204,7 +204,7 @@ Per V6C timings ([docs/V6CInstructionTimings.md](../../docs/V6CInstructionTiming
 
 "High frequency" because `>> 8` / `<< 8` appear in every unpack of a
 16-bit value into byte lanes — common in drivers, memory-mapped I/O,
-and the address-arithmetic idioms the V6C frontend emits when casting
+and the address-arithmetic idioms the V6CLANG frontend emits when casting
 pointers to integers.
 
 ## Comparison With Other Backends
@@ -222,11 +222,11 @@ pointers to integers.
   (inspiration for [O57](O57_shift_rotate_chaining.md)) but the
   "shift by 8" case is handled directly in expansion.
 
-V6C should do the same — O62 closes this backend-quality gap.
+V6CLANG should do the same — O62 closes this backend-quality gap.
 
 ## Estimated Effort
 
-~60 lines in `V6CInstrInfo.cpp` across three cases. No TableGen, no
+~60 lines in `V6ClangInstrInfo.cpp` across three cases. No TableGen, no
 test infrastructure changes beyond new IR / asm tests under
 `tests/features/` for each special-cased amount.
 

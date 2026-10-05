@@ -33,7 +33,7 @@ MOV  B, A       ;  8cc
 
 ## Implementation
 
-In `expandPostRAPseudo` for `V6C_ADD16`, detect when one operand's high
+In `expandPostRAPseudo` for `V6CLANG_ADD16`, detect when one operand's high
 sub-register was defined by `MVI reg, 0` (scan backward, similar to
 `findDefiningLXI`). If so, emit a shorter sequence that skips the high
 byte load (use `MVI A, 0; ADC hi` instead of `MOV A, hi; ADC hi`).

@@ -1,30 +1,30 @@
-# Plan: O91 — Elide V6C_CMP8_ZERO After Flag-Setting ALU Op (MOV R,A bridge)
+# Plan: O91 — Elide V6CLANG_CMP8_ZERO After Flag-Setting ALU Op (MOV R,A bridge)
 
 ## 1. Problem
 
 ### Current behavior
 
-After O89 (dead hi-byte elision in `V6C_XOR16`/`V6C_AND16`/`V6C_OR16`), a
+After O89 (dead hi-byte elision in `V6CLANG_XOR16`/`V6CLANG_AND16`/`V6CLANG_OR16`), a
 `(u8)(a OP b) == 0` comparison emits:
 
 ```asm
-;--- V6C_XOR16 (DstHi dead, O89) ---
+;--- V6CLANG_XOR16 (DstHi dead, O89) ---
 MOV  A, E          ;  8cc  1B   A = lhs_lo
 XRA  L             ;  4cc  1B   A = lo result, Z = (result==0) ← VALID Z
 MOV  L, A          ;  8cc  1B   DstLo = result; FLAGS untouched
-;--- V6C_CMP8_ZERO L (shape 2) ---
+;--- V6CLANG_CMP8_ZERO L (shape 2) ---
 XRA  A             ;  4cc  1B   ← Z already valid — REDUNDANT
 CMP  L             ;  4cc  1B   ← REDUNDANT
 JZ   .zero
 ```
 
 `XRA L` sets `Z = (result == 0)`. `MOV L, A` does not touch FLAGS. The
-entire `XRA A; CMP L` expansion of `V6C_CMP8_ZERO L` is provably redundant.
+entire `XRA A; CMP L` expansion of `V6CLANG_CMP8_ZERO L` is provably redundant.
 
 ### Desired behavior
 
 ```asm
-;--- V6C_XOR16 (DstHi dead, O89+O91) ---
+;--- V6CLANG_XOR16 (DstHi dead, O89+O91) ---
 MOV  A, E          ;  8cc  1B
 XRA  L             ;  4cc  1B   Z = (result==0) — used directly
 JZ   .zero         ; 12cc  3B
@@ -34,7 +34,7 @@ JZ   .zero         ; 12cc  3B
 
 ### Root cause
 
-`V6CRedundantFlagElim` only eliminates `ORA A` / `ANA A` (identity
+`V6ClangRedundantFlagElim` only eliminates `ORA A` / `ANA A` (identity
 operations). It has no concept of "register R holds A's value at the time Z
 was last set," so it cannot recognise that `XRA A; CMP R` restates the same
 Z bit that a prior ALU op already produced.
@@ -52,7 +52,7 @@ CMP R                    ; Z recalculated identically, then ZFlagValid = false
 
 ## 2. Strategy
 
-### Approach: extend `V6CRedundantFlagElim` with `AValueRegs` tracker
+### Approach: extend `V6ClangRedundantFlagElim` with `AValueRegs` tracker
 
 Alongside the existing `bool ZFlagValid`, add:
 
@@ -100,17 +100,17 @@ Guards against false firing:
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CRedundantFlagElim.cpp` | Add `AValueRegs` / `AValueSrc`; new elimination rule for `XRA A` + `CMP R` pattern |
-| `llvm-project/llvm/test/CodeGen/V6C/cmp8-zero-redundant-after-alu.ll` | New lit test: three ops × dead/live hi; control cases |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp` | Add `AValueRegs` / `AValueSrc`; new elimination rule for `XRA A` + `CMP R` pattern |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll` | New lit test: three ops × dead/live hi; control cases |
 | `tests/features/73/` | Feature test: C source, baseline, new asm, result.txt |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `AValueRegs` / `AValueSrc` trackers to `V6CRedundantFlagElim` [ ]
+### Step 3.1 — Add `AValueRegs` / `AValueSrc` trackers to `V6ClangRedundantFlagElim` [ ]
 
-**File:** `llvm-project/llvm/lib/Target/V6C/V6CRedundantFlagElim.cpp`
+**File:** `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
 
 Inside `runOnMachineFunction`, alongside `bool ZFlagValid`, declare:
 
@@ -126,11 +126,11 @@ Add a private static helper that returns the destination register when MI is
 
 ```cpp
 static Register getMOVrADest(const MachineInstr &MI) {
-  if (MI.getOpcode() != V6C::MOVrr)
+  if (MI.getOpcode() != V6CLANG::MOVrr)
     return Register();
   Register Dst = MI.getOperand(0).getReg();
   Register Src = MI.getOperand(1).getReg();
-  return (Src == V6C::A && Dst != V6C::A) ? Dst : Register();
+  return (Src == V6CLANG::A && Dst != V6CLANG::A) ? Dst : Register();
 }
 ```
 
@@ -143,7 +143,7 @@ if (ZFlagValid && isXraA(MI)) {
   auto NextIt = std::next(MI.getIterator());
   if (NextIt != MBB.end()) {
     MachineInstr &NextMI = *NextIt;
-    if (NextMI.getOpcode() == V6C::CMPr) {
+    if (NextMI.getOpcode() == V6CLANG::CMPr) {
       Register CmpSrc = NextMI.getOperand(1).getReg();
       if (AValueRegs.count(CmpSrc)) {
         // Check that the MOV R,A bridge is not used elsewhere after CMP R.
@@ -167,9 +167,9 @@ if (ZFlagValid && isXraA(MI)) {
 
 ```cpp
 static bool isXraA(const MachineInstr &MI) {
-  if (MI.getOpcode() != V6C::XRAr) return false;
+  if (MI.getOpcode() != V6CLANG::XRAr) return false;
   // XRAr: (outs Acc:$dst), (ins Acc:$lhs, GR8:$rs)
-  return MI.getOperand(2).getReg() == V6C::A;
+  return MI.getOperand(2).getReg() == V6CLANG::A;
 }
 ```
 
@@ -234,7 +234,7 @@ And clear both when `isAluWritesAAndFlags` fires:
 if (isAluWritesAAndFlags(MI)) {
   ZFlagValid = true;
   AValueRegs.clear(); AValueSrc.clear();
-  AValueRegs.insert(V6C::A); // A holds the fresh result (no bridge MI)
+  AValueRegs.insert(V6CLANG::A); // A holds the fresh result (no bridge MI)
 ```
 
 > **Design Notes:**
@@ -262,7 +262,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — New lit test `cmp8-zero-redundant-after-alu.ll` [ ]
 
-**File:** `llvm-project/llvm/test/CodeGen/V6C/cmp8-zero-redundant-after-alu.ll`
+**File:** `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll`
 
 Cover the following cases:
 
@@ -294,7 +294,7 @@ Key FileCheck directives:
 ### Step 3.4 — Run lit test [ ]
 
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6C\cmp8-zero-redundant-after-alu.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\cmp8-zero-redundant-after-alu.ll -v
 ```
 
 > **Implementation Notes:** (fill after completion)
@@ -315,10 +315,10 @@ All tests must pass (current baseline: all green).
 
 ### Step 3.6 — Verification assembly (from `tests\features\README.md`) [ ]
 
-Compile `tests/features/73/v6llvmc.c` with the new compiler:
+Compile `tests/features/73/v6clang.c` with the new compiler:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\73\v6llvmc.c -o tests\features\73\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\73\v6clang.c -o tests\features\73\v6clang_new01.asm
 ```
 
 Verify:
@@ -338,9 +338,9 @@ Create `tests/features/73/result.txt` with:
 - C test case code
 - c8080 asm (main + all functions, converted to i8080 mnemonics)
 - c8080 stats table (worst cycles, bytes per function)
-- v6llvmc old asm (from `v6llvmc_old.asm`)
-- v6llvmc new asm (from `v6llvmc_new01.asm`)
-- Comparison table: c8080 / v6llvmc-old / v6llvmc-new (cycles, bytes)
+- v6clang old asm (from `v6clang_old.asm`)
+- v6clang new asm (from `v6clang_new01.asm`)
+- Comparison table: c8080 / v6clang-old / v6clang-new (cycles, bytes)
 
 > **Implementation Notes:** (fill after completion)
 
@@ -352,8 +352,8 @@ Create `tests/features/73/result.txt` with:
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-Verify that `llvm/lib/Target/V6C/V6CRedundantFlagElim.cpp` and
-`tests/lit/CodeGen/V6C/cmp8-zero-redundant-after-alu.ll` reflect the changes.
+Verify that `llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp` and
+`tests/lit/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll` reflect the changes.
 
 > **Implementation Notes:** (fill after completion)
 
@@ -428,11 +428,11 @@ Same saving.
 
 - **O89** (dead hi-byte elision) creates the `MOV R,A; XRA A; CMP R` sequence
   that O91 eliminates. Without O89 the full 6-instruction pair expansion lands
-  in A, so `V6C_CMP8_ZERO` fires shape 1 (`ORA A`) which `V6CRedundantFlagElim`
+  in A, so `V6CLANG_CMP8_ZERO` fires shape 1 (`ORA A`) which `V6ClangRedundantFlagElim`
   already handles.
-- **O80** (`V6C_CMP8_ZERO` pseudo) introduced the shape 2 (`XRA A; CMP R`)
+- **O80** (`V6CLANG_CMP8_ZERO` pseudo) introduced the shape 2 (`XRA A; CMP R`)
   expansion path that O91 targets.
-- **O17** (`V6CRedundantFlagElim`) is the pass being extended.
+- **O17** (`V6ClangRedundantFlagElim`) is the pass being extended.
 
 ---
 
@@ -446,8 +446,8 @@ Same saving.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [Design doc](design\future_plans\O91_cmp8_zero_after_alu_flag_elision.md)
-* [V6CRedundantFlagElim.cpp](llvm\lib\Target\V6C\V6CRedundantFlagElim.cpp)
+* [V6ClangRedundantFlagElim.cpp](llvm\lib\Target\V6CLANG\V6ClangRedundantFlagElim.cpp)

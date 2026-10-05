@@ -1,6 +1,6 @@
 /* O92: Unified cross-BB physical-register value forwarding — c8080 reference.
  *
- * Same source as v6llvmc.c. c8080 uses 'unsigned char' for 8-bit values.
+ * Same source as v6clang.c. c8080 uses 'unsigned char' for 8-bit values.
  */
 typedef unsigned char u8;
 

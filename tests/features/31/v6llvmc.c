@@ -63,7 +63,7 @@ unsigned char arr_sum(unsigned char* arr, unsigned char n) {
 
 // --- 16-bit commute ---
 // i16 add — one operand in HL, the other in DE. Commute should choose
-// HL as LHS to avoid DE↔HL shuffle before V6C_ADD16 expansion.
+// HL as LHS to avoid DE↔HL shuffle before V6CLANG_ADD16 expansion.
 unsigned int sum16(unsigned int a, unsigned int b) {
     return a + b;
 }

@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-`V6C_ADD16` is a pseudo-instruction for 16-bit addition. Its
+`V6CLANG_ADD16` is a pseudo-instruction for 16-bit addition. Its
 `expandPostRAPseudo()` expansion has two paths:
 
 1. **INX/DCX chain** — when one operand is a small constant and
@@ -53,8 +53,8 @@ RhsReg == HL)` for the DAD fast path. It does not consider:
 
 ### Approach: Two new code paths with XCHG sub-cases in expandPostRAPseudo
 
-Insert two new DAD-based expansion paths in `V6CInstrInfo::expandPostRAPseudo()`,
-case `V6C::V6C_ADD16`, between the existing DAD check and the general
+Insert two new DAD-based expansion paths in `V6ClangInstrInfo::expandPostRAPseudo()`,
+case `V6CLANG::V6CLANG_ADD16`, between the existing DAD check and the general
 byte-chain fallback. When dst=DE, use XCHG (4cc, 1B) instead of two
 MOVs (16cc, 2B) for a further savings.
 
@@ -76,7 +76,7 @@ MOVs (16cc, 2B) for a further savings.
 
 ### Case matrix
 
-All `$dst = V6C_ADD16 $lhs, $rhs` register pair assignments:
+All `$dst = V6CLANG_ADD16 $lhs, $rhs` register pair assignments:
 
 | dst | lhs | rhs | Path | Expansion | Cost |
 |-----|-----|-----|------|-----------|------|
@@ -105,9 +105,9 @@ Notes:
 
 | Step | What | Where |
 |------|------|-------|
-| Path A (A1-DE, A2-DE, A-general) | DAD + XCHG or MOV-pair when HL is operand, dst≠HL | V6CInstrInfo.cpp |
-| Path B (B1-DE, B-general) | XCHG+DAD or MOV-pair+DAD when dst=HL, neither source is HL | V6CInstrInfo.cpp |
-| Lit test | Verify all sub-paths in assembly output | tests/lit/CodeGen/V6C/ |
+| Path A (A1-DE, A2-DE, A-general) | DAD + XCHG or MOV-pair when HL is operand, dst≠HL | V6ClangInstrInfo.cpp |
+| Path B (B1-DE, B-general) | XCHG+DAD or MOV-pair+DAD when dst=HL, neither source is HL | V6ClangInstrInfo.cpp |
+| Lit test | Verify all sub-paths in assembly output | tests/lit/CodeGen/V6CLANG/ |
 
 ---
 
@@ -115,7 +115,7 @@ Notes:
 
 ### Step 3.1 — Add Path A: dst≠HL, one operand is HL [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Insert after the existing `DstReg == HL` DAD checks (around line 536),
 before the general byte-chain fallback. Contains three sub-cases ordered
@@ -123,25 +123,25 @@ by profitability.
 
 ```cpp
 // --- Path A: one operand is HL, DstReg != HL ---
-if (DstReg != V6C::HL &&
-    (LhsReg == V6C::HL || RhsReg == V6C::HL)) {
-  Register OtherReg = (LhsReg == V6C::HL) ? RhsReg : LhsReg;
-  bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6C::HL, &RI);
+if (DstReg != V6CLANG::HL &&
+    (LhsReg == V6CLANG::HL || RhsReg == V6CLANG::HL)) {
+  Register OtherReg = (LhsReg == V6CLANG::HL) ? RhsReg : LhsReg;
+  bool HLDead = isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::HL, &RI);
 
-  if (DstReg == V6C::DE) {
+  if (DstReg == V6CLANG::DE) {
     if (HLDead) {
       // A1-DE: DAD OtherReg; XCHG → 16cc, 2B
-      BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(OtherReg);
-      BuildMI(MBB, MI, DL, get(V6C::XCHG));
+      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
+      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
       MI.eraseFromParent();
       return true;
     }
-    if (OtherReg == V6C::DE) {
+    if (OtherReg == V6CLANG::DE) {
       // A2-DE: DE = HL + DE with HL live. XCHG; DAD DE; XCHG → 20cc, 3B
       // After: DE = old_HL + old_DE (sum), HL = old_HL (preserved).
-      BuildMI(MBB, MI, DL, get(V6C::XCHG));
-      BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(V6C::DE);
-      BuildMI(MBB, MI, DL, get(V6C::XCHG));
+      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::DE);
+      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
       MI.eraseFromParent();
       return true;
     }
@@ -150,11 +150,11 @@ if (DstReg != V6C::HL &&
 
   if (HLDead) {
     // A-general (dest=BC): DAD + MOV pair → 28cc, 3B
-    BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(OtherReg);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6C::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6C::sub_lo);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstHi).addReg(V6C::H);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstLo).addReg(V6C::L);
+    BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
     MI.eraseFromParent();
     return true;
   }
@@ -178,29 +178,29 @@ if (DstReg != V6C::HL &&
 
 ### Step 3.2 — Add Path B: dst=HL, neither operand is HL [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Insert immediately after Path A, still before the byte-chain fallback.
 
 ```cpp
 // --- Path B: DstReg == HL, neither operand is HL ---
-if (DstReg == V6C::HL && LhsReg != V6C::HL && RhsReg != V6C::HL) {
+if (DstReg == V6CLANG::HL && LhsReg != V6CLANG::HL && RhsReg != V6CLANG::HL) {
   // B1-DE: one operand is DE (not both), DE dead → XCHG + DAD (16cc, 2B)
   // XCHG brings DE into HL; DAD adds the other operand.
   if (LhsReg != RhsReg) { // skip if both operands are the same pair
     Register DEOp = Register();
     Register NonDEOp = Register();
-    if (LhsReg == V6C::DE) {
+    if (LhsReg == V6CLANG::DE) {
       DEOp = LhsReg;
       NonDEOp = RhsReg;
-    } else if (RhsReg == V6C::DE) {
+    } else if (RhsReg == V6CLANG::DE) {
       DEOp = RhsReg;
       NonDEOp = LhsReg;
     }
-    if (DEOp && isRegDeadAfter(MBB, MI.getIterator(), V6C::DE, &RI)) {
+    if (DEOp && isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::DE, &RI)) {
       // XCHG: HL=old_DE, DE=old_HL(dead). DAD NonDEOp: HL = old_DE + NonDEOp.
-      BuildMI(MBB, MI, DL, get(V6C::XCHG));
-      BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(NonDEOp);
+      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
+      BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(NonDEOp);
       MI.eraseFromParent();
       return true;
     }
@@ -208,11 +208,11 @@ if (DstReg == V6C::HL && LhsReg != V6C::HL && RhsReg != V6C::HL) {
 
   // B-general: MOV pair + DAD → 28cc, 3B
   // Copy LhsReg into HL, DAD RhsReg. HL is the destination so old HL is dead.
-  MCRegister LhsHi = RI.getSubReg(LhsReg, V6C::sub_hi);
-  MCRegister LhsLo = RI.getSubReg(LhsReg, V6C::sub_lo);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::H).addReg(LhsHi);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::L).addReg(LhsLo);
-  BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(RhsReg);
+  MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
+  MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(LhsHi);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(LhsLo);
+  BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(RhsReg);
   MI.eraseFromParent();
   return true;
 }
@@ -237,7 +237,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: add16-dad-expansion.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/add16-dad-expansion.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll`
 
 Test cases:
 1. **A1-DE** — `DE = HL + rp`, HL dead: expect `DAD; XCHG`
@@ -398,7 +398,7 @@ DAD  D           ; 12cc 1B
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [Feature Description](design\future_plans\O40_add16_dad_expansion.md)

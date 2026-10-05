@@ -6,10 +6,10 @@
 // load -- the peephole must NOT fire there.
 //
 // Compile baseline / new:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\46\v6llvmc.c -o tests\features\46\v6llvmc_old.asm
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\46\v6llvmc.c -o tests\features\46\v6llvmc_new01.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\46\v6clang.c -o tests\features\46\v6clang_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\46\v6clang.c -o tests\features\46\v6clang_new01.asm
 
 typedef unsigned char  u8;
 typedef signed char    i8;
@@ -42,7 +42,7 @@ i8 neg_or_seven(i8 a, i8 b) {
     return (a - b) < 0 ? (i8)0 : (i8)7;
 }
 
-// ---- 4. Aggregate driver so c8080.c and v6llvmc.c are comparable. ----
+// ---- 4. Aggregate driver so c8080.c and v6clang.c are comparable. ----
 
 volatile i8  g_a = -3;
 volatile i8  g_b =  4;

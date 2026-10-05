@@ -1,7 +1,7 @@
 // Test case for O61 Stage 1 — c8080 reference version.
 //
 // c8080 does not implement the static stack alloc optimization the
-// way v6llvmc does, so the spill/reload baseline shape will differ.
+// way v6clang does, so the spill/reload baseline shape will differ.
 // This file exists for the standard tests/features comparison.
 
 unsigned int op_acc;

@@ -1,7 +1,7 @@
 # O36. Redundant Immediate Load After Branch-Proven Value
 
 *Identified from analysis of temp/test_o28.asm `test_cond_zero_tailcall`.*
-*Extends V6CLoadImmCombine — adds branch-implied value seeding.*
+*Extends V6ClangLoadImmCombine — adds branch-implied value seeding.*
 
 ## Problem
 
@@ -90,9 +90,9 @@ the single-predecessor fallthrough, seed known values at block entry.
 
 ## Implementation
 
-### Recommended: Extend V6CLoadImmCombine (Approach B)
+### Recommended: Extend V6ClangLoadImmCombine (Approach B)
 
-V6CLoadImmCombine already tracks known register values per-BB via a
+V6ClangLoadImmCombine already tracks known register values per-BB via a
 forward scan. The extension:
 
 1. **At BB entry**, check if the block has a **single predecessor**
@@ -113,7 +113,7 @@ This approach is superior to a standalone peephole because:
 
 ### Pass ordering
 
-V6CLoadImmCombine already runs in the pipeline. The only change is
+V6ClangLoadImmCombine already runs in the pipeline. The only change is
 seeding known values at block entry for single-predecessor fallthroughs.
 No pass ordering change needed.
 
@@ -125,7 +125,7 @@ No pass ordering change needed.
 
 ## Complexity & Risk
 
-- **Complexity:** Low (~40-50 lines in V6CLoadImmCombine)
+- **Complexity:** Low (~40-50 lines in V6ClangLoadImmCombine)
 - **Risk:** Low — value seeding only activates for single-predecessor
   blocks with a recognized zero-test/CPI terminator pattern. Must
   verify that the zero-test truly covers the exact registers being

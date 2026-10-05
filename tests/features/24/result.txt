@@ -107,7 +107,7 @@ main:                                   ; 12B
 Note: c8080 recomputes array base + index from memory every iteration.
 Each loop uses static memory for the counter (LDA/STA per iteration).
 
-## v6llvmc assembly (OLD — before O41, dead LXI BC,1 in preheaders)
+## v6clang assembly (OLD — before O41, dead LXI BC,1 in preheaders)
 
 ```asm
 fill_array:                             ; 24B
@@ -156,7 +156,7 @@ sub_small:                              ; 2B
     RET                                 ; 12cc, 1B
 ```
 
-## v6llvmc assembly (NEW — after O41, dead LXI BC,1 eliminated)
+## v6clang assembly (NEW — after O41, dead LXI BC,1 eliminated)
 
 ```asm
 fill_array:                             ; 21B
@@ -203,7 +203,7 @@ sub_small:                              ; 2B (unchanged)
     RET                                 ; 12cc, 1B
 ```
 
-## v6llvmc stats
+## v6clang stats
 
 | Function    | OLD Cycles | OLD Bytes | NEW Cycles | NEW Bytes | Δ Cycles | Δ Bytes |
 |-------------|------------|-----------|------------|-----------|----------|---------|
@@ -216,9 +216,9 @@ sub_small:                              ; 2B (unchanged)
 
 Cycle calculation: setup + 99 fast iterations (56cc each) + 1 exit iteration.
 
-## Comparison: v6llvmc vs c8080
+## Comparison: v6clang vs c8080
 
-| Metric               |    c8080 |  v6llvmc OLD |  v6llvmc NEW | Speedup (NEW vs c8080) |
+| Metric               |    c8080 |  v6clang OLD |  v6clang NEW | Speedup (NEW vs c8080) |
 |----------------------|---------:|-------------:|-------------:|-----------------------:|
 | fill_array cycles    |   14,860 |        5,668 |        5,656 |                  2.63× |
 | copy_loop cycles     |   18,844 |        5,672 |        5,660 |                  3.33× |
@@ -231,13 +231,13 @@ Cycle calculation: setup + 99 fast iterations (56cc each) + 1 exit iteration.
 Before O41, the LoopPointerInduction pass (O19) correctly recognized pointer
 increments and produced `add i16 %ptr, 1` → DAD → INX via the post-RA peephole
 (O29). However, the DAG combine unconditionally lowered `add i16 %ptr, 1` to
-`V6CISD::DAD(ptr, LXI 1)`, which forced the register allocator to assign BC to
+`V6ClangISD::DAD(ptr, LXI 1)`, which forced the register allocator to assign BC to
 hold the constant `1`. The INX/DCX peephole then eliminated the DAD but left the
 dead `LXI BC, 1` in the preheader, wasting 3 bytes + 12 cycles + tying up BC.
 
 **How O41 works:**
 The DAG combine now intercepts `ISD::ADD` / `ISD::SUB` with small constants
-(±1..±3) **before** the DAD conversion. It emits `V6CISD::INX16` / `V6CISD::DCX16`
+(±1..±3) **before** the DAD conversion. It emits `V6ClangISD::INX16` / `V6ClangISD::DCX16`
 pseudo-instructions that carry the repeat count as a `TargetConstant` operand.
 These pseudos expand post-RA to N copies of `INX rp` / `DCX rp`, with no register
 allocation needed for the constant. The `$dst = $src` constraint ensures tied

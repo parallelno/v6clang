@@ -1,8 +1,8 @@
-# V6C Spill Optimization — Design Document
+# V6CLANG Spill Optimization — Design Document
 
 ## 1. Problem Statement
 
-The current V6C backend expands SPILL16/RELOAD16 pseudos into stack-relative
+The current V6CLANG backend expands SPILL16/RELOAD16 pseudos into stack-relative
 addressing sequences that cost **~104 cc / 16 bytes per spill-reload pair**.
 The Intel 8080 has no stack-relative load/store instructions, so every stack
 access requires a multi-instruction sequence:
@@ -150,7 +150,7 @@ MOV A,r clobbers A).
    ineligible, or emit DI/EI guards (at +16 cc overhead).
 
 2. **Symbol uniqueness.** Each spill slot maps to a distinct global symbol
-   (`__v6c_spill_<func>_<slot>`). Symbols are function-scoped (local
+   (`__v6clang_spill_<func>_<slot>`). Symbols are function-scoped (local
    linkage) to avoid cross-function collision.
 
 3. **RAM budget.** Each T2 slot costs 2 bytes of `.bss`. The pass should
@@ -165,17 +165,17 @@ T2 is chosen for slots that:
 
 ---
 
-## 5. Architecture — V6CSpillOpt Pass
+## 5. Architecture — V6ClangSpillOpt Pass
 
 ### 5.1 Pass Identity
 
 | Property | Value |
 |----------|-------|
-| Name | `V6C Spill Optimization` |
+| Name | `V6CLANG Spill Optimization` |
 | Type | `MachineFunctionPass` |
-| ID | `V6CSpillOpt::ID` |
+| ID | `V6ClangSpillOpt::ID` |
 | Pipeline slot | `addPreEmitPass()`, **before** all existing optimization passes |
-| Toggle | `-v6c-disable-spill-opt` (cl::opt, default false) |
+| Toggle | `-v6clang-disable-spill-opt` (cl::opt, default false) |
 
 ### 5.2 Pipeline Position
 
@@ -191,16 +191,16 @@ allocator framework, before `addPreEmitPass()`. The SPILL/RELOAD pseudos are
 already expanded to concrete machine instructions by the time `addPreEmitPass`
 runs.
 
-This means V6CSpillOpt has two viable insertion points:
+This means V6ClangSpillOpt has two viable insertion points:
 
 **Option A — Inside `eliminateFrameIndex()`:** Add tier selection logic
-directly into `V6CRegisterInfo::eliminateFrameIndex()`. When expanding a
+directly into `V6ClangRegisterInfo::eliminateFrameIndex()`. When expanding a
 SPILL/RELOAD pseudo, check if the slot qualifies for T1 or T2, and emit
 the cheaper sequence instead. This is the simplest approach but limits
 analysis to a single pseudo at a time (no cross-pseudo LIFO verification).
 
 **Option B — Separate pass before `eliminateFrameIndex()`:** Override
-`addPreRegAlloc()` or  use `addPostRegAlloc()` to insert V6CSpillOpt
+`addPreRegAlloc()` or  use `addPostRegAlloc()` to insert V6ClangSpillOpt
 before frame index elimination. The pass scans all SPILL/RELOAD pseudos
 (still intact), performs BB-level LIFO analysis, converts qualifying slots,
 and marks them so `eliminateFrameIndex()` skips them.
@@ -213,7 +213,7 @@ machinery.
 
 ```
 ┌─────────────────────────────────────┐
-│        V6CSpillOpt Pass             │
+│        V6ClangSpillOpt Pass             │
 │                                     │
 │  Phase 1: Inventory                 │
 │    Scan MF for all SPILL/RELOAD     │
@@ -242,11 +242,11 @@ machinery.
 ### 5.4 Interfaces
 
 ```
-// V6C.h
-FunctionPass *createV6CSpillOptPass();
+// V6Clang.h
+FunctionPass *createV6ClangSpillOptPass();
 
-// V6CSpillOpt.cpp (internal)
-class V6CSpillOpt : public MachineFunctionPass {
+// V6ClangSpillOpt.cpp (internal)
+class V6ClangSpillOpt : public MachineFunctionPass {
 public:
   static char ID;
   bool runOnMachineFunction(MachineFunction &MF) override;
@@ -324,22 +324,22 @@ Multiple accesses to the same slot across different BBs are T2 or T3.
 ### 7.1 Symbol Naming
 
 ```
-__v6c_spill_<function_name>_<slot_index>
+__v6clang_spill_<function_name>_<slot_index>
 ```
 
-Example: `__v6c_spill_main_0`, `__v6c_spill_main_1`
+Example: `__v6clang_spill_main_0`, `__v6clang_spill_main_1`
 
 Local linkage ensures no collisions with other translation units.
 
 ### 7.2 Emission
 
 T2 symbols are emitted as zero-initialized `.bss` entries (2 bytes each for
-i16, 1 byte for i8). The `V6CAsmPrinter` or a late-lowering hook emits them
+i16, 1 byte for i8). The `V6ClangAsmPrinter` or a late-lowering hook emits them
 at the end of the function's output.
 
 ### 7.3 RAM Budget Control
 
-CLI option `-v6c-global-spill-limit=<N>` (default 16) caps the number of
+CLI option `-v6clang-global-spill-limit=<N>` (default 16) caps the number of
 global spill slots per function. When the cap is hit, remaining non-T1 slots
 fall through to T3.
 
@@ -349,7 +349,7 @@ fall through to T3.
 
 ### 8.1 Stack Size Reduction
 
-When V6CSpillOpt converts a slot to T1 or T2, the slot no longer needs stack
+When V6ClangSpillOpt converts a slot to T1 or T2, the slot no longer needs stack
 space. The pass marks such slots in `MachineFrameInfo` (e.g., via
 `setObjectOffset` to a sentinel, or a side-channel `DenseSet<int>`) so that
 `emitPrologue()` allocates a smaller frame.
@@ -375,7 +375,7 @@ existing prologue already checks `StackSize == 0`.
 
 ### 9.1 Default Policy
 
-The V6C target is bare-metal with no OS threads. Reentrancy occurs only
+The V6CLANG target is bare-metal with no OS threads. Reentrancy occurs only
 through interrupt handlers. The default policy is:
 
 - Functions **not** marked as interrupt handlers: T2 eligible.
@@ -403,7 +403,7 @@ Out of scope for initial implementation.
 | `spill-opt-non-lifo.ll` | T1 rejected for non-LIFO pattern → T2 or T3 |
 | `spill-opt-global.ll` | T2: SPILL16 HL → SHLD / LHLD with `.bss` symbol |
 | `spill-opt-sta-lda.ll` | T2: SPILL8 A → STA / LDA |
-| `spill-opt-disabled.ll` | `-v6c-disable-spill-opt` produces T3 (unchanged) |
+| `spill-opt-disabled.ll` | `-v6clang-disable-spill-opt` produces T3 (unchanged) |
 | `spill-opt-mixed.ll` | Function with T1, T2, and T3 slots — correct offsets |
 | `spill-opt-cross-bb.ll` | Cross-BB slot rejected from T1, eligible for T2 |
 
@@ -424,8 +424,8 @@ must continue to pass with the optimization enabled.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-v6c-disable-spill-opt` | `false` | Disable the entire V6CSpillOpt pass |
-| `-v6c-global-spill-limit=<N>` | `16` | Max global spill slots per function |
+| `-v6clang-disable-spill-opt` | `false` | Disable the entire V6ClangSpillOpt pass |
+| `-v6clang-global-spill-limit=<N>` | `16` | Max global spill slots per function |
 
 ---
 
@@ -437,4 +437,4 @@ must continue to pass with the optimization enabled.
 | T2 global corrupted by ISR | Silent data corruption | Default non-reentrant policy; DI/EI guard as future option |
 | Frame offset miscalculation for mixed T1+T3 | Wrong stack accesses | Remove converted slots from MFI before eliminateFrameIndex runs |
 | T1 PUSH/POP clobbers other half of pair (GR8) | Register value lost | Verify other-half not written between PUSH–POP; reject if written |
-| Interaction with existing post-RA passes | Pass assumes spill sequences have specific shape | V6CSpillOpt runs first (before AccumulatorPlanning et al.) |
+| Interaction with existing post-RA passes | Pass assumes spill sequences have specific shape | V6ClangSpillOpt runs first (before AccumulatorPlanning et al.) |

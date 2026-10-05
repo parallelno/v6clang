@@ -1,19 +1,19 @@
-# V6C Adaptation of the llvm-mos Spilling
+# V6CLANG Adaptation of the llvm-mos Spilling
 
 ## Problem
 
-Spilling + reloading on V6C takes significant CPU time.
+Spilling + reloading on V6CLANG takes significant CPU time.
 
 ## Current spilling implementation:
 
 **Example 1**
-tests\features\20\v6llvmc_xchg.asm, interleaved_add func.
+tests\features\20\v6clang_xchg.asm, interleaved_add func.
 ```
 interleaved_add:
   ...
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.interleaved_add+2
+	LXI	HL, __v6clang_ss.interleaved_add+2
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -21,15 +21,15 @@ interleaved_add:
 ```
 
 **Example 2**
-tests\features\20\v6llvmc_xchg.asm, interleaved_add func.
+tests\features\20\v6clang_xchg.asm, interleaved_add func.
 ```
 interleaved_add:
   ...
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	XCHG
-	SHLD	__v6c_ss.interleaved_add
+	SHLD	__v6clang_ss.interleaved_add
 	XCHG
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 ```
 
 
@@ -40,12 +40,12 @@ Emits MOS::LDStk / MOS::STStk pseudos with frame index, lowered during frame ind
 
 ---
 
-## V6C Current vs. llvm-mos Spilling: Side-by-Side
+## V6CLANG Current vs. llvm-mos Spilling: Side-by-Side
 
-### Current V6C Architecture (Two-Phase)
+### Current V6CLANG Architecture (Two-Phase)
 
 * Phase 1
-RA calls storeRegToStackSlot → emits opaque pseudo (V6C_SPILL8, V6C_SPILL16, etc.) with Defs = [FLAGS] only. RA sees these as cheap, non-clobbering instructions.
+RA calls storeRegToStackSlot → emits opaque pseudo (V6CLANG_SPILL8, V6CLANG_SPILL16, etc.) with Defs = [FLAGS] only. RA sees these as cheap, non-clobbering instructions.
 
 * Phase 2
 EliminateFrameIndex runs post-RA, expands pseudos into real instructions. This is where the complexity lives: 14+ different expansion paths depending on which register is being spilled, whether HL/DE is dead (O42 optimization), etc. The expansion silently clobbers HL (via PUSH HL/LXI HL/POP HL) or DE, but the RA never knew about it.
@@ -57,25 +57,25 @@ storeRegToStackSlot emits real instructions directly — STAbs/LDAbs with frame 
 llvm-mos can emit vregs in storeRegToStackSlot because MOS uses GlobalISel, where register allocation happens later in a different way, and their storeRegToStackSlot is called during RA when vregs are still valid. The RA sees the vreg, allocates a GPR for it, done.
 
 
-V6C uses SelectionDAG + RegAllocGreedy (standard LLVM pipeline). In this pipeline, storeRegToStackSlot is called by the RA during allocation. You can't create new vregs inside storeRegToStackSlot because:
+V6CLANG uses SelectionDAG + RegAllocGreedy (standard LLVM pipeline). In this pipeline, storeRegToStackSlot is called by the RA during allocation. You can't create new vregs inside storeRegToStackSlot because:
 
 The RA is in the middle of processing the live interval map
 New vregs would need allocation, which the RA isn't set up to handle re-entrantly
 After greedy RA, VirtRegMap doesn't expect new vregs to appear
-So the MOS trick of "create a vreg for scratch, let RA handle it" doesn't directly port to V6C's pipeline.
+So the MOS trick of "create a vreg for scratch, let RA handle it" doesn't directly port to V6CLANG's pipeline.
 
 
 ### Cons / Risks
-1. Can't directly copy the MOS "vreg in storeRegToStackSlot" trick — V6C's pipeline doesn't support it. Must use split pseudos instead.
+1. Can't directly copy the MOS "vreg in storeRegToStackSlot" trick — V6CLANG's pipeline doesn't support it. Must use split pseudos instead.
 
 2. Pseudo proliferation — goes from 4 pseudos (SPILL8/16, RELOAD8/16) to ~12. Each needs expansion logic, testing, TD definitions.
 
-3. RA eviction cascade correctness — must verify that RegAllocGreedy actually handles Defs on spill instructions correctly and doesn't infinite-loop. LLVM's RA is designed for this (ARM/Thumb2 spills declare clobbers), but V6C's extreme register scarcity (7 GPR8s) makes it an unusual stress test.
+3. RA eviction cascade correctness — must verify that RegAllocGreedy actually handles Defs on spill instructions correctly and doesn't infinite-loop. LLVM's RA is designed for this (ARM/Thumb2 spills declare clobbers), but V6CLANG's extreme register scarcity (7 GPR8s) makes it an unusual stress test.
 
 ??????? Is Con 4 true? what about hldl/shld
 4. H/L spilling is still ugly — no clean 2-instruction sequence exists. You need either DE as temp (clobbers DE) or route through A twice. The Defs declaration gets complex.
 
-5. Non-static-stack functions — for functions that don't use V6CStaticStackAlloc, STA/SHLD aren't available (they need absolute addresses). Those functions still need SP-relative spilling via LXI HL + MOV M,r, which is back to clobbering HL.
+5. Non-static-stack functions — for functions that don't use V6ClangStaticStackAlloc, STA/SHLD aren't available (they need absolute addresses). Those functions still need SP-relative spilling via LXI HL + MOV M,r, which is back to clobbering HL.
 
 6. Testing burden — every combination of register × liveness state needs verification under maximal pressure.
 
@@ -135,34 +135,34 @@ or a reg pair.
 
 #### Example 1: DE spill.
 We have two pseudos:
-1. V6C_SPILL16_DE1, Defs=[], 28cc
+1. V6CLANG_SPILL16_DE1, Defs=[], 28cc
 XCHG
 SHLD ADDR
 XCHG
-2. V6C_SPILL16_DE2, Defs=[HL], 24cc
+2. V6CLANG_SPILL16_DE2, Defs=[HL], 24cc
 XCHG
 SHLD ADDR
 
-When HL is dead, RA can use V6C_SPILL16_DE2 because it uses less CC.
-When HL is live, RA has no choice but using V6C_SPILL16_DE1.
+When HL is dead, RA can use V6CLANG_SPILL16_DE2 because it uses less CC.
+When HL is live, RA has no choice but using V6CLANG_SPILL16_DE1.
 
 
 #### Example 2: BC Spill.
 We have three pseudos:
-1. V6C_SPILL16_BC1, Defs=[HL], 36cc
+1. V6CLANG_SPILL16_BC1, Defs=[HL], 36cc
 MOV L, C
 MOV H, B
 SHLD ADDR
 
-2. V6C_SPILL16_BC2, Defs=[A], 48cc
+2. V6CLANG_SPILL16_BC2, Defs=[A], 48cc
 MOV A, C
 STA ADDR1
 MOV A, B
 STA ADDR1+1
 
-When A and HL live, RA uses the cjeapest V6C_SPILL16_BC1
-When A live, but HL dead, RA uses V6C_SPILL16_BC2
-When A and HL dead, RA uses the cheapest V6C_SPILL16_BC2 and apply eviction
+When A and HL live, RA uses the cjeapest V6CLANG_SPILL16_BC1
+When A live, but HL dead, RA uses V6CLANG_SPILL16_BC2
+When A and HL dead, RA uses the cheapest V6CLANG_SPILL16_BC2 and apply eviction
 mechanism to find the required reg pair for a spill.
 
 
@@ -204,7 +204,7 @@ After:   %v5 kicked out of $HL, re-queued, likely spilled everywhere
 #### Splitting
 Splitting cuts a vreg's live range into pieces so that only the conflicting piece moves. The vreg keeps its register everywhere except around the interference point.
 
-Example — %v5 is in $HL for a long range, but a V6C_SPILL8_REG at instruction 50 clobbers HL:
+Example — %v5 is in $HL for a long range, but a V6CLANG_SPILL8_REG at instruction 50 clobbers HL:
 
 Before eviction:
   %v5 [$HL]: ████████████████████████  (inst 10-90)
@@ -231,7 +231,7 @@ When it wins	Short live range, few uses	Long live range with a single conflict p
 Implementation	Simple — re-queue vreg	Complex — creates new vregs, inserts copies
 
 **In Practice**
-RegAllocGreedy tries splitting first (via trySplit()) before falling back to eviction. This is one of its main advantages over the simpler RegAllocBasic. For V6C with only 7 GPR8 registers, splitting is especially valuable — it lets the RA keep a vreg in HL for 90% of its lifetime and only briefly save/restore it around one conflicting instruction, rather than giving up HL entirely.
+RegAllocGreedy tries splitting first (via trySplit()) before falling back to eviction. This is one of its main advantages over the simpler RegAllocBasic. For V6CLANG with only 7 GPR8 registers, splitting is especially valuable — it lets the RA keep a vreg in HL for 90% of its lifetime and only briefly save/restore it around one conflicting instruction, rather than giving up HL entirely.
 
 #### LLVM-MOS under register pressure
 
@@ -275,12 +275,12 @@ Non-leaf	Imag8	COPY to GPR vreg + STAbs	Yes → RA allocates it
 
 A leaf spill never creates new vregs, so the recursion depth is exactly 1. The RA's eviction of a GPR always leads to a leaf spill.
 
-#### What MOS Has That V6C Doesn't
+#### What MOS Has That V6CLANG Doesn't
 MOS explicitly enables this with:
 ```
 Builder.getMF().getProperties().reset(MachineFunctionProperties::Property::NoVRegs);
 ```
-This tells LLVM "yes, there are still vregs after this point, don't assert." MOS also has MOSPostRAScavenging as a safety net for any vregs that survive past the main RA. V6C doesn't have either of these — adding them would be part of the adaptation work.
+This tells LLVM "yes, there are still vregs after this point, don't assert." MOS also has MOSPostRAScavenging as a safety net for any vregs that survive past the main RA. V6CLANG doesn't have either of these — adding them would be part of the adaptation work.
 
 ####  Reg Liveness info
 Pseudo can request live interval detail (exact def/use slots).
@@ -295,7 +295,7 @@ Pseudo can request live interval detail (exact def/use slots).
 #### Can You Use Languages Other Than C?
 Yes. Any language whose frontend can emit LLVM IR works. The backend doesn't care what language produced the IR.
 
-*Languages that work today with V6C (via Clang):*
+*Languages that work today with V6CLANG (via Clang):*
 C, C++, Objective-C
 Rust (uses LLVM backend natively)
 Swift (uses LLVM)
@@ -303,17 +303,17 @@ Zig (uses LLVM)
 D (ldc compiler)
 Ada (GNAT via LLVM)
 
-### Exmples of a bad code generated by the V6C pseudos expansions:
-;--- V6C_LEA_FI ---
-	LXI	DE, __v6c_ss.main+4
+### Exmples of a bad code generated by the V6CLANG pseudos expansions:
+;--- V6CLANG_LEA_FI ---
+	LXI	DE, __v6clang_ss.main+4
 	MOV	H, D
 	MOV	L, E
 Why no just:
-    LXI	HL, __v6c_ss.main+4
+    LXI	HL, __v6clang_ss.main+4
 
 
     LXI	HL, 0x140a
-;--- V6C_STORE16_P ---
+;--- V6CLANG_STORE16_P ---
 	PUSH	DE
 	MOV	A, L
 	STAX	DE
@@ -329,9 +329,9 @@ Why not just:
     DCX H
     XCHG
 
-;--- V6C_RELOAD16 ---
+;--- V6CLANG_RELOAD16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.main+15
+	LXI	HL, __v6clang_ss.main+15
 	MOV	C, M
 	INX	HL
 	MOV	B, M
@@ -339,7 +339,7 @@ Why not just:
 
 Why not just:
     PUSH	HL
-    LHLD __v6c_ss.main+15
+    LHLD __v6clang_ss.main+15
     MOV	C, L
     MOV	B, H
     POP HL
@@ -353,7 +353,7 @@ we don't need PUSH/POP at all.
 ### Solutions
 
 #### Solution 1
-Honest-Defs split pseudos — The biggest win comes from V6C_SPILL8_A (STA, zero clobber) and V6C_SPILL16_HL, V6C_SPILL16_DE (SHLD, zero clobber) being cascade terminators that guarantee no infinite eviction loops.
+Honest-Defs split pseudos — The biggest win comes from V6CLANG_SPILL8_A (STA, zero clobber) and V6CLANG_SPILL16_HL, V6CLANG_SPILL16_DE (SHLD, zero clobber) being cascade terminators that guarantee no infinite eviction loops.
 
 #### Solution 2
 Regs and vres like LLVM-MOS has
@@ -374,14 +374,14 @@ spilling and restoring instead of PUSH/POP in BC spilling (current implementatio
 How often is it? Will that make new fully honest spilling less performant that
 the original approach?
 - llvm-mos spilling uses vregs. they
-- what is V6C_LEA_FI for?
+- what is V6CLANG_LEA_FI for?
 - What is the full diagram of the llvm-mos design?
 - What is the full diagram of the current spilling design?
-- In `What MOS Has That V6C Doesn't` you said: `tells LLVM "yes, there are still vregs after this point, don't assert."` and `MOS also has MOSPostRAScavenging as a safety net for any vregs that survive past the main RA`.
+- In `What MOS Has That V6CLANG Doesn't` you said: `tells LLVM "yes, there are still vregs after this point, don't assert."` and `MOS also has MOSPostRAScavenging as a safety net for any vregs that survive past the main RA`.
 All your explanation of LLVM-MOS spilling before this line implied that there
 is no need for such extra staff. Everything is honest to RA. Spilling has one pass.
 Explain what is true and what is not in your here.
-- does v6c use mem2reg, inlining, loop unroll, GVN, LICM, ... opts?
+- does v6clang use mem2reg, inlining, loop unroll, GVN, LICM, ... opts?
 
 
 ---
@@ -394,9 +394,9 @@ Under **static stack allocation**, code lives at link-time-known addresses in
 RAM (the Vector 06c runs code from RAM). The classical spill/reload pair
 
 ```
-spill:   SHLD __v6c_ss.f+N        ; HL -> data slot        20cc
+spill:   SHLD __v6clang_ss.f+N        ; HL -> data slot        20cc
 ...
-reload:  LHLD __v6c_ss.f+N        ; slot -> HL             20cc
+reload:  LHLD __v6clang_ss.f+N        ; slot -> HL             20cc
 ```
 
 can be collapsed by making the **reload instruction itself be the data slot**.
@@ -469,7 +469,7 @@ as soon as any spill has ≥1 reload, which is the overwhelming common case.
 
 #### Memory footprint
 
-* Current: each spill slot takes 1B (i8) or 2B (i16) in `__v6c_ss.f` BSS
+* Current: each spill slot takes 1B (i8) or 2B (i16) in `__v6clang_ss.f` BSS
   **plus** the reload-site instruction (LHLD = 3B, LDA = 3B, +routing).
 * Patched: the reload-site instruction *is* the slot. BSS usage drops by
   1B/2B per spill slot. Reload-site size either stays the same (HL) or
@@ -477,10 +477,10 @@ as soon as any spill has ≥1 reload, which is the overwhelming common case.
 
 ### Prerequisites
 
-1. **Static stack eligibility** (already enforced by `V6CStaticStackAlloc`):
+1. **Static stack eligibility** (already enforced by `V6ClangStaticStackAlloc`):
    no recursion, not reachable from ISRs, no taken address, has frame
    objects. The reload-site must be written only by this function's spill.
-2. **Code is in RAM**. V6C runs from RAM; OK.
+2. **Code is in RAM**. V6CLANG runs from RAM; OK.
 3. **Spill dominates reload** on every path. Already an invariant of spill
    insertion (RA only inserts a reload where the slot is defined on every
    reaching path). Multiple spills joining into a single reload (Φ-style)
@@ -488,7 +488,7 @@ as soon as any spill has ≥1 reload, which is the overwhelming common case.
 4. **Reload-site addressability at link time.** The spill's operand must be
    `reload_site+offset`. That means either:
    * an assembler-level local symbol emitted next to the reload, referenced
-     from the spill — the V6C object writer already supports `R_V6C_16`
+     from the spill — the V6CLANG object writer already supports `R_V6CLANG_16`
      relocations (see M10), so this is straightforward, OR
    * an `MCSymbol` materialised in the MCStreamer and referenced as the
      spill's operand.
@@ -534,9 +534,9 @@ as soon as any spill has ≥1 reload, which is the overwhelming common case.
 ### How It Maps Onto the Current Pipeline
 
 The optimization is an **expansion-time rewrite**, not a new RA feature.
-The RA continues to create `V6C_SPILL*` / `V6C_RELOAD*` pseudos exactly as
+The RA continues to create `V6CLANG_SPILL*` / `V6CLANG_RELOAD*` pseudos exactly as
 today. The change happens in `eliminateFrameIndex` /
-`expandPostRAPseudo` in `V6CRegisterInfo.cpp`, keyed on:
+`expandPostRAPseudo` in `V6ClangRegisterInfo.cpp`, keyed on:
 
 1. Function is in the static-stack set (already a queryable attribute).
 2. The spill/reload pair share the same frame index and there is **exactly
@@ -571,12 +571,12 @@ spilling improvements discussed above.
   these passes treat it as an opaque load, not as a constant-producing
   instruction. This is the single invasive change outside the expansion
   logic.
-* **V6CLoadStoreOpt / INX HL merging** — does not run on the reload site
+* **V6ClangLoadStoreOpt / INX HL merging** — does not run on the reload site
   (no consecutive LXI+MOV pattern).
-* **V6CRedundantFlagElim / ZeroTestOpt** — `LXI` and `MVI` do not touch
+* **V6ClangRedundantFlagElim / ZeroTestOpt** — `LXI` and `MVI` do not touch
   flags, so no interaction.
 * **Linker / relocations** — no change. The spill's `SHLD Sym+1` uses the
-  existing `R_V6C_16` relocation.
+  existing `R_V6CLANG_16` relocation.
 
 ### Cost Model (Sketch)
 
@@ -617,10 +617,10 @@ wins at N=2!). So the cost model needs to actually check.
 * Is there a case where the reload site is emitted inside a data region
   (e.g. jump-table)? No — reloads are always in the `.text` stream for
   this function.
-* What about `V6C_LEA_FI` (address-of spill slot)? Not applicable —
+* What about `V6CLANG_LEA_FI` (address-of spill slot)? Not applicable —
   a patched reload has no addressable slot. If `&spillslot` is needed,
   the function falls back to the classical slot. RA does not emit
-  `V6C_LEA_FI` against spill slots today, only against user allocas, so
+  `V6CLANG_LEA_FI` against spill slots today, only against user allocas, so
   this is moot.
 * How does this interact with **two-operand spills** (16-bit pair spilled
   via two 8-bit stores through A)? Each byte goes to its own imm field
@@ -634,7 +634,7 @@ wins at N=2!). So the cost model needs to actually check.
    `N_reloads=2`).
 2. Add `MO_PATCHED_IMM` target operand flag + AsmPrinter handling so
    `LoadImmCombine` skips these instructions.
-3. Gate behind `-mv6c-spill-patched-reload` for A/B testing.
+3. Gate behind `-mv6clang-spill-patched-reload` for A/B testing.
 4. Measure against `tests/features/20/` and the golden suite; check
    codesize and cycle counts for the 3–5 functions with the highest spill
    traffic.

@@ -6,7 +6,7 @@ Reference: [O54_optimal_stack_adjustment.md](future_plans/O54_optimal_stack_adju
 
 ### Current behavior
 
-`V6CFrameLowering::emitPrologue()` and `emitEpilogue()` always adjust SP
+`V6ClangFrameLowering::emitPrologue()` and `emitEpilogue()` always adjust SP
 through the same fixed 5-byte / 32-cycle sequence regardless of how
 small the frame is:
 
@@ -51,7 +51,7 @@ When no GR16All pair is dead at the adjustment point, the fallback is
 not the LXI sequence but `DCX SP` / `INX SP × n` (1B / 8cc each, no
 clobber of any register). This wins on both axes against
 `LXI+DAD+SPHL` for n ∈ {2, 4} and ties on bytes (loses on cycles) at
-n = 6. Verified in [V6CInstrInfo.td](../llvm/lib/Target/V6C/V6CInstrInfo.td):
+n = 6. Verified in [V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td):
 `INX rp` / `DCX rp` accept `GR16AllPair`, and `GR16All` includes
 `SP`, so `INX SP` (encoding 0x33) and `DCX SP` (0x3B) are legal
 emissions today.
@@ -63,12 +63,12 @@ The decision is the same one jacobly0's Z80 backend makes in
 
 ### Approach: factored helper `emitSPAdjustment()` driven by O11 cost mode
 
-Introduce two private helpers in `V6CFrameLowering`:
+Introduce two private helpers in `V6ClangFrameLowering`:
 
 1. `chooseDeadPair(MBB, MBBI, IsPrologue) -> Register` — pick a
    GR16All pair whose halves are dead at the adjustment point. Always
    prefer `PSW` (A + flags) when its components are dead, falling
-   back to `BC`, `DE`, `HL` as candidates. Returns `V6C::NoRegister`
+   back to `BC`, `DE`, `HL` as candidates. Returns `V6CLANG::NoRegister`
    when none qualifies (e.g. all GR16 pairs are live-in arg regs).
    - **Prologue**: at the very start of the entry MBB, `PSW` is dead
      unless the function uses the `i8` / flags ABI for an argument.
@@ -88,7 +88,7 @@ Introduce two private helpers in `V6CFrameLowering`:
    * **DCX/INX SP × n** when no dead pair is available but n ∈ {2, 4}.
    * **LXI+DAD+SPHL** otherwise (n = 6 in non-Size mode, n ≥ 8, odd).
 
-   Mode is obtained via `getV6COptMode(MF)` (O11).
+   Mode is obtained via `getV6ClangOptMode(MF)` (O11).
 
 ### Cost decision (3-tier strategy)
 
@@ -107,7 +107,7 @@ Reference: `LXI+DAD+SPHL` = 5B / 32cc (clobbers HL+FLAGS).
 | 6 epi | 3B / 36cc                     | 6B / 48cc                    | 5B / 32cc    | POP (size-only); else LXI |
 | odd, ≥8 | —                           | —                            | —            | LXI+DAD+SPHL |
 
-`Mode == V6COptMode::Size` enables the n=6 PUSH/POP case; `Speed`
+`Mode == V6ClangOptMode::Size` enables the n=6 PUSH/POP case; `Speed`
 and `Balanced` reject it.
 
 The `DCX/INX SP × n` path is enabled for **n ∈ {2, 4} only** in all
@@ -123,7 +123,7 @@ The DCX/INX SP fallback is a strict improvement over LXI for n ∈ {2, 4}:
 
 ### Why this works
 
-* `PUSH rp` is documented (V6CInstructionTimings.md) as 1B / 16cc and
+* `PUSH rp` is documented (V6ClangInstructionTimings.md) as 1B / 16cc and
   modifies only SP and `[SP-1..SP-2]`. The *source register pair* is
   read but unmodified, so a dead source means the value lost to RAM
   is irrelevant.
@@ -149,22 +149,22 @@ The DCX/INX SP fallback is a strict improvement over LXI for n ∈ {2, 4}:
 
 ### Summary of changes
 
-* `V6CFrameLowering.cpp`
+* `V6ClangFrameLowering.cpp`
   * Add private helpers `chooseDeadPair()` and `emitSPAdjustment()`.
   * `emitSPAdjustment` implements the 3-tier decision: PUSH/POP →
     DCX/INX SP → LXI+DAD+SPHL.
   * Replace **every** direct `LXI/DAD/SPHL` emission triplet in
     `emitPrologue` / `emitEpilogue` with `emitSPAdjustment(...)`.
-  * Compute opt mode once at function top via `getV6COptMode(MF)`.
-  * Include `V6CInstrCost.h`.
-* `V6CFrameLowering.h`
+  * Compute opt mode once at function top via `getV6ClangOptMode(MF)`.
+  * Include `V6ClangInstrCost.h`.
+* `V6ClangFrameLowering.h`
   * Forward-declare new helpers (private members).
 * New lit test `frame-lowering-pop-push.ll` covering −2 / −4 / −6 /
   −8 prologues and +2 / +4 / +6 / +8 epilogues, an `optsize` case
   for −6 / +6, and a high-pressure case where no dead pair is
   available (forces the DCX/INX SP fallback).
 * Existing `frame-lowering.ll` updated: `one_local` (1B → padded to 2B
-  by alignment? — actually V6C frame is 1-byte aligned, so 1B stays
+  by alignment? — actually V6CLANG frame is 1-byte aligned, so 1B stays
   1B → odd → unchanged LXI sequence) and `array_local` (4B → POP/PUSH
   pair). The CHECK lines for the 4-byte case will switch to
   `PUSH PSW; PUSH PSW` / `POP PSW; POP PSW`.
@@ -180,24 +180,24 @@ The DCX/INX SP fallback is a strict improvement over LXI for n ∈ {2, 4}:
 Read in this order before touching code:
 * `design/future_plans/O54_optimal_stack_adjustment.md` (this plan's
   source).
-* `docs/V6CInstructionTimings.md` — verify PUSH/POP/LXI/DAD/SPHL
+* `docs/V6ClangInstructionTimings.md` — verify PUSH/POP/LXI/DAD/SPHL
   costs.
-* `docs/V6CBuildGuide.md` — build & mirror sync commands.
-* `llvm/lib/Target/V6C/V6CFrameLowering.cpp` (current state) and
-  `V6CFrameLowering.h`.
-* `llvm/lib/Target/V6C/V6CInstrCost.h` (O11 mode + costs).
+* `docs/V6ClangBuildGuide.md` — build & mirror sync commands.
+* `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` (current state) and
+  `V6ClangFrameLowering.h`.
+* `llvm/lib/Target/V6CLANG/V6ClangInstrCost.h` (O11 mode + costs).
 
 > **Implementation Notes**:
 
-### Step 3.2 — Add helpers to V6CFrameLowering [x]
+### Step 3.2 — Add helpers to V6ClangFrameLowering [x]
 
-In `llvm-project/llvm/lib/Target/V6C/V6CFrameLowering.{h,cpp}`:
+In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.{h,cpp}`:
 
 ```cpp
-// V6CFrameLowering.h (private section)
+// V6ClangFrameLowering.h (private section)
 private:
   /// Pick a GR16All pair whose halves are dead at MBBI for use as
-  /// PUSH/POP filler. Returns V6C::PSW when A+FLAGS are dead,
+  /// PUSH/POP filler. Returns V6CLANG::PSW when A+FLAGS are dead,
   /// otherwise BC/DE/HL/NoRegister in that fallback order.
   Register chooseDeadPair(const MachineBasicBlock &MBB,
                           MachineBasicBlock::iterator MBBI,
@@ -210,7 +210,7 @@ private:
   void emitSPAdjustment(MachineBasicBlock &MBB,
                         MachineBasicBlock::iterator MBBI,
                         int64_t Amount, const DebugLoc &DL,
-                        bool IsPrologue, V6COptMode Mode) const;
+                        bool IsPrologue, V6ClangOptMode Mode) const;
 ```
 
 `chooseDeadPair` for **prologues** consults `MBB.isLiveIn(...)` for
@@ -225,19 +225,19 @@ live (FLAGS is never explicitly tracked as live across a return).
 3. Compute `bool PushPopEligible`:
    * `(AbsN % 2) == 0 && AbsN >= 2` is a precondition.
    * `AbsN ∈ {2, 4}` → eligible.
-   * `AbsN == 6 && Mode == V6COptMode::Size` → eligible.
+   * `AbsN == 6 && Mode == V6ClangOptMode::Size` → eligible.
    * else → not eligible.
 4. If `PushPopEligible`:
    `Register Pair = chooseDeadPair(MBB, MBBI, IsAlloc);`
-   If `Pair != V6C::NoRegister`, emit `AbsN / 2` × PUSH/POP and
+   If `Pair != V6CLANG::NoRegister`, emit `AbsN / 2` × PUSH/POP and
    return:
    * Prologue: `BuildMI(...PUSH...).addReg(Pair)` (read-only).
    * Epilogue: `BuildMI(...POP..., Pair)` with
      `RegState::Define | RegState::Dead` on the def operand.
 5. **DCX/INX SP fallback** — applies when PUSH/POP wasn't eligible
    *or* no dead pair was available. If `AbsN ∈ {2, 4}` (any mode):
-   * Emit `AbsN` × `BuildMI(...DCX/INX..., V6C::SP).addReg(V6C::SP)`.
-     Prologue uses `V6C::DCX`; epilogue uses `V6C::INX`. The tied
+   * Emit `AbsN` × `BuildMI(...DCX/INX..., V6CLANG::SP).addReg(V6CLANG::SP)`.
+     Prologue uses `V6CLANG::DCX`; epilogue uses `V6CLANG::INX`. The tied
      `$rp = $src` operand is satisfied by passing SP as both def and
      use.
    * Return.
@@ -282,7 +282,7 @@ an LXI-based SP adjustment — leave untouched.
 
 ### Step 3.5 — Wire opt mode through emitPrologue/emitEpilogue [x]
 
-At the top of each, compute `V6COptMode Mode = getV6COptMode(MF);`
+At the top of each, compute `V6ClangOptMode Mode = getV6ClangOptMode(MF);`
 once and pass it to every `emitSPAdjustment` call.
 
 > **Implementation Notes**:
@@ -299,9 +299,9 @@ Diagnose & fix any compile errors, rebuild.
 
 ### Step 3.7 — Lit test: new `frame-lowering-pop-push.ll` [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6C/frame-lowering-pop-push.ll`
-with these functions (each with `-v6c-disable-alloca-promote
--v6c-disable-static-stack-alloc` so the stack frame is exercised):
+Create `llvm-project/llvm/test/CodeGen/V6CLANG/frame-lowering-pop-push.ll`
+with these functions (each with `-v6clang-disable-alloca-promote
+-v6clang-disable-static-stack-alloc` so the stack frame is exercised):
 
 * `frame2`: 2-byte alloca → expect `PUSH PSW` / `POP PSW`.
 * `frame4`: 4-byte alloca → expect 2× PUSH PSW / 2× POP PSW.
@@ -317,7 +317,7 @@ with these functions (each with `-v6c-disable-alloca-promote
 
 Run:
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6C\frame-lowering-pop-push.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\frame-lowering-pop-push.ll
 ```
 
 > **Implementation Notes**:
@@ -331,7 +331,7 @@ Update the CHECK lines accordingly.
 
 Run:
 ```
-llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6C\frame-lowering.ll
+llvm-build\bin\llvm-lit -v llvm-project\llvm\test\CodeGen\V6CLANG\frame-lowering.ll
 ```
 
 Also re-run `frame-leaf.ll` (no SP adjust expected; should be
@@ -355,10 +355,10 @@ python tests\run_all.py
 If any test fails, diagnose & fix, then rebuild.
 
 Special attention:
-* `tests/lit/CodeGen/V6C/spill-reload.ll` — exercises the same
+* `tests/lit/CodeGen/V6CLANG/spill-reload.ll` — exercises the same
   disabled-pass codepath; a 4-byte frame would regress without an
   update.
-* `tests/lit/CodeGen/V6C/xchg-cancel-peephole.ll` — same gating.
+* `tests/lit/CodeGen/V6CLANG/xchg-cancel-peephole.ll` — same gating.
 * All 16 golden tests must still pass with the same byte-exact
   outputs (functional equivalence).
 
@@ -369,12 +369,12 @@ Special attention:
 In `tests/features/47/`:
 
 ```
-llvm-build\bin\clang.exe --target=i8080-unknown-v6c -O2 -S \
-  -mllvm -v6c-disable-alloca-promote -mllvm -v6c-disable-static-stack-alloc \
-  tests\features\47\v6llvmc.c -o tests\features\47\v6llvmc_new01.asm
+llvm-build\bin\clang.exe --target=i8080-unknown-v6clang -O2 -S \
+  -mllvm -v6clang-disable-alloca-promote -mllvm -v6clang-disable-static-stack-alloc \
+  tests\features\47\v6clang.c -o tests\features\47\v6clang_new01.asm
 ```
 
-Compare `v6llvmc_old.asm` vs `v6llvmc_new01.asm` — confirm the
+Compare `v6clang_old.asm` vs `v6clang_new01.asm` — confirm the
 prologue/epilogue collapsed from `LXI H, -4; DAD SP; SPHL` /
 `LXI H, 4; DAD SP; SPHL` to `PUSH PSW; PUSH PSW` / `POP PSW; POP PSW`.
 
@@ -385,7 +385,7 @@ Iterate `_new02`, `_new03` if needed.
 ### Step 3.12 — Make sure `result.txt` is created. `tests\features\README.md` [x]
 
 Populate `tests/features/47/result.txt` per the README structure
-(C source, c8080 asm, c8080 stats, v6llvmc asm, v6llvmc stats).
+(C source, c8080 asm, c8080 stats, v6clang asm, v6clang stats).
 
 > **Implementation Notes**:
 
@@ -395,8 +395,8 @@ Populate `tests/features/47/result.txt` per the README structure
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-Verify `llvm/lib/Target/V6C/V6CFrameLowering.cpp` matches
-`llvm-project/llvm/lib/Target/V6C/V6CFrameLowering.cpp`.
+Verify `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` matches
+`llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp`.
 
 > **Implementation Notes**:
 
@@ -460,7 +460,7 @@ to LXI for n ≥ 8.
 | Risk | Mitigation |
 |------|------------|
 | `chooseDeadPair` mis-classifies a live register as dead → silently corrupts an arg/return value | (1) Default to `PSW` whose halves are dead at function boundaries by ABI invariant. (2) Mirror the exact liveness checks already used by `emitPrologue` / `emitEpilogue` for `HLIsLiveIn` / `HLUsedByRet`. (3) `frame-lowering-pop-push.ll` covers i8/i16 arg + i8/i16 return cases. (4) When in doubt the helper returns `NoRegister`, which routes to the safe DCX/INX SP path. |
-| `INX SP` / `DCX SP` emission rejected by the verifier (operand class mismatch) | `INX`/`DCX` accept `GR16AllPair` and `SP` is in `GR16All` — verified in [V6CRegisterInfo.td](../llvm/lib/Target/V6C/V6CRegisterInfo.td#L102) and [V6CInstrInfo.td](../llvm/lib/Target/V6C/V6CInstrInfo.td#L370). New lit test runs with `-verify-machineinstrs`. |
+| `INX SP` / `DCX SP` emission rejected by the verifier (operand class mismatch) | `INX`/`DCX` accept `GR16AllPair` and `SP` is in `GR16All` — verified in [V6ClangRegisterInfo.td](../llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.td#L102) and [V6ClangInstrInfo.td](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L370). New lit test runs with `-verify-machineinstrs`. |
 | `POP rp` without `Dead` flag → verifier fails (`-verify-machineinstrs`) | Always tag `RegState::Define \| RegState::Dead`. New lit test runs with `-verify-machineinstrs`. |
 | Frame-pointer path silently still emits LXI for FP setup (not an SP adjustment but identical instruction) | Comment the FP setup explicitly; helper is invoked **only** for SP adjustments. |
 | Existing test `frame-lowering.ll` `array_local` CHECK lines tied to LXI sequence break | Update the CHECK lines as part of Step 3.8 — this is an expected, one-time expectation update. |
@@ -474,14 +474,14 @@ to LXI for n ≥ 8.
 ## 6. Relationship to Other Improvements
 
 * **O11 dual cost model**: This plan is the first frame-lowering
-  consumer of `getV6COptMode` + `V6CInstrCost`. It validates the
+  consumer of `getV6ClangOptMode` + `V6ClangInstrCost`. It validates the
   pattern for downstream consumers.
 * **O54b** (per-call frame cleanup): Depends on `chooseDeadPair` and
   `emitSPAdjustment` shipped here.
 * **O54c** (stack-arg passing): Depends on the `PUSH rp` lowering
   shipped here for the symmetric caller side.
 * **O54d** (constant-size alloca): Depends on the same helpers.
-* **O10** (V6CAllocaPromote + V6CStaticStackAlloc): O10 eliminates
+* **O10** (V6ClangAllocaPromote + V6ClangStaticStackAlloc): O10 eliminates
   most frames entirely. O54 only helps the residue (recursive,
   callback-taking, var-sized — empirically rare in this codebase).
   Coexistence is automatic: O54 runs in frame lowering only when a
@@ -493,19 +493,19 @@ to LXI for n ≥ 8.
   in the body of an MBB (enabling reuse of the helper inside O54b/c).
   Out of scope here — the current liveness check covers function
   boundaries.
-* Add a `-v6c-disable-pop-push-sp-adjust` cl::opt for A/B testing.
+* Add a `-v6clang-disable-pop-push-sp-adjust` cl::opt for A/B testing.
   Defer until a regression motivates it.
 * Track total SP-adjustment savings via a `Statistic` counter, like
-  other passes (e.g. `NumXchgFolded` in V6CXchgOpt).
+  other passes (e.g. `NumXchgFolded` in V6ClangXchgOpt).
 
 ## 8. References
 
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
-* [V6C Instruction Timings](../docs/V6CInstructionTimings.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
+* [V6CLANG Instruction Timings](../docs/V6ClangInstructionTimings.md)
 * [Vector 06c Instruction Timings](../docs/Vector_06c_instruction_timings.md)
 * [O54 plan](future_plans/O54_optimal_stack_adjustment.md)
 * [Future Improvements](future_plans/README.md)
 * [Plan format reference](plan_cmp_based_comparison.md)
-* `llvm/lib/Target/V6C/V6CFrameLowering.cpp` — emitter site
-* `llvm/lib/Target/V6C/V6CInstrCost.h` — O11 cost model
-* `llvm/test/CodeGen/V6C/frame-lowering.ll` — existing baseline
+* `llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp` — emitter site
+* `llvm/lib/Target/V6CLANG/V6ClangInstrCost.h` — O11 cost model
+* `llvm/test/CodeGen/V6CLANG/frame-lowering.ll` — existing baseline

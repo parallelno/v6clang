@@ -1,8 +1,8 @@
-# O88 — MVI-through-MOV Collapse (V6C_BUILD_PAIR zero-hi peephole)
+# O88 — MVI-through-MOV Collapse (V6CLANG_BUILD_PAIR zero-hi peephole)
 
-**Source:** V6C — observed in `samples/03_demo/main.s` (`sin8`, `draw_circle`)
+**Source:** V6CLANG — observed in `samples/03_demo/main.s` (`sin8`, `draw_circle`)
 **Savings:** 8cc, 1B per occurrence
-**Frequency:** Every `zext i8 → i16` that ISel materialises as `MVI r, 0; V6C_BUILD_PAIR`
+**Frequency:** Every `zext i8 → i16` that ISel materialises as `MVI r, 0; V6CLANG_BUILD_PAIR`
 **Complexity:** Low — extends the existing `collapseMovChain` peephole (~20 lines)
 **Risk:** Low — only removes a provably dead immediate store
 **Dependencies:** O82 done (infrastructure already in place)
@@ -12,7 +12,7 @@
 
 ## Problem
 
-`V6C_BUILD_PAIR dst, lo_reg, hi_reg` expands to two `MOVrr` copies:
+`V6CLANG_BUILD_PAIR dst, lo_reg, hi_reg` expands to two `MOVrr` copies:
 
 ```asm
 MOV  DstHi, hi_reg    ; copy hi half
@@ -26,7 +26,7 @@ the `MVI` is a dead store that can be folded directly into the destination:
 ```asm
 ; Before                                 ; After
 MVI  L, 0         ; 8cc, 2B             MVI  H, 0         ; 8cc, 2B
-;--- V6C_BUILD_PAIR ---                  ;--- V6C_BUILD_PAIR ---
+;--- V6CLANG_BUILD_PAIR ---                  ;--- V6CLANG_BUILD_PAIR ---
 MOV  H, L         ; 8cc, 1B  ← elim    MOV  L, A         ; 8cc, 1B
 MOV  L, A         ; 8cc, 1B
 ```
@@ -38,7 +38,7 @@ Net savings: **8cc, 1B** — the `MOV H, L` round-trip is eliminated and the
 
 ```asm
 MVI   L, 0
-;--- V6C_BUILD_PAIR ---
+;--- V6CLANG_BUILD_PAIR ---
 MOV   H, L        ← redundant: L was only ever 0, copy to H is MVI H, 0
 MOV   L, A
 LXI   D, sin_lut
@@ -59,12 +59,12 @@ wherever a zero-extended byte is placed into the high half of a pair.
 
 ## Root-cause analysis
 
-`collapseMovChain` in `V6CPeephole.cpp` already collapses `MOV X, Y; …; MOV Z, X`
+`collapseMovChain` in `V6ClangPeephole.cpp` already collapses `MOV X, Y; …; MOV Z, X`
 chains when X is dead.  It only handles `MOVrr` **producers** — the outer loop
 begins:
 
 ```cpp
-if (ProducerMI.getOpcode() != V6C::MOVrr)
+if (ProducerMI.getOpcode() != V6CLANG::MOVrr)
     continue;
 ```
 
@@ -87,13 +87,13 @@ original `MVIr`.
 ### Pseudocode
 
 ```cpp
-bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
   // ... existing MOVrr producer loop unchanged ...
 
   // NEW: MVIr producer variant
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6C::MVIr)  // (also handle MVI_A if needed)
+    if (ProducerMI.getOpcode() != V6CLANG::MVIr)  // (also handle MVI_A if needed)
       continue;
     if (isO61PatchedImm(ProducerMI))
       continue;
@@ -114,7 +114,7 @@ bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
         if (MO.isDef())                  ClobbersX = true;
       }
 
-      bool IsConsumer = J->getOpcode() == V6C::MOVrr &&
+      bool IsConsumer = J->getOpcode() == V6CLANG::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), X);
 
       if (IsConsumer) {
@@ -124,7 +124,7 @@ bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
           Register Z = J->getOperand(0).getReg();
           const TargetInstrInfo &TII =
               *MBB.getParent()->getSubtarget().getInstrInfo();
-          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6C::MVIr), Z)
+          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6CLANG::MVIr), Z)
               .addImm(Imm);
           J->eraseFromParent();
           ProducerMI.eraseFromParent();

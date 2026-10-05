@@ -1,4 +1,4 @@
-// O77 — V6C_STORE8_P per-shape redesign feature test.
+// O77 — V6CLANG_STORE8_P per-shape redesign feature test.
 //
 // Exercises the new priority-4 sub-shapes:
 //   - case7_de_b/c/d/e/h/l : addr=DE, src=non-A, A live → XCHG bypass (3B/16cc)

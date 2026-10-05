@@ -2,7 +2,7 @@
 
 ## Rejected
 **it's already done**
-The optimization is no longer valid as a separate plan — it's already implemented in V6CRedundantFlagElim.cpp.
+The optimization is no longer valid as a separate plan — it's already implemented in V6ClangRedundantFlagElim.cpp.
 
 
 *Inspired by llvm-mos `MOSLateOptimization::lowerCmpZeros`.*
@@ -10,7 +10,7 @@ The optimization is no longer valid as a separate plan — it's already implemen
 
 ## Problem
 
-V6C's existing `V6CEliminateZeroTest` pass (O17) eliminates redundant
+V6CLANG's existing `V6ClangEliminateZeroTest` pass (O17) eliminates redundant
 `ORA A` instructions when the preceding ALU instruction already set the
 zero flag. However, it stops at the first potentially flag-affecting
 instruction — it cannot "see through" intervening instructions that don't
@@ -57,15 +57,15 @@ Extend the backward scan in the redundant flag elimination pass:
 ```cpp
 bool canSkipForFlagScan(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
-  case V6C::MOV_rr: case V6C::MVI: case V6C::LXI:
-  case V6C::PUSH_BC: case V6C::PUSH_DE: case V6C::PUSH_HL:
-  case V6C::POP_BC: case V6C::POP_DE: case V6C::POP_HL:
-  case V6C::STAX_BC: case V6C::STAX_DE:
-  case V6C::LDAX_BC: case V6C::LDAX_DE:
-  case V6C::LDA: case V6C::STA:
-  case V6C::LHLD: case V6C::SHLD:
-  case V6C::XCHG: case V6C::XTHL: case V6C::SPHL:
-  case V6C::INX: case V6C::DCX: case V6C::NOP:
+  case V6CLANG::MOV_rr: case V6CLANG::MVI: case V6CLANG::LXI:
+  case V6CLANG::PUSH_BC: case V6CLANG::PUSH_DE: case V6CLANG::PUSH_HL:
+  case V6CLANG::POP_BC: case V6CLANG::POP_DE: case V6CLANG::POP_HL:
+  case V6CLANG::STAX_BC: case V6CLANG::STAX_DE:
+  case V6CLANG::LDAX_BC: case V6CLANG::LDAX_DE:
+  case V6CLANG::LDA: case V6CLANG::STA:
+  case V6CLANG::LHLD: case V6CLANG::SHLD:
+  case V6CLANG::XCHG: case V6CLANG::XTHL: case V6CLANG::SPHL:
+  case V6CLANG::INX: case V6CLANG::DCX: case V6CLANG::NOP:
     return true;
   default:
     return false;

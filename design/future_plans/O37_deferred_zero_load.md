@@ -90,7 +90,7 @@ The solution must act **before RA** to prevent the conflict.
 
 ## Implementation — Pre-RA Constant Sinking
 
-A custom V6C pass that runs **before RA**. For each constant
+A custom V6CLANG pass that runs **before RA**. For each constant
 materialization (`LXI rp, imm` / `MVI r, imm`) in a block ending
 with a conditional branch:
 

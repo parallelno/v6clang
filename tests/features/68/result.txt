@@ -5,7 +5,7 @@ Status
 ------
 
 The constant-shift specialization work is validated and the feature test case
-now has a current post-refactor assembly snapshot in `v6llvmc_new02.asm`.
+now has a current post-refactor assembly snapshot in `v6clang_new02.asm`.
 The remaining planned backend work is the dead-half omission subtask
 (`MVI H,0` / `MVI L,0` removal when the discarded byte has no consumers), so
 O86 is not marked complete in `design/future_plans/README.md` yet.
@@ -249,10 +249,10 @@ that fixed shift count. Helper rows are listed separately as well.
 | `__o_shr_i16` | 14 | `32 + 80*N` | shared helper |
 
 
-v6llvmc OLD ASM (relevant leaf functions)
+v6clang OLD ASM (relevant leaf functions)
 -----------------------------------------
 
-`v6llvmc_old.asm`
+`v6clang_old.asm`
 
 ```asm
 shl_u16_3:
@@ -530,10 +530,10 @@ sar_i16_15:
 ```
 
 
-v6llvmc NEW ASM
+v6clang NEW ASM
 ---------------
 
-`v6llvmc_new02.asm`
+`v6clang_new02.asm`
 
 ```asm
 shl_u16_3:
@@ -662,7 +662,7 @@ Comparison Table
 ----------------
 
 `main` is intentionally omitted from the three-way table below. c8080 keeps
-shared helper calls in `main`, while the V6C backend inlines many of the shift
+shared helper calls in `main`, while the V6CLANG backend inlines many of the shift
 sequences into the caller, so leaf functions are the apples-to-apples view.
 
 | Function | c8080 B | c8080 cc | old B | old cc | new B | new cc | new vs old | new vs c8080 |
@@ -686,9 +686,9 @@ Observations
 
 - The biggest wins are the new short-right-shift and arithmetic-right-shift
   specializations: `shr_u16_7`, `shr_u16_15`, `sar_i16_7`, and `sar_i16_15`.
-- `shl_u16_15` is now materially better than the old V6C expansion because the
+- `shl_u16_15` is now materially better than the old V6CLANG expansion because the
   old byte-lane + repeated `ADD A` sequence was replaced by `RRC + ANI`.
-- `sar_i16_9` remains unchanged versus the old V6C output on purpose. The
+- `sar_i16_9` remains unchanged versus the old V6CLANG output on purpose. The
   shorter byte-lane-plus-one-step form is cheaper than the longer rotate/mask
   sequence for `>> 9`.
 - `shl_u16_3`, `shl_u16_9`, and `shl_u16_13` were already in their good forms
@@ -701,6 +701,6 @@ Validation
 - Focused backend build: `ninja -C llvm-build llc` - PASS
 - Driver refresh for feature asm: `ninja -C llvm-build clang` - PASS
 - Focused shift lit tests:
-  - `llvm-project/llvm/test/CodeGen/V6C/shift-i16.ll` - PASS
-  - `llvm-project/llvm/test/CodeGen/V6C/shift-i16-byte-aligned.ll` - PASS
+  - `llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll` - PASS
+  - `llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll` - PASS
 - Full regression: `python tests/run_all.py` - PASS (16/16 golden, 145/145 lit, 3/3 benchmark suites)

@@ -1,21 +1,21 @@
 <#
 .SYNOPSIS
-    Stage and package a V6C distributable for Windows x64.
+    Stage and package a V6CLANG distributable for Windows x64.
 
 .DESCRIPTION
     Builds a self-contained release tree from an existing llvm-build/ tree
     and packages it as a single .zip. The staged layout matches the
-    "Installed" search branches of the clang V6C driver
-    (clang/lib/Driver/ToolChains/V6C.cpp), so the shipped clang.exe locates
-    v6c.ld, crt0.o, and the runtime builtins via its ResourceDir.
+    "Installed" search branches of the clang V6CLANG driver
+    (clang/lib/Driver/ToolChains/V6Clang.cpp), so the shipped clang.exe locates
+    v6clang.ld, crt0.o, and the runtime builtins via its ResourceDir.
 
     Layout produced:
-      v6c-<ver>-windows-x64/
+      v6clang-<ver>-windows-x64/
         bin/                              # clang, lld, llc, llvm-*, v6asm, v6emul
-        lib/clang/<llvm-ver>/v6c/v6c.ld
-        lib/clang/<llvm-ver>/lib/v6c/{crt0,mulhi3,mulsi3,udivhi3,
+        lib/clang/<llvm-ver>/v6clang/v6clang.ld
+        lib/clang/<llvm-ver>/lib/v6clang/{crt0,mulhi3,mulsi3,udivhi3,
                                        divhi3,shift,memory}.o
-        lib/clang/<llvm-ver>/lib/v6c/include/   (placeholder)
+        lib/clang/<llvm-ver>/lib/v6clang/include/   (placeholder)
                 samples/                          # curated .c samples
                 docs/                             # docs/ tree
         LICENSE
@@ -69,7 +69,7 @@ $resDir = $resDir.Trim()
 $ClangVer = Split-Path -Leaf $resDir
 Write-Host "Clang resource-dir version: $ClangVer"
 
-$DistName = "v6c-$Version-windows-x64"
+$DistName = "v6clang-$Version-windows-x64"
 $Stage    = Join-Path $OutDir $DistName
 
 if (Test-Path $Stage) {
@@ -98,13 +98,13 @@ foreach ($exe in $LlvmExes) {
     }
 }
 
-# Reference tools are installed separately and are not distributed with V6C.
+# Reference tools are installed separately and are not distributed with V6CLANG.
 
-# ------------------------------------------- lib/clang/<ver>/v6c/v6c.ld
-$StageDriverDir = Join-Path $Stage "lib\clang\$ClangVer\v6c"
+# ------------------------------------------- lib/clang/<ver>/v6clang/v6clang.ld
+$StageDriverDir = Join-Path $Stage "lib\clang\$ClangVer\v6clang"
 New-Item -ItemType Directory -Force -Path $StageDriverDir | Out-Null
-Copy-Item (Join-Path $repoRoot 'clang\lib\Driver\ToolChains\V6C\v6c.ld') `
-    -Destination (Join-Path $StageDriverDir 'v6c.ld')
+Copy-Item (Join-Path $repoRoot 'clang\lib\Driver\ToolChains\V6CLANG\v6clang.ld') `
+    -Destination (Join-Path $StageDriverDir 'v6clang.ld')
 
 # ------------------------- lib/clang/<ver>/include  (freestanding headers)
 # Clang resolves <stdint.h>, <stddef.h>, etc. from <ResourceDir>/include.
@@ -117,16 +117,16 @@ if (Test-Path $BuildResInclude) {
     Write-Warning "Clang freestanding headers not found at $BuildResInclude"
 }
 
-# ----------------------- lib/clang/<ver>/lib/v6c/{*.o, include/}
-$StageRtDir      = Join-Path $Stage "lib\clang\$ClangVer\lib\v6c"
+# ----------------------- lib/clang/<ver>/lib/v6clang/{*.o, include/}
+$StageRtDir      = Join-Path $Stage "lib\clang\$ClangVer\lib\v6clang"
 $StageRtIncDir   = Join-Path $StageRtDir 'include'
 New-Item -ItemType Directory -Force -Path $StageRtDir    | Out-Null
 New-Item -ItemType Directory -Force -Path $StageRtIncDir | Out-Null
 
-$RtSrcDir = Join-Path $repoRoot 'compiler-rt\lib\builtins\v6c'
+$RtSrcDir = Join-Path $repoRoot 'compiler-rt\lib\builtins\v6clang'
 # O80: all integer-math and mem* helpers are now header-only inline-asm
 # routines emitted per-TU. Only crt0 still needs to ship as an object.
-# crt0.o is produced out-of-band by scripts/build_v6c_runtime.ps1 (which
+# crt0.o is produced out-of-band by scripts/build_v6clang_runtime.ps1 (which
 # build.ps1 invokes right after ninja). make_dist.ps1 itself just
 # copies the prebuilt object - building it here would mask a broken or
 # missing runtime build step.
@@ -135,8 +135,8 @@ $RtObjects = @('crt0.o')
 foreach ($o in $RtObjects) {
     $srcPath = Join-Path $RtSrcDir $o
     if (-not (Test-Path $srcPath)) {
-        throw "V6C runtime object '$o' not found at $srcPath. " +
-              "Run scripts/build_v6c_runtime.ps1 first " +
+        throw "V6CLANG runtime object '$o' not found at $srcPath. " +
+              "Run scripts/build_v6clang_runtime.ps1 first " +
               "(it is invoked automatically by scripts/build.ps1)."
     }
     $dstPath = Join-Path $StageRtDir $o
@@ -144,14 +144,14 @@ foreach ($o in $RtObjects) {
     Copy-Item -Force $srcPath -Destination $dstPath
 }
 
-# O80: ship the header-only V6C runtime (v6c_arith.h, v6c_rt_macros.h,
-# string.h, ...). The driver's findV6CRuntimeIncludeDir looks for these
-# under <ResourceDir>/lib/v6c/include.
+# O80: ship the header-only V6CLANG runtime (v6clang_arith.h, v6clang_rt_macros.h,
+# string.h, ...). The driver's findV6ClangRuntimeIncludeDir looks for these
+# under <ResourceDir>/lib/v6clang/include.
 $RtIncSrcDir = Join-Path $RtSrcDir 'include'
 if (Test-Path $RtIncSrcDir) {
     Copy-Item -Recurse -Force (Join-Path $RtIncSrcDir '*') -Destination $StageRtIncDir
 } else {
-    Write-Warning "V6C runtime include dir not found at $RtIncSrcDir"
+    Write-Warning "V6CLANG runtime include dir not found at $RtIncSrcDir"
 }
 
 # -------------------------------------------------------------- samples/

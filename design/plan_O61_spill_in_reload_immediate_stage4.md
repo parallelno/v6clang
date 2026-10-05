@@ -5,14 +5,14 @@
 > [O61_spill_in_reload_immediate.md](future_plans/O61_spill_in_reload_immediate.md#recommended-scope-of-a-minimal-prototype):
 >
 > * Extend O61 from **16-bit slots only (Stages 1–3)** to **8-bit slots**
->   as well. Group `V6C_SPILL8` / `V6C_RELOAD8` pseudos by frame index
+>   as well. Group `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` pseudos by frame index
 >   alongside the existing 16-bit grouping.
 > * Patched reload targets extend from `{HL, DE, BC}` (i16) to also
 >   include `{A, B, C, D, E, H, L}` (i8). The big-win case is `r8` with
 >   `HL` live across the reload (Δ ≥ +44 cc per the design doc's
 >   [Reloads table](future_plans/O61_spill_in_reload_immediate.md#reloads-reload-site-only)
->   and the V6C backend's real classical baseline — see §1 for the
->   concrete V6C numbers).
+>   and the V6CLANG backend's real classical baseline — see §1 for the
+>   concrete V6CLANG numbers).
 > * Spill source for i8 slots must be **`A`** (keeps the spill-side
 >   emitter trivial: `STA <Sym+1>`). Non-A r8 spill sources are
 >   deferred — they add value-routing complexity that doesn't buy
@@ -38,33 +38,33 @@ Stages 1–3 already shipped:
 
 ### Current behavior
 
-The Stage 3 `V6CSpillPatchedReload` pass only collects
-`V6C_SPILL16` / `V6C_RELOAD16` pseudos:
+The Stage 3 `V6ClangSpillPatchedReload` pass only collects
+`V6CLANG_SPILL16` / `V6CLANG_RELOAD16` pseudos:
 
 ```cpp
-    if (Opc == V6C::V6C_SPILL16)
+    if (Opc == V6CLANG::V6CLANG_SPILL16)
       Slots[MI.getOperand(1).getIndex()].Spills.push_back(&MI);
-    else if (Opc == V6C::V6C_RELOAD16)
+    else if (Opc == V6CLANG::V6CLANG_RELOAD16)
       Slots[MI.getOperand(1).getIndex()].Reloads.push_back(&MI);
 ```
 
 Every 8-bit spill/reload pair goes straight through the classical
 static-stack expansion in
-`V6CRegisterInfo::eliminateFrameIndex`
-([V6CRegisterInfo.cpp lines 133–200](../llvm/lib/Target/V6C/V6CRegisterInfo.cpp#L133))
+`V6ClangRegisterInfo::eliminateFrameIndex`
+([V6ClangRegisterInfo.cpp lines 133–200](../llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp#L133))
 as `STA`/`LDA` (A-target) or the HL-routed
 `PUSH HL; LXI HL, slot; MOV M, r / MOV r, M; POP HL` sequence
-(non-A target). The `__v6c_ss.f` BSS slot is 1 byte per i8 spill
+(non-A target). The `__v6clang_ss.f` BSS slot is 1 byte per i8 spill
 plus the reload-site instruction (3–6 B).
 
 ### Desired behavior
 
 For every static-stack-eligible function, for every i8 spill slot
-whose every source is `V6C_SPILL8` with src = `A`:
+whose every source is `V6CLANG_SPILL8` with src = `A`:
 
 1. Compute per-reload Δ using the design doc's
    [Reloads table](future_plans/O61_spill_in_reload_immediate.md#reloads-reload-site-only),
-   specialised to V6C's classical baselines (which route non-A r8
+   specialised to V6CLANG's classical baselines (which route non-A r8
    reloads through HL rather than A):
 
    | Reload target | HL state at reload | Classical cost | Patched cost | Δ (saved cc) |
@@ -73,10 +73,10 @@ whose every source is `V6C_SPILL8` with src = `A`:
    | `r8` non-A    | HL dead            | 28 (`LXI HL,addr; MOV r,M`) | 8 (`MVI r,imm`) | **+20** |
    | `r8` non-A    | HL live            | 52 (`PUSH H; LXI HL,addr; MOV r,M; POP H`) | 8 | **+44** |
 
-   > **Design Note**: The V6C backend's classical RELOAD8 expansion
+   > **Design Note**: The V6CLANG backend's classical RELOAD8 expansion
    > for non-A/H/L registers already routes through HL (preserving
    > A). The design doc's table (+16/+44) instead assumes an
-   > A-routed classical baseline (`LDA; MOV r,A`). We use the V6C
+   > A-routed classical baseline (`LDA; MOV r,A`). We use the V6CLANG
    > real baseline to make the Δ numbers match assembly reality.
    > The big-win case (+44) still appears when HL is live — just
    > keyed on HL liveness rather than A liveness.
@@ -90,24 +90,24 @@ whose every source is `V6C_SPILL8` with src = `A`:
    — symmetric to the i16 "skip HL on 2nd patch" rule).
 3. Emit **one `.Lo61_N` label per winner** with `MVI <DstReg>, 0`
    carrying `MO_PATCH_IMM`.
-4. Rewrite every original `V6C_SPILL8` as a sequence of one
+4. Rewrite every original `V6CLANG_SPILL8` as a sequence of one
    `STA <Sym[i]+1>` per winner (kill flag only on the last).
-5. Rewrite every non-winner `V6C_RELOAD8` as the classical i8
+5. Rewrite every non-winner `V6CLANG_RELOAD8` as the classical i8
    reload sequence for its destination register, reading from
    `Syms[0]+1` instead of the BSS slot — mirroring the existing
-   `V6CRegisterInfo::eliminateFrameIndex` i8 expansion but with
+   `V6ClangRegisterInfo::eliminateFrameIndex` i8 expansion but with
    the slot address replaced by an `MCSymbol + MO_PATCH_IMM`
    operand.
 
 ### Root cause
 
 The pass filter and the `deltaForReload` / `scoreReload` helpers are
-written against `V6C_SPILL16`/`V6C_RELOAD16` + `{HL, DE, BC}`
+written against `V6CLANG_SPILL16`/`V6CLANG_RELOAD16` + `{HL, DE, BC}`
 destinations only. The plumbing — `MO_PATCH_IMM`, MCSymbol lowering,
 constant-tracking opt-out, AsmPrinter label emission — is already
 generic: `MVI` immediates route through the same
-`V6CMCInstLower::MO_MCSymbol` case and the existing
-`V6CLoadImmCombine.cpp` guards (`isImm()`-checked at the two MVIr
+`V6ClangMCInstLower::MO_MCSymbol` case and the existing
+`V6ClangLoadImmCombine.cpp` guards (`isImm()`-checked at the two MVIr
 sites at lines 269 and 399) already treat non-immediate MVI operands
 as opaque.
 
@@ -115,27 +115,27 @@ as opaque.
 
 ## 2. Strategy
 
-### Approach: extend `V6CSpillPatchedReload` with a parallel 8-bit slot path
+### Approach: extend `V6ClangSpillPatchedReload` with a parallel 8-bit slot path
 
 All Stage 1–3 infrastructure stays exactly as-is:
 
-* `MO_PATCH_IMM` target flag (V6CInstrInfo.h).
-* `V6CMCInstLower.cpp` lowers `MO_MCSymbol + MO_PATCH_IMM` as `Sym+1`.
-* `V6CLoadImmCombine.cpp` already gates `MVIr` and `LXI` with
+* `MO_PATCH_IMM` target flag (V6ClangInstrInfo.h).
+* `V6ClangMCInstLower.cpp` lowers `MO_MCSymbol + MO_PATCH_IMM` as `Sym+1`.
+* `V6ClangLoadImmCombine.cpp` already gates `MVIr` and `LXI` with
   `isImm()` (the else branch invalidates the dst), so patched MVIs
   are naturally treated as opaque constant definers.
-* `V6CInstrInfo.cpp` INX-scan LXI guard (Stage 1 step 3.8) is
+* `V6ClangInstrInfo.cpp` INX-scan LXI guard (Stage 1 step 3.8) is
   LXI-specific; MVIr is not a pair-forming instruction, so no
   analogous scan needs guarding for i8.
 * O43 `isSameAddress` already ignores MCSymbol operands.
 
 Stage 4 adds two parallel data structures and extends three helpers:
 
-1. **Collection loop.** Add the `V6C_SPILL8` / `V6C_RELOAD8` cases
+1. **Collection loop.** Add the `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` cases
    to the pseudo-grouping loop, storing into a second map
    `Slots8` keyed by FI. Keep `Slots16` untouched.
 2. **Width-aware filter.** For i8 slots, require all spill sources
-   to be `V6C::A`. Reload destinations can be any of
+   to be `V6CLANG::A`. Reload destinations can be any of
    `{A, B, C, D, E, H, L}`.
 3. **Δ table extension.** Add an `isI8` parameter (or overload) to
    `deltaForReload` returning the i8 table above for `{A, B..L}`
@@ -155,9 +155,9 @@ Stage 4 adds two parallel data structures and extends three helpers:
 6. **Winner patch emitter (i8).** `MVI <DstReg>, 0` with pre-instr
    label and `MO_PATCH_IMM` on the imm operand.
 7. **Unpatched reload emitter (i8).** Mirror the current
-   `V6CRegisterInfo::eliminateFrameIndex` i8 paths but replace
+   `V6ClangRegisterInfo::eliminateFrameIndex` i8 paths but replace
    the `.addGlobalAddress(GV, StaticOffset)` operand with
-   `.addSym(Syms[0], V6CII::MO_PATCH_IMM)`:
+   `.addSym(Syms[0], V6ClangII::MO_PATCH_IMM)`:
    * dst = A: `LDA <Syms[0], MO_PATCH_IMM>`.
    * dst = B/C/D/E: HL-liveness-aware
      `[PUSH H;] LXI HL, <Sym+1>; MOV r, M; [POP H;]`.
@@ -182,8 +182,8 @@ Stage 4 adds two parallel data structures and extends three helpers:
    address. The O43 PUSH/POP-fold pass does not apply to these
    sequences (they contain no SHLD/LHLD pair).
 4. **Chooser parity with design doc.** The Δ table is derived from
-   the V6C backend's real classical-reload expansions (the same
-   sequences that `V6CRegisterInfo.cpp` emits today). `BlockFrequency
+   the V6CLANG backend's real classical-reload expansions (the same
+   sequences that `V6ClangRegisterInfo.cpp` emits today). `BlockFrequency
    × Δ` captures hot-reload preference; the K caps and 2nd-patch
    exclusions match the design doc's stated rules.
 5. **No regressions to i16 path.** The i16 collection, filter,
@@ -194,21 +194,21 @@ Stage 4 adds two parallel data structures and extends three helpers:
 
 ### Why not a separate pass
 
-Three reasons to extend `V6CSpillPatchedReload` rather than add a
+Three reasons to extend `V6ClangSpillPatchedReload` rather than add a
 sibling pass:
 
 * Slot grouping and chooser infrastructure are shared (~40 lines of
   code reused).
 * The i8 and i16 paths never touch the same FI, so there is no
   ordering concern.
-* One pass means one CLI flag (`-mv6c-spill-patched-reload`) and
+* One pass means one CLI flag (`-mv6clang-spill-patched-reload`) and
   one place to audit for correctness.
 
 ### Summary of changes
 
 | Step | What | Where |
 |------|------|-------|
-| Collect i8 pseudos | Add `V6C_SPILL8`/`V6C_RELOAD8` cases to the grouping loop; store into a second `Slots8` map | `V6CSpillPatchedReload.cpp` |
+| Collect i8 pseudos | Add `V6CLANG_SPILL8`/`V6CLANG_RELOAD8` cases to the grouping loop; store into a second `Slots8` map | `V6ClangSpillPatchedReload.cpp` |
 | Extend Δ table | Add i8 rows (A: +8; r8 HL-dead: +20; r8 HL-live: +44) via an `isI8` branch in `deltaForReload` | same |
 | Extend chooser | Add `Width` parameter (or separate i8 helper) to `scoreReload` / `pickBestReload`; 2nd-patch skip set becomes `{A, H, L}` for i8 | same |
 | Add i8 slot loop | Mirror the existing i16 loop body against `Slots8`, using i8 filter (src = A), i8 emitters (STA, MVI, LDA/MOV-r-M) | same |
@@ -222,7 +222,7 @@ sibling pass:
 | Lit test — Stage 1–3 regression | `spill-patched-reload-{hl,de-bc,k2}.ll` must still pass | existing |
 | Feature test | `tests/features/37/` | new folder |
 
-No new CLI flag — `-mv6c-spill-patched-reload` continues to gate the
+No new CLI flag — `-mv6clang-spill-patched-reload` continues to gate the
 pass.
 
 ---
@@ -231,7 +231,7 @@ pass.
 
 ### Step 3.1 — Extend `deltaForReload` for i8 reloads [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Add an i8 branch. The simplest form is a second helper to keep the
 i16 function body unchanged:
@@ -239,18 +239,18 @@ i16 function body unchanged:
 ```cpp
 // i8 Delta: classical i8 reload cost - patched MVI cost (8cc).
 static int deltaForReload8(unsigned DstReg, bool HLLive) {
-  if (DstReg == V6C::A)
+  if (DstReg == V6CLANG::A)
     return 8;                    // LDA (16) -> MVI A (8)
-  if (DstReg == V6C::B || DstReg == V6C::C ||
-      DstReg == V6C::D || DstReg == V6C::E ||
-      DstReg == V6C::H || DstReg == V6C::L)
+  if (DstReg == V6CLANG::B || DstReg == V6CLANG::C ||
+      DstReg == V6CLANG::D || DstReg == V6CLANG::E ||
+      DstReg == V6CLANG::H || DstReg == V6CLANG::L)
     return HLLive ? 44 : 20;    // classical HL-routed r8 reload
   return 0;
 }
 ```
 
 > **Design Note**: H/L reloads use the DE-temp path in
-> `V6CRegisterInfo::eliminateFrameIndex`. That path's cost is close
+> `V6ClangRegisterInfo::eliminateFrameIndex`. That path's cost is close
 > to the B/C/D/E HL-routed cost, so we use the same (+20/+44) Δ for
 > H/L — Stage 4 treats them identically to B..E for the chooser.
 
@@ -258,7 +258,7 @@ static int deltaForReload8(unsigned DstReg, bool HLLive) {
 
 ### Step 3.2 — Extend chooser with `Width` parameter [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Extend `scoreReload` and `pickBestReload` to accept the slot width.
 The 2nd-patch exclusion flag is reused (`AllowHL=false` for i16)
@@ -291,7 +291,7 @@ widths.
 
 ### Step 3.3 — Collect i8 pseudos into `Slots8` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Add to the existing MF scan:
 
@@ -301,13 +301,13 @@ DenseMap<int, PerFI> Slots16, Slots8;
 for (auto &MBB : MF) {
   for (auto &MI : MBB) {
     unsigned Opc = MI.getOpcode();
-    if      (Opc == V6C::V6C_SPILL16)
+    if      (Opc == V6CLANG::V6CLANG_SPILL16)
       Slots16[MI.getOperand(1).getIndex()].Spills.push_back(&MI);
-    else if (Opc == V6C::V6C_RELOAD16)
+    else if (Opc == V6CLANG::V6CLANG_RELOAD16)
       Slots16[MI.getOperand(1).getIndex()].Reloads.push_back(&MI);
-    else if (Opc == V6C::V6C_SPILL8)
+    else if (Opc == V6CLANG::V6CLANG_SPILL8)
       Slots8 [MI.getOperand(1).getIndex()].Spills.push_back(&MI);
-    else if (Opc == V6C::V6C_RELOAD8)
+    else if (Opc == V6CLANG::V6CLANG_RELOAD8)
       Slots8 [MI.getOperand(1).getIndex()].Reloads.push_back(&MI);
   }
 }
@@ -317,7 +317,7 @@ for (auto &MBB : MF) {
 
 ### Step 3.4 — Add i8 slot rewrite loop [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 After the existing i16 slot loop, add a parallel i8 loop:
 
@@ -329,14 +329,14 @@ for (auto &KV : Slots8) {
   if (E.Spills.empty() || E.Reloads.empty())
     continue;
   if (!llvm::all_of(E.Spills, [](MachineInstr *S) {
-        return S->getOperand(0).getReg() == V6C::A;
+        return S->getOperand(0).getReg() == V6CLANG::A;
       }))
     continue;
   if (!llvm::all_of(E.Reloads, [&](MachineInstr *R) {
         Register D = R->getOperand(0).getReg();
-        return D == V6C::A || D == V6C::B || D == V6C::C ||
-               D == V6C::D || D == V6C::E || D == V6C::H ||
-               D == V6C::L;
+        return D == V6CLANG::A || D == V6CLANG::B || D == V6CLANG::C ||
+               D == V6CLANG::D || D == V6CLANG::E || D == V6CLANG::H ||
+               D == V6CLANG::L;
       }))
     continue;
 
@@ -363,9 +363,9 @@ for (auto &KV : Slots8) {
 
 ### Step 3.5 — Spill emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
-Per original `V6C_SPILL8` (src = A), emit one `STA` per Sym:
+Per original `V6CLANG_SPILL8` (src = A), emit one `STA` per Sym:
 
 ```cpp
 for (MachineInstr *Spill : E.Spills) {
@@ -374,9 +374,9 @@ for (MachineInstr *Spill : E.Spills) {
   bool IsKill = Spill->getOperand(0).isKill();
   for (size_t si = 0; si < Syms.size(); ++si) {
     bool Kill = IsKill && (si + 1 == Syms.size());
-    BuildMI(*MBB, Spill, DL, TII.get(V6C::STA))
-        .addReg(V6C::A, getKillRegState(Kill))
-        .addSym(Syms[si], V6CII::MO_PATCH_IMM);
+    BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::STA))
+        .addReg(V6CLANG::A, getKillRegState(Kill))
+        .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
   }
   Spill->eraseFromParent();
 }
@@ -386,7 +386,7 @@ for (MachineInstr *Spill : E.Spills) {
 
 ### Step 3.6 — Winner patch emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 ```cpp
 for (size_t wi = 0; wi < Winners.size(); ++wi) {
@@ -395,10 +395,10 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
   DebugLoc DL = PR->getDebugLoc();
   Register Dst = PR->getOperand(0).getReg();
   MachineInstrBuilder NewMvi =
-      BuildMI(*MBB, PR, DL, TII.get(V6C::MVIr))
+      BuildMI(*MBB, PR, DL, TII.get(V6CLANG::MVIr))
           .addReg(Dst, RegState::Define)
           .addImm(0);
-  NewMvi->getOperand(1).setTargetFlags(V6CII::MO_PATCH_IMM);
+  NewMvi->getOperand(1).setTargetFlags(V6ClangII::MO_PATCH_IMM);
   NewMvi->setPreInstrSymbol(MF, Syms[wi]);
   PR->eraseFromParent();
 }
@@ -408,12 +408,12 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
 
 ### Step 3.7 — Unpatched reload emitter (i8) [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
-Mirror `V6CRegisterInfo::eliminateFrameIndex`'s `V6C_RELOAD8`
+Mirror `V6ClangRegisterInfo::eliminateFrameIndex`'s `V6CLANG_RELOAD8`
 branches (A / H / L / other r8), replacing the
 `.addGlobalAddress(GV, StaticOffset)` operand with
-`.addSym(Syms[0], V6CII::MO_PATCH_IMM)` and using the existing
+`.addSym(Syms[0], V6ClangII::MO_PATCH_IMM)` and using the existing
 `isRegDeadAfterMI` helper for HL / DE / other-half liveness.
 
 ```cpp
@@ -427,11 +427,11 @@ for (size_t i = 0, n = E.Reloads.size(); i < n; ++i) {
   DebugLoc DL = R->getDebugLoc();
   Register Dst = R->getOperand(0).getReg();
 
-  if (Dst == V6C::A) {
-    BuildMI(*MBB, R, DL, TII.get(V6C::LDA), V6C::A)
-        .addSym(Syms[0], V6CII::MO_PATCH_IMM);
-  } else if (Dst == V6C::H || Dst == V6C::L) {
-    // DE-temp path, mirrors V6CRegisterInfo expansion.
+  if (Dst == V6CLANG::A) {
+    BuildMI(*MBB, R, DL, TII.get(V6CLANG::LDA), V6CLANG::A)
+        .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
+  } else if (Dst == V6CLANG::H || Dst == V6CLANG::L) {
+    // DE-temp path, mirrors V6ClangRegisterInfo expansion.
     // ... see existing code for the exact sequence ...
   } else {
     // B/C/D/E: PUSH H; LXI HL, Syms[0]+1; MOV r, M; POP H
@@ -443,7 +443,7 @@ for (size_t i = 0, n = E.Reloads.size(); i < n; ++i) {
 ```
 
 > **Design Note**: Keep the emitter structurally close to
-> `V6CRegisterInfo::eliminateFrameIndex`'s i8 RELOAD branches so
+> `V6ClangRegisterInfo::eliminateFrameIndex`'s i8 RELOAD branches so
 > future refactors of the static-stack expansion automatically
 > guide any equivalent O61 adjustments.
 
@@ -460,13 +460,13 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.9 — Lit test: i8 patched reload [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6C/spill-patched-reload-i8.ll` (new)
+`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-i8.ll` (new)
 
 Four cases:
 
 1. **Single A spill, single B-target reload (HL live)** — expect
    `STA .Lo61_0+1`, `.Lo61_0:` label then `MVI B, 0`. No
-   `__v6c_ss.f+N` BSS slot.
+   `__v6clang_ss.f+N` BSS slot.
 2. **K=2 single-source (B + C reloads)** — expect two labels,
    two STAs at the spill site, two `MVI r, 0`s at the reload
    sites.
@@ -501,9 +501,9 @@ python tests\run_all.py
 ### Step 3.12 — Verification assembly steps from `tests\features\README.md` [x]
 
 Test folder `tests/features/37/` (created in Phase 1). Compile
-`v6llvmc.c` with
-`-mllvm -mv6c-spill-patched-reload -mllvm -v6c-disable-shld-lhld-fold`
-into `v6llvmc_new01.asm`. Verify i8 slot patching fires where
+`v6clang.c` with
+`-mllvm -mv6clang-spill-patched-reload -mllvm -v6clang-disable-shld-lhld-fold`
+into `v6clang_new01.asm`. Verify i8 slot patching fires where
 Stage 3 left the classical `STA/LDA`/HL-routed path in place.
 Iterate `_new02.asm`, `_new03.asm` … as needed.
 
@@ -512,8 +512,8 @@ Iterate `_new02.asm`, `_new03.asm` … as needed.
 ### Step 3.13 — Make sure result.txt is created (`tests\features\README.md`) [x]
 
 Per the test folder template: C source, c8080 reference body,
-c8080 stats, v6llvmc Stage 3 baseline, v6llvmc Stage 4 asm,
-v6llvmc stats, per-slot impact table for i8 scenarios, and the
+c8080 stats, v6clang Stage 3 baseline, v6clang Stage 4 asm,
+v6clang stats, per-slot impact table for i8 scenarios, and the
 chooser log (1st/2nd pick per slot).
 
 > **Implementation Notes**:
@@ -536,11 +536,11 @@ Current (Stage 3, classical i8 expansion):
 
 ```
 ; spill A
-  STA   __v6c_ss.f+0        ; 16cc, 3B
+  STA   __v6clang_ss.f+0        ; 16cc, 3B
   ...
 ; reload to B with HL live
   PUSH  H                   ; 12cc, 1B
-  LXI   HL, __v6c_ss.f+0    ; 12cc, 3B
+  LXI   HL, __v6clang_ss.f+0    ; 12cc, 3B
   MOV   B, M                ; 8cc,  1B
   POP   H                   ; 12cc, 1B
 ```
@@ -612,10 +612,10 @@ i16). Stage 4 admits it as multi-source K=1 for i8:
 
 | Risk | Mitigation |
 |------|------------|
-| Patched `MVI r, imm` misinterpreted as a compile-time constant by downstream passes | `MO_PATCH_IMM` + non-imm `MachineOperand`; existing `isImm()` guards at the two MVIr sites in `V6CLoadImmCombine.cpp` (lines 269, 399) already route to `invalidate(DstReg)`. Verified during Stage 1 audit. |
-| i8 slot shared between an i8 spill and a stray i16 reload (or vice versa) | RA-level invariant: `V6C_SPILL8` and `V6C_RELOAD8` only reference 1-byte FIs. `Slots8` and `Slots16` are keyed by FI and never overlap. |
-| `STA Sym+1` when A is already clobbered by a concurrent expansion | O61 runs post-RA and post-SpillForwarding but before PEI — the `V6C_SPILL8` pseudo declares `A` as its source, so RA guarantees A is defined immediately before. |
-| `MVI r, 0` with `r = A` and a live flags dependency | `MVI` does not touch flags. No interaction with `V6CRedundantFlagElim`. Same reasoning as the LXI patched-reload case. |
+| Patched `MVI r, imm` misinterpreted as a compile-time constant by downstream passes | `MO_PATCH_IMM` + non-imm `MachineOperand`; existing `isImm()` guards at the two MVIr sites in `V6ClangLoadImmCombine.cpp` (lines 269, 399) already route to `invalidate(DstReg)`. Verified during Stage 1 audit. |
+| i8 slot shared between an i8 spill and a stray i16 reload (or vice versa) | RA-level invariant: `V6CLANG_SPILL8` and `V6CLANG_RELOAD8` only reference 1-byte FIs. `Slots8` and `Slots16` are keyed by FI and never overlap. |
+| `STA Sym+1` when A is already clobbered by a concurrent expansion | O61 runs post-RA and post-SpillForwarding but before PEI — the `V6CLANG_SPILL8` pseudo declares `A` as its source, so RA guarantees A is defined immediately before. |
+| `MVI r, 0` with `r = A` and a live flags dependency | `MVI` does not touch flags. No interaction with `V6ClangRedundantFlagElim`. Same reasoning as the LXI patched-reload case. |
 | Unpatched HL-live reload clobbering A via `LDA` path | The unpatched i8 reload mirrors the existing static-stack HL-routed expansion for `B..E` — A is not clobbered on that path. A-target unpatched reloads do clobber A, but A is exactly the target being redefined, which is the intended semantics. |
 | 2nd-patch rule "skip H/L" too conservative | The 2nd-patch A-skip is load-bearing (Δ = −8 cc); the H/L-skip is a safety measure because H/L sub-registers alias HL which is used in the unpatched reload's own routing. Safe conservative default; Stage 5+ can relax if measurements show wins. |
 | Existing Stage 3 lit tests regress | Helper signature change (`Width` + `AllowA`) defaulted at i16 call sites to current behaviour; re-run `spill-patched-reload-{hl,de-bc,k2}.ll` in step 3.10 to confirm byte-identical output. |
@@ -630,7 +630,7 @@ i16). Stage 4 admits it as multi-source K=1 for i8:
   so no interaction with the i8 path.
 * **O42 Liveness-Aware Expansion** — the i8 unpatched reload emitter
   already reads HL liveness via `isRegDeadAfterMI`, matching O42's
-  conditional `PUSH H` / `POP H` elision in `V6CRegisterInfo.cpp`.
+  conditional `PUSH H` / `POP H` elision in `V6ClangRegisterInfo.cpp`.
 * **Stage 5 (future)** — extends spill-side handling from A to any
   GR8 (and from HL to DE/BC for i16). Cleanly layers on top of
   Stage 4 once the A-routing-at-spill invariant is relaxed.
@@ -640,7 +640,7 @@ i16). Stage 4 admits it as multi-source K=1 for i8:
 ## 7. Future Enhancements
 
 * **Non-A i8 spill sources** (Stage 5 territory) — admit
-  `V6C_SPILL8` with non-A source by emitting `MOV A, r; STA Sym+1`
+  `V6CLANG_SPILL8` with non-A source by emitting `MOV A, r; STA Sym+1`
   (guarded by A-liveness; wrap with `PUSH PSW` / `POP PSW` when A
   is live after the spill).
 * **H/L-target 2nd patch** — the current Stage 4 conservative rule
@@ -648,8 +648,8 @@ i16). Stage 4 admits it as multi-source K=1 for i8:
   cases; revisit with a per-function cost comparison.
 * **DE-temp routing for H/L unpatched reloads** — the exact
   sequence mirrors the static-stack expansion; a future refactor
-  could share the helper between `V6CRegisterInfo` and
-  `V6CSpillPatchedReload`.
+  could share the helper between `V6ClangRegisterInfo` and
+  `V6ClangSpillPatchedReload`.
 
 ---
 
@@ -663,7 +663,6 @@ i16). Stage 4 admits it as multi-source K=1 for i8:
   cost model, DE/BC reload targets.
 * [O61 Stage 3 Plan](plan_O61_spill_in_reload_immediate_stage3.md) —
   K ≤ 2 single-source, multi-source K ≤ 1.
-* [V6C Build Guide](../docs/V6CBuildGuide.md).
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md).
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md).
 * [Future Improvements](future_plans/README.md).
-

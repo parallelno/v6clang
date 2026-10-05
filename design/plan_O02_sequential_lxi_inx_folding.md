@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-[V6CLoadStoreOpt.cpp](llvm/lib/Target/V6C/V6CLoadStoreOpt.cpp#L132-L205)
+[V6ClangLoadStoreOpt.cpp](llvm/lib/Target/V6CLANG/V6ClangLoadStoreOpt.cpp#L132-L205)
 implements `mergeAdjacentAccess`: a rigid 4-instruction window matching
 `LXI H,N ; <load|store via M> ; LXI H,N+1 ; <load|store via M>` with both
 LXI operands as plain `imm`. It folds the second LXI into `INX H`. It
@@ -20,7 +20,7 @@ fails on three common shapes:
    pattern. A single `LDA g+1` between an `LXI H,g` and the next
    `LXI H,g+2` blocks the fold.
 
-Real example from `tests/features/50/v6llvmc_old.asm`:
+Real example from `tests/features/50/v6clang_old.asm`:
 
 ```asm
 sum4_global:
@@ -48,7 +48,7 @@ sum4_global:
     RET
 ```
 
-Per Vector-06c timings (`docs/V6CInstructionTimings.md`): LXI = 12cc/3B,
+Per Vector-06c timings (`docs/V6ClangInstructionTimings.md`): LXI = 12cc/3B,
 INX = 8cc/1B → saving **4cc + 2B per replaced LXI**.
 
 ### Root cause
@@ -90,8 +90,8 @@ Update rules per instruction:
 - `-O1` (Balanced): 2 (mixed; allow Δ=2 = 16cc/2B vs 12cc/3B — speed
   loses 4cc, size wins 1B; treat as net-neutral, allow).
 
-The cost-driven threshold uses the existing `getV6COptMode` helper
-(see [V6CInstrCost.h](llvm/lib/Target/V6C/V6CInstrCost.h)).
+The cost-driven threshold uses the existing `getV6ClangOptMode` helper
+(see [V6ClangInstrCost.h](llvm/lib/Target/V6CLANG/V6ClangInstrCost.h)).
 
 ### Why this works
 
@@ -109,8 +109,8 @@ The cost-driven threshold uses the existing `getV6COptMode` helper
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CLoadStoreOpt.cpp` | Rewrite `mergeAdjacentAccess` as a state-tracking forward scan; extend `isLXI_HL` to accept Imm/GA/ES/BA; widen the matching to handle GlobalAddress + offset and ExternalSymbol + offset; reuse `definesHL` for fail-safe reset. |
-| `llvm-project/llvm/test/CodeGen/V6C/loadstore-opt-chain.ll` | New lit test: 3-LXI immediate chain, GA chain, gap-with-LDA, XCHG-blocks-fold (negative), Δ=4 cost-gate (negative). |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadStoreOpt.cpp` | Rewrite `mergeAdjacentAccess` as a state-tracking forward scan; extend `isLXI_HL` to accept Imm/GA/ES/BA; widen the matching to handle GlobalAddress + offset and ExternalSymbol + offset; reuse `definesHL` for fail-safe reset. |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/loadstore-opt-chain.ll` | New lit test: 3-LXI immediate chain, GA chain, gap-with-LDA, XCHG-blocks-fold (negative), Δ=4 cost-gate (negative). |
 | `tests/features/50/` | Feature test (already prepared in Phase 1). |
 | `design/future_plans/README.md` | Mark O2 as `[x]`. |
 | `design/future_plans/O02_sequential_lxi_inx_folding.md` | Mark as IMPLEMENTED at top. |
@@ -149,13 +149,13 @@ known; sets Unknown on int64 overflow guard.
 ### Step 3.2 — Replace `mergeAdjacentAccess` with state tracker `[x]`
 
 ```cpp
-bool V6CLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB) {
+bool V6ClangLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB) {
   HLAddr State;             // Unknown initially
   unsigned MaxDelta = getMaxDelta(*MBB.getParent());
   bool Changed = false;
   for (auto I = MBB.begin(); I != MBB.end(); ) {
     MachineInstr &MI = *I++;
-    if (MI.getOpcode() == V6C::LXI && MI.getOperand(0).getReg() == V6C::HL) {
+    if (MI.getOpcode() == V6CLANG::LXI && MI.getOperand(0).getReg() == V6CLANG::HL) {
       HLAddr New = HLAddr::fromLXI(MI);
       int64_t D;
       if (State.isKnown() && New.isKnown() && State.tryDelta(New, D)) {
@@ -170,11 +170,11 @@ bool V6CLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB) {
       State = New;
       continue;
     }
-    if (MI.getOpcode() == V6C::INX && MI.getOperand(0).getReg() == V6C::HL) {
+    if (MI.getOpcode() == V6CLANG::INX && MI.getOperand(0).getReg() == V6CLANG::HL) {
       if (State.isKnown()) State.bump(+1);
       continue;
     }
-    if (MI.getOpcode() == V6C::DCX && MI.getOperand(0).getReg() == V6C::HL) {
+    if (MI.getOpcode() == V6CLANG::DCX && MI.getOperand(0).getReg() == V6CLANG::HL) {
       if (State.isKnown()) State.bump(-1);
       continue;
     }
@@ -184,14 +184,14 @@ bool V6CLoadStoreOpt::foldHLChain(MachineBasicBlock &MBB) {
 }
 ```
 
-`getMaxDelta(MF)` switches on `getV6COptMode(MF)` (3 for Size, 2 for
+`getMaxDelta(MF)` switches on `getV6ClangOptMode(MF)` (3 for Size, 2 for
 Balanced, 1 for Speed).
 
 > **Design Notes**: `definesHL` already covers explicit + implicit defs
 > and H/L sub-register defs. Calls (which clobber HL via libcalls) hit
 > this path through their RegMask operand — but `definesHL` only inspects
 > def operands. Add a RegMask check: `for (MO : MI.operands()) if
-> (MO.isRegMask() && MO.clobbersPhysReg(V6C::HL)) return true;`. Same for
+> (MO.isRegMask() && MO.clobbersPhysReg(V6CLANG::HL)) return true;`. Same for
 > H/L. This catches cross-call HL invalidation.
 
 > **Implementation Notes**:
@@ -216,7 +216,7 @@ Cases (under `-O2` unless noted):
 - **Δ=4 not folded at -O2**: 5-LXI chain → only adjacent Δ=1 folds.
 - **Δ=3 folded at -Os**: same input compiled at `-Os` → 1 LXI + 3 INX.
 
-> **Design Notes**: Use `RUN: llc -mtriple=i8080-unknown-v6c -O2 …
+> **Design Notes**: Use `RUN: llc -mtriple=i8080-unknown-v6clang -O2 …
 > | FileCheck %s --check-prefix=O2`, second `RUN:` for `-Os` /
 > `--check-prefix=OS`.
 
@@ -236,20 +236,20 @@ HL-addressed sequences).
 
 ### Step 3.6 — Verification assembly steps from `tests\features\README.md` `[x]`
 
-Compile `tests/features/50/v6llvmc.c` to `v6llvmc_new01.asm`. Confirm:
+Compile `tests/features/50/v6clang.c` to `v6clang_new01.asm`. Confirm:
 - `sum4_global`: 3 LXI → 1 LXI + 2 INX H (saves 8cc + 4B).
 - `main`: similar pattern on `g_s` and on `g_b/g_c/g_d` after `STA`
   gaps.
 - `write4_globals`: STA chain — already optimal (no LXI to fold).
 
-Iterate `v6llvmc_new02.asm`, `_new03.asm`, … if expected savings absent.
+Iterate `v6clang_new02.asm`, `_new03.asm`, … if expected savings absent.
 
 > **Implementation Notes**:
 
 ### Step 3.7 — Make sure `result.txt` is created `[x]`
 
 Per `tests/features/README.md`: include C source, c8080 main+deps asm,
-c8080 stats, v6llvmc final asm, v6llvmc stats.
+c8080 stats, v6clang final asm, v6clang stats.
 
 > **Implementation Notes**:
 
@@ -312,7 +312,7 @@ reduction in HL-heavy code.
 |------|------------|
 | State not invalidated by call clobbers (HL via RegMask) | Add explicit `clobbersPhysReg` RegMask check in `definesHL` (Step 3.2 design notes). |
 | Misidentifying GA equality across different relocations | Compare `getGlobal()` pointer identity AND `getTargetFlags()` (catch `MO_LO8`/`MO_HI8` mismatches). |
-| Replacing LXI inside an instruction bundle | Bundles aren't used in V6C; assert `!MI.isBundled()` for safety. |
+| Replacing LXI inside an instruction bundle | Bundles aren't used in V6CLANG; assert `!MI.isBundled()` for safety. |
 | Cost gate accidentally regressing `-O2` | Default Speed mode allows only Δ=1 (strict win). |
 | Reset on `INR H`/`INR L` etc. via implicit def | Already handled — `definesHL` walks all operands incl. implicit. |
 | Plan-deferred Option B (`Defs=[HL]` removal) | Out of scope; tracked as O20 separately. |
@@ -343,8 +343,8 @@ reduction in HL-heavy code.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
-* [V6C Instruction Timings](docs\V6CInstructionTimings.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
+* [V6CLANG Instruction Timings](docs\V6ClangInstructionTimings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O02 design](design\future_plans\O02_sequential_lxi_inx_folding.md)
 * [Plan format reference](design\plan_cmp_based_comparison.md)

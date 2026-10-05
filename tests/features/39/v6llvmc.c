@@ -5,10 +5,10 @@
 // and i8 paths are unchanged.
 //
 // Compile:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\39\v6llvmc.c -o tests\features\39\v6llvmc_new01.asm \
-//       -mllvm -mv6c-spill-patched-reload \
-//       -mllvm -v6c-disable-shld-lhld-fold
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\39\v6clang.c -o tests\features\39\v6clang_new01.asm \
+//       -mllvm -mv6clang-spill-patched-reload \
+//       -mllvm -v6clang-disable-shld-lhld-fold
 
 __attribute__((leaf)) extern unsigned int op_u16(unsigned int x);
 __attribute__((leaf)) extern unsigned int op2_u16(unsigned int x);

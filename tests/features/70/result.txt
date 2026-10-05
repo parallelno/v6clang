@@ -6,13 +6,13 @@ Status
 
 O88 is implemented and validated.
 
-The new V6C peephole folds:
+The new V6CLANG peephole folds:
     MVI X, Imm
     MOV Z, X          (sole consumer, X dead after)
   →
     MVI Z, Imm
 
-The primary trigger is `zext i8 → i16` when V6C_BUILD_PAIR expands and
+The primary trigger is `zext i8 → i16` when V6CLANG_BUILD_PAIR expands and
 materialises the zero hi-half into an intermediate register before the
 final destination is known.  Each folded instance saves 8cc and 1 byte.
 
@@ -20,14 +20,14 @@ final destination is known.  Each folded instance saves 8cc and 1 byte.
 C Test Case Code
 ----------------
 
-`v6llvmc.c` / `c8080.c`
+`v6clang.c` / `c8080.c`
 
 ```c
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef signed char s8;
 
-extern const s8 sin_lut[256];   /* v6llvmc.c uses extern; c8080.c defines it locally */
+extern const s8 sin_lut[256];   /* v6clang.c uses extern; c8080.c defines it locally */
 
 /* lookup_zext: angle zero-extended to u16 before pointer arithmetic */
 s8 lookup_zext(u8 angle) {
@@ -52,7 +52,7 @@ c8080 ASM Converted To i8080 (main + dependent functions)
 ---------------------------------------------------------
 
 c8080 uses static-stack allocation for function arguments; its calling
-convention differs from v6llvmc's register-based ABI, so absolute cycle
+convention differs from v6clang's register-based ABI, so absolute cycle
 counts are not directly comparable.  The table below uses approximate
 Vector 06c timings for orientation only.
 
@@ -86,10 +86,10 @@ c8080 Stats (approximate, Vector 06c timings)
 | `zext_add`    |    14 |          ~96 | includes RET; spills via SHLD|
 
 
-v6llvmc OLD ASM (relevant functions)
+v6clang OLD ASM (relevant functions)
 ------------------------------------
 
-`v6llvmc_old.asm` (before O88):
+`v6clang_old.asm` (before O88):
 
 ```asm
 lookup_zext:
@@ -110,10 +110,10 @@ zext_add:
 ```
 
 
-v6llvmc NEW ASM (after O88)
+v6clang NEW ASM (after O88)
 ----------------------------
 
-`v6llvmc_new01.asm`:
+`v6clang_new01.asm`:
 
 ```asm
 lookup_zext:
@@ -135,16 +135,16 @@ zext_add:
 Comparison Table
 ----------------
 
-| Function      | Compiler      | Bytes | Cycles | vs v6llvmc old |
+| Function      | Compiler      | Bytes | Cycles | vs v6clang old |
 |---------------|---------------|------:|-------:|----------------|
 | `lookup_zext` | c8080         |    14 |    ~88 | —              |
-| `lookup_zext` | v6llvmc (old) |    10 |     68 | baseline       |
-| `lookup_zext` | v6llvmc (new) |     9 |     60 | −1B, −8cc      |
+| `lookup_zext` | v6clang (old) |    10 |     68 | baseline       |
+| `lookup_zext` | v6clang (new) |     9 |     60 | −1B, −8cc      |
 | `zext_add`    | c8080         |    14 |    ~96 | —              |
-| `zext_add`    | v6llvmc (old) |     7 |     48 | baseline       |
-| `zext_add`    | v6llvmc (new) |     6 |     40 | −1B, −8cc      |
+| `zext_add`    | v6clang (old) |     7 |     48 | baseline       |
+| `zext_add`    | v6clang (new) |     6 |     40 | −1B, −8cc      |
 
-v6llvmc already beats c8080 decisively on both functions even before O88
+v6clang already beats c8080 decisively on both functions even before O88
 (register ABI eliminates all the static-stack spill overhead).  O88 then
 removes the final redundant intermediate copy introduced by the
 BUILD_PAIR expansion, saving 8cc and 1B per call.

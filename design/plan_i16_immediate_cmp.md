@@ -36,8 +36,8 @@ between SUB and SBB without breaking the borrow/carry chain.
 
 ### Root cause
 
-The V6C_BR_CC16_IMM pseudo currently only handles EQ/NE conditions.
-All ordering conditions fall through to V6C_BR_CC16 (register variant),
+The V6CLANG_BR_CC16_IMM pseudo currently only handles EQ/NE conditions.
+All ordering conditions fall through to V6CLANG_BR_CC16 (register variant),
 which requires the constant in a register pair.
 
 ### Impact
@@ -50,10 +50,10 @@ which requires the constant in a register pair.
 
 ## 2. Strategy
 
-### Approach: Extend V6C_BR_CC16_IMM for ordering conditions
+### Approach: Extend V6CLANG_BR_CC16_IMM for ordering conditions
 
 Reuse the existing pseudo-instruction, extending both ISel dispatch
-(V6CISelDAGToDAG.cpp) and post-RA expansion (V6CInstrInfo.cpp) to
+(V6ClangISelDAGToDAG.cpp) and post-RA expansion (V6ClangInstrInfo.cpp) to
 handle ordering conditions alongside EQ/NE.
 
 ### Why this works
@@ -77,12 +77,12 @@ invert the CC (C↔NC, M↔P). This works because:
 
 | File | Change |
 |------|--------|
-| V6CISelDAGToDAG.cpp | Extend BR_CC16 ISel to select V6C_BR_CC16_IMM for ordering CCs with constant/Wrapper operands |
-| V6CInstrInfo.cpp | Extend V6C_BR_CC16_IMM expansion with MVI+SUB/SBB path for ordering CCs (no MBB split) |
-| V6CISelLowering.cpp | In LowerSELECT_CC, swap/adjust-K/invert-CC for i16 ordering with constant RHS before emitting CMP |
-| V6CISelDAGToDAG.cpp | In Select(), match V6CISD::CMP with i16 constant operand → V6C_CMP16_IMM |
-| V6CInstrInfo.td | New V6C_CMP16_IMM pseudo (ins GR16, imm16) |
-| V6CInstrInfo.cpp | Expand V6C_CMP16_IMM → MVI+SUB, MVI+SBB (same as BR_CC16_IMM ordering, minus the Jcc) |
+| V6ClangISelDAGToDAG.cpp | Extend BR_CC16 ISel to select V6CLANG_BR_CC16_IMM for ordering CCs with constant/Wrapper operands |
+| V6ClangInstrInfo.cpp | Extend V6CLANG_BR_CC16_IMM expansion with MVI+SUB/SBB path for ordering CCs (no MBB split) |
+| V6ClangISelLowering.cpp | In LowerSELECT_CC, swap/adjust-K/invert-CC for i16 ordering with constant RHS before emitting CMP |
+| V6ClangISelDAGToDAG.cpp | In Select(), match V6ClangISD::CMP with i16 constant operand → V6CLANG_CMP16_IMM |
+| V6ClangInstrInfo.td | New V6CLANG_CMP16_IMM pseudo (ins GR16, imm16) |
+| V6ClangInstrInfo.cpp | Expand V6CLANG_CMP16_IMM → MVI+SUB, MVI+SBB (same as BR_CC16_IMM ordering, minus the Jcc) |
 | br-cc16-imm-ord.ll | New lit test for all ordering conditions with immediate RHS |
 | br-cc16-imm.ll | Update `lt_still_register` test to expect MVI+SUB/SBB |
 
@@ -90,32 +90,32 @@ invert the CC (C↔NC, M↔P). This works because:
 
 ### Step 3.1 — Extend ISel dispatch for ordering conditions [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
 
-In the `V6CISD::BR_CC16` case of `Select()`, after the existing EQ/NE
+In the `V6ClangISD::BR_CC16` case of `Select()`, after the existing EQ/NE
 block, add handling for ordering conditions (COND_C/NC/M/P):
 
 1. **Constant on LHS** (from swapped UGT/ULE/SGT/SLE):
    - Detect `ConstantSDNode` or `Wrapper(GlobalAddress)` on LHS
    - Swap: LHS←RHS (register), RHS←LHS (constant)
    - Keep CC unchanged (MVI+SUB direction matches)
-   - Select `V6C_BR_CC16_IMM`
+   - Select `V6CLANG_BR_CC16_IMM`
 
 2. **Constant on RHS** (natural ULT/UGE/SLT/SGE):
    - Detect `ConstantSDNode` on RHS
    - Adjust constant: K → K−1 (masks to i16)
    - Invert CC: C↔NC, M↔P
    - Guard: skip if K=0 (unsigned) or K=0x8000 (signed) to avoid underflow
-   - Select `V6C_BR_CC16_IMM`
+   - Select `V6CLANG_BR_CC16_IMM`
    - For `Wrapper(GlobalAddress)` on RHS: adjust offset by −1
 
 > **Implementation Notes**:
 
-### Step 3.2 — Extend V6C_BR_CC16_IMM expansion for ordering conditions [x]
+### Step 3.2 — Extend V6CLANG_BR_CC16_IMM expansion for ordering conditions [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-In `expandPostRAPseudo()` case `V6C_BR_CC16_IMM`:
+In `expandPostRAPseudo()` case `V6CLANG_BR_CC16_IMM`:
 
 1. Remove the `assert((CC == COND_Z || CC == COND_NZ))` guard.
 2. After the existing EQ/NE expansion block, add ordering expansion:
@@ -135,14 +135,14 @@ In `expandPostRAPseudo()` case `V6C_BR_CC16_IMM`:
 
 > **Implementation Notes**:
 
-### Step 3.3 — Add V6C_CMP16_IMM pseudo [x]
+### Step 3.3 — Add V6CLANG_CMP16_IMM pseudo [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-Add a new pseudo alongside the existing `V6C_CMP16`:
+Add a new pseudo alongside the existing `V6CLANG_CMP16`:
 ```tablegen
 let Defs = [A, FLAGS] in
-def V6C_CMP16_IMM : V6CPseudo<(outs), (ins GR16:$lhs, imm16:$rhs),
+def V6CLANG_CMP16_IMM : V6ClangPseudo<(outs), (ins GR16:$lhs, imm16:$rhs),
     "# CMP16_IMM $lhs, $rhs",
     []>;
 ```
@@ -154,7 +154,7 @@ a separate SELECT_CC node.
 
 ### Step 3.4 — Extend LowerSELECT_CC for ordering with constant RHS [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 In `LowerSELECT_CC()`, after the existing O34 zero-test block, add
 handling for i16 ordering conditions with constant RHS:
@@ -168,7 +168,7 @@ handling for i16 ordering conditions with constant RHS:
    - Invert CC: C↔NC, M↔P
    - Guard: skip if K=0 (unsigned) or K=0x8000 (signed)
 
-Then emit `V6CISD::CMP(LHS, adjusted_RHS)` + `V6CISD::SELECT_CC` with
+Then emit `V6ClangISD::CMP(LHS, adjusted_RHS)` + `V6ClangISD::SELECT_CC` with
 the adjusted CC. The key insight: this is the only place where both
 the CMP operands and the CC are simultaneously accessible.
 
@@ -178,27 +178,27 @@ the CMP operands and the CC are simultaneously accessible.
 
 > **Implementation Notes**:
 
-### Step 3.5 — Extend ISel Select() for V6CISD::CMP with i16 constant [x]
+### Step 3.5 — Extend ISel Select() for V6ClangISD::CMP with i16 constant [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
 
-In `Select()`, add a handler for `V6CISD::CMP` (alongside the existing
-`V6CISD::BR_CC16` case):
+In `Select()`, add a handler for `V6ClangISD::CMP` (alongside the existing
+`V6ClangISD::BR_CC16` case):
 
 1. Check if the operation is i16 (`LHS.getValueType() == MVT::i16`)
 2. Check if RHS is a `ConstantSDNode` or `Wrapper(GlobalAddress)`
-3. If so, select `V6C_CMP16_IMM` instead of letting TableGen match
-   `V6C_CMP16`
+3. If so, select `V6CLANG_CMP16_IMM` instead of letting TableGen match
+   `V6CLANG_CMP16`
 
 No CC adjustment here — that was already done in `LowerSELECT_CC()`.
 
 > **Implementation Notes**:
 
-### Step 3.6 — Expand V6C_CMP16_IMM post-RA [x]
+### Step 3.6 — Expand V6CLANG_CMP16_IMM post-RA [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-Add `case V6C::V6C_CMP16_IMM:` in `expandPostRAPseudo()`:
+Add `case V6CLANG::V6CLANG_CMP16_IMM:` in `expandPostRAPseudo()`:
 ```
 MVI A, lo8(RHS)   ; via addImmLo lambda (reuse from BR_CC16_IMM)
 SUB LhsLo         ; 8080 SUBr
@@ -220,7 +220,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.8 — Lit test: br-cc16-imm-ord.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/br-cc16-imm-ord.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/br-cc16-imm-ord.ll`
 
 Test all six ordering conditions with integer constants:
 - `test_ult`: `icmp ult i16 %x, 1000` → CHECK for MVI+SUB, MVI+SBB, no LXI
@@ -237,7 +237,7 @@ Test all six ordering conditions with integer constants:
 
 ### Step 3.9 — Update existing lit test: br-cc16-imm.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/br-cc16-imm.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/br-cc16-imm.ll`
 
 Update `lt_still_register` test — it currently asserts that ULT uses
 the register path. After this change, it should use MVI+SUB/SBB.
@@ -314,7 +314,7 @@ avoiding a spill.
 
 ## 6. Relationship to Other Improvements
 
-- **Depends on**: Immediate CMP infrastructure (lo8/hi8 MCExpr, V6C_BR_CC16_IMM
+- **Depends on**: Immediate CMP infrastructure (lo8/hi8 MCExpr, V6CLANG_BR_CC16_IMM
   pseudo) — all already implemented.
 - **Benefits from**: O13 (LoadImmCombine) may further optimize redundant MVI
   loads if the same constant appears in adjacent comparisons.
@@ -328,7 +328,7 @@ avoiding a spill.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [Feature Description](design\future_plans\O24_i16_immediate_cmp.md)

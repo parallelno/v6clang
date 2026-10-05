@@ -1,0 +1,85 @@
+# RUN: rm -rf %t && mkdir -p %t && split-file %s %t
+# RUN: llvm-mc -filetype=obj -triple=i8080-unknown-v6clang %t/blocks.s -o %t/blocks.o
+# RUN: ld.lld -m elf32v6clang -T %t/layout.ld -Map=%t/first.map \
+# RUN:   -o %t/first.elf %t/blocks.o
+# RUN: ld.lld -m elf32v6clang -T %t/layout.ld -Map=%t/second.map \
+# RUN:   -o %t/second.elf %t/blocks.o
+# RUN: diff %t/first.elf %t/second.elf
+# RUN: diff %t/first.map %t/second.map
+# RUN: llvm-readelf --wide --sections --symbols %t/first.elf | \
+# RUN:   FileCheck %s --check-prefix=LAYOUT
+
+## This isolates leading-hole fill, anchors larger than a page, exact-page
+## windows, append-bump hole reuse, and stable equal-size ordering.
+# LAYOUT: .bss.pack NOBITS 0000010a {{[0-9a-f]+}} 0004f6
+# LAYOUT-DAG: 0000010a {{.*}} equal_window_b
+# LAYOUT-DAG: 0000011e {{.*}} filler_60
+# LAYOUT-DAG: 0000015a {{.*}} filler_40
+# LAYOUT-DAG: 00000200 {{.*}} anchor_300
+# LAYOUT-DAG: 0000032c {{.*}} window_200
+# LAYOUT-DAG: 00000400 {{.*}} anchor_100
+# LAYOUT-DAG: 00000464 {{.*}} window_120
+# LAYOUT-DAG: 000004dc {{.*}} equal_window_a
+# LAYOUT-DAG: 00000500 {{.*}} window_256
+# LAYOUT-DAG: 00000600 {{.*}} after_pack
+# LAYOUT-DAG: 000004f6 {{.*}} ABS arena_size
+# LAYOUT-DAG: 0000010a {{.*}} arena_addr
+
+#--- layout.ld
+SECTIONS {
+  _start = 0;
+  .bss.pack 0x10a : {
+    *(.bss.pack.align)
+    *(.bss.pack.window)
+    *(.bss.pack)
+  }
+  after_pack = .;
+  arena_addr = ADDR(.bss.pack);
+  arena_size = SIZEOF(.bss.pack);
+}
+
+#--- blocks.s
+.section .bss.pack.align,"aw",@nobits,unique,1
+.globl anchor_100
+anchor_100:
+  .zero 100
+
+.section .bss.pack.align,"aw",@nobits,unique,2
+.globl anchor_300
+anchor_300:
+  .zero 300
+
+.section .bss.pack.window,"aw",@nobits,unique,3
+.globl window_120
+window_120:
+  .zero 120
+
+.section .bss.pack.window,"aw",@nobits,unique,4
+.globl window_256
+window_256:
+  .zero 256
+
+.section .bss.pack.window,"aw",@nobits,unique,5
+.globl window_200
+window_200:
+  .zero 200
+
+.section .bss.pack.window,"aw",@nobits,unique,6
+.globl equal_window_a
+equal_window_a:
+  .zero 20
+
+.section .bss.pack.window,"aw",@nobits,unique,7
+.globl equal_window_b
+equal_window_b:
+  .zero 20
+
+.section .bss.pack,"aw",@nobits,unique,8
+.globl filler_40
+filler_40:
+  .zero 40
+
+.section .bss.pack,"aw",@nobits,unique,9
+.globl filler_60
+filler_60:
+  .zero 60

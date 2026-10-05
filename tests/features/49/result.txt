@@ -11,7 +11,7 @@ Fold the post-RA pattern
 into the equivalent single i8080 conditional CALL instruction
 (CNZ / CZ / CC / CNC / CP / CM / CPE / CPO).
 
-The optimisation is implemented in the `V6CBranchOpt` post-RA pass as
+The optimisation is implemented in the `V6ClangBranchOpt` post-RA pass as
 the `foldConditionalCalls` sub-pass. It runs after `invertConditionalBranch`
 so that any inversion that re-shapes Jcc terminators is already done,
 and before `removeRedundantJMP` / `foldConditionalReturns` so that
@@ -21,7 +21,7 @@ IPRA correctness
 ----------------
 The fused conditional CALL keeps every operand of the original CALL
 instruction, including the per-callee RegMask placed there by
-`V6CTargetLowering::LowerCall`. The `V6CCallRegMaskVerifier` debug
+`V6ClangTargetLowering::LowerCall`. The `V6ClangCallRegMaskVerifier` debug
 pass continues to assert that every isCall instruction carries a
 RegMask, so the narrowed clobber set produced by IPRA (O39) is
 preserved without modification.
@@ -31,7 +31,7 @@ Bailouts
 The fold only fires when:
 - The call basic block is reached via a Jcc-only fallthrough.
 - The call basic block has a single predecessor (so it can be deleted).
-- Its only non-debug instruction is V6C::CALL.
+- Its only non-debug instruction is V6CLANG::CALL.
 - It falls through to the same skip block targeted by the Jcc.
 
 This explicitly excludes blocks that contain a return-value COPY
@@ -43,23 +43,23 @@ Build commands
 Reference c8080 assembly:
   tools\c8080\c8080.exe tests\features\49\c8080.c -a tests\features\49\c8080.asm
 
-V6C assembly verification:
-  llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\49\v6llvmc.c -o tests\features\49\v6llvmc_new01.asm
+V6CLANG assembly verification:
+  llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\49\v6clang.c -o tests\features\49\v6clang_new01.asm
 
 Assembly line counts
 --------------------
 c8080.asm:          230
-v6llvmc_old.asm:    145
-v6llvmc_new01.asm:  145
+v6clang_old.asm:    145
+v6clang_new01.asm:  145
 
 Note: tests/features/49 was created after the implementation patch, so
-v6llvmc_old.asm is a current compiler snapshot rather than a pre-O15
+v6clang_old.asm is a current compiler snapshot rather than a pre-O15
 historical baseline. The relevant comparison is between the c8080
-output (which already emits conditional CALLs) and the V6C output,
+output (which already emits conditional CALLs) and the V6CLANG output,
 both of which now contain CZ / CNZ / CC / CNC / CP / CM forms instead
 of separate Jcc + CALL pairs.
 
-Conditional CALL coverage in v6llvmc_new01.asm
+Conditional CALL coverage in v6clang_new01.asm
 ----------------------------------------------
 - cb_eq        ORA A      / CZ  notify
 - cb_ne        ORA A      / CNZ notify
@@ -70,7 +70,7 @@ Conditional CALL coverage in v6llvmc_new01.asm
 - cb_value_used (negative): keeps `JZ ... ; CALL produce` because the
   return value is consumed (call block contains a result COPY).
 
-Representative output (V6C)
+Representative output (V6CLANG)
 ---------------------------
 cb_eq:
   ORA A
@@ -119,9 +119,9 @@ cb_ult:
   RET
 
 Both compilers use the conditional CALL opcodes, confirming O15 brings
-V6C output to parity with c8080 on this pattern.
+V6CLANG output to parity with c8080 on this pattern.
 
 Lit coverage
 ------------
-llvm-project/llvm/test/CodeGen/V6C/conditional-call.ll covers all six
+llvm-project/llvm/test/CodeGen/V6CLANG/conditional-call.ll covers all six
 condition codes plus the value-used negative case.

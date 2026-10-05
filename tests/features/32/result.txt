@@ -1,6 +1,6 @@
 == O62: Efficient i16 Shift Expansion for Constant Amount ==
 
-=== C Test Case (v6llvmc) ===
+=== C Test Case (v6clang) ===
 
 unsigned short u16_p, u16_q;
   signed short i16_p, i16_q;
@@ -28,7 +28,7 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 
 // NOTE: u8 >> N and i8 >> N store-trunc patterns trigger an unrelated
 // pre-existing ISel selection failure (no truncstore-i8 pattern over
-// V6CISD::SRL16/SRA16). Tracked in design/plan_efficient_shift_expansion.md
+// V6ClangISD::SRL16/SRA16). Tracked in design/plan_efficient_shift_expansion.md
 // §7 "Future Enhancements" — out of scope for O62.
 
 === Shift body comparison (excerpts; static-stack save/restore omitted) ===
@@ -109,15 +109,15 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 
 --- u16_shl8 / u16_shl10 / i16_shl8 / i16_shl10 — UNCHANGED ---
 
-  These cases are custom-lowered in V6CISelLowering::LowerSHL_i16 via
-  ISD::BUILD_PAIR(0, lo) and never reach the V6C_SHL16 pseudo. Codegen
+  These cases are custom-lowered in V6ClangISelLowering::LowerSHL_i16 via
+  ISD::BUILD_PAIR(0, lo) and never reach the V6CLANG_SHL16 pseudo. Codegen
   was already optimal for byte-aligned SHL; O62 only adds the matching
   pseudo-side path so non-ISel-folded callers benefit too.
 
 --- u8_shl3 / i8_shl3 — UNCHANGED ---
 
   i8 SHL by constant is unrolled to ADD A,A in i8 domain by ISel; never
-  involves V6C_SHL16 (i8 path). No regression.
+  involves V6CLANG_SHL16 (i8 path). No regression.
 
 === Per-function instruction counts (full function bodies, incl. boilerplate) ===
 
@@ -139,8 +139,8 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 
 === Mechanism ===
 
-  Pre-O62 V6CInstrInfo::expandPostRAPseudo for V6C_SRL16 / V6C_SRA16 /
-  V6C_SHL16 with constant ShAmt:
+  Pre-O62 V6ClangInstrInfo::expandPostRAPseudo for V6CLANG_SRL16 / V6CLANG_SRA16 /
+  V6CLANG_SHL16 with constant ShAmt:
 
     1. Always emit "MOV DstHi,SrcHi; MOV DstLo,SrcLo" prologue when
        DstReg != SrcReg.
@@ -168,7 +168,7 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 === Validation ===
 
   Lit tests:
-    103/103 passed (V6C suite)
+    103/103 passed (V6CLANG suite)
     - shift-i16.ll: srl10_i16 expectation tightened to 2 RARs (was 4)
     - shift-i16-byte-aligned.ll: NEW — covers SRL/SRA/SHL by 8 and 10
       including the half-width loop check
@@ -183,7 +183,7 @@ void i8_shl3  (  signed char  x,   signed char  *p,   signed char  *q) { *p = x;
 === References ===
 
   - Plan: design/plan_efficient_shift_expansion.md
-  - Implementation: llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp
-    cases V6C_SHL16, V6C_SRL16, V6C_SRA16 in expandPostRAPseudo
-  - Lit tests: llvm-project/llvm/test/CodeGen/V6C/shift-i16.ll
-              llvm-project/llvm/test/CodeGen/V6C/shift-i16-byte-aligned.ll
+  - Implementation: llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp
+    cases V6CLANG_SHL16, V6CLANG_SRL16, V6CLANG_SRA16 in expandPostRAPseudo
+  - Lit tests: llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll
+              llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll

@@ -1,6 +1,6 @@
 // O80 — i8 zero-test compare via INR/DCR (A-preserving pseudo).
 //
-// Three shapes the new V6C_CMP8_ZERO pseudo expands:
+// Three shapes the new V6CLANG_CMP8_ZERO pseudo expands:
 //   shape_a       : src already in A          → ORA A           (1B / 4cc)
 //   shape_a_dead  : src in non-A reg, A dead  → MOV A,r; ORA A  (2B / 12cc)
 //   shape_a_live  : src in non-A reg, A live  → INR r; DCR r    (2B / 16cc)
@@ -9,8 +9,8 @@
 // scratch GR8 and restores it: 4B / 28cc + scratch register burn.
 //
 // Compile (baseline):
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\62\v6llvmc.c -o tests\features\62\v6llvmc_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\62\v6clang.c -o tests\features\62\v6clang_old.asm
 
 __attribute__((leaf)) extern unsigned char op1(unsigned char x);
 __attribute__((leaf)) extern void          sink(unsigned char x);

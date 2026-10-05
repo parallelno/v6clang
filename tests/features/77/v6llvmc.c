@@ -1,8 +1,8 @@
-/* O93: V6C_AND16_IMM / V6C_OR16_IMM / V6C_XOR16_IMM
+/* O93: V6CLANG_AND16_IMM / V6CLANG_OR16_IMM / V6CLANG_XOR16_IMM
  *
  * 16-bit bitwise ops against a compile-time constant. Currently each emits
  * an LXI to materialise the constant into a scratch register pair, then a
- * 6-instruction pair-wise V6C_*16. With O93 the constant goes into A per byte
+ * 6-instruction pair-wise V6CLANG_*16. With O93 the constant goes into A per byte
  * (commutativity: A^r == r^A), so no scratch pair is needed and trivial bytes
  * (0x00 / 0xFF identities) fold away.
  *

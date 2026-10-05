@@ -17,11 +17,11 @@ CALL+RET.
 
 ## Implementation
 
-Override `areInlineCompatible()` in `V6CTargetTransformInfo` to restrict
+Override `areInlineCompatible()` in `V6ClangTargetTransformInfo` to restrict
 inlining:
 
 ```cpp
-bool V6CTTIImpl::areInlineCompatible(const Function *Caller,
+bool V6ClangTTIImpl::areInlineCompatible(const Function *Caller,
                                       const Function *Callee) const {
   // Allow explicitly-marked inline functions (inline keyword, always_inline)
   if (Callee->hasFnAttribute(Attribute::InlineHint) ||
@@ -60,7 +60,7 @@ void caller() {
 
 ## Complexity
 
-Very Low. ~10 lines in `V6CTargetTransformInfo.h/.cpp`.
+Very Low. ~10 lines in `V6ClangTargetTransformInfo.h/.cpp`.
 
 ## Risk
 

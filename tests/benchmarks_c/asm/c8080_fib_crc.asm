@@ -25,12 +25,12 @@ __init_loop:
 ; 35         add  hl, de
 ; 36         jp   nc, __init_loop
 ; 37     }
-; 38 
+; 38
 ; 39     /* Init stack */
 ; 40 #if __has_include(<c8080/initstack.inc>) && !defined(ARCH_CPM_CCP) && !defined(ARCH_CPM_BDOS) && !defined(ARCH_CPM_BIOS)
 ; 41 #include <c8080/initstack.inc>
 ; 42 #endif
-; 43 
+; 43
 ; 44 #ifdef ARCH_CPM_CCP /* CCP remains in memory */
 ; 45     // clang-format off
 ; 46     asm {
@@ -44,7 +44,7 @@ __init_loop:
 ; 54     }
 ; 55     // clang-format on
 ; 56 #endif
-; 57 
+; 57
 ; 58 #ifdef ARCH_CPM_BDOS /* BDOS remains in memory */
 ; 59     asm {
 ; 60         ld   a, (7)
@@ -55,11 +55,11 @@ __init_loop:
 ; 65         push hl
 ; 66     }
 ; 67 #endif
-; 68 
+; 68
 ; 69 #ifdef ARCH_CPM_BIOS /* BIOS remains in memory */
 ; 70 #error TODO
 ; 71 #endif
-; 72 
+; 72
 ; 73     main(0, NULL);
 	ld hl, 0
 	ld (__a_1_main), hl
@@ -68,7 +68,7 @@ main:
 	ld (__a_2_main), hl
 ; 19     (void)argc; (void)argv;
 ; 20     /* Volatile seeds prevent the whole computation from collapsing to a
-; 21      * constant under aggressive optimization (otherwise v6llvmc -O2
+; 21      * constant under aggressive optimization (otherwise v6clang -O2
 ; 22      * folds the program to a single OUT). */
 ; 23     volatile u8 seed_a = 0;
 	xor a
@@ -88,7 +88,7 @@ main:
 	ld hl, 65535
 	ld (main_crc), hl
 ; 28     int i;
-; 29 
+; 29
 ; 30     for (i = 0; i < 24; i++) {
 	ld hl, 0
 	ld (main_i), hl
@@ -128,7 +128,7 @@ l_0:
 	jp l_0
 l_2:
 ; 36     }
-; 37 
+; 37
 ; 38     bench_finish((u8)(crc & 0xFF));
 	ld a, (main_crc)
 	and 255
@@ -302,4 +302,4 @@ __s___o_xor_16 equ __static_stack + 0
 __s___o_and_16 equ __static_stack + 0
 __s___o_shr_u16 equ __static_stack + 0
 __s___o_xor_32 equ __static_stack + 0
-    savebin "C:\Work\Programming\v6llvmc\tests\benchmarks_c\build\c8080_fib_crc.com", __begin, __bss - __begin
+    savebin "C:\Work\Programming\v6clang\tests\benchmarks_c\build\c8080_fib_crc.com", __begin, __bss - __begin

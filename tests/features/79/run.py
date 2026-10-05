@@ -25,8 +25,8 @@ def run(args):
 elf = HERE / "cfi.elf"
 rom = HERE / "cfi.rom"
 run([
-    str(CLANG), "-target", "i8080-unknown-v6c", "-O1", "-g",
-    str(HERE / "v6llvmc.c"), "-o", str(rom),
+    str(CLANG), "-target", "i8080-unknown-v6clang", "-O1", "-g",
+    str(HERE / "v6clang.c"), "-o", str(rom),
 ])
 if not elf.exists():
     raise RuntimeError("clang did not retain cfi.elf")
@@ -34,7 +34,7 @@ if not elf.exists():
 run([str(DWARFDUMP), "--verify", str(elf)])
 cfi = run([str(DWARFDUMP), "--debug-frame", str(elf)])
 if "Return address column: 11" not in cfi:
-    raise RuntimeError("missing V6C return-address column")
+    raise RuntimeError("missing V6CLANG return-address column")
 
 symbols = {}
 for line in run([str(READELF), "-s", str(elf)]).splitlines():

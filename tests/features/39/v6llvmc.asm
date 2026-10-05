@@ -6,50 +6,50 @@ de_bc_three:                            ; @de_bc_three
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.de_bc_three+4
+	LXI	HL, __v6clang_ss.de_bc_three+4
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	XCHG
-	SHLD	__v6c_ss.de_bc_three+2
+	SHLD	__v6clang_ss.de_bc_three+2
 	XCHG
 	CALL	op_u16
 	SHLD	.LLo61_0+1
-	;--- V6C_RELOAD16 ---
-	LHLD	__v6c_ss.de_bc_three+2
+	;--- V6CLANG_RELOAD16 ---
+	LHLD	__v6clang_ss.de_bc_three+2
 	CALL	op2_u16
-	;--- V6C_SPILL16 ---
-	SHLD	__v6c_ss.de_bc_three+2
-	;--- V6C_RELOAD16 ---
-	LHLD	__v6c_ss.de_bc_three+4
+	;--- V6CLANG_SPILL16 ---
+	SHLD	__v6clang_ss.de_bc_three+2
+	;--- V6CLANG_RELOAD16 ---
+	LHLD	__v6clang_ss.de_bc_three+4
 	CALL	op_u16
-	;--- V6C_SPILL16 ---
-	SHLD	__v6c_ss.de_bc_three+4
+	;--- V6CLANG_SPILL16 ---
+	SHLD	__v6clang_ss.de_bc_three+4
 .LLo61_0:
 	LXI	HL, 0
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.de_bc_three+2
+	LHLD	__v6clang_ss.de_bc_three+2
 	XCHG
 	MOV	C, L
 	MOV	B, H
 	CALL	use3_u16
 	LHLD	.LLo61_0+1
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.de_bc_three+2
+	LHLD	__v6clang_ss.de_bc_three+2
 	XCHG
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.de_bc_three+4
+	LHLD	__v6clang_ss.de_bc_three+4
 	XCHG
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
 	RET
                                         ; -- End function
@@ -59,18 +59,18 @@ de_one_reload:                          ; @de_one_reload
 	;  arg0 = HL
 	;  arg1 = DE
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	XCHG
-	SHLD	__v6c_ss.de_one_reload
+	SHLD	__v6clang_ss.de_one_reload
 	XCHG
 	CALL	op_u16
 	SHLD	.LLo61_1+1
-	;--- V6C_RELOAD16 ---
-	LHLD	__v6c_ss.de_one_reload
+	;--- V6CLANG_RELOAD16 ---
+	LHLD	__v6clang_ss.de_one_reload
 	CALL	op2_u16
 .LLo61_1:
 	LXI	DE, 0
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
 	RET
                                         ; -- End function
@@ -97,7 +97,7 @@ main:                                   ; @main
 	XCHG
 	LHLD	.LLo61_3+1
 	XCHG
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
 	SHLD	.LLo61_4+1
 	LXI	HL, 0x4444
@@ -109,7 +109,7 @@ main:                                   ; @main
 	LXI	DE, 0
 .LLo61_4:
 	LXI	BC, 0
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	MOV	A, C
 	ADD	E
 	MOV	C, A
@@ -119,7 +119,7 @@ main:                                   ; @main
 	XCHG
 	LHLD	.LLo61_3+1
 	XCHG
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
 	XCHG
 	MOV	H, B
@@ -128,10 +128,10 @@ main:                                   ; @main
 	LXI	HL, 0
 	RET
                                         ; -- End function
-	.local	__v6c_ss.de_bc_three            ; @__v6c_ss.de_bc_three
-	.comm	__v6c_ss.de_bc_three,6,1
-	.local	__v6c_ss.de_one_reload          ; @__v6c_ss.de_one_reload
-	.comm	__v6c_ss.de_one_reload,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,6,1
+	.local	__v6clang_ss.de_bc_three            ; @__v6clang_ss.de_bc_three
+	.comm	__v6clang_ss.de_bc_three,6,1
+	.local	__v6clang_ss.de_one_reload          ; @__v6clang_ss.de_one_reload
+	.comm	__v6clang_ss.de_one_reload,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,6,1
 	.addrsig

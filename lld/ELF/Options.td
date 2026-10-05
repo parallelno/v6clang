@@ -288,8 +288,8 @@ def m: JoinedOrSeparate<["-"], "m">, HelpText<"Set target emulation">;
 
 defm Map: Eq<"Map", "Print a link map to the specified file">;
 
-defm v6c_constants_map: EEq<"v6c-constants-map",
-  "Write V6C final global absolute constants to the specified file">;
+defm v6clang_constants_map: EEq<"v6clang-constants-map",
+  "Write V6CLANG final global absolute constants to the specified file">;
 
 defm merge_exidx_entries: B<"merge-exidx-entries",
     "Enable merging .ARM.exidx entries (default)",

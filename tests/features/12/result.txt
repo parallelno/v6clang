@@ -69,7 +69,7 @@ l_4:
 
 c8080 stats (per function, worst case): 108cc, 19B
 
-=== v6llvmc assembly ===
+=== v6clang assembly ===
 
 select_second:
     MOV  A, H        ;  8cc  1B
@@ -111,11 +111,11 @@ select_nonzero:
 ; x!=0 path: 28cc, 7B
 ; x==0 path: 44cc, 9B
 
-v6llvmc stats (per function, worst case): 56cc, 10B
+v6clang stats (per function, worst case): 56cc, 10B
 
 === Comparison Summary ===
 
-| Function       | c8080 cc | c8080 B | v6llvmc cc | v6llvmc B | Savings          |
+| Function       | c8080 cc | c8080 B | v6clang cc | v6clang B | Savings          |
 |----------------|----------|---------|------------|-----------|------------------|
 | select_second  | 108      | 19      | 44         | 9         | 64cc, 10B (59%)  |
 | select_on_zero | 108      | 19      | 56         | 10        | 52cc, 9B (48%)   |
@@ -125,6 +125,6 @@ Key improvement: O34 eliminates LXI rp,0 (3B+12cc) and SUB/SBB comparison,
 replaces with MOV A,H; ORA L zero-test (2B+12cc). Freed register pair also
 eliminates all spills in these functions — no frame setup/teardown needed.
 
-v6llvmc is register-based (args in HL/DE/BC) while c8080 uses static stack
-(args via memory loads/stores), giving v6llvmc a structural advantage for
+v6clang is register-based (args in HL/DE/BC) while c8080 uses static stack
+(args via memory loads/stores), giving v6clang a structural advantage for
 small functions with few arguments.

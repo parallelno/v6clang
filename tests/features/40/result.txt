@@ -1,7 +1,7 @@
 O61 Stage 6 — non-A i8 spill sources — feature test 40
 =======================================================
 
-## C source (tests/features/40/v6llvmc.c, same for c8080.c aside from
+## C source (tests/features/40/v6clang.c, same for c8080.c aside from
 ## extern attributes which c8080 doesn't accept)
 
     __attribute__((leaf)) extern unsigned char op1(unsigned char x);
@@ -40,21 +40,21 @@ O61 Stage 6 — non-A i8 spill sources — feature test 40
 ## against c8080 in this test folder. c8080.c, c8080.asm, c8080.lst,
 ## and c8080.bin are preserved as produced.
 
-## v6llvmc assembly (Stage 5 baseline — v6llvmc.asm)
+## v6clang assembly (Stage 5 baseline — v6clang.asm)
 ## =================================================
 ## Pre-Stage-6, the A-source spills already route through O61 (patched
 ## STA .LLo61_N+1 + MVI target, 0). Non-A i8 spills (B/C/D/E/H/L)
 ## fall through to the classical O64 ladder against BSS
-## __v6c_ss.three_i8 / __v6c_ss.four_i8 / __v6c_ss.main.
+## __v6clang_ss.three_i8 / __v6clang_ss.four_i8 / __v6clang_ss.main.
 ##
-## three_i8 (Stage 5): 28 insns, 14 BSS refs to __v6c_ss.three_i8
+## three_i8 (Stage 5): 28 insns, 14 BSS refs to __v6clang_ss.three_i8
 ##                     + 2 patched LLo61 refs. 3 bytes BSS reserved.
-## four_i8  (Stage 5): 40 insns, 11 BSS refs to __v6c_ss.four_i8
+## four_i8  (Stage 5): 40 insns, 11 BSS refs to __v6clang_ss.four_i8
 ##                     + 4 patched LLo61 refs. 4 bytes BSS reserved.
-## main     (Stage 5): 57 insns, 3 BSS refs to __v6c_ss.main
+## main     (Stage 5): 57 insns, 3 BSS refs to __v6clang_ss.main
 ##                     + 16 patched LLo61 refs. 7 bytes BSS reserved.
 
-## v6llvmc assembly (Stage 6 — v6llvmc_new02.asm)
+## v6clang assembly (Stage 6 — v6clang_new02.asm)
 ## ==============================================
 ## Every non-A i8 spill in three_i8/four_i8 is now routed through
 ## O64's expandSpill8Static with a .LLo61_N+1 appender, terminating
@@ -91,20 +91,20 @@ O61 Stage 6 — non-A i8 spill sources — feature test 40
         ADD  L
         RET
 
-## three_i8 (Stage 6): 22 insns, 0 refs to __v6c_ss.three_i8,
+## three_i8 (Stage 6): 22 insns, 0 refs to __v6clang_ss.three_i8,
 ##                     7 patched .LLo61 refs (3 winners).
 ##                     Δ vs Stage 5: −6 insns, BSS unused (still
 ##                     reserved — see dead-BSS note below).
-## four_i8  (Stage 6): 32 insns, 0 refs to __v6c_ss.four_i8,
+## four_i8  (Stage 6): 32 insns, 0 refs to __v6clang_ss.four_i8,
 ##                     8 patched .LLo61 refs (4 winners).
 ##                     Δ vs Stage 5: −8 insns.
 ## main     (Stage 6): 60 insns (K=2 for some A-sources in main),
-##                     1 ref to __v6c_ss.main+5 (HL spill in a path
+##                     1 ref to __v6clang_ss.main+5 (HL spill in a path
 ##                     that couldn't be patched), 16+ .LLo61 refs.
 ##                     Net Δ ≈ 0 — main was already mostly patched.
 
-## Chooser / per-slot impact (from V6CSpillPatchedReload DEBUG prints
-## with -debug-only=v6c-spill-patched-reload, for three_i8):
+## Chooser / per-slot impact (from V6ClangSpillPatchedReload DEBUG prints
+## with -debug-only=v6clang-spill-patched-reload, for three_i8):
 ##   slot FI=0 (source=A): K=2 picks admitted (Stage 4 unchanged).
 ##   slot FI=1 (source=C): K=1 pick (winner = MVI E, 0) — Stage 6.
 ##   slot FI=2 (source=E): K=1 pick (winner = MVI L, 0) — Stage 6.
@@ -113,7 +113,7 @@ O61 Stage 6 — non-A i8 spill sources — feature test 40
 ## Bytes / cycles
 ## -----------------
 ## For three_i8 non-A slots (C and E), each saves (vs classical
-## O64 Row 1 reload `LXI HL, __v6c_ss.three_i8+N; MOV r, M` → 20 cc,
+## O64 Row 1 reload `LXI HL, __v6clang_ss.three_i8+N; MOV r, M` → 20 cc,
 ## 4 B) by collapsing to `MVI r, 0` (7 cc, 2 B):
 ##   Δ per slot: −13 cc, −2 B code + −1 B BSS (dead).
 ## Δ three_i8 overall: ~ −26 cc, −4 B across two non-A reloads.
@@ -121,12 +121,12 @@ O61 Stage 6 — non-A i8 spill sources — feature test 40
 
 ## Bug fixed as part of Stage 6
 ## ----------------------------
-## V6CLoadImmCombine treated `MVI r, imm` carrying MO_PATCH_IMM as a
+## V6ClangLoadImmCombine treated `MVI r, imm` carrying MO_PATCH_IMM as a
 ## trackable constant def. With two patched MVIs landing the same
 ## (reg, imm) pair, the "same value already in reg → erase MVI"
 ## optimisation erased the second patched MVI and corrupted the
 ## reload. Fixed by gating all four immediate-handling sites in
-## V6CLoadImmCombine.cpp on a new `isPlainImm(MO)` helper that also
+## V6ClangLoadImmCombine.cpp on a new `isPlainImm(MO)` helper that also
 ## requires `MO.getTargetFlags() == 0`. Any operand carrying a
 ## non-zero target flag (MO_PATCH_IMM in practice) is treated as an
 ## opaque constant def (invalidate dst, do not track). This also
@@ -135,14 +135,14 @@ O61 Stage 6 — non-A i8 spill sources — feature test 40
 ## Dead BSS elimination
 ## ---------------------
 ## After O61 rewrites spill/reload pseudos to patched-reload-site
-## addresses, V6CSpillPatchedReload scans the function for surviving
+## addresses, V6ClangSpillPatchedReload scans the function for surviving
 ## FrameIndex operands and drops any static-stack slot that is no
 ## longer referenced. Surviving slots are repacked monotonically and
-## the backing `@__v6c_ss.<func>` global is resized (or erased
+## the backing `@__v6clang_ss.<func>` global is resized (or erased
 ## entirely when every slot was patched away), so AsmPrinter emits a
 ## smaller `.comm` — or none at all. In this test, all three
-## `.comm __v6c_ss.three_i8,3,1`, `.comm __v6c_ss.four_i8,4,1`, and
-## `.comm __v6c_ss.main,7,1` directives are eliminated: net BSS
+## `.comm __v6clang_ss.three_i8,3,1`, `.comm __v6clang_ss.four_i8,4,1`, and
+## `.comm __v6clang_ss.main,7,1` directives are eliminated: net BSS
 ## saved = 3 + 4 + 7 = 14 bytes.
 ##
 ## Compaction is a fixed-point post-rewrite step that is agnostic to

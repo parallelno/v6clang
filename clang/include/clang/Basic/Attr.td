@@ -929,16 +929,16 @@ def AVRSignal : InheritableAttr, TargetSpecificAttr<TargetAVR> {
   let Documentation = [AVRSignalDocs];
 }
 
-// V6C: tags a function as a runtime helper (e.g. those defined by the
-// V6C_RT/V6C_NOINLINE/V6C_INLINE macros). Lowered to the LLVM string
-// function attribute "v6c-rt-helper". The V6C AsmPrinter uses this tag
+// V6CLANG: tags a function as a runtime helper (e.g. those defined by the
+// V6CLANG_RT/V6CLANG_NOINLINE/V6CLANG_INLINE macros). Lowered to the LLVM string
+// function attribute "v6clang-rt-helper". The V6CLANG AsmPrinter uses this tag
 // to suppress the function body from `-S` text output unless
-// `-mllvm -mv6c-print-rt-helpers` is on. Unlike __attribute__((annotate))
+// `-mllvm -mv6clang-print-rt-helpers` is on. Unlike __attribute__((annotate))
 // it does NOT enroll the function in @llvm.global.annotations, so it
 // does NOT take the function's address and does NOT block IPO passes
 // (IPSCCP, ArgumentPromotion, etc.).
-def V6CRtHelper : InheritableAttr {
-  let Spellings = [Clang<"v6c_rt_helper">];
+def V6ClangRtHelper : InheritableAttr {
+  let Spellings = [Clang<"v6clang_rt_helper">];
   let Subjects = SubjectList<[Function]>;
   let Documentation = [Undocumented];
   let SimpleHandler = 1;

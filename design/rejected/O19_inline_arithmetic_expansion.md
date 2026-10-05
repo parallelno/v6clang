@@ -8,7 +8,7 @@ Inlining mul funcs doesn't justify the extra memory usage.
 
 ## Problem
 
-V6C uses library calls (`__mulqi3`, `__divqi3`, etc.) for all multiply and
+V6CLANG uses library calls (`__mulqi3`, `__divqi3`, etc.) for all multiply and
 divide operations. Each library call incurs:
 - CALL/RET overhead: ~30cc
 - Register save/restore in the callee: ~40-80cc (PUSH/POP pairs)

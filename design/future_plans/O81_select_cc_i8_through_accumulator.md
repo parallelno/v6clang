@@ -2,10 +2,10 @@
 
 ## 1. Problem
 
-`V6C_SELECT_CC` (the i8 conditional-select pseudo, defined in
-[V6CInstrInfo.td](llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td#L652)) is
-expanded by `V6CTargetLowering::EmitInstrWithCustomInserter`
-([V6CISelLowering.cpp](llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp#L1415))
+`V6CLANG_SELECT_CC` (the i8 conditional-select pseudo, defined in
+[V6ClangInstrInfo.td](llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L652)) is
+expanded by `V6ClangTargetLowering::EmitInstrWithCustomInserter`
+([V6ClangISelLowering.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L1415))
 into a diamond CFG:
 
 ```
@@ -17,14 +17,14 @@ BB:                          ; predecessor
 TrueBB:                      ; fallthrough true path (empty)
 SinkBB:
   vD = PHI(vT from TrueBB, vF from BB)
-  ... = vD                   ; consumer (typically V6C_STORE8_P)
+  ... = vD                   ; consumer (typically V6CLANG_STORE8_P)
 ```
 
 The PHI's three virtual registers (`vT`, `vF`, `vD`) end up coalesced into a
 single GR8 vreg by the register coalescer. The allocator picks any GR8
 register — usually whichever is least contended.
 
-For `fillScreen` in [temp/test_v6cllvm/test.c](temp/test_v6cllvm/test.c), the
+For `fillScreen` in [temp/test_v6clangllvm/test.c](temp/test_v6clangllvm/test.c), the
 inner loop's select compiles to:
 
 ```asm
@@ -70,10 +70,10 @@ Traced via `-print-after-all -filter-print-funcs=fillScreen`:
 
 1. **After ISel** the chain is briefly tagged `acc` (when constrained
    experimentally), e.g. `%18:acc = MVIr 79`, `%19:acc = MVIr 0`,
-   `%20:acc = PHI %19, %18`, `V6C_STORE8_P %20:acc, ...`.
+   `%20:acc = PHI %19, %18`, `V6CLANG_STORE8_P %20:acc, ...`.
 
 2. **`Register Coalescer`** calls `MachineRegisterInfo::recomputeRegClass()`
-   on the merged vreg. Both `MVIr` (`outs GR8:$rd`) and `V6C_STORE8_P`
+   on the merged vreg. Both `MVIr` (`outs GR8:$rd`) and `V6CLANG_STORE8_P`
    (`ins GR8:$src`) accept the broader `GR8` class. The coalescer keeps the
    **largest** class that satisfies every operand constraint (`GR8`), to
    maximise allocator flexibility. The `acc` constraint is dropped.
@@ -83,8 +83,8 @@ Traced via `-print-after-all -filter-print-funcs=fillScreen`:
    - `%25:acc` (outer `y` counter, forced to A by `CPI %25, 25` in the outer
      latch) is live across the whole inner loop → tries A.
    - `%16:acc` (`LDAX D` result in bb.2) is also forced to A and conflicts
-     with `%25` in bb.2 → greedy spills `%25` (`V6C_SPILL8` at bb.1 entry,
-     `V6C_RELOAD8` at bb.6).
+     with `%25` in bb.2 → greedy spills `%25` (`V6CLANG_SPILL8` at bb.1 entry,
+     `V6CLANG_RELOAD8` at bb.6).
    - By the time greedy reaches the short-lived merged vreg (`%30:gr8`),
      A is logically "owned" by `%25` and the eviction analysis does not
      re-consider A even though it is physically free between the spill
@@ -95,7 +95,7 @@ Traced via `-print-after-all -filter-print-funcs=fillScreen`:
 
 Two non-fixes that **were tried and confirmed insufficient**:
 
-- **Soft regalloc hint** `MRI.setRegAllocationHint(DstReg, 0, V6C::A)` —
+- **Soft regalloc hint** `MRI.setRegAllocationHint(DstReg, 0, V6CLANG::A)` —
   greedy still rejected A (it was not the assignment-time interference
   cost that drove the choice; it was the alloc-order traversal after A
   was filtered out as occupied by `%25`).
@@ -105,23 +105,23 @@ Two non-fixes that **were tried and confirmed insufficient**:
 
 ## 3. Proposed design
 
-Restructure the `V6C_SELECT_CC` (i8) inserter to materialize the result
+Restructure the `V6CLANG_SELECT_CC` (i8) inserter to materialize the result
 **through physreg `$a`** instead of through a vreg PHI, when it is
-profitable and safe. The 16-bit `V6C_SELECT_CC16` is left untouched — it
+profitable and safe. The 16-bit `V6CLANG_SELECT_CC16` is left untouched — it
 has no analogous A-routing benefit and its current diamond is consumed by
-[V6CBranchOpt::foldZeroSelectReturn](llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp#L383).
+[V6ClangBranchOpt::foldZeroSelectReturn](llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp#L383).
 
 ### 3.1. Eligibility predicate
 
 All of the following must hold at the inserter point:
 
-1. **i8 select**: `MI.getOpcode() == V6C::V6C_SELECT_CC`.
+1. **i8 select**: `MI.getOpcode() == V6CLANG::V6CLANG_SELECT_CC`.
 2. **A is dead at the inverted branch position in BB**. Use the same
-   `isRegDeadAtMI(V6C::A, MI, MBB, &RI)` helper as the O77 store-pseudo
+   `isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)` helper as the O77 store-pseudo
    expansion. This protects callers like `a + ((b & 4) ? K0 : K1)` where
    A holds the addend across the select.
 3. **Both arms are rematerializable constants**: the `MachineInstr`
-   defining `TrueReg` and `FalseReg` is a `V6C::MVIr` (or `LXI` lo/hi
+   defining `TrueReg` and `FalseReg` is a `V6CLANG::MVIr` (or `LXI` lo/hi
    half, etc.) with **no register operands**, located in `BB` (so it is
    safe to sink into a new child block), single-use (the select), and
    marked `isReMaterializable`.
@@ -166,7 +166,7 @@ Liveness bookkeeping:
   flags, but `XRAr A` does; emitting the flags marker uniformly keeps
   the O55 peephole-rewrite easy).
 - `FalseBB` and `TrueBB` get `$a` added as **live-out** to `SinkBB` via
-  `SinkBB->addLiveIn(V6C::A)`.
+  `SinkBB->addLiveIn(V6CLANG::A)`.
 - `BB` must not carry `$a` live-out (verifier requirement).
 - The trailing `COPY DstReg, $a` in `SinkBB` is placed at the block head
   (before any reschedulable user), and `DstReg`'s class stays `GR8`. The
@@ -194,22 +194,22 @@ need to choose — emit `MVI A, 0` and let O55 do the rewrite.
 
 ```cpp
 MachineRegisterInfo &MRI = MF->getRegInfo();
-const V6CRegisterInfo &TRI = *Subtarget.getRegisterInfo();
+const V6ClangRegisterInfo &TRI = *Subtarget.getRegisterInfo();
 
 auto isImmRemat = [&](Register R) -> MachineInstr * {
   if (!R.isVirtual()) return nullptr;
   MachineInstr *Def = MRI.getUniqueVRegDef(R);
   if (!Def || Def->getParent() != BB) return nullptr;
-  if (Def->getOpcode() != V6C::MVIr) return nullptr;
+  if (Def->getOpcode() != V6CLANG::MVIr) return nullptr;
   if (!MRI.hasOneNonDBGUse(R)) return nullptr;
   return Def;
 };
 
 MachineInstr *TrueDef  = isImmRemat(TrueReg);
 MachineInstr *FalseDef = isImmRemat(FalseReg);
-bool ADead = isRegDeadAtMI(V6C::A, MI, *BB, &TRI);
+bool ADead = isRegDeadAtMI(V6CLANG::A, MI, *BB, &TRI);
 
-if (MI.getOpcode() == V6C::V6C_SELECT_CC &&
+if (MI.getOpcode() == V6CLANG::V6CLANG_SELECT_CC &&
     TrueDef && FalseDef && ADead) {
   // --- 4-block "through-A" form ---
   int64_t TrueImm  = TrueDef->getOperand(1).getImm();
@@ -228,16 +228,16 @@ if (MI.getOpcode() == V6C::V6C_SELECT_CC &&
   BB->addSuccessor(TrueBB);
   BB->addSuccessor(FalseBB);
 
-  BuildMI(FalseBB, DL, TII.get(V6C::MVIr), V6C::A).addImm(FalseImm);
-  BuildMI(FalseBB, DL, TII.get(V6C::JMP)).addMBB(SinkBB);
+  BuildMI(FalseBB, DL, TII.get(V6CLANG::MVIr), V6CLANG::A).addImm(FalseImm);
+  BuildMI(FalseBB, DL, TII.get(V6CLANG::JMP)).addMBB(SinkBB);
   FalseBB->addSuccessor(SinkBB);
 
-  BuildMI(TrueBB, DL, TII.get(V6C::MVIr), V6C::A).addImm(TrueImm);
+  BuildMI(TrueBB, DL, TII.get(V6CLANG::MVIr), V6CLANG::A).addImm(TrueImm);
   TrueBB->addSuccessor(SinkBB);
 
-  SinkBB->addLiveIn(V6C::A);
+  SinkBB->addLiveIn(V6CLANG::A);
   BuildMI(*SinkBB, SinkBB->begin(), DL, TII.get(TargetOpcode::COPY), DstReg)
-      .addReg(V6C::A, RegState::Kill);
+      .addReg(V6CLANG::A, RegState::Kill);
 
   MI.eraseFromParent();
   return SinkBB;
@@ -265,13 +265,13 @@ That is fine — both arms are symmetric in this design.
 
 | # | Risk | Mitigation |
 |---|------|-----------|
-| 1 | `$a` live-in to `SinkBB` mis-tracked → verifier failure or stale-A miscompile downstream | Strict `addLiveIn(V6C::A)` on `SinkBB`; verify with `-verify-machineinstrs` in lit. |
-| 2 | A live across the select (e.g., `a + (cond ? K0 : K1)` with `a` held in A) | Gate on `isRegDeadAtMI(V6C::A, ...)`; fall back to existing 3-block form otherwise. |
+| 1 | `$a` live-in to `SinkBB` mis-tracked → verifier failure or stale-A miscompile downstream | Strict `addLiveIn(V6CLANG::A)` on `SinkBB`; verify with `-verify-machineinstrs` in lit. |
+| 2 | A live across the select (e.g., `a + (cond ? K0 : K1)` with `a` held in A) | Gate on `isRegDeadAtMI(V6CLANG::A, ...)`; fall back to existing 3-block form otherwise. |
 | 3 | `FLAGS` clobbered by `XRA A` rewrite when SinkBB consumers depend on flags from the CMP | The diamond already destroys FLAGS by virtue of the conditional branch; FLAGS are dead at SinkBB entry today. Re-verify after change. |
 | 4 | RegisterCoalescer fails to coalesce `DstReg` with `$a` due to interference past the consumer | Falls back to `MOV r, A` at SinkBB head → neutral vs. today (no MVI-pair to compare against, since the materialization already happened in A). |
 | 5 | Increased pressure on `$a` in functions with many selects + heavy A users (CPI / INR / LDAX / calls) | Eligibility gate (§3.1) — both arms must be rematerializable constants. Computed arms keep the 3-block form. |
-| 6 | `V6CBranchOpt::foldZeroSelectReturn` and related branch folds (O15 / O23 / O30 / O35) pattern-match the 3-block diamond | Audit each folder. The 4-block form only fires when both arms are pure immediates; the foldZeroSelectReturn pattern requires a `RET` in the join — disjoint set in practice, but verify with the lit suite. |
-| 7 | MachineSink / MachineCSE lose the ability to merge identical `MVIr 0`s across selects | These optimizations did not fire in any observed V6C asm; low practical exposure. Re-measure with benchmarks. |
+| 6 | `V6ClangBranchOpt::foldZeroSelectReturn` and related branch folds (O15 / O23 / O30 / O35) pattern-match the 3-block diamond | Audit each folder. The 4-block form only fires when both arms are pure immediates; the foldZeroSelectReturn pattern requires a `RET` in the join — disjoint set in practice, but verify with the lit suite. |
+| 7 | MachineSink / MachineCSE lose the ability to merge identical `MVIr 0`s across selects | These optimizations did not fire in any observed V6CLANG asm; low practical exposure. Re-measure with benchmarks. |
 | 8 | Lit tests that pin specific select-cc asm need updating | Expected. The new form is strictly equal or shorter; update goldens. |
 
 ## 5. Expected impact
@@ -294,7 +294,7 @@ on workloads with i8 immediate-arm selects in hot loops; flat elsewhere.
 
 - **F-O81a**: extend eligibility to one-arm-constant / one-arm-vreg by
   emitting `MOV A, <vreg>` in the corresponding branch block.
-- **F-O81b**: extend to `V6C_SELECT_CC16` via routing through `HL` (DAD-
+- **F-O81b**: extend to `V6CLANG_SELECT_CC16` via routing through `HL` (DAD-
   friendly) with analogous liveness gating.
 - **F-O81c**: when both arms are constants whose difference is ±1, fuse
   with the conditional branch into `INR A` / `DCR A` after a single

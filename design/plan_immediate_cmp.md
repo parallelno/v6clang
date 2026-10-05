@@ -1,14 +1,14 @@
-# Plan: Immediate CMP/CPI for 16-bit EQ/NE Comparison (V6C_BR_CC16_IMM)
+# Plan: Immediate CMP/CPI for 16-bit EQ/NE Comparison (V6CLANG_BR_CC16_IMM)
 
 ## 1. Problem
 
 ### Current behavior
 
-The CMP-based 16-bit EQ/NE comparison (implemented by V6C_BR_CC16)
+The CMP-based 16-bit EQ/NE comparison (implemented by V6CLANG_BR_CC16)
 compares two register pairs byte-by-byte using CMP:
 
 ```asm
-; V6C_BR_CC16 NE, BC vs HL — current output (array-copy loop)
+; V6CLANG_BR_CC16 NE, BC vs HL — current output (array-copy loop)
     MOV  A, C           ;  8cc  — LhsLo
     CMP  L              ;  4cc  — compare with RhsLo
     JNZ  .LBB0_1        ; 12cc  — early exit (24cc)
@@ -18,14 +18,14 @@ compares two register pairs byte-by-byte using CMP:
 ```
 
 The RHS register pair (HL) holds the loop-invariant constant
-`array1+100`. Because V6C_BR_CC16 accepts `GR16:$rhs`, the register
+`array1+100`. Because V6CLANG_BR_CC16 accepts `GR16:$rhs`, the register
 allocator must keep this constant in a physical register pair for the
 entire loop.
 
 ### Desired behavior
 
 ```asm
-; V6C_BR_CC16_IMM NE, BC vs array1+100 — target output
+; V6CLANG_BR_CC16_IMM NE, BC vs array1+100 — target output
     MVI  A, <(array1+100)  ;  8cc  — lo8 of constant into A
     CMP  C                 ;  4cc  — compare with LhsLo
     JNZ  .LBB0_1           ; 12cc  — early exit (24cc)
@@ -39,9 +39,9 @@ The constant is embedded as immediate operands using v6asm's `<(expr)`
 
 ### Root cause
 
-V6C_BR_CC16 always takes two register pair operands. When the RHS is
+V6CLANG_BR_CC16 always takes two register pair operands. When the RHS is
 a known constant (global address, integer), ISel materializes it into
-a register pair via LXI, then passes that pair to V6C_BR_CC16. The
+a register pair via LXI, then passes that pair to V6CLANG_BR_CC16. The
 register allocator must keep this pair live across the comparison.
 
 With only three 16-bit register pairs (BC, DE, HL), a constant
@@ -67,16 +67,16 @@ pair avoids a spill cascade worth ~100cc per iteration.
 
 ## 2. Strategy
 
-### Approach: new V6C_BR_CC16_IMM pseudo selected during ISel
+### Approach: new V6CLANG_BR_CC16_IMM pseudo selected during ISel
 
 The solution has three layers:
 
-1. **V6CMCExpr** — lo8/hi8 expression splitting for assembly output and
+1. **V6ClangMCExpr** — lo8/hi8 expression splitting for assembly output and
    ELF relocations (the MCExpr infrastructure).
-2. **V6C_BR_CC16_IMM** — new pseudo instruction taking an immediate RHS
+2. **V6CLANG_BR_CC16_IMM** — new pseudo instruction taking an immediate RHS
    instead of a register pair (the instruction definition).
 3. **ISel dispatch** — when RHS is a constant or global address, select
-   V6C_BR_CC16_IMM instead of V6C_BR_CC16 (the selection logic).
+   V6CLANG_BR_CC16_IMM instead of V6CLANG_BR_CC16 (the selection logic).
 
 ```
                 ISel
@@ -84,7 +84,7 @@ The solution has three layers:
          │              │
    RHS is register   RHS is constant/global
          │              │
-  V6C_BR_CC16      V6C_BR_CC16_IMM
+  V6CLANG_BR_CC16      V6CLANG_BR_CC16_IMM
   (outs) (ins GR16,   (outs) (ins GR16,
    GR16, i8imm, bb)    imm16, i8imm, bb)
          │              │
@@ -96,7 +96,7 @@ The solution has three layers:
                        CMP hi; Jcc
 ```
 
-The V6C_BR_CC16 (reg vs reg) path remains unchanged — it handles cases
+The V6CLANG_BR_CC16 (reg vs reg) path remains unchanged — it handles cases
 where RHS is truly a runtime value.
 
 ### Why ISel, not a post-RA peephole
@@ -125,7 +125,7 @@ JNZ  target
 ```
 
 The `<(expr)` / `>(expr)` syntax is already supported by v6asm. The
-LLVM backend needs a `V6CMCExpr` class that produces these expressions,
+LLVM backend needs a `V6ClangMCExpr` class that produces these expressions,
 plus corresponding fixup/relocation types for the ELF `.o` → linker
 pipeline.
 
@@ -139,49 +139,49 @@ our use case.
 
 | Step | What | Where |
 |------|------|-------|
-| V6CMCExpr class | lo8/hi8 MCExpr with printImpl and evaluateAsRelocatable | MCTargetDesc/V6CMCExpr.{h,cpp} (NEW) |
-| Fixup kinds | `fixup_v6c_lo8`, `fixup_v6c_hi8` | V6CFixupKinds.h |
-| Relocation types | `R_V6C_LO8`, `R_V6C_HI8` | V6CFixupKinds.h |
-| AsmBackend | applyFixup + getFixupKindInfo + getRelocType | V6CAsmBackend.cpp |
-| CodeEmitter | Dispatch V6CMCExpr to proper fixup kind | V6CMCCodeEmitter.cpp |
-| InstPrinter | Print V6CMCExpr via existing Expr path | V6CInstPrinter.cpp (no change needed) |
-| Pseudo definition | V6C_BR_CC16_IMM with imm16 RHS | V6CInstrInfo.td |
-| ISel dispatch | Select IMM variant when RHS is constant | V6CISelDAGToDAG.cpp |
-| Post-RA expansion | MVI+CMP MBB split for IMM variant | V6CInstrInfo.cpp |
-| Python linker | Handle R_V6C_LO8 / R_V6C_HI8 | scripts/v6c_link.py |
+| V6ClangMCExpr class | lo8/hi8 MCExpr with printImpl and evaluateAsRelocatable | MCTargetDesc/V6ClangMCExpr.{h,cpp} (NEW) |
+| Fixup kinds | `fixup_v6clang_lo8`, `fixup_v6clang_hi8` | V6ClangFixupKinds.h |
+| Relocation types | `R_V6CLANG_LO8`, `R_V6CLANG_HI8` | V6ClangFixupKinds.h |
+| AsmBackend | applyFixup + getFixupKindInfo + getRelocType | V6ClangAsmBackend.cpp |
+| CodeEmitter | Dispatch V6ClangMCExpr to proper fixup kind | V6ClangMCCodeEmitter.cpp |
+| InstPrinter | Print V6ClangMCExpr via existing Expr path | V6ClangInstPrinter.cpp (no change needed) |
+| Pseudo definition | V6CLANG_BR_CC16_IMM with imm16 RHS | V6ClangInstrInfo.td |
+| ISel dispatch | Select IMM variant when RHS is constant | V6ClangISelDAGToDAG.cpp |
+| Post-RA expansion | MVI+CMP MBB split for IMM variant | V6ClangInstrInfo.cpp |
+| Python linker | Handle R_V6CLANG_LO8 / R_V6CLANG_HI8 | scripts/v6clang_link.py |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CMCExpr (lo8/hi8 MCExpr class) [x]
+### Step 3.1 — Create V6ClangMCExpr (lo8/hi8 MCExpr class) [x]
 
-**New file**: `llvm/lib/Target/V6C/MCTargetDesc/V6CMCExpr.h`
+**New file**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCExpr.h`
 
 ```cpp
-#ifndef LLVM_LIB_TARGET_V6C_MCTARGETDESC_V6CMCEXPR_H
-#define LLVM_LIB_TARGET_V6C_MCTARGETDESC_V6CMCEXPR_H
+#ifndef LLVM_LIB_TARGET_V6CLANG_MCTARGETDESC_V6ClangMCEXPR_H
+#define LLVM_LIB_TARGET_V6CLANG_MCTARGETDESC_V6ClangMCEXPR_H
 
 #include "llvm/MC/MCExpr.h"
 
 namespace llvm {
 
-class V6CMCExpr : public MCTargetExpr {
+class V6ClangMCExpr : public MCTargetExpr {
 public:
   enum VariantKind {
-    VK_V6C_LO8,  // Low byte of 16-bit value: <(expr)
-    VK_V6C_HI8,  // High byte of 16-bit value: >(expr)
+    VK_V6CLANG_LO8,  // Low byte of 16-bit value: <(expr)
+    VK_V6CLANG_HI8,  // High byte of 16-bit value: >(expr)
   };
 
 private:
   const VariantKind Kind;
   const MCExpr *Expr;
 
-  explicit V6CMCExpr(VariantKind K, const MCExpr *E)
+  explicit V6ClangMCExpr(VariantKind K, const MCExpr *E)
       : Kind(K), Expr(E) {}
 
 public:
-  static const V6CMCExpr *create(VariantKind K, const MCExpr *E,
+  static const V6ClangMCExpr *create(VariantKind K, const MCExpr *E,
                                   MCContext &Ctx);
 
   VariantKind getKind() const { return Kind; }
@@ -201,10 +201,10 @@ public:
 #endif
 ```
 
-**New file**: `llvm/lib/Target/V6C/MCTargetDesc/V6CMCExpr.cpp`
+**New file**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCExpr.cpp`
 
 ```cpp
-#include "V6CMCExpr.h"
+#include "V6ClangMCExpr.h"
 #include "llvm/MC/MCAsmLayout.h"
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCContext.h"
@@ -213,19 +213,19 @@ public:
 
 using namespace llvm;
 
-const V6CMCExpr *V6CMCExpr::create(VariantKind K, const MCExpr *E,
+const V6ClangMCExpr *V6ClangMCExpr::create(VariantKind K, const MCExpr *E,
                                     MCContext &Ctx) {
-  return new (Ctx) V6CMCExpr(K, E);
+  return new (Ctx) V6ClangMCExpr(K, E);
 }
 
-void V6CMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
+void V6ClangMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
   // v6asm syntax: <(expr) for lo8, >(expr) for hi8
-  OS << (Kind == VK_V6C_LO8 ? '<' : '>') << '(';
+  OS << (Kind == VK_V6CLANG_LO8 ? '<' : '>') << '(';
   Expr->print(OS, MAI);
   OS << ')';
 }
 
-bool V6CMCExpr::evaluateAsRelocatableImpl(
+bool V6ClangMCExpr::evaluateAsRelocatableImpl(
     MCValue &Res, const MCAsmLayout *Layout,
     const MCFixup *Fixup) const {
   MCValue Value;
@@ -235,7 +235,7 @@ bool V6CMCExpr::evaluateAsRelocatableImpl(
   if (Value.isAbsolute()) {
     // Constant: fold immediately.
     int64_t Val = Value.getConstant();
-    if (Kind == VK_V6C_LO8)
+    if (Kind == VK_V6CLANG_LO8)
       Res = MCValue::get(Val & 0xFF);
     else
       Res = MCValue::get((Val >> 8) & 0xFF);
@@ -248,11 +248,11 @@ bool V6CMCExpr::evaluateAsRelocatableImpl(
   return true;
 }
 
-void V6CMCExpr::visitUsedExpr(MCStreamer &S) const {
+void V6ClangMCExpr::visitUsedExpr(MCStreamer &S) const {
   S.visitUsedExpr(*Expr);
 }
 
-MCFragment *V6CMCExpr::findAssociatedFragment() const {
+MCFragment *V6ClangMCExpr::findAssociatedFragment() const {
   return Expr->findAssociatedFragment();
 }
 ```
@@ -260,7 +260,7 @@ MCFragment *V6CMCExpr::findAssociatedFragment() const {
 > **Design Notes**:
 >
 > - **`printImpl`** emits `<(expr)` / `>(expr)` — matching v6asm syntax.
->   The `printOperand` method in `V6CInstPrinter` already handles
+>   The `printOperand` method in `V6ClangInstPrinter` already handles
 >   `MCExpr` by calling `Op.getExpr()->print(OS, &MAI)`, which
 >   dispatches to our `printImpl`. No changes needed in the printer.
 >
@@ -271,61 +271,61 @@ MCFragment *V6CMCExpr::findAssociatedFragment() const {
 >
 > - **Reference**: Follows AVR's `AVRMCExpr` pattern (LLVM source:
 >   `llvm/lib/Target/AVR/MCTargetDesc/AVRMCExpr.{h,cpp}`). AVR uses
->   `lo8()` / `hi8()` function syntax; V6C uses `<()` / `>()` prefix
+>   `lo8()` / `hi8()` function syntax; V6CLANG uses `<()` / `>()` prefix
 >   to match v6asm.
 
 ### Step 3.2 — Add fixup kinds and relocation types [x]
 
-**File**: `llvm/lib/Target/V6C/MCTargetDesc/V6CFixupKinds.h`
+**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangFixupKinds.h`
 
 Add two new fixup kinds and relocation types:
 
 ```cpp
 enum Fixups {
-  fixup_v6c_8 = FirstTargetFixupKind,
-  fixup_v6c_16,
-  fixup_v6c_lo8,   // NEW — low byte of 16-bit address
-  fixup_v6c_hi8,   // NEW — high byte of 16-bit address
-  fixup_v6c_invalid,
-  NumTargetFixupKinds = fixup_v6c_invalid - FirstTargetFixupKind
+  fixup_v6clang_8 = FirstTargetFixupKind,
+  fixup_v6clang_16,
+  fixup_v6clang_lo8,   // NEW — low byte of 16-bit address
+  fixup_v6clang_hi8,   // NEW — high byte of 16-bit address
+  fixup_v6clang_invalid,
+  NumTargetFixupKinds = fixup_v6clang_invalid - FirstTargetFixupKind
 };
 
 enum RelocType {
-  R_V6C_NONE = 0,
-  R_V6C_8    = 1,
-  R_V6C_16   = 2,
-  R_V6C_LO8  = 3,   // NEW — low byte of 16-bit address
-  R_V6C_HI8  = 4,   // NEW — high byte of 16-bit address
+  R_V6CLANG_NONE = 0,
+  R_V6CLANG_8    = 1,
+  R_V6CLANG_16   = 2,
+  R_V6CLANG_LO8  = 3,   // NEW — low byte of 16-bit address
+  R_V6CLANG_HI8  = 4,   // NEW — high byte of 16-bit address
 };
 ```
 
 ### Step 3.3 — Update AsmBackend: fixup info, apply, and ELF reloc mapping [x]
 
-**File**: `llvm/lib/Target/V6C/MCTargetDesc/V6CAsmBackend.cpp`
+**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangAsmBackend.cpp`
 
 Three changes:
 
 **a) `getFixupKindInfo()`** — add two entries to the Infos array:
 
 ```cpp
-const static MCFixupKindInfo Infos[V6C::NumTargetFixupKinds] = {
-    {"fixup_v6c_8",   0, 8, 0},
-    {"fixup_v6c_16",  0, 16, 0},
-    {"fixup_v6c_lo8", 0, 8, 0},   // NEW
-    {"fixup_v6c_hi8", 0, 8, 0},   // NEW
+const static MCFixupKindInfo Infos[V6CLANG::NumTargetFixupKinds] = {
+    {"fixup_v6clang_8",   0, 8, 0},
+    {"fixup_v6clang_16",  0, 16, 0},
+    {"fixup_v6clang_lo8", 0, 8, 0},   // NEW
+    {"fixup_v6clang_hi8", 0, 8, 0},   // NEW
 };
 ```
 
 **b) `applyFixup()`** — handle byte extraction:
 
 ```cpp
-if (Kind == static_cast<MCFixupKind>(V6C::fixup_v6c_lo8)) {
+if (Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_lo8)) {
   assert(Offset < Data.size() && "Fixup offset out of range");
   Data[Offset] = static_cast<char>(Value & 0xFF);
   return;
 }
 
-if (Kind == static_cast<MCFixupKind>(V6C::fixup_v6c_hi8)) {
+if (Kind == static_cast<MCFixupKind>(V6CLANG::fixup_v6clang_hi8)) {
   assert(Offset < Data.size() && "Fixup offset out of range");
   Data[Offset] = static_cast<char>((Value >> 8) & 0xFF);
   return;
@@ -335,10 +335,10 @@ if (Kind == static_cast<MCFixupKind>(V6C::fixup_v6c_hi8)) {
 **c) `getRelocType()`** — map fixups to ELF relocation types:
 
 ```cpp
-case V6C::fixup_v6c_lo8:
-  return V6C::R_V6C_LO8;
-case V6C::fixup_v6c_hi8:
-  return V6C::R_V6C_HI8;
+case V6CLANG::fixup_v6clang_lo8:
+  return V6CLANG::R_V6CLANG_LO8;
+case V6CLANG::fixup_v6clang_hi8:
+  return V6CLANG::R_V6CLANG_HI8;
 ```
 
 > **Design Note**: The lo8 fixup patches byte `[Offset]` with
@@ -349,16 +349,16 @@ case V6C::fixup_v6c_hi8:
 >
 > **Reference**: AVR's `adjustFixupValue` in `AVRAsmBackend.cpp` uses
 > the same `& 0xFF` and `>> 8` masking for its `fixup_lo8_ldi` and
-> `fixup_hi8_ldi` kinds. V6C is simpler because MVI stores the
+> `fixup_hi8_ldi` kinds. V6CLANG is simpler because MVI stores the
 > immediate contiguously (not split across non-adjacent bit fields
 > like AVR's LDI instruction).
 
-### Step 3.4 — Update CodeEmitter: dispatch V6CMCExpr to proper fixup [x]
+### Step 3.4 — Update CodeEmitter: dispatch V6ClangMCExpr to proper fixup [x]
 
-**File**: `llvm/lib/Target/V6C/MCTargetDesc/V6CMCCodeEmitter.cpp`
+**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCCodeEmitter.cpp`
 
 In `getMachineOpValue()`, when the operand is an expression, check if
-it's a `V6CMCExpr` and use the corresponding fixup kind:
+it's a `V6ClangMCExpr` and use the corresponding fixup kind:
 
 ```cpp
 assert(MO.isExpr() && "Expected expression operand");
@@ -367,12 +367,12 @@ const MCExpr *Expr = MO.getExpr();
 MCFixupKind Kind;
 unsigned Offset;
 
-// Check for V6C lo8/hi8 expressions first.
-if (auto *V6CExpr = dyn_cast<V6CMCExpr>(Expr)) {
+// Check for V6CLANG lo8/hi8 expressions first.
+if (auto *V6ClangExpr = dyn_cast<V6ClangMCExpr>(Expr)) {
   Kind = static_cast<MCFixupKind>(
-      V6CExpr->getKind() == V6CMCExpr::VK_V6C_LO8
-          ? V6C::fixup_v6c_lo8
-          : V6C::fixup_v6c_hi8);
+      V6ClangExpr->getKind() == V6ClangMCExpr::VK_V6CLANG_LO8
+          ? V6CLANG::fixup_v6clang_lo8
+          : V6CLANG::fixup_v6clang_hi8);
   Offset = 1;  // Immediate byte is always at offset 1 in MVI (2-byte instr)
 } else if (Size == 3) {
   Kind = FK_Data_2;
@@ -390,44 +390,44 @@ return 0;
 
 > **Design Note**: This is the critical dispatch point for the ELF
 > pipeline. When the compiler emits `MVI A, <(array1+100)`, the MCInst
-> operand is a `V6CMCExpr(VK_V6C_LO8, MCSymbolRefExpr("array1") + 100)`.
-> The code emitter sees this, creates a `fixup_v6c_lo8` fixup at the
+> operand is a `V6ClangMCExpr(VK_V6CLANG_LO8, MCSymbolRefExpr("array1") + 100)`.
+> The code emitter sees this, creates a `fixup_v6clang_lo8` fixup at the
 > immediate byte offset, and the assembler backend either resolves it
 > immediately (if the symbol is in the same section and fully resolved)
-> or emits an `R_V6C_LO8` relocation into the `.o` file for the linker.
+> or emits an `R_V6CLANG_LO8` relocation into the `.o` file for the linker.
 >
-> **Risk note**: If a V6CMCExpr ends up as an operand of a 3-byte
+> **Risk note**: If a V6ClangMCExpr ends up as an operand of a 3-byte
 > instruction (e.g., LXI), the offset would be wrong. This shouldn't
-> happen because we only create V6CMCExpr in the V6C_BR_CC16_IMM
+> happen because we only create V6ClangMCExpr in the V6CLANG_BR_CC16_IMM
 > expansion, which emits MVI (2-byte). A defensive assert could be
-> added: `assert(Size == 2 && "V6CMCExpr in non-MVI instruction")`.
+> added: `assert(Size == 2 && "V6ClangMCExpr in non-MVI instruction")`.
 
 > **Implementation note**: The defensive assert was added in the
-> implementation: `assert(Size == 2 && "V6CMCExpr in non-MVI instruction")`
-> is present in the V6CMCExpr branch of `getMachineOpValue()`.
+> implementation: `assert(Size == 2 && "V6ClangMCExpr in non-MVI instruction")`
+> is present in the V6ClangMCExpr branch of `getMachineOpValue()`.
 
 ### Step 3.5 — Register new source file in CMakeLists.txt [x]
 
-**File**: `llvm/lib/Target/V6C/MCTargetDesc/CMakeLists.txt`
+**File**: `llvm/lib/Target/V6CLANG/MCTargetDesc/CMakeLists.txt`
 
-Add `V6CMCExpr.cpp`:
+Add `V6ClangMCExpr.cpp`:
 
 ```cmake
-add_llvm_component_library(LLVMV6CDesc
-  V6CAsmBackend.cpp
-  V6CInstPrinter.cpp
-  V6CMCAsmInfo.cpp
-  V6CMCCodeEmitter.cpp
-  V6CMCExpr.cpp              # NEW
-  V6CMCTargetDesc.cpp
+add_llvm_component_library(LLVMV6ClangDesc
+  V6ClangAsmBackend.cpp
+  V6ClangInstPrinter.cpp
+  V6ClangMCAsmInfo.cpp
+  V6ClangMCCodeEmitter.cpp
+  V6ClangMCExpr.cpp              # NEW
+  V6ClangMCTargetDesc.cpp
   ...
 ```
 
-### Step 3.6 — Define V6C_BR_CC16_IMM pseudo instruction [x]
+### Step 3.6 — Define V6CLANG_BR_CC16_IMM pseudo instruction [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-Add after the V6C_BR_CC16 definition:
+Add after the V6CLANG_BR_CC16 definition:
 
 ```tablegen
 // Fused 16-bit compare + conditional branch with immediate RHS.
@@ -435,7 +435,7 @@ Add after the V6C_BR_CC16 definition:
 // Expanded post-RA into MVI + CMP sequence with lo8/hi8 splitting.
 // The immediate is embedded directly — no register pair needed for RHS.
 let isBranch = 1, isTerminator = 1, Defs = [A, FLAGS] in
-def V6C_BR_CC16_IMM : V6CPseudo<(outs),
+def V6CLANG_BR_CC16_IMM : V6ClangPseudo<(outs),
     (ins GR16:$lhs, imm16:$rhs, i8imm:$cc, brtarget:$dst),
     "# BR_CC16_IMM $lhs, $rhs, $cc, $dst",
     []>;
@@ -456,16 +456,16 @@ def V6C_BR_CC16_IMM : V6CPseudo<(outs),
 >   `MO_GlobalAddress` / `MO_ExternalSymbol` machine operand, depending
 >   on what ISel puts there.
 
-### Step 3.7 — ISel: select V6C_BR_CC16_IMM when RHS is constant [x]
+### Step 3.7 — ISel: select V6CLANG_BR_CC16_IMM when RHS is constant [x]
 
-**File**: `llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
 
-Modify the `V6CISD::BR_CC16` case to check whether RHS comes from an
-LXI-materialized constant (V6CWrapper of a GlobalAddress or a plain
+Modify the `V6ClangISD::BR_CC16` case to check whether RHS comes from an
+LXI-materialized constant (V6ClangWrapper of a GlobalAddress or a plain
 constant):
 
 ```cpp
-  case V6CISD::BR_CC16: {
+  case V6ClangISD::BR_CC16: {
     SDValue Chain = N->getOperand(0);
     SDValue LHS   = N->getOperand(1);
     SDValue RHS   = N->getOperand(2);
@@ -473,20 +473,20 @@ constant):
     SDValue Dest  = N->getOperand(4);
 
     // Check if RHS is a constant or wrapped global address.
-    // If so, use V6C_BR_CC16_IMM to avoid allocating a register pair.
-    unsigned Opc = V6C::V6C_BR_CC16;  // default: register variant
+    // If so, use V6CLANG_BR_CC16_IMM to avoid allocating a register pair.
+    unsigned Opc = V6CLANG::V6CLANG_BR_CC16;  // default: register variant
     SDValue RhsOp = RHS;
 
-    // RHS is V6CWrapper(tglobaladdr) → unwrap and use IMM variant.
-    if (RHS.getOpcode() == V6CISD::Wrapper &&
+    // RHS is V6ClangWrapper(tglobaladdr) → unwrap and use IMM variant.
+    if (RHS.getOpcode() == V6ClangISD::Wrapper &&
         (isa<GlobalAddressSDNode>(RHS.getOperand(0)) ||
          isa<ExternalSymbolSDNode>(RHS.getOperand(0)))) {
-      Opc = V6C::V6C_BR_CC16_IMM;
+      Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
       RhsOp = RHS.getOperand(0);  // Unwrap to TargetGlobalAddress
     }
     // RHS is a plain i16 constant.
     else if (auto *C = dyn_cast<ConstantSDNode>(RHS)) {
-      Opc = V6C::V6C_BR_CC16_IMM;
+      Opc = V6CLANG::V6CLANG_BR_CC16_IMM;
       RhsOp = CurDAG->getTargetConstant(C->getSExtValue(), DL, MVT::i16);
     }
 
@@ -506,41 +506,41 @@ constant):
 
 > **Design Notes**:
 >
-> - **V6CWrapper unwrapping**: In `LowerGlobalAddress`, the global
->   `array1+100` is wrapped as `V6CISD::Wrapper(TargetGlobalAddress)`.
+> - **V6ClangWrapper unwrapping**: In `LowerGlobalAddress`, the global
+>   `array1+100` is wrapped as `V6ClangISD::Wrapper(TargetGlobalAddress)`.
 >   ISel normally matches this to `(LXI tglobaladdr:$addr)`. By
 >   intercepting here, we prevent LXI from being selected for the
 >   comparison constant — the TargetGlobalAddress goes directly into
->   V6C_BR_CC16_IMM's `imm16` operand.
+>   V6CLANG_BR_CC16_IMM's `imm16` operand.
 >
 > - **ConstantSDNode**: For plain integer constants (e.g., `icmp ne
 >   i16 %x, 100`), we wrap the value in a TargetConstant.
 >
 > - **Fallback**: If RHS is neither a constant nor a wrapped global,
->   the default V6C_BR_CC16 (register variant) is used.
+>   the default V6CLANG_BR_CC16 (register variant) is used.
 >
 > - **LHS is never constant**: LLVM canonicalizes `icmp const, %var`
 >   to `icmp %var, const`, so LHS is always a register.
 
 > **Implementation note**: The implemented ISel code differs from the
 > plan code above in one important way: it **guards the IMM variant
-> selection by condition code**, only using V6C_BR_CC16_IMM when
-> `CCVal == V6CCC::COND_Z || CCVal == V6CCC::COND_NZ` (EQ/NE).
+> selection by condition code**, only using V6CLANG_BR_CC16_IMM when
+> `CCVal == V6ClangCC::COND_Z || CCVal == V6ClangCC::COND_NZ` (EQ/NE).
 > For other conditions (LT, GE, etc.), the register variant is always
 > used even if RHS is a constant. This guard was mentioned in Risk
 > section §5 but not in the Step 3.7 code. The plan code would have
-> incorrectly selected V6C_BR_CC16_IMM for SUB/SBB conditions.
+> incorrectly selected V6CLANG_BR_CC16_IMM for SUB/SBB conditions.
 
-### Step 3.8 — Implement V6C_BR_CC16_IMM expansion in expandPostRAPseudo [x]
+### Step 3.8 — Implement V6CLANG_BR_CC16_IMM expansion in expandPostRAPseudo [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-Add a new case for `V6C::V6C_BR_CC16_IMM` in `expandPostRAPseudo()`.
-The expansion is similar to V6C_BR_CC16's EQ/NE path but uses MVI+CMP
+Add a new case for `V6CLANG::V6CLANG_BR_CC16_IMM` in `expandPostRAPseudo()`.
+The expansion is similar to V6CLANG_BR_CC16's EQ/NE path but uses MVI+CMP
 instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
 
 ```cpp
-  case V6C::V6C_BR_CC16_IMM: {
+  case V6CLANG::V6CLANG_BR_CC16_IMM: {
     // Fused 16-bit compare + branch with immediate RHS.
     // Operand layout: 0=$lhs(GR16), 1=$rhs(imm16), 2=$cc, 3=$dst
     Register LhsReg = MI.getOperand(0).getReg();
@@ -548,19 +548,19 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
     int64_t CC = MI.getOperand(2).getImm();
     MachineBasicBlock *Target = MI.getOperand(3).getMBB();
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6C::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6C::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
 
     // Build lo8 and hi8 operands from the immediate.
     // For plain integers: mask directly.
-    // For global addresses: create V6CMCExpr lo8/hi8 wrappers.
+    // For global addresses: create V6ClangMCExpr lo8/hi8 wrappers.
     MachineOperand Lo8Op, Hi8Op;
     if (RhsOp.isImm()) {
       int64_t Val = RhsOp.getImm();
       Lo8Op = MachineOperand::CreateImm(Val & 0xFF);
       Hi8Op = MachineOperand::CreateImm((Val >> 8) & 0xFF);
     } else {
-      // Global address or external symbol → V6CMCExpr
+      // Global address or external symbol → V6ClangMCExpr
       MCContext &MCCtx = MF->getContext();
       const MCExpr *BaseExpr;
       if (RhsOp.isGlobal()) {
@@ -573,12 +573,12 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
               MCConstantExpr::create(RhsOp.getOffset(), MCCtx),
               MCCtx);
       } else {
-        llvm_unreachable("Unexpected operand type in V6C_BR_CC16_IMM");
+        llvm_unreachable("Unexpected operand type in V6CLANG_BR_CC16_IMM");
       }
       const MCExpr *Lo8Expr =
-          V6CMCExpr::create(V6CMCExpr::VK_V6C_LO8, BaseExpr, MCCtx);
+          V6ClangMCExpr::create(V6ClangMCExpr::VK_V6CLANG_LO8, BaseExpr, MCCtx);
       const MCExpr *Hi8Expr =
-          V6CMCExpr::create(V6CMCExpr::VK_V6C_HI8, BaseExpr, MCCtx);
+          V6ClangMCExpr::create(V6ClangMCExpr::VK_V6CLANG_HI8, BaseExpr, MCCtx);
       Lo8Op = MachineOperand::CreateMCSymbol(/*dummy*/nullptr);
       // Actually: we need to emit MCInst-level operands. See design note.
     }
@@ -590,18 +590,18 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
 > **Design Notes — MachineOperand to MCExpr bridge**:
 >
 > The key challenge is that `expandPostRAPseudo` emits `MachineInstr`s,
-> but `V6CMCExpr` is an MC-layer construct. There are two approaches:
+> but `V6ClangMCExpr` is an MC-layer construct. There are two approaches:
 >
 > **Option A — Emit MVI with a GlobalAddress MachineOperand**: The
 > AsmPrinter already handles `MO_GlobalAddress` → `MCSymbolRefExpr`.
 > We add a hook in the AsmPrinter's `lowerOperand()` or
 > `EmitInstruction()` to wrap global-address MVI operands in
-> `V6CMCExpr` based on a target flag.
+> `V6ClangMCExpr` based on a target flag.
 >
 > **Option B — Add target operand flags**: Use
-> `MachineOperand::setTargetFlags(V6CII::MO_LO8)` and
-> `MachineOperand::setTargetFlags(V6CII::MO_HI8)`. The AsmPrinter
-> reads the flag and wraps the operand in `V6CMCExpr` when lowering
+> `MachineOperand::setTargetFlags(V6ClangII::MO_LO8)` and
+> `MachineOperand::setTargetFlags(V6ClangII::MO_HI8)`. The AsmPrinter
+> reads the flag and wraps the operand in `V6ClangMCExpr` when lowering
 > to MCInst. This is the standard LLVM pattern (ARM, RISC-V, AVR all
 > use target flags).
 >
@@ -609,21 +609,21 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
 >
 > ```cpp
 > // For global address:
-> auto MVI_Lo = BuildMI(&MBB, DL, get(V6C::MVIr), V6C::A);
+> auto MVI_Lo = BuildMI(&MBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
 > if (RhsOp.isImm()) {
 >   MVI_Lo.addImm(RhsOp.getImm() & 0xFF);
 > } else {
 >   MVI_Lo.addGlobalAddress(RhsOp.getGlobal(), RhsOp.getOffset(),
->                           V6CII::MO_LO8);
+>                           V6ClangII::MO_LO8);
 > }
 > ```
 >
 > And in the AsmPrinter's `lowerOperand()`:
 >
 > ```cpp
-> if (MO.getTargetFlags() & V6CII::MO_LO8) {
+> if (MO.getTargetFlags() & V6ClangII::MO_LO8) {
 >   const MCExpr *Expr = /* lower global to MCSymbolRefExpr */;
->   Expr = V6CMCExpr::create(V6CMCExpr::VK_V6C_LO8, Expr, Ctx);
+>   Expr = V6ClangMCExpr::create(V6ClangMCExpr::VK_V6CLANG_LO8, Expr, Ctx);
 >   MCOp = MCOperand::createExpr(Expr);
 > }
 > ```
@@ -641,41 +641,41 @@ instead of MOV+CMP, with lo8/hi8 MCExpr for the immediate.
 > helpers `addImmLo` and `addImmHi` that dispatch on the operand type:
 >
 > - `isImm()`: mask the value directly (`& 0xFF` / `>> 8`)
-> - `isGlobal()`: `addGlobalAddress(..., offset, V6CII::MO_LO8/HI8)`
-> - `isSymbol()`: `addExternalSymbol(..., V6CII::MO_LO8/HI8)`
+> - `isGlobal()`: `addGlobalAddress(..., offset, V6ClangII::MO_LO8/HI8)`
+> - `isSymbol()`: `addExternalSymbol(..., V6ClangII::MO_LO8/HI8)`
 >
 > The plan's initial pseudocode (Option A with `MCSymbolRefExpr` and
 > `MachineOperand::CreateMCSymbol`) was not viable — it attempted to
 > create MC-layer objects inside a MachineInstr expansion. The lambda
 > approach is cleaner and handles all three operand types uniformly.
-> The MBB-splitting logic reuses the same pattern as V6C_BR_CC16 EQ/NE.
+> The MBB-splitting logic reuses the same pattern as V6CLANG_BR_CC16 EQ/NE.
 
 ### Step 3.9 — Define target operand flags [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.h` (or a new
-`V6CTargetFlags.h`)
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.h` (or a new
+`V6ClangTargetFlags.h`)
 
 ```cpp
-namespace V6CII {
+namespace V6ClangII {
 enum {
   MO_NO_FLAG = 0,
   MO_LO8 = 1,   // Low byte of 16-bit value
   MO_HI8 = 2,   // High byte of 16-bit value
 };
-} // namespace V6CII
+} // namespace V6ClangII
 ```
 
 ### Step 3.10 — Update MCInstLower to handle target flags [x]
 
-**File**: `llvm/lib/Target/V6C/V6CAsmPrinter.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangAsmPrinter.cpp`
 
 > **Implementation note**: The target flag handling was implemented in
-> `V6CMCInstLower.cpp` (in `lowerSymbolOperand()`), not in
-> `V6CAsmPrinter.cpp` as the plan suggested. The V6C backend already
-> uses a separate `V6CMCInstLower` class for MachineInstr → MCInst
+> `V6ClangMCInstLower.cpp` (in `lowerSymbolOperand()`), not in
+> `V6ClangAsmPrinter.cpp` as the plan suggested. The V6CLANG backend already
+> uses a separate `V6ClangMCInstLower` class for MachineInstr → MCInst
 > lowering (following the pattern of many other targets), and
 > `lowerSymbolOperand()` is the natural place to wrap expressions in
-> `V6CMCExpr`. The logic is the same as planned — check
+> `V6ClangMCExpr`. The logic is the same as planned — check
 > `MO.getTargetFlags()` for `MO_LO8`/`MO_HI8` and wrap accordingly.
 
 In the method that lowers `MachineOperand` to `MCOperand` (typically
@@ -691,10 +691,10 @@ case MachineOperand::MO_GlobalAddress: {
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
 
   unsigned TF = MO.getTargetFlags();
-  if (TF & V6CII::MO_LO8)
-    Expr = V6CMCExpr::create(V6CMCExpr::VK_V6C_LO8, Expr, Ctx);
-  else if (TF & V6CII::MO_HI8)
-    Expr = V6CMCExpr::create(V6CMCExpr::VK_V6C_HI8, Expr, Ctx);
+  if (TF & V6ClangII::MO_LO8)
+    Expr = V6ClangMCExpr::create(V6ClangMCExpr::VK_V6CLANG_LO8, Expr, Ctx);
+  else if (TF & V6ClangII::MO_HI8)
+    Expr = V6ClangMCExpr::create(V6ClangMCExpr::VK_V6CLANG_HI8, Expr, Ctx);
 
   MCOp = MCOperand::createExpr(Expr);
   break;
@@ -703,7 +703,7 @@ case MachineOperand::MO_GlobalAddress: {
 
 > **Design Note**: This is the bridge between the MachineInstr world
 > (where we have `MO_GlobalAddress` + target flags) and the MCInst
-> world (where we need `V6CMCExpr`). The AsmPrinter performs this
+> world (where we need `V6ClangMCExpr`). The AsmPrinter performs this
 > translation for every instruction before it's printed or encoded.
 >
 > **Reference**: AVR's `AVRAsmPrinter::lowerInstruction()` in
@@ -712,26 +712,26 @@ case MachineOperand::MO_GlobalAddress: {
 
 ### Step 3.11 — Update Python linker for new relocation types [x]
 
-**File**: `scripts/v6c_link.py`
+**File**: `scripts/v6clang_link.py`
 
 Add the two new relocation type constants and apply handlers:
 
 ```python
-# V6C relocation types (must match V6CFixupKinds.h)
-R_V6C_NONE = 0
-R_V6C_8    = 1
-R_V6C_16   = 2
-R_V6C_LO8  = 3    # NEW — low byte of 16-bit address
-R_V6C_HI8  = 4    # NEW — high byte of 16-bit address
+# V6CLANG relocation types (must match V6ClangFixupKinds.h)
+R_V6CLANG_NONE = 0
+R_V6CLANG_8    = 1
+R_V6CLANG_16   = 2
+R_V6CLANG_LO8  = 3    # NEW — low byte of 16-bit address
+R_V6CLANG_HI8  = 4    # NEW — high byte of 16-bit address
 ```
 
 In the relocation application loop:
 
 ```python
-elif rel.rtype == R_V6C_LO8:
+elif rel.rtype == R_V6CLANG_LO8:
     if patch_file_offset < total_size:
         output[patch_file_offset] = value & 0xFF
-elif rel.rtype == R_V6C_HI8:
+elif rel.rtype == R_V6CLANG_HI8:
     if patch_file_offset < total_size:
         output[patch_file_offset] = (value >> 8) & 0xFF
 ```
@@ -742,15 +742,15 @@ elif rel.rtype == R_V6C_HI8:
 cmd /c "call vcvars64.bat >nul 2>&1 && ninja -C llvm-build clang llc"
 ```
 
-Expected: clean build. The V6CMCExpr adds a new `.cpp` file; the rest
+Expected: clean build. The V6ClangMCExpr adds a new `.cpp` file; the rest
 are edits to existing files.
 
 ### Step 3.13 — Lit test: immediate comparison (NE with global address) [x]
 
-**File**: `tests/lit/CodeGen/V6C/br-cc16-imm.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/br-cc16-imm.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 @arr = global [100 x i8] zeroinitializer
 
@@ -822,7 +822,7 @@ declare void @use()
 > **Implementation note**: The implemented test differs from the plan
 > in several ways:
 >
-> - **RUN line** uses `-march=v6c` instead of `-mtriple=i8080-unknown-v6c`
+> - **RUN line** uses `-march=v6clang` instead of `-mtriple=i8080-unknown-v6clang`
 >   (equivalent, but shorter).
 > - **5 test functions** instead of 3: added `eq_imm_global` (EQ with
 >   global address) and `lt_still_register` (verifies SUB/SBB path is
@@ -837,10 +837,10 @@ declare void @use()
 
 ### Step 3.14 — Lit test: loop with immediate comparison (no LXI in loop) [x]
 
-**File**: `tests/lit/CodeGen/V6C/loop-cmp-imm.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/loop-cmp-imm.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 @src = global [100 x i8] zeroinitializer
 @dst = global [100 x i8] zeroinitializer
@@ -876,7 +876,7 @@ exit:
 
 > **Implementation note**: The implemented test differs from the plan:
 >
-> - **RUN line** uses `-march=v6c` instead of `-mtriple=i8080-unknown-v6c`.
+> - **RUN line** uses `-march=v6clang` instead of `-mtriple=i8080-unknown-v6clang`.
 > - **`icmp eq`** instead of `icmp ne` — the optimizer may transform
 >   the loop condition; `eq` matched the actual codegen output.
 > - **CHECK patterns** are more flexible: no `CHECK-NOT: LXI` (the
@@ -888,10 +888,10 @@ exit:
 
 ### Step 3.15 — Lit test: ELF object — relocation types [skipped — llvm-readobj not built]
 
-**File**: `tests/lit/CodeGen/V6C/reloc-lo8-hi8.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/reloc-lo8-hi8.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 -filetype=obj < %s -o %t.o
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 -filetype=obj < %s -o %t.o
 ; RUN: llvm-readobj -r %t.o | FileCheck %s
 
 @arr = global [100 x i8] zeroinitializer
@@ -912,8 +912,8 @@ declare void @use()
 ; CHECK: Relocations [
 ; CHECK:   Section {{.*}} .rela.text {
 ; Expect lo8 and hi8 relocations for the MVI immediates.
-; CHECK:     R_V6C_LO8
-; CHECK:     R_V6C_HI8
+; CHECK:     R_V6CLANG_LO8
+; CHECK:     R_V6CLANG_HI8
 ```
 
 ### Step 3.16 — Run regression tests [x]
@@ -928,8 +928,8 @@ RHS is a constant — the register-variant path is unchanged.
 ### Step 3.17 — Verify assembly on array-copy benchmark [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_imm.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_imm.asm
 ```
 
 Target output for the loop body:
@@ -959,14 +959,14 @@ Verify:
 ### Step 3.18 — Verify ELF pipeline on array-copy benchmark [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -c ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2.o
-python scripts\v6c_link.py temp\compare\03\v6llvmc2.o ^
-    -o temp\compare\03\v6llvmc2.bin --base 0x0100 --map temp\compare\03\v6llvmc2.map
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -c ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2.o
+python scripts\v6clang_link.py temp\compare\03\v6clang2.o ^
+    -o temp\compare\03\v6clang2.bin --base 0x0100 --map temp\compare\03\v6clang2.map
 ```
 
 Verify:
-1. `v6c_link.py` completes without errors or warnings
+1. `v6clang_link.py` completes without errors or warnings
 2. The `.map` file shows correct symbol addresses
 3. The binary contains correct bytes at the MVI immediate positions
    (lo8 and hi8 of the resolved `array1+100` address)
@@ -990,7 +990,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 | EQ — lo bytes differ (early skip) | 24cc | 24cc | same |
 | EQ — both bytes checked | 48cc | 48cc | same |
 
-The MVI vs MOV cost is identical (both 8cc on V6C). The comparison
+The MVI vs MOV cost is identical (both 8cc on V6CLANG). The comparison
 itself doesn't get faster. The win is entirely in register pressure.
 
 ### Register pressure improvement
@@ -1025,14 +1025,14 @@ free** — available for a 4th live value without spilling.
 
 | Risk | Mitigation |
 |------|------------|
-| **ISel sees RHS as register, not constant** — V6CWrapper not recognized | The V6CISD::Wrapper node is created in `LowerGlobalAddress` and is always present for global addresses. Check for both `V6CISD::Wrapper` wrapping `GlobalAddressSDNode` and bare `ConstantSDNode`. Add a `-debug-only=isel` dump to verify RHS node type. |
-| **MVI with V6CMCExpr crashes the code emitter** — fixup kind mismatch | The code emitter dispatches on `isa<V6CMCExpr>(Expr)` before falling through to size-based logic. Add assertion: `assert(Size == 2)` when V6CMCExpr is detected. Test with `-filetype=obj` to exercise the full path. |
-| **AsmPrinter doesn't wrap operand in V6CMCExpr** — plain global printed | AsmPrinter must check `MO.getTargetFlags()` and create V6CMCExpr. Test with `-filetype=asm` — if `<(` / `>(` doesn't appear, the flag isn't being handled. |
-| **v6asm rejects `<(` / `>(` syntax** — assembler compatibility | Verify v6asm syntax: `MVI A, <(label+100)`. If v6asm uses different syntax, adjust `V6CMCExpr::printImpl()`. |
-| **ELF relocation type mismatch between backend and linker** — silent corruption | Both `V6CFixupKinds.h` and `v6c_link.py` must agree on `R_V6C_LO8=3`, `R_V6C_HI8=4`. Add a lit test that checks `llvm-readobj -r` output for the correct relocation names. |
-| **V6C_BR_CC16_IMM selected for SUB/SBB conditions** — wrong expansion | The ISel dispatch only changes the MachineNode opcode. The expansion in `expandPostRAPseudo` must limit the IMM variant to EQ/NE (COND_Z, COND_NZ). For SUB/SBB conditions (LT, GE, etc.), the register variant is always correct because those paths need register operands for the 16-bit subtraction. Add assertion in the expansion: `assert((CC == COND_Z || CC == COND_NZ) && "IMM variant only for EQ/NE")`. |
-| **ISel selects IMM variant for SUB/SBB conditions (LT/GE)** | Guard the ISel IMM selection: only use V6C_BR_CC16_IMM when CC is `V6CCC::COND_Z` or `V6CCC::COND_NZ`. For other conditions, always use the register variant. The CC value is available as a `ConstantSDNode` operand. |
-| **Linker doesn't know R_V6C_LO8/HI8** — prints warning and skips | Currently `v6c_link.py` prints a warning for unknown reloc types and continues. Change to error-on-unknown to catch this immediately. |
+| **ISel sees RHS as register, not constant** — V6ClangWrapper not recognized | The V6ClangISD::Wrapper node is created in `LowerGlobalAddress` and is always present for global addresses. Check for both `V6ClangISD::Wrapper` wrapping `GlobalAddressSDNode` and bare `ConstantSDNode`. Add a `-debug-only=isel` dump to verify RHS node type. |
+| **MVI with V6ClangMCExpr crashes the code emitter** — fixup kind mismatch | The code emitter dispatches on `isa<V6ClangMCExpr>(Expr)` before falling through to size-based logic. Add assertion: `assert(Size == 2)` when V6ClangMCExpr is detected. Test with `-filetype=obj` to exercise the full path. |
+| **AsmPrinter doesn't wrap operand in V6ClangMCExpr** — plain global printed | AsmPrinter must check `MO.getTargetFlags()` and create V6ClangMCExpr. Test with `-filetype=asm` — if `<(` / `>(` doesn't appear, the flag isn't being handled. |
+| **v6asm rejects `<(` / `>(` syntax** — assembler compatibility | Verify v6asm syntax: `MVI A, <(label+100)`. If v6asm uses different syntax, adjust `V6ClangMCExpr::printImpl()`. |
+| **ELF relocation type mismatch between backend and linker** — silent corruption | Both `V6ClangFixupKinds.h` and `v6clang_link.py` must agree on `R_V6CLANG_LO8=3`, `R_V6CLANG_HI8=4`. Add a lit test that checks `llvm-readobj -r` output for the correct relocation names. |
+| **V6CLANG_BR_CC16_IMM selected for SUB/SBB conditions** — wrong expansion | The ISel dispatch only changes the MachineNode opcode. The expansion in `expandPostRAPseudo` must limit the IMM variant to EQ/NE (COND_Z, COND_NZ). For SUB/SBB conditions (LT, GE, etc.), the register variant is always correct because those paths need register operands for the 16-bit subtraction. Add assertion in the expansion: `assert((CC == COND_Z || CC == COND_NZ) && "IMM variant only for EQ/NE")`. |
+| **ISel selects IMM variant for SUB/SBB conditions (LT/GE)** | Guard the ISel IMM selection: only use V6CLANG_BR_CC16_IMM when CC is `V6ClangCC::COND_Z` or `V6ClangCC::COND_NZ`. For other conditions, always use the register variant. The CC value is available as a `ConstantSDNode` operand. |
+| **Linker doesn't know R_V6CLANG_LO8/HI8** — prints warning and skips | Currently `v6clang_link.py` prints a warning for unknown reloc types and continues. Change to error-on-unknown to catch this immediately. |
 
 ---
 
@@ -1044,7 +1044,7 @@ This is improvement #4 in the optimization sequence:
    chains with INX/DCX.
 
 2. **CMP-based 16-bit comparison** — **implemented**. Replaced XOR-based
-   V6C_BR_CC16 EQ/NE with non-destructive CMP + MBB splitting.
+   V6CLANG_BR_CC16 EQ/NE with non-destructive CMP + MBB splitting.
    Eliminated tied-output copy, freed register pressure, prevented spills.
 
 3. **Spill elimination** — followed automatically from #2.
@@ -1055,12 +1055,12 @@ This is improvement #4 in the optimization sequence:
 
 ### Dependencies
 
-- **V6CMCExpr (lo8/hi8)** is independently useful beyond comparisons.
+- **V6ClangMCExpr (lo8/hi8)** is independently useful beyond comparisons.
   Once implemented, it enables `MVI A, <(addr)` patterns anywhere —
   potentially useful for future optimizations like inline 8-bit global
   loads, address arithmetic, or hand-assisted constant splitting.
 
-- **V6C_BR_CC16 (reg variant) stays unchanged**. This plan adds the
+- **V6CLANG_BR_CC16 (reg variant) stays unchanged**. This plan adds the
   IMM variant alongside it. The register variant handles all cases
   where RHS is a runtime value.
 
@@ -1091,7 +1091,7 @@ This is improvement #4 in the optimization sequence:
   pair. However, SUB/SBB modifies the accumulator (it's a subtract, not
   just a compare), so the expansion is more involved.
 
-- **lo8/hi8 for other instructions**: Once V6CMCExpr exists, it could be
+- **lo8/hi8 for other instructions**: Once V6ClangMCExpr exists, it could be
   used for `MVI r, <(addr)` / `MVI r, >(addr)` anywhere — e.g., to load
   the two halves of an address into two 8-bit registers without going
   through LXI + MOV. This is a general-purpose optimization for code

@@ -115,15 +115,15 @@ main:       100cc (no loop), 10B
 __o_sub_16: 52cc, 7B
 Total code: 133B
 
-=== v6llvmc OLD ASSEMBLY ===
+=== v6clang OLD ASSEMBLY ===
 
 sumarray:
     LXI HL, arr2
-    SHLD __v6c_ss.sumarray
+    SHLD __v6clang_ss.sumarray
     LXI HL, arr1
     LXI DE, 0
 .loop:
-    SHLD __v6c_ss.sumarray+4
+    SHLD __v6clang_ss.sumarray+4
     MOV B, D
     MOV C, E
     MOV E, M
@@ -131,9 +131,9 @@ sumarray:
     MOV D, M
     XCHG
     DAD BC
-    SHLD __v6c_ss.sumarray+2
+    SHLD __v6clang_ss.sumarray+2
     PUSH HL                         ; ← O42 target: RELOAD16 BC
-    LXI HL, __v6c_ss.sumarray
+    LXI HL, __v6clang_ss.sumarray
     MOV C, M
     INX HL
     MOV B, M
@@ -145,14 +145,14 @@ sumarray:
     INX HL
     MOV D, M
     POP HL
-    LHLD __v6c_ss.sumarray+2
+    LHLD __v6clang_ss.sumarray+2
     DAD DE
     XCHG
-    LHLD __v6c_ss.sumarray+4
+    LHLD __v6clang_ss.sumarray+4
     INX BC
     INX BC
     PUSH HL
-    LXI HL, __v6c_ss.sumarray
+    LXI HL, __v6clang_ss.sumarray
     MOV M, C
     INX HL
     MOV M, B
@@ -192,7 +192,7 @@ main (inlined):
     ... loop1: 512cc/iter (sumarray body)
     ... loop2: 132cc/iter (singlesum body)
 
-=== v6llvmc OLD STATS ===
+=== v6clang OLD STATS ===
 
 sumarray:   404cc/iter, 74B
 singlesum:   84cc/iter, 27B
@@ -200,15 +200,15 @@ main loop1: 512cc/iter, 124B
 main loop2: 132cc/iter  (shared with main)
 Total code: 225B
 
-=== v6llvmc NEW ASSEMBLY (O42) ===
+=== v6clang NEW ASSEMBLY (O42) ===
 
 sumarray: ; (87/93*4=348/372)*100+72=
     LXI HL, arr2
-    SHLD __v6c_ss.sumarray
+    SHLD __v6clang_ss.sumarray
     LXI HL, arr1
     LXI DE, 0
 .loop:
-    SHLD __v6c_ss.sumarray+4
+    SHLD __v6clang_ss.sumarray+4
     MOV B, D
     MOV C, E
     MOV E, M
@@ -216,8 +216,8 @@ sumarray: ; (87/93*4=348/372)*100+72=
     MOV D, M
     XCHG
     DAD BC
-    SHLD __v6c_ss.sumarray+2
-    LHLD __v6c_ss.sumarray      ; O42: LHLD+MOV replaces PUSH+LXI+MOV+INX+MOV+POP
+    SHLD __v6clang_ss.sumarray+2
+    LHLD __v6clang_ss.sumarray      ; O42: LHLD+MOV replaces PUSH+LXI+MOV+INX+MOV+POP
     MOV C, L
     MOV B, H
     MOV H, B                    ; O42: no PUSH/POP wrapper (HL dead)
@@ -225,14 +225,14 @@ sumarray: ; (87/93*4=348/372)*100+72=
     MOV E, M
     INX HL
     MOV D, M
-    LHLD __v6c_ss.sumarray+2
+    LHLD __v6clang_ss.sumarray+2
     DAD DE
     XCHG
-    LHLD __v6c_ss.sumarray+4
+    LHLD __v6clang_ss.sumarray+4
     INX BC
     INX BC
     PUSH HL                     ; kept: HL live after (used for loop counter)
-    LXI HL, __v6c_ss.sumarray
+    LXI HL, __v6clang_ss.sumarray
     MOV M, C
     INX HL
     MOV M, B
@@ -272,7 +272,7 @@ main (inlined):
     ... loop1: 508cc/iter (−4cc: trailing XCHG removed from SPILL16 DE)
     ... loop2: 132cc/iter (unchanged)
 
-=== v6llvmc NEW STATS ===
+=== v6clang NEW STATS ===
 
 sumarray:   348cc/iter, 69B
 singlesum:   84cc/iter, 27B (unchanged)
@@ -303,5 +303,5 @@ Total program savings (100+50 iterations):
   Total: ~6,000cc saved, −6B code size
 
 Comparison vs c8080:
-  sumarray:  v6llvmc 348cc vs c8080 420cc (−17.1%)
-  singlesum: v6llvmc  84cc vs c8080 292cc (−71.2%)
+  sumarray:  v6clang 348cc vs c8080 420cc (−17.1%)
+  singlesum: v6clang  84cc vs c8080 292cc (−71.2%)

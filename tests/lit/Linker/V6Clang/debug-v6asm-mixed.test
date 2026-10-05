@@ -1,0 +1,33 @@
+# RUN: rm -rf %t && mkdir -p %t && split-file %s %t
+# RUN: clang -target i8080-unknown-v6clang -g -O0 -fno-v6clang-auto-include -c %t/c-entry.c -o %t/c-entry.o
+# RUN: %v6asm -g -f obj %t/asm-leaf.asm -o %t/asm-leaf.o
+# RUN: lld -flavor gnu -m elf32v6clang -e c_entry -o %t/mixed.elf %t/c-entry.o %t/asm-leaf.o
+# RUN: llvm-readelf -S -s %t/mixed.elf | FileCheck %s --check-prefix=ELF
+# RUN: llvm-dwarfdump --debug-line %t/mixed.elf | FileCheck %s --check-prefix=LINES
+# RUN: llvm-readelf -r %t/mixed.elf | FileCheck %s --check-prefix=RELOCS
+
+# ELF-DAG: .debug_info
+# ELF-DAG: .debug_abbrev
+# ELF-DAG: .debug_line
+# ELF-DAG: .debug_str
+# ELF-DAG: c_entry
+# ELF-DAG: asm_leaf
+
+# LINES-DAG: name: "c-entry.c"
+# LINES-DAG: name: "asm-leaf.asm"
+
+# RELOCS: There are no relocations in this file.
+
+#--- c-entry.c
+extern unsigned char asm_leaf(void);
+
+unsigned char c_entry(void) {
+  return asm_leaf() + 1;
+}
+
+#--- asm-leaf.asm
+.text
+.globl asm_leaf
+asm_leaf:
+  mvi a, 7
+  ret

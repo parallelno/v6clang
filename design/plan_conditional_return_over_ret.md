@@ -39,7 +39,7 @@ block` but not the case where the Jcc jumps **over** an inline RET.
 
 ## 2. Strategy
 
-### Approach: Add `invertConditionalOverRET()` to V6CBranchOpt
+### Approach: Add `invertConditionalOverRET()` to V6ClangBranchOpt
 
 Add a new sub-pass that scans each block for the pattern
 `Jcc .Lskip / RET / .Lskip:` (where `.Lskip` is the layout successor)
@@ -56,13 +56,13 @@ and replaces it with the inverted conditional return `Rcc_inv`.
 
 | File | Change |
 |------|--------|
-| `V6CBranchOpt.cpp` | Add `invertConditionalOverRET()` method |
-| `V6CBranchOpt.cpp` | Wire into `runOnMachineFunction` after `invertConditionalBranch` |
+| `V6ClangBranchOpt.cpp` | Add `invertConditionalOverRET()` method |
+| `V6ClangBranchOpt.cpp` | Wire into `runOnMachineFunction` after `invertConditionalBranch` |
 | `conditional-return-over-ret.ll` | New lit test |
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `invertConditionalOverRET()` to V6CBranchOpt.cpp [x]
+### Step 3.1 — Add `invertConditionalOverRET()` to V6ClangBranchOpt.cpp [x]
 
 Add the method declaration in the class and the implementation:
 
@@ -106,7 +106,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: conditional-return-over-ret.ll [x]
 
-Add `tests/lit/CodeGen/V6C/conditional-return-over-ret.ll` with:
+Add `tests/lit/CodeGen/V6CLANG/conditional-return-over-ret.ll` with:
 
 1. **test_jcc_over_ret** — basic pattern: `Jcc skip / RET / skip: JMP bar`
    should become `Rcc / JMP bar`.
@@ -119,7 +119,7 @@ Add `tests/lit/CodeGen/V6C/conditional-return-over-ret.ll` with:
 ### Step 3.5 — Run lit test [x]
 
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6C\conditional-return-over-ret.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\conditional-return-over-ret.ll -v
 ```
 
 > **Implementation Notes**:
@@ -141,7 +141,7 @@ Savings: 3 bytes, 12-18cc.
 
 Compile from feature test folder 14:
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\14\v6llvmc.c -o tests\features\14\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\14\v6clang.c -o tests\features\14\v6clang_new01.asm
 ```
 
 Verify `RNZ` appears instead of `JZ` + `RET` in `test_cond_zero_tailcall`.
@@ -206,7 +206,7 @@ Any function with `if (cond) return val; <fallthrough tail call>` benefits.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O35 Design](design\future_plans\O35_conditional_return_over_ret.md)

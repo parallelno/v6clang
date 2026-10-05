@@ -17,7 +17,7 @@ controls the initial SP.
 
 `__stack_top` works as follows:
 
-1. `v6c.ld` defines `__stack_top = 0x0000;` (absolute value).
+1. `v6clang.ld` defines `__stack_top = 0x0000;` (absolute value).
 2. crt0 references it: `LXI SP, __stack_top`.
 3. User overrides: `--defsym=__stack_top=0x8000` → ld.lld's absolute
    definition wins over the linker-script value.
@@ -55,20 +55,20 @@ reserved-for-implementation-use convention.
 
 | Component | Change |
 |-----------|--------|
-| `compiler-rt/lib/builtins/v6c/crt0.s` | `CALL main` → `CALL __entry`; update header comments |
-| `clang/lib/Driver/ToolChains/V6C/v6c.ld` | Add `PROVIDE(__entry = main);` inside `SECTIONS`; update header comment |
+| `compiler-rt/lib/builtins/v6clang/crt0.s` | `CALL main` → `CALL __entry`; update header comments |
+| `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | Add `PROVIDE(__entry = main);` inside `SECTIONS`; update header comment |
 | No driver C++ change needed | `--defsym` already forwarded via `OPT_Wl_COMMA` |
 
 ## Usage
 
 Default (unchanged behaviour):
 ```bash
-clang -target i8080-unknown-v6c -O2 main.c -o out.rom
+clang -target i8080-unknown-v6clang -O2 main.c -o out.rom
 ```
 
 Custom entry:
 ```bash
-clang -target i8080-unknown-v6c -O2 -Wl,--defsym=__entry=myStart main.c -o out.rom
+clang -target i8080-unknown-v6clang -O2 -Wl,--defsym=__entry=myStart main.c -o out.rom
 ```
 
 ## `gc-sections` interaction
@@ -91,19 +91,19 @@ custom linker script.
 | `custom_entry.c` | Program with `myStart` instead of `main`, built with `--defsym=__entry=myStart` |
 | `build.bat` | Demonstrates both build variants |
 
-### 2. lit tests (`tests/lit/Linker/V6C/entry-override.test`)
+### 2. lit tests (`tests/lit/Linker/V6CLANG/entry-override.test`)
 
 - Assemble a `main` object and an `alt` object via `llc`.
 - Link **without** `--defsym`: verify `__entry` symbol address equals `main`'s address.
 - Link **with** `--defsym=__entry=alt`: verify `__entry` symbol address equals `alt`'s address.
 
-`lit.local.cfg` gains a `%v6c_crt0_src` substitution pointing at
-`compiler-rt/lib/builtins/v6c/crt0.s` so the test can assemble it inline.
+`lit.local.cfg` gains a `%v6clang_crt0_src` substitution pointing at
+`compiler-rt/lib/builtins/v6clang/crt0.s` so the test can assemble it inline.
 
 ## Affected documentation
 
-- `docs/V6CArchitecture.md` — startup table + new "Overriding the C Entry Function" section.
-- `docs/V6CClangUsage.md` — crt0 mandatory section; document `__entry` alongside
+- `docs/V6ClangArchitecture.md` — startup table + new "Overriding the C Entry Function" section.
+- `docs/V6ClangUsage.md` — crt0 mandatory section; document `__entry` alongside
   `_start` override note.
-- `docs/V6CBuildGuide.md` — add `--defsym=__entry=NAME` example next to
+- `docs/V6ClangBuildGuide.md` — add `--defsym=__entry=NAME` example next to
   `--defsym=__stack_top` example.

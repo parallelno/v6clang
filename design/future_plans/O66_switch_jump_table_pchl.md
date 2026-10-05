@@ -1,9 +1,9 @@
 # O66 — `switch` → Jump Table via `PCHL` (JMP-Table Layout)
 
-**Source:** V6C
+**Source:** V6CLANG
 **Savings:** Two-fold:
           1. **Bug-fix.** `clang -O2` currently aborts with
-             `Cannot select: br_jt` on any dense V6C `switch` (the
+             `Cannot select: br_jt` on any dense V6CLANG `switch` (the
              mid-end emits `BR_JT`, ISel has no pattern). This
              plan adds the lowering and removes the crash.
           2. **Performance.** Replaces the current
@@ -43,8 +43,8 @@
 
 ## Hard-error bug this also fixes (must-do, not just an optimisation)
 
-The LLVM mid-end *already decides* a dense V6C `switch` deserves a
-jump table and emits `ISD::BR_JT` — but V6C ISel has no pattern for
+The LLVM mid-end *already decides* a dense V6CLANG `switch` deserves a
+jump table and emits `ISD::BR_JT` — but V6CLANG ISel has no pattern for
 it and `clang -O2` aborts with:
 
 ```text
@@ -63,8 +63,8 @@ crash; the layout/cost-model refinements below are stacked on top.
 
 ## Problem
 
-`ISD::BR_JT` and `ISD::BRIND` are not customised by the V6C backend.
-[`V6CISelLowering.cpp`](../../llvm/lib/Target/V6C/V6CISelLowering.cpp#L70)
+`ISD::BR_JT` and `ISD::BRIND` are not customised by the V6CLANG backend.
+[`V6ClangISelLowering.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L70)
 sets no action for either node and provides no `LowerBR_JT`.
 With `-fno-jump-tables` the mid-end's `SwitchLoweringUtils` falls
 through to a **balanced binary-search tree** of `CPI/JP/JZ` tests
@@ -93,7 +93,7 @@ constant-time dispatch trivial — but only if the backend *emits*
 the indexed-load + `PCHL` sequence and a corresponding rodata table.
 
 `PCHL` is already defined in
-[V6CInstrInfo.td](../../llvm/lib/Target/V6C/V6CInstrInfo.td#L439)
+[V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L439)
 with empty pattern `[]` and is unreferenced anywhere in the backend.
 
 
@@ -168,7 +168,7 @@ entry.
 | `-Oz` | A (address table) | 2 B | 84 cc |
 
 The cost-model decision is exposed through
-[`V6CInstrCost.h`](../../llvm/lib/Target/V6C/V6CInstrCost.h) in the
+[`V6ClangInstrCost.h`](../../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h) in the
 existing dual-cost framework (O11).
 
 ### Why JMP-table (Layout B default) beats the address table
@@ -185,11 +185,11 @@ existing dual-cost framework (O11).
    16-bit absolute relocation embedded in a `JMP` opcode — exactly
    the relocation kind we already emit for ordinary `JMP foo`. The
    address-table form needs a target-aware emission that knows to
-   write `R_V6C_16` against a label, which our asm printer can do
+   write `R_V6CLANG_16` against a label, which our asm printer can do
    but is one more code path to maintain.
 4. **Table addresses can be patched by `ld.lld` without the linker
    knowing about a "jump table" relocation type** — JMP tables
-   reuse the existing `R_V6C_16` PC-absolute relocation we already
+   reuse the existing `R_V6CLANG_16` PC-absolute relocation we already
    support (M10 / O-LLD).
 
 
@@ -197,7 +197,7 @@ existing dual-cost framework (O11).
 
 ### Step 1 — Lowering hooks
 
-`V6CISelLowering.cpp` — in the constructor:
+`V6ClangISelLowering.cpp` — in the constructor:
 
 ```cpp
 setOperationAction(ISD::BR_JT,  MVT::Other, Custom);
@@ -210,26 +210,26 @@ setJumpIsExpensive(false);
 Add `LowerBR_JT(SDValue Op, SelectionDAG &DAG)`:
 
 * Take `Index` (i8 or i16) and clamp / zext to i8 (typical case).
-* Emit `V6CISD::JT_DISPATCH8` (new node) with operands
+* Emit `V6ClangISD::JT_DISPATCH8` (new node) with operands
   `(Chain, JTAddr, Index)`. The DAG-to-DAG selector lowers it to the
   `LXI + ADD A + ADD A + MOV E,A + MVI D,0 + DAD + PCHL` sequence
-  via a new pseudo `V6C_BR_JT8` (post-RA expanded — see step 2).
+  via a new pseudo `V6CLANG_BR_JT8` (post-RA expanded — see step 2).
 
-Also `LowerJumpTable`: wraps the JT symbol in `V6CISD::Wrapper` so
+Also `LowerJumpTable`: wraps the JT symbol in `V6ClangISD::Wrapper` so
 `LXI HL, $jt` is matched by the existing wrapper pattern.
 
 ### Step 2 — Pseudo + post-RA expansion
 
-`V6CInstrInfo.td`:
+`V6ClangInstrInfo.td`:
 
 ```td
 let isTerminator = 1, isBarrier = 1, isIndirectBranch = 1,
     Uses = [A], Defs = [A, FLAGS, HL, DE] in
-def V6C_BR_JT8 : Pseudo<(outs), (ins i16imm:$jt),
-    "# V6C_BR_JT8 $jt", []>;
+def V6CLANG_BR_JT8 : Pseudo<(outs), (ins i16imm:$jt),
+    "# V6CLANG_BR_JT8 $jt", []>;
 ```
 
-`V6CInstrInfo::expandPostRAPseudo` case `V6C::V6C_BR_JT8`:
+`V6ClangInstrInfo::expandPostRAPseudo` case `V6CLANG::V6CLANG_BR_JT8`:
 
 ```
 LXI  HL, $jt
@@ -243,11 +243,11 @@ PCHL
 
 (For `-Os` 3-byte-entry layout, replace `ADD A; ADD A` with
 `MOV B, A; ADD A; ADD B` — encoded in a separate pseudo
-`V6C_BR_JT8_TIGHT`.)
+`V6CLANG_BR_JT8_TIGHT`.)
 
 ### Step 3 — AsmPrinter / table emission
 
-`V6CAsmPrinter.cpp` — override `emitJumpTableInfo()` (or
+`V6ClangAsmPrinter.cpp` — override `emitJumpTableInfo()` (or
 `EmitJumpTableEntry()`):
 
 * For each `MachineJumpTableEntry`, emit:
@@ -260,21 +260,21 @@ PCHL
 * Alignment: 4 B for Layout B padded, 3 B for Layout B tight,
   2 B for Layout A.
 
-The existing `JMP` opcode emission path in `V6CMCCodeEmitter` already
-produces a 16-bit `R_V6C_16` relocation against the target label —
+The existing `JMP` opcode emission path in `V6ClangMCCodeEmitter` already
+produces a 16-bit `R_V6CLANG_16` relocation against the target label —
 nothing new on the linker side.
 
 ### Step 4 — Cost-model gate (frequency-aware)
 
-`V6CInstrCost.h`:
+`V6ClangInstrCost.h`:
 
 ```cpp
 // Dispatch cost (preamble + table-slot JMP).
-constexpr V6CInstrCost JTDispatchPadded   { /*B*/10, /*cc*/68 };
-constexpr V6CInstrCost JTDispatchTight    { /*B*/11, /*cc*/76 };
-constexpr V6CInstrCost JTDispatchAddr     { /*B*/13, /*cc*/84 };
+constexpr V6ClangInstrCost JTDispatchPadded   { /*B*/10, /*cc*/68 };
+constexpr V6ClangInstrCost JTDispatchTight    { /*B*/11, /*cc*/76 };
+constexpr V6ClangInstrCost JTDispatchAddr     { /*B*/13, /*cc*/84 };
 // Per-case cascade step: CPI imm + JZ Li.
-constexpr V6CInstrCost CascadeStep        { /*B*/ 5, /*cc*/20 };
+constexpr V6ClangInstrCost CascadeStep        { /*B*/ 5, /*cc*/20 };
 ```
 
 The gate cannot use a flat `setMinimumJumpTableEntries` — a cascade
@@ -304,14 +304,14 @@ PGO, or the default uniform distribution) and `rank_i` is the
   cascade unless the JT is strictly cheaper.
 * Provide a function attribute / pragma escape hatch for users with
   out-of-band knowledge:
-  * `__attribute__((v6c_switch_table))` — force JT.
-  * `__attribute__((v6c_switch_cascade))` — force cascade.
+  * `__attribute__((v6clang_switch_table))` — force JT.
+  * `__attribute__((v6clang_switch_cascade))` — force cascade.
   Keyed off the `SwitchInst`'s containing function.
 
 **Cascade target ordering.** When emitting a cascade we should sort
 cases by descending branch weight so the hot case is tested first.
 This is independent of the JT decision and worth doing as a separate
-small pass in `V6CISelLowering::LowerOperation` for `BR_CC` chains —
+small pass in `V6ClangISelLowering::LowerOperation` for `BR_CC` chains —
 but at minimum, the cost-model comparison **must** assume that
 ordering, otherwise the JT will win artificially in cases where the
 cascade would have been re-ordered for free.
@@ -328,17 +328,17 @@ cascade would have been re-ordered for free.
   to a follow-up.
 * **Out-of-range.** SwitchLowering inserts the bounds check
   (`CPI Hi+1; JNC default`) before the JT dispatch — this is
-  generic LLVM behaviour, no V6C work required.
+  generic LLVM behaviour, no V6CLANG work required.
 
 ### Step 6 — Tests
 
-* `llvm/test/CodeGen/V6C/switch-jt-basic.ll` — 8-case dense
+* `llvm/test/CodeGen/V6CLANG/switch-jt-basic.ll` — 8-case dense
   switch, `CHECK` exact dispatch sequence and table layout.
-* `llvm/test/CodeGen/V6C/switch-jt-cascade.ll` — 3-case switch,
+* `llvm/test/CodeGen/V6CLANG/switch-jt-cascade.ll` — 3-case switch,
   must remain a cascade (below threshold).
-* `llvm/test/CodeGen/V6C/switch-jt-sparse.ll` — sparse switch,
+* `llvm/test/CodeGen/V6CLANG/switch-jt-sparse.ll` — sparse switch,
   must split into cascade + JT or remain cascade.
-* `llvm/test/CodeGen/V6C/switch-jt-os.ll` — `attributes optsize`,
+* `llvm/test/CodeGen/V6CLANG/switch-jt-os.ll` — `attributes optsize`,
   must pick Layout B tight.
 * `tests/golden/switch_jt/` — runtime emulator round-trip:
   10-case dispatcher returning unique `OUT 0xED, imm` per case,
@@ -366,7 +366,7 @@ cascade would have been re-ordered for free.
 ## Empirical baseline (April 2026 — `temp/o66_if_cascades.c`)
 
 A small experiment compiled three semantically-equivalent dispatchers
-with the current `clang --target=i8080-unknown-v6c -O2
+with the current `clang --target=i8080-unknown-v6clang -O2
 -fno-jump-tables`:
 
 1. `dispatch_switch` — plain C `switch (x) { case 0..7: ... }`.
@@ -382,7 +382,7 @@ Why? LLVM `SimplifyCFG` normalises if/else cascades back into a
 `SwitchInst` in IR, and the mid-end emits a **balanced binary
 search** (not a linear cascade) for dense unsigned-i8 switches.
 The pattern, for an 8-case dense switch on `x` (lowering uses `JP`
-which on V6C is "jump if positive" ≡ unsigned ≥):
+which on V6CLANG is "jump if positive" ≡ unsigned ≥):
 
 ```asm
         CPI 4 ; JP upper      ; pivot: x<4 vs x>=4
@@ -436,7 +436,7 @@ JT (Layout B padded), 8 cases: **68 cc constant**, 10 B code +
 ### Three-way comparison (N=8, uniform)
 
 The linear cascade is a virtual baseline here — LLVM does not emit
-it today on V6C — but it is what we *would* emit if we suppress
+it today on V6CLANG — but it is what we *would* emit if we suppress
 binary-search lowering (see *Suppressing LLVM's binary-search
 lowering* below).
 
@@ -479,7 +479,7 @@ This is the picture the plan is actually built around:
    43 B) and slower than the JT (75 cc avg / 92 cc worst vs 68 cc
    constant). There is no hit-distribution under which today's
    output is the right answer — it should be replaced *unconditionally*
-   for V6C, in favour of either a linear cascade (small N or
+   for V6CLANG, in favour of either a linear cascade (small N or
    skewed distribution) or a JT (larger uniform N).
 
 3. **Worst-case latency: JT wins by the largest margin.** At N=8
@@ -506,11 +506,11 @@ This is the picture the plan is actually built around:
 `SwitchInst`:
 
 1. **Jump table** — gated by `TLI.areJTsAllowed()` and
-   `TLI.getMinimumJumpTableEntries()`. Today V6C returns the
+   `TLI.getMinimumJumpTableEntries()`. Today V6CLANG returns the
    default (4) and `areJTsAllowed = true`, but with no `BR_JT`
    selection pattern this currently crashes — fixed by Step 1.
 2. **Bit test** — gated by `TLI.isJumpTableRelative()` /
-   `getMinimumBitTestSwitchClusterEntries()`. Not useful for V6C
+   `getMinimumBitTestSwitchClusterEntries()`. Not useful for V6CLANG
    (no efficient bittest on i8080).
 3. **Binary-search of clusters** — *fallback when 1 and 2 are
    declined*. Builds a balanced tree of `if (x<pivot) goto lo;
@@ -526,7 +526,7 @@ a cascade:
 Make every multi-case `SwitchInst` a single "jump-table cluster"
 for SwitchLoweringUtils, then in our `LowerBR_JT` decide *inside
 the target* whether to materialise a real JT or a hand-written
-cascade. This puts all the policy on V6C-side (good).
+cascade. This puts all the policy on V6CLANG-side (good).
 Downside: we have to faithfully recreate cascade lowering ourselves
 (case sorting by weight, default fall-through, range-check skip)
 — maybe 200 LoC.
@@ -668,13 +668,13 @@ than the average improves.
 
 ### Cost-model decision
 
-`V6CInstrCost.h` (extends Step 4):
+`V6ClangInstrCost.h` (extends Step 4):
 
 ```cpp
-constexpr V6CInstrCost CascadeStep      { /*B*/ 5, /*cc*/20 }; // CPI imm + JZ
-constexpr V6CInstrCost JTBoundsCheck    { /*B*/ 5, /*cc*/20 }; // CPI imm + JNC (per side)
-constexpr V6CInstrCost JTDispatchPadded { /*B*/10, /*cc*/56 }; // LXI..PCHL preamble
-constexpr V6CInstrCost JTSlotJmp        { /*B*/ 0, /*cc*/12 }; // the table-slot JMP
+constexpr V6ClangInstrCost CascadeStep      { /*B*/ 5, /*cc*/20 }; // CPI imm + JZ
+constexpr V6ClangInstrCost JTBoundsCheck    { /*B*/ 5, /*cc*/20 }; // CPI imm + JNC (per side)
+constexpr V6ClangInstrCost JTDispatchPadded { /*B*/10, /*cc*/56 }; // LXI..PCHL preamble
+constexpr V6ClangInstrCost JTSlotJmp        { /*B*/ 0, /*cc*/12 }; // the table-slot JMP
 // Tail total = 1–2 × JTBoundsCheck + JTDispatchPadded + JTSlotJmp.
 // Hybrid total = K × CascadeStep + tail.
 ```
@@ -849,7 +849,7 @@ based on the actual cluster geometry, instead of forcing one or
 the other.
 
 The current LLVM-generated balanced binary search (without a
-cascade prefix) is **not** in that list — for V6C it is dominated
+cascade prefix) is **not** in that list — for V6CLANG it is dominated
 by the linear cascade in size and by the JT in cycles, with no
 distribution where it is the right answer for the *whole* switch.
 Suppressing it in favour of one of the four modes above (Option B
@@ -877,20 +877,20 @@ or mode 1.
   bounds check (e.g. via inline-asm shenanigans), `PCHL` will
   jump into garbage. SwitchLowering always inserts the bounds
   check — the risk is theoretical.
-* **Interaction with `-mv6c-start-address`.** JT addresses are
+* **Interaction with `-mv6clang-start-address`.** JT addresses are
   link-time absolute, same as any function — no special handling.
 
 
 ## References
 
 * Existing `PCHL` definition —
-  [V6CInstrInfo.td](../../llvm/lib/Target/V6C/V6CInstrInfo.td#L436)
+  [V6ClangInstrInfo.td](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L436)
   (currently unreferenced).
 * `ISD::BR_JT` lowering reference: AVR backend
   (`AVRISelLowering.cpp::LowerBR_JT`) and MSP430 backend
   (`MSP430ISelLowering.cpp`) — both small, instructive, sub-300-LOC
   examples.
-* Cost model — [V6CInstrCost.h](../../llvm/lib/Target/V6C/V6CInstrCost.h).
+* Cost model — [V6ClangInstrCost.h](../../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h).
 * SwitchLowering hooks documented in
   `llvm/include/llvm/CodeGen/TargetLoweringBase.h`:
   `setMinimumJumpTableEntries`, `isSuitableForJumpTable`,

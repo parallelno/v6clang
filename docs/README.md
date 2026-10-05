@@ -1,8 +1,8 @@
-# V6C LLVM Backend — Documentation
+# V6CLANG LLVM Backend — Documentation
 
 An LLVM backend targeting the **Vector 06c** home computer (Intel 8080 / KR580VM80A, 3 MHz, 64 KB RAM).
 
-Goal: **C source → Clang → LLVM IR → V6C backend → flat binary → Vector 06c**
+Goal: **C source → Clang → LLVM IR → V6CLANG backend → flat binary → Vector 06c**
 
 ## Table of Contents
 
@@ -10,32 +10,32 @@ Goal: **C source → Clang → LLVM IR → V6C backend → flat binary → Vecto
 
 | Document | Description |
 |----------|-------------|
-| [V6CBuildGuide.md](V6CBuildGuide.md) | Prerequisites, build commands, mirror sync workflow, running tests, binary emission |
-| [V6CClangUsage.md](V6CClangUsage.md) | Clang frontend reference: type sizes, builtins, attributes, inline assembly, resource-dir headers |
-| [V6CDebugMetadata.md](V6CDebugMetadata.md) | Debug-build artifacts: DWARF v5, retained ELF companions, C/v6asm usage, and inspection |
-| [V6CDebugABI.md](V6CDebugABI.md) | Normative debugger ABI, stack contract, unwind boundaries, and DWARF register map |
-| [V6CCompilerOptions.md](V6CCompilerOptions.md) | Backend tuning flags and debug-output toggles (`-mv6c-annotate-pseudos`, `-mv6c-print-rt-helpers`, …) |
-| [V6CRelease.md](V6CRelease.md) | Release procedure: tagging, workflow trigger, rollback |
-| [V6CProjectStructure.md](V6CProjectStructure.md) | Directory layout and key paths |
+| [V6ClangBuildGuide.md](V6ClangBuildGuide.md) | Prerequisites, build commands, mirror sync workflow, running tests, binary emission |
+| [V6ClangUsage.md](V6ClangUsage.md) | Clang frontend reference: type sizes, builtins, attributes, inline assembly, resource-dir headers |
+| [V6ClangDebugMetadata.md](V6ClangDebugMetadata.md) | Debug-build artifacts: DWARF v5, retained ELF companions, C/v6asm usage, and inspection |
+| [V6ClangDebugABI.md](V6ClangDebugABI.md) | Normative debugger ABI, stack contract, unwind boundaries, and DWARF register map |
+| [V6ClangCompilerOptions.md](V6ClangCompilerOptions.md) | Backend tuning flags and debug-output toggles (`-mv6clang-annotate-pseudos`, `-mv6clang-print-rt-helpers`, …) |
+| [V6ClangRelease.md](V6ClangRelease.md) | Release procedure: tagging, workflow trigger, rollback |
+| [V6ClangProjectStructure.md](V6ClangProjectStructure.md) | Directory layout and key paths |
 
 ### Architecture & Design
 
 | Document | Description |
 |----------|-------------|
-| [V6CArchitecture.md](V6CArchitecture.md) | Target CPU, data layout, memory map |
-| [V6CInstructionTimings.md](V6CInstructionTimings.md) | Intel 8080 instruction cycle costs, TableGen `SchedWriteRes` cross-reference |
-| [V6CIPRA.md](V6CIPRA.md) | Interprocedural Register Allocation on V6C, default behavior, safety model, and disable flags |
-| [V6CStaticStackAlloc.md](V6CStaticStackAlloc.md) | Static stack allocation for non-reentrant functions (O10): eligibility, interrupt attribute, BFS analysis |
-| [V6CInlineAsmGuide.md](V6CInlineAsmGuide.md) | Inline-assembly reference: `asm` keyword forms, V6C constraint letters (`r`/`a`/`p`/`I`/`J`), clobber names, `volatile` / `"memory"` semantics, local register variables, worked examples |
-| [V6CRuntimeAndInlineAsm.md](V6CRuntimeAndInlineAsm.md) | Header-only runtime: math (`v6c_arith.h`, auto-included) and `mem*`/`str*` (`<string.h>`, opt-in). `V6C_RT` helper pattern, IPRA interaction, `annotate("v6c-rt-helper")` suppression |
+| [V6ClangArchitecture.md](V6ClangArchitecture.md) | Target CPU, data layout, memory map |
+| [V6ClangInstructionTimings.md](V6ClangInstructionTimings.md) | Intel 8080 instruction cycle costs, TableGen `SchedWriteRes` cross-reference |
+| [V6ClangIPRA.md](V6ClangIPRA.md) | Interprocedural Register Allocation on V6CLANG, default behavior, safety model, and disable flags |
+| [V6ClangStaticStackAlloc.md](V6ClangStaticStackAlloc.md) | Static stack allocation for non-reentrant functions (O10): eligibility, interrupt attribute, BFS analysis |
+| [V6ClangInlineAsmGuide.md](V6ClangInlineAsmGuide.md) | Inline-assembly reference: `asm` keyword forms, V6CLANG constraint letters (`r`/`a`/`p`/`I`/`J`), clobber names, `volatile` / `"memory"` semantics, local register variables, worked examples |
+| [V6ClangRuntimeAndInlineAsm.md](V6ClangRuntimeAndInlineAsm.md) | Header-only runtime: math (`v6clang_arith.h`, auto-included) and `mem*`/`str*` (`<string.h>`, opt-in). `V6CLANG_RT` helper pattern, IPRA interaction, `annotate("v6clang-rt-helper")` suppression |
 | [Design Document](../design/design.md) | Authoritative architecture specification (registers, instructions, calling convention) |
 | [Implementation Plan](../design/plan.md) | Milestone-driven development sequence with steps, tests, and status markers |
 
 ### Quick Links
 
-- **Build instructions**: [V6CBuildGuide.md](V6CBuildGuide.md)
-- **Mirror sync**: [sync_llvm_mirror.ps1](../scripts/sync_llvm_mirror.ps1) — run after every build ([details](V6CBuildGuide.md#syncing-the-mirror))
-- **V6C backend source**: [llvm/lib/Target/V6C/](../llvm/lib/Target/V6C/) — git-tracked mirror
+- **Build instructions**: [V6ClangBuildGuide.md](V6ClangBuildGuide.md)
+- **Mirror sync**: [sync_llvm_mirror.ps1](../scripts/sync_llvm_mirror.ps1) — run after every build ([details](V6ClangBuildGuide.md#syncing-the-mirror))
+- **V6CLANG backend source**: [llvm/lib/Target/V6CLANG/](../llvm/lib/Target/V6CLANG/) — git-tracked mirror
 - **Golden tests**: [tests/golden/](../tests/golden/) — emulator trust baseline
 - **Vector 06c CPU timings**: [Vector_06c_instruction_timings.md](Vector_06c_instruction_timings.md)
 - **Benchmarks vs other 8080 C compilers**: [benchmarks.md](benchmarks.md) (driver: [tests/benchmarks_c/](../tests/benchmarks_c/README.md))

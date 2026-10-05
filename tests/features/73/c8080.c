@@ -1,4 +1,4 @@
-/* O91: Elide V6C_CMP8_ZERO after flag-setting ALU op — c8080 reference
+/* O91: Elide V6CLANG_CMP8_ZERO after flag-setting ALU op — c8080 reference
  *
  * c8080 computes (u8)(a OP b)==0 directly as an 8-bit comparison using the
  * lo-byte register.  This is the expected c8080 baseline.

@@ -4,9 +4,9 @@
 
 ### Current behavior
 
-The V6C backend canonicalizes all negate spellings to subtract-from-zero.
+The V6CLANG backend canonicalizes all negate spellings to subtract-from-zero.
 
-For i16 this currently becomes a full `V6C_SUB16` against a materialized zero
+For i16 this currently becomes a full `V6CLANG_SUB16` against a materialized zero
 pair, e.g.:
 
 ```asm
@@ -19,7 +19,7 @@ SBB H
 MOV H, A
 ```
 
-That costs 52cc and, more importantly for V6C, forces an extra register pair
+That costs 52cc and, more importantly for V6CLANG, forces an extra register pair
 through register allocation.
 
 For i8 result-only negate where the source is already in `A`, current codegen
@@ -68,10 +68,10 @@ pressure.
 
 ## 2. Strategy
 
-### Approach: select canonical `sub 0, x` into new `V6C_NEG16` / `V6C_NEG8`
+### Approach: select canonical `sub 0, x` into new `V6CLANG_NEG16` / `V6CLANG_NEG8`
 
-Add dedicated pseudos in `V6CInstrInfo.td`, teach ISel/lowering to recognize
-canonical subtract-from-zero, and add post-RA expansion in `V6CInstrInfo.cpp`.
+Add dedicated pseudos in `V6ClangInstrInfo.td`, teach ISel/lowering to recognize
+canonical subtract-from-zero, and add post-RA expansion in `V6ClangInstrInfo.cpp`.
 
 For i16 the pseudo must be introduced before RA so the extra zero pair never
 exists in the machine IR.
@@ -90,8 +90,8 @@ does not reproduce subtraction-style carry semantics.
 
 ### Summary of changes
 
-- Add `V6C_NEG16` pseudo and post-RA expansion.
-- Add `V6C_NEG8` pseudo and post-RA expansion.
+- Add `V6CLANG_NEG16` pseudo and post-RA expansion.
+- Add `V6CLANG_NEG8` pseudo and post-RA expansion.
 - Teach lowering/selection to form those pseudos from canonical `sub 0, x`.
 - Add lit coverage.
 - Add feature test folder 69 and compare old/new assembly.
@@ -100,48 +100,48 @@ does not reproduce subtraction-style carry semantics.
 
 ### Step 3.1 — Create O87 feature plan and baseline feature folder [x]
 
-Create this plan and create `tests\features\69\{v6llvmc.c,c8080.c}` with a
+Create this plan and create `tests\features\69\{v6clang.c,c8080.c}` with a
 baseline negate-focused testcase.
 
-> **Implementation Notes**: Created this plan plus `tests\features\69\{v6llvmc.c,c8080.c}`. Generated baseline `tests\features\69\v6llvmc_old.asm` and `tests\features\69\c8080.asm`.
+> **Implementation Notes**: Created this plan plus `tests\features\69\{v6clang.c,c8080.c}`. Generated baseline `tests\features\69\v6clang_old.asm` and `tests\features\69\c8080.asm`.
 
-### Step 3.2 — Add `V6C_NEG16` pseudo and selection [x]
+### Step 3.2 — Add `V6CLANG_NEG16` pseudo and selection [x]
 
-**Files**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`,
-`llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**Files**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`,
+`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 Recognize canonical i16 `sub 0, x` and select a dedicated negate pseudo before
 RA.
 
 > **Design Notes**: The main goal is to prevent the zero pair from reaching RA.
-> **Implementation Notes**: Added `V6C_NEG16` in `V6CInstrInfo.td` and matched canonical i16 `sub 0, x` before RA so the artificial zero pair never enters allocation.
+> **Implementation Notes**: Added `V6CLANG_NEG16` in `V6ClangInstrInfo.td` and matched canonical i16 `sub 0, x` before RA so the artificial zero pair never enters allocation.
 
-### Step 3.3 — Add `V6C_NEG16` post-RA expansion [x]
+### Step 3.3 — Add `V6CLANG_NEG16` post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-Expand `V6C_NEG16` to the 36cc `XRA/SUB/MVI/SBB` sequence.
+Expand `V6CLANG_NEG16` to the 36cc `XRA/SUB/MVI/SBB` sequence.
 
-> **Implementation Notes**: Implemented `V6C_NEG16` expansion in `V6CInstrInfo.cpp` as `XRA; SUB; MOV; MVI 0; SBB; MOV`. Verified annotated probe and feature asm both show `;--- V6C_NEG16 ---`.
+> **Implementation Notes**: Implemented `V6CLANG_NEG16` expansion in `V6ClangInstrInfo.cpp` as `XRA; SUB; MOV; MVI 0; SBB; MOV`. Verified annotated probe and feature asm both show `;--- V6CLANG_NEG16 ---`.
 
-### Step 3.4 — Add `V6C_NEG8` pseudo and selection [x]
+### Step 3.4 — Add `V6CLANG_NEG8` pseudo and selection [x]
 
-**Files**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`,
-`llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**Files**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`,
+`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 Recognize result-only i8 `sub 0, x` and select a dedicated negate pseudo.
 
 > **Design Notes**: This must not fire on flag-producing subtract paths.
-> **Implementation Notes**: Added `V6CISD::NEG8` / `V6C_NEG8`. Initial generic `sub i8 0, x` match regressed memory-source byte negates, so final lowering only forms `NEG8` when the RHS DAG value is already copied from incoming `A`.
+> **Implementation Notes**: Added `V6ClangISD::NEG8` / `V6CLANG_NEG8`. Initial generic `sub i8 0, x` match regressed memory-source byte negates, so final lowering only forms `NEG8` when the RHS DAG value is already copied from incoming `A`.
 
-### Step 3.5 — Add `V6C_NEG8` post-RA expansion [x]
+### Step 3.5 — Add `V6CLANG_NEG8` post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Use `CMA; INR A` only for the `src == A` case. Keep subtract-based emission for
 other shapes.
 
-> **Implementation Notes**: `V6C_NEG8` now emits `CMA; INR A` when the source is in `A`, otherwise falls back to subtract-based emission. Added a post-RA fold for an immediately preceding `MOV src, A` so RA-inserted accumulator copies do not hide the fast path.
+> **Implementation Notes**: `V6CLANG_NEG8` now emits `CMA; INR A` when the source is in `A`, otherwise falls back to subtract-based emission. Added a post-RA fold for an immediately preceding `MOV src, A` so RA-inserted accumulator copies do not hide the fast path.
 
 ### Step 3.6 — Build [x]
 
@@ -164,26 +164,26 @@ Add a focused CodeGen lit test covering:
 - non-`A`/memory-source non-regression
 - flag-sensitive i8 subtract non-match
 
-> **Implementation Notes**: Added `llvm-project/llvm/test/CodeGen/V6C/negate-specialization.ll`. It locks in i16 canonical negates, i8 accumulator specialization, non-`A` i8 fallback, and memory-source non-regression. Front-end spellings (`-x`, `-1*x`, `x*(-1)`) are covered by feature test 69. A temporary `temp\neg8_flag_check.ll` spot-check confirmed the flag-consuming zero-compare path did not form `V6C_NEG8`.
+> **Implementation Notes**: Added `llvm-project/llvm/test/CodeGen/V6CLANG/negate-specialization.ll`. It locks in i16 canonical negates, i8 accumulator specialization, non-`A` i8 fallback, and memory-source non-regression. Front-end spellings (`-x`, `-1*x`, `x*(-1)`) are covered by feature test 69. A temporary `temp\neg8_flag_check.ll` spot-check confirmed the flag-consuming zero-compare path did not form `V6CLANG_NEG8`.
 
 ### Step 3.8 — Run regression tests [x]
 
 Run the relevant regression scope at minimum, and widen if needed.
 
-> **Implementation Notes**: `python tests\run_all.py` passed all 3 suites. During the run, `tests\lit\CodeGen\V6C\conditional-call.ll` exposed stale signed zero-condition expectations (`CM`/`CP` were reversed); updated the checks and reran the full suite to green.
+> **Implementation Notes**: `python tests\run_all.py` passed all 3 suites. During the run, `tests\lit\CodeGen\V6CLANG\conditional-call.ll` exposed stale signed zero-condition expectations (`CM`/`CP` were reversed); updated the checks and reran the full suite to green.
 
 ### Step 3.9 — Verification assembly steps from `tests\features\README.md` [x]
 
 Compile baseline old asm and post-change new asm for feature folder 69.
 
-> **Implementation Notes**: Generated `tests\features\69\v6llvmc_new01.asm`. Verified all i16 local/global negates use `V6C_NEG16`, `neg_i8_unary` uses `V6C_NEG8` (`CMA; INR A`), and `neg_i8_global_unary` intentionally remains `V6C_SUB_M_P`.
+> **Implementation Notes**: Generated `tests\features\69\v6clang_new01.asm`. Verified all i16 local/global negates use `V6CLANG_NEG16`, `neg_i8_unary` uses `V6CLANG_NEG8` (`CMA; INR A`), and `neg_i8_global_unary` intentionally remains `V6CLANG_SUB_M_P`.
 
 ### Step 3.10 — Make sure result.txt is created [x]
 
 Create `tests\features\69\result.txt` with the required code/asm/stats
 comparison.
 
-> **Implementation Notes**: Created `tests\features\69\result.txt` with the test code, converted c8080 asm, c8080 stats, old/new V6C asm, and comparison tables.
+> **Implementation Notes**: Created `tests\features\69\result.txt` with the test code, converted c8080 asm, c8080 stats, old/new V6CLANG asm, and comparison tables.
 
 ### Step 3.11 — Sync mirror [x]
 
@@ -206,14 +206,14 @@ scratch-register pattern to `CMA; INR A`.
 ### Example 3 — Register-pressure improvement
 
 The i16 path should reduce pair pressure by eliminating an artificial zero live
-range, which is especially valuable on the 3-pair V6C machine.
+range, which is especially valuable on the 3-pair V6CLANG machine.
 
 ## 5. Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| i8 negate could break carry-sensitive paths | Restrict `V6C_NEG8` to result-only arithmetic; do not match flag-producing subtracts |
-| Late formation would miss the RA benefit | Form `V6C_NEG16` before RA from canonical `sub 0, x` |
+| i8 negate could break carry-sensitive paths | Restrict `V6CLANG_NEG8` to result-only arithmetic; do not match flag-producing subtracts |
+| Late formation would miss the RA benefit | Form `V6CLANG_NEG16` before RA from canonical `sub 0, x` |
 | Non-`A` i8 shapes could regress | Keep subtract-based emission for non-`A` and memory-source cases |
 
 ---
@@ -233,7 +233,7 @@ arithmetic from flag-sensitive paths.
 
 ## 8. References
 
-- [V6C Build Guide](docs\V6CBuildGuide.md)
-- [V6C Timings](docs\V6CInstructionTimings.md)
+- [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
+- [V6CLANG Timings](docs\V6ClangInstructionTimings.md)
 - [Future Improvements](design\future_plans\README.md)
 - [O87 Design](design\future_plans\O87_negate_specialization.md)

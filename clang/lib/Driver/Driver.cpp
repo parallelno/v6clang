@@ -45,7 +45,7 @@
 #include "ToolChains/SPIRV.h"
 #include "ToolChains/Solaris.h"
 #include "ToolChains/TCE.h"
-#include "ToolChains/V6C.h"
+#include "ToolChains/V6Clang.h"
 #include "ToolChains/VEToolchain.h"
 #include "ToolChains/WebAssembly.h"
 #include "ToolChains/XCore.h"
@@ -6366,7 +6366,7 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
         break;
       case llvm::Triple::i8080:
         TC =
-            std::make_unique<toolchains::V6CToolChain>(*this, Target, Args);
+            std::make_unique<toolchains::V6ClangToolChain>(*this, Target, Args);
         break;
       case llvm::Triple::riscv32:
       case llvm::Triple::riscv64:

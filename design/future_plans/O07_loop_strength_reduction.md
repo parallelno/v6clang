@@ -2,7 +2,7 @@
 
 ## Problem
 
-The V6C backend generates `base + i` address recomputation on every loop
+The V6CLANG backend generates `base + i` address recomputation on every loop
 iteration instead of maintaining and incrementing a pointer. For a simple
 array copy:
 
@@ -34,16 +34,16 @@ MOV  M, A            ;  8cc
 ## Root Cause
 
 LLVM has a built-in Loop Strength Reduction pass (`-loop-reduce`), but it
-makes cost decisions through `TargetTransformInfo` (TTI) hooks. V6C has
+makes cost decisions through `TargetTransformInfo` (TTI) hooks. V6CLANG has
 **no TTI implementation** — it falls back to defaults that assume reg+reg
 addressing is free and the target has 32-bit registers. These defaults prevent
 LSR from making correct transformations for the 8080.
 
 ## Implementation
 
-Implement `V6CTargetTransformInfo` class with key hooks:
+Implement `V6ClangTargetTransformInfo` class with key hooks:
 
-| Hook | V6C Value |
+| Hook | V6CLANG Value |
 |------|-----------|
 | `isLegalAddressingMode()` | Only reg indirect, no offset |
 | `getAddressComputationCost()` | Non-zero (initial: 2) |

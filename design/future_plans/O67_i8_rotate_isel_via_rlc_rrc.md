@@ -6,18 +6,18 @@
 
 ## Problem
 
-The 8080 has four single-bit rotate instructions in `V6CInstrInfo.td`
+The 8080 has four single-bit rotate instructions in `V6ClangInstrInfo.td`
 (lines 401–409, 4cc / 1B each, accumulator-only):
 
 ```
-def RLC : V6CInstImplied<0x07, ..., "RLC", []>;   // circular left
-def RRC : V6CInstImplied<0x0F, ..., "RRC", []>;   // circular right
-def RAL : V6CInstImplied<0x17, ..., "RAL", []>;   // through CY, left
-def RAR : V6CInstImplied<0x1F, ..., "RAR", []>;   // through CY, right
+def RLC : V6ClangInstImplied<0x07, ..., "RLC", []>;   // circular left
+def RRC : V6ClangInstImplied<0x0F, ..., "RRC", []>;   // circular right
+def RAL : V6ClangInstImplied<0x17, ..., "RAL", []>;   // through CY, left
+def RAR : V6ClangInstImplied<0x1F, ..., "RAR", []>;   // through CY, right
 ```
 
 All four ship with **empty pattern lists** — ISel never matches them.
-And in `V6CISelLowering.cpp` (lines 77–78):
+And in `V6ClangISelLowering.cpp` (lines 77–78):
 
 ```cpp
 setOperationAction(ISD::ROTL, MVT::i8, Expand);
@@ -27,7 +27,7 @@ setOperationAction(ISD::ROTR, MVT::i8, Expand);
 So when DAGCombine recognises `(x<<n) | (x>>(8-n))` as `ISD::ROTL`,
 the generic expander turns it back into `SHL i8 n | SRL i8 (8-n)`.
 The i8 SHL constant path unrolls into `ADD A, A` (good); the i8 SRL
-constant path zero-extends to i16 and runs the slow `V6C_SRL16`
+constant path zero-extends to i16 and runs the slow `V6CLANG_SRL16`
 expansion — `MOV A,H; ORA A; RAR; MOV H,A; MOV A,L; RAR; MOV L,A`
 (7 insns / ~28cc per shift step), then ORs the two halves.
 
@@ -70,8 +70,8 @@ into a chain of `ADD A, A`.
 ```
 (rotl i8 x, imm N)
   N ∈ {0}      → x
-  N ∈ {1..4}   → chain of N × V6CISD::ROTL8(x)   → N × RLC
-  N ∈ {5..7}   → chain of (8-N) × V6CISD::ROTR8  → (8-N) × RRC
+  N ∈ {1..4}   → chain of N × V6ClangISD::ROTL8(x)   → N × RLC
+  N ∈ {5..7}   → chain of (8-N) × V6ClangISD::ROTR8  → (8-N) × RRC
                   (canonicalised: shorter direction)
 
 (rotl i8 x, %amt) [variable]
@@ -84,7 +84,7 @@ Symmetric for `ISD::ROTR`.
 ### New ISD nodes
 
 ```cpp
-// V6CISelLowering.h, alongside V6CISD::SEXT
+// V6ClangISelLowering.h, alongside V6ClangISD::SEXT
 ROTL8,    // 1-bit accumulator rotate left  → RLC.
 ROTR8,    // 1-bit accumulator rotate right → RRC.
 ```
@@ -92,18 +92,18 @@ ROTR8,    // 1-bit accumulator rotate right → RRC.
 ### TableGen patterns
 
 ```
-def SDT_V6Crot8 : SDTypeProfile<1, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i8>]>;
-def V6Crotl8 : SDNode<"V6CISD::ROTL8", SDT_V6Crot8>;
-def V6Crotr8 : SDNode<"V6CISD::ROTR8", SDT_V6Crot8>;
+def SDT_V6Clangrot8 : SDTypeProfile<1, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i8>]>;
+def V6Clangrotl8 : SDNode<"V6ClangISD::ROTL8", SDT_V6Clangrot8>;
+def V6Clangrotr8 : SDNode<"V6ClangISD::ROTR8", SDT_V6Clangrot8>;
 
-def : Pat<(V6Crotl8 Acc:$src), (RLC Acc:$src)>;
-def : Pat<(V6Crotr8 Acc:$src), (RRC Acc:$src)>;
+def : Pat<(V6Clangrotl8 Acc:$src), (RLC Acc:$src)>;
+def : Pat<(V6Clangrotr8 Acc:$src), (RRC Acc:$src)>;
 ```
 
 The `$dst = $src` tied constraint already on `RLC`/`RRC` handles the
 in-place semantics; SelectionDAG inserts `COPY_TO_REGCLASS` to A as
 needed, identical to the existing accumulator-only paths used by
-`LowerSHL` and `V6CISD::SEXT`.
+`LowerSHL` and `V6ClangISD::SEXT`.
 
 ### Why RLC/RRC and not RAL/RAR
 
@@ -118,8 +118,8 @@ follow-up that builds on the same `ROTL8`/`ROTR8` precedent).
 
 For `rotl x, N`:
 - `N == 0`: identity, no instruction.
-- `1 ≤ N ≤ 4`: emit N × `V6CISD::ROTL8` (shorter or tied with right).
-- `5 ≤ N ≤ 7`: emit `(8-N)` × `V6CISD::ROTR8` (shorter).
+- `1 ≤ N ≤ 4`: emit N × `V6ClangISD::ROTL8` (shorter or tied with right).
+- `5 ≤ N ≤ 7`: emit `(8-N)` × `V6ClangISD::ROTR8` (shorter).
 
 The N=4 tie keeps the requested direction (4×RLC ≡ 4×RRC, no
 measurable difference). Symmetric for ROTR.
@@ -132,7 +132,7 @@ measurable difference). Symmetric for ROTR.
 | `RRC`    | `A' = (A>>1) \| (A<<7)`                          | CY = old bit 0    |
 
 Both match the i8 ROTL/ROTR semantics exactly; CY is overwritten by
-each rotate but no V6C peephole / flag-tracking pass assumes a clean
+each rotate but no V6CLANG peephole / flag-tracking pass assumes a clean
 CY across rotates (`ZeroTestOpt`, `RedundantFlagElim` operate on Z
 produced by ALU/ORA paths). Pattern is safe.
 
@@ -140,18 +140,18 @@ produced by ALU/ORA paths). Pattern is safe.
 
 ### Approach: ISD nodes + Custom lowering + TableGen patterns
 
-Three coordinated edits, all confined to the V6C target:
+Three coordinated edits, all confined to the V6CLANG target:
 
-1. **`V6CISelLowering.h`**: add `ROTL8` / `ROTR8` to the `V6CISD` enum.
-2. **`V6CISelLowering.cpp`**:
+1. **`V6ClangISelLowering.h`**: add `ROTL8` / `ROTR8` to the `V6ClangISD` enum.
+2. **`V6ClangISelLowering.cpp`**:
    - Switch `setOperationAction(ISD::ROTL/ROTR, MVT::i8, ...)` from
      `Expand` to `Custom`.
    - Add `LowerROTL` / `LowerROTR` (mirror `LowerSHL` skeleton).
    - Wire dispatch in `LowerOperation` switch and `getTargetNodeName`.
-3. **`V6CInstrInfo.td`**: add the SDTypeProfile, two SDNode defs, and
+3. **`V6ClangInstrInfo.td`**: add the SDTypeProfile, two SDNode defs, and
    two `Pat<>` matchers next to the existing rotate instruction defs.
 
-Total: ~60 LOC (40 in `V6CISelLowering.cpp`, 5 in the header, 6 in
+Total: ~60 LOC (40 in `V6ClangISelLowering.cpp`, 5 in the header, 6 in
 TableGen).
 
 ### Pass ordering
@@ -167,7 +167,7 @@ optimisation level; no CLI flag.
 - **Risk:** Very Low. The current Expand path is strictly worse;
   there is no debug scenario where preserving it is useful. The
   custom lowering is gated by `getValueType() == MVT::i8`, so i16
-  rotates (already absent from V6C) are unaffected.
+  rotates (already absent from V6CLANG) are unaffected.
 - **Dependencies:** None. Composes with O27/O17/O38 (independent
   flag-tracking work) and O13 (LoadImmCombine — not relevant here).
 

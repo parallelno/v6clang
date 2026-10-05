@@ -61,7 +61,7 @@ int main(void) {
 ; c8080 outer-loop latch cycles (per iteration): 180cc
 ; c8080 outer-loop latch size:  28 bytes
 
-== v6llvmc_old — outer-loop latch (.LBB16_8, BEFORE O83) =======================
+== v6clang_old — outer-loop latch (.LBB16_8, BEFORE O83) =======================
 ; O61 patched-immediates keep i_sq and i in spill slots.
 ; Two redundant POP/PUSH pairs are present (marked <<<).
 
@@ -109,10 +109,10 @@ int main(void) {
         CMP     E                ;  4cc  1B
         JNZ     .LBB16_3         ; 12cc  3B  back to outer header
 
-; v6llvmc_old outer-loop latch cycles (per iteration): 432cc
-; v6llvmc_old outer-loop latch size:  52 bytes
+; v6clang_old outer-loop latch cycles (per iteration): 432cc
+; v6clang_old outer-loop latch size:  52 bytes
 
-== v6llvmc_new01 — outer-loop latch (.LBB16_8, AFTER O83) ======================
+== v6clang_new01 — outer-loop latch (.LBB16_8, AFTER O83) ======================
 ; Both redundant POP/PUSH pairs have been eliminated.
 ; Case 2 (POP H; INX H; INX H; PUSH H) is preserved — HL is live across INX H.
 
@@ -156,8 +156,8 @@ int main(void) {
         CMP     E                ;  4cc  1B
         JNZ     .LBB16_3         ; 12cc  3B  back to outer header
 
-; v6llvmc_new01 outer-loop latch cycles (per iteration): 376cc
-; v6llvmc_new01 outer-loop latch size:  48 bytes
+; v6clang_new01 outer-loop latch cycles (per iteration): 376cc
+; v6clang_new01 outer-loop latch size:  48 bytes
 
 == Comparison table =============================================================
 ; Instruction timings: POP rp = 12cc / 1B, PUSH rp = 16cc / 1B (Vector 06c).
@@ -168,8 +168,8 @@ Outer-loop latch (per iteration):
   Compiler      | cc / iter | B (code) | Notes
   --------------|-----------|----------|----------------------------------
   c8080         |    180 cc |    28 B  | all vars in LHLD/SHLD; no regs
-  v6llvmc old   |    432 cc |    52 B  | 2 redundant POP/PUSH pairs present
-  v6llvmc new   |    376 cc |    48 B  | O83: 2 pairs eliminated (-56cc, -4B)
+  v6clang old   |    432 cc |    52 B  | 2 redundant POP/PUSH pairs present
+  v6clang new   |    376 cc |    48 B  | O83: 2 pairs eliminated (-56cc, -4B)
 
 Eliminated pairs (2 total, per outer iteration):
   Case 1 — adjacent POP H / PUSH H:    -28cc  -2B
@@ -177,7 +177,7 @@ Eliminated pairs (2 total, per outer iteration):
   Total per outer iteration:            -56cc  -4B
 
 Full function (main, which inlines sieve_count(200)):
-  v6llvmc old   | 173 asm lines |  ~N cc
-  v6llvmc new   | 169 asm lines |  ~N-728 cc  (13 iter × 56cc)
+  v6clang old   | 173 asm lines |  ~N cc
+  v6clang new   | 169 asm lines |  ~N-728 cc  (13 iter × 56cc)
 
 Code-size delta: -4 bytes (4 instructions × 1 byte each, eliminated from code).

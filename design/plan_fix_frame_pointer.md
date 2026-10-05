@@ -1,4 +1,4 @@
-# Fix: Frame Pointer Default for V6C Target
+# Fix: Frame Pointer Default for V6CLANG Target
 
 **Reference**: [design_improve_spilling.md](design_improve_spilling.md), [design.md](design.md) §7.2
 
@@ -6,7 +6,7 @@
 
 ## 1. Problem
 
-The V6C toolchain does not declare a frame pointer preference. The fallback
+The V6CLANG toolchain does not declare a frame pointer preference. The fallback
 logic in `useFramePointerForTargetByDefault()` (CommonArgs.cpp) returns
 `true` for unrecognized architectures, causing every function to receive
 `"frame-pointer"="all"` — even at `-O2`.
@@ -28,7 +28,7 @@ two live pointers.
 mode, reducing allocatable registers further. Enabled via
 `-fno-omit-frame-pointer` or automatically when needed."*
 
-[V6CCallingConvention.md §Frame Pointer](../docs/V6CCallingConvention.md):
+[V6ClangCallingConvention.md §Frame Pointer](../docs/V6ClangCallingConvention.md):
 *"For functions requiring one (e.g., alloca, variable-length arrays, or
 -fno-omit-frame-pointer), BC is reserved."*
 
@@ -94,8 +94,8 @@ ninja -C llvm-build clang llc
 Compile a trivial function at `-O2` and check the IR attribute:
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S -emit-llvm ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_fixed.ll
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S -emit-llvm ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_fixed.ll
 ```
 
 Verify the function does NOT have `"frame-pointer"="all"`. Expected:
@@ -104,8 +104,8 @@ Verify the function does NOT have `"frame-pointer"="all"`. Expected:
 ### Step 5 — Verify assembly output [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_fixed.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_fixed.asm
 ```
 
 Verify:
@@ -117,19 +117,19 @@ Verify:
 
 ### Step 6 — Lit test for frame pointer behavior [x]
 
-**File**: `tests/lit/Clang/V6C/frame-pointer-default.c`
+**File**: `tests/lit/Clang/V6CLANG/frame-pointer-default.c`
 
 ```c
-// RUN: %clang -target i8080-unknown-v6c -O2 -S -emit-llvm %s -o - | FileCheck %s
+// RUN: %clang -target i8080-unknown-v6clang -O2 -S -emit-llvm %s -o - | FileCheck %s
 // CHECK-NOT: "frame-pointer"="all"
 // CHECK-NOT: "frame-pointer"="non-leaf"
 int simple(int x) { return x + 1; }
 ```
 
-**File**: `tests/lit/Clang/V6C/frame-pointer-explicit.c`
+**File**: `tests/lit/Clang/V6CLANG/frame-pointer-explicit.c`
 
 ```c
-// RUN: %clang -target i8080-unknown-v6c -O2 -fno-omit-frame-pointer -S -emit-llvm %s -o - | FileCheck %s
+// RUN: %clang -target i8080-unknown-v6clang -O2 -fno-omit-frame-pointer -S -emit-llvm %s -o - | FileCheck %s
 // CHECK: "frame-pointer"="all"
 int simple(int x) { return x + 1; }
 ```
@@ -156,7 +156,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ## 4. Expected Results
 
-### Array copy loop (temp\compare\03\v6llvmc2.c)
+### Array copy loop (temp\compare\03\v6clang2.c)
 
 Before (BC reserved, 2 pairs):
 - ~30 instructions per iteration

@@ -11,7 +11,7 @@ Implemented and validated:
   data alignment -2, return-address column 11 (PC).
 - Ordinary entry rule: `CFA = SP + 2`, `PC = [CFA - 2]`.
 - Final-stream CFI tracks PUSH, POP, INX/DCX SP, and LXI/DAD/SPHL frame
-  adjustments after every V6C optimization has run.
+  adjustments after every V6CLANG optimization has run.
 - BC frame-pointer rules preserve and recover caller BC and switch between
   BC-relative and SP-relative CFA rules through prologue/epilogue PCs.
 - Naked and interrupt-marked functions emit `PC undefined` boundaries.
@@ -21,7 +21,7 @@ Implemented and validated:
 C Test Case
 -----------
 
-`v6llvmc.c` keeps the physical call chain:
+`v6clang.c` keeps the physical call chain:
 
     main -> middle -> leaf
 
@@ -73,6 +73,6 @@ Assembly and Performance
 ------------------------
 
 CFI instructions are metadata-only and are inserted only for modules carrying
-debug information. `v6llvmc_old.asm` and `v6llvmc_new01.asm` are identical for
+debug information. `v6clang_old.asm` and `v6clang_new01.asm` are identical for
 the release fixture. Full benchmark and regression results are recorded in the
 Milestone 2 implementation plan.

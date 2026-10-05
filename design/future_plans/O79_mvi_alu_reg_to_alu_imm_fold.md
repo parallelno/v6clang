@@ -4,7 +4,7 @@
 
 Whenever the i8 ALU consumer wants `A op imm` but the immediate is
 materialized in a non-A register first (because of register pressure,
-ISel choices, or earlier passes that hoisted the constant), V6C codegen
+ISel choices, or earlier passes that hoisted the constant), V6CLANG codegen
 emits the two-instruction sequence:
 
 ```asm
@@ -77,7 +77,7 @@ Per fire:
 
 ## Implementation Sketch
 
-New peephole hook in `V6CPeephole.cpp`, called per basic block (this
+New peephole hook in `V6ClangPeephole.cpp`, called per basic block (this
 pass already iterates per-MBB; add another `runOnMBB` helper named
 `foldMviAluImm`).
 
@@ -85,29 +85,29 @@ pass already iterates per-MBB; add another `runOnMBB` helper named
 // Map register-form ALU opcode → immediate-form opcode.
 static unsigned aluRegToImm(unsigned Opc) {
   switch (Opc) {
-  case V6C::ADDr: return V6C::ADI;
-  case V6C::ADCr: return V6C::ACI;
-  case V6C::SUBr: return V6C::SUI;
-  case V6C::SBBr: return V6C::SBI;
-  case V6C::ANAr: return V6C::ANI;
-  case V6C::XRAr: return V6C::XRI;
-  case V6C::ORAr: return V6C::ORI;
-  case V6C::CMPr: return V6C::CPI;
+  case V6CLANG::ADDr: return V6CLANG::ADI;
+  case V6CLANG::ADCr: return V6CLANG::ACI;
+  case V6CLANG::SUBr: return V6CLANG::SUI;
+  case V6CLANG::SBBr: return V6CLANG::SBI;
+  case V6CLANG::ANAr: return V6CLANG::ANI;
+  case V6CLANG::XRAr: return V6CLANG::XRI;
+  case V6CLANG::ORAr: return V6CLANG::ORI;
+  case V6CLANG::CMPr: return V6CLANG::CPI;
   default:       return 0;
   }
 }
 
-bool V6CPeephole::foldMviAluImm(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::foldMviAluImm(MachineBasicBlock &MBB) {
   bool Changed = false;
   const TargetRegisterInfo *TRI =
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
     MachineInstr &MVI = *I;
-    if (MVI.getOpcode() != V6C::MVIr) { ++I; continue; }
+    if (MVI.getOpcode() != V6CLANG::MVIr) { ++I; continue; }
 
     Register R = MVI.getOperand(0).getReg();
-    if (R == V6C::A) { ++I; continue; }   // not in scope
+    if (R == V6CLANG::A) { ++I; continue; }   // not in scope
 
     int64_t Imm = MVI.getOperand(1).getImm();
 
@@ -153,9 +153,9 @@ bool V6CPeephole::foldMviAluImm(MachineBasicBlock &MBB) {
         // ADI/SUI/.../CPI shape: (outs Acc:$dst)(ins Acc:$lhs, i8imm:$imm)
         // for ALU; CPI is (outs)(ins Acc:$lhs, i8imm:$imm).
         // BuildMI here mirrors what ISel emits for these opcodes —
-        // see V6CInstrInfo.td:372–402 for exact tied-operand layout.
-        .addReg(V6C::A, RegState::Define)
-        .addReg(V6C::A)
+        // see V6ClangInstrInfo.td:372–402 for exact tied-operand layout.
+        .addReg(V6CLANG::A, RegState::Define)
+        .addReg(V6CLANG::A)
         .addImm(Imm);
     // Note: for CMPr → CPI the def-A operand is dropped — gate on
     // the opcode and use the matching builder.
@@ -173,7 +173,7 @@ Notes on the implementation:
 - `MVIr` is the "MVI R,imm8" instruction (operand 0 = GR8, operand 1
   = i8imm). `MVIM` (memory destination) is unrelated.
 - The exact `BuildMI` shape for each immediate form must match the
-  `(outs)/(ins)` declared in `V6CInstrInfo.td:372–402`. ALU forms
+  `(outs)/(ins)` declared in `V6ClangInstrInfo.td:372–402`. ALU forms
   declare `Acc:$dst` tied to `Acc:$lhs`; `CPI` has no def. The fold
   must dispatch on whether the consumer was `CMPr` to drop the
   `addReg(A, Define)` operand.
@@ -181,16 +181,16 @@ Notes on the implementation:
   instructions (they appear with regmasks rather than explicit
   defs). The early `J->isCall()` barrier already handles this, but
   the regmask scan is kept as a backstop.
-- `isRegDeadAfter` is the same helper used by `V6CXchgOpt` and
-  `V6CPeephole::foldXchgDad` — handles successor-livein checks.
+- `isRegDeadAfter` is the same helper used by `V6ClangXchgOpt` and
+  `V6ClangPeephole::foldXchgDad` — handles successor-livein checks.
 
 ### O61 patched-reload landing pads (pre-instr symbol + `MO_PATCH_IMM`)
 
 The dominant motivating shape for this fold is the O61 self-modifying
-spill landing pad emitted by `V6CSpillPatchedReload`:
+spill landing pad emitted by `V6ClangSpillPatchedReload`:
 
 ```asm
-;--- V6C_RELOAD8 ---
+;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
         MVI     L, 0          ; the "0" byte is patched at runtime
         ADD     L             ; consumer reads the patched value
@@ -212,11 +212,11 @@ otherwise the spill stops working:
      `setPreInstrSymbol` on the new `BuildMI`'s `MachineInstr`.
 
 2. **`MO_PATCH_IMM` target flag** on the immediate operand
-   (`V6CII::MO_PATCH_IMM`, set on operand 1 of the MVI by
-   `V6CSpillPatchedReload.cpp` lines 371 & 532). The asm printer
+   (`V6ClangII::MO_PATCH_IMM`, set on operand 1 of the MVI by
+   `V6ClangSpillPatchedReload.cpp` lines 371 & 532). The asm printer
    uses this flag to emit the immediate verbatim (it remains a
    placeholder constant; the runtime `STA` overwrites it). The
-   fold must call `setTargetFlags(V6CII::MO_PATCH_IMM)` on the
+   fold must call `setTargetFlags(V6ClangII::MO_PATCH_IMM)` on the
    new ALU-immediate's imm operand.
 
 #### Updated rewrite (extends the sketch above)
@@ -228,10 +228,10 @@ unsigned ImmTF = MVI.getOperand(1).getTargetFlags(); // 0 or MO_PATCH_IMM
 
 MachineInstrBuilder MIB =
     BuildMI(MBB, J, DL, TII->get(ImmOpc));
-if (ImmOpc != V6C::CPI)
-  MIB.addReg(V6C::A, RegState::Define).addReg(V6C::A);
+if (ImmOpc != V6CLANG::CPI)
+  MIB.addReg(V6CLANG::A, RegState::Define).addReg(V6CLANG::A);
 else
-  MIB.addReg(V6C::A);                                // CPI: lhs only
+  MIB.addReg(V6CLANG::A);                                // CPI: lhs only
 MIB.addImm(Imm);
 
 MachineInstr *NewMI = MIB.getInstr();
@@ -285,15 +285,15 @@ follow-up, not part of O79.
 
 ### CLI toggle
 
-Add `-v6c-disable-mvi-alu-fold` (default false) to allow disabling
+Add `-v6clang-disable-mvi-alu-fold` (default false) to allow disabling
 for bisection / lit gating, mirroring the convention used by every
 other peephole in the pass.
 
 ### Pipeline placement
 
-Add to `V6CPeephole::runOnMachineFunction` after the existing
+Add to `V6ClangPeephole::runOnMachineFunction` after the existing
 `cancelAdjacentXchg` / `foldXchgDad` calls. The new fold composes
-with O13 (`V6CLoadImmCombine`): O13 turns redundant `MVI R,N` into
+with O13 (`V6ClangLoadImmCombine`): O13 turns redundant `MVI R,N` into
 `MOV R,R'` when another reg already holds N, so this pass should
 run **before** O13 to claim the easy `MVI R,N; ALU R` shape first.
 If O13 has already rewritten the `MVI` into a `MOV`, the fold no
@@ -302,12 +302,12 @@ existing peepholes).
 
 Empirically the current pipeline order is
 `AccumulatorPlanning → LoadImmCombine → Peephole → …`
-(see `V6CPassConfig::addPreEmitPass`). The new fold lives in
-`V6CPeephole` and runs **after** `LoadImmCombine`, so it will catch
+(see `V6ClangPassConfig::addPreEmitPass`). The new fold lives in
+`V6ClangPeephole` and runs **after** `LoadImmCombine`, so it will catch
 only the residual `MVI R,N; … ; ALU R` pairs that O13 did not
 collapse to `MOV R,R'`. That residual is still common (it occurs
 whenever no other live register holds the constant — the dominant
-shape on V6C with its narrow GPR file).
+shape on V6CLANG with its narrow GPR file).
 
 ## Frequency Evidence
 
@@ -326,7 +326,7 @@ consumed by an `ALU R` in the immediately-following ALU chain).
 Sample from the user's `temp/lod_store_fi.s` after the O79' fix:
 
 ```asm
-;--- V6C_RELOAD8 ---
+;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
         MVI     L, 0
         ADD     L
@@ -371,7 +371,7 @@ constant-holding scratch).
    - `ALU-imm imm8` = 7cc, total 7cc / 2B
    - **Saves 4cc / 1B per fire**.
 
-   (8080 official timings; v6c emulator ditto. `MVI r` is documented
+   (8080 official timings; v6clang emulator ditto. `MVI r` is documented
    at 7cc, not 8cc — the misquote in O55 §Pattern 2 inherited from
    z80 timings does not apply here; this plan uses 8080 numbers.)
 
@@ -385,7 +385,7 @@ constant-holding scratch).
   ops × {adjacent, non-adjacent gap, blocked-by-R-write,
   blocked-by-call, blocked-by-R-live-out}.
 - Disable test `peephole-mvi-alu-imm-fold-disabled.ll` exercising
-  `-v6c-disable-mvi-alu-fold`.
+  `-v6clang-disable-mvi-alu-fold`.
 - Feature regression test under `tests/features/<next>/`.
 - Existing golden suite (16/16) and benchmark checksums must remain
   unchanged — the transform is a pure size/speed peephole.

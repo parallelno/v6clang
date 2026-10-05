@@ -1,4 +1,4 @@
-; V6C Encoding Validation Test
+; V6CLANG Encoding Validation Test
 ; Assemble with v6asm and verify opcode bytes against TableGen definitions.
 ; Each instruction on a separate line with its expected opcode byte(s).
 

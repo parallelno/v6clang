@@ -37,7 +37,7 @@ vs Jcc+RET = 24cc when taken — also **8cc faster on the taken path**.
 ### Root cause
 
 The 8080 conditional return instructions (`RZ`, `RNZ`, `RC`, `RNC`,
-`RPO`, `RPE`, `RP`, `RM`) are defined in `V6CInstrInfo.td` but never
+`RPO`, `RPE`, `RP`, `RM`) are defined in `V6ClangInstrInfo.td` but never
 emitted. All returns go through unconditional `RET`. The peephole
 pass does not look for Jcc → RET-only-block patterns.
 
@@ -45,10 +45,10 @@ pass does not look for Jcc → RET-only-block patterns.
 
 ## 2. Strategy
 
-### Approach: Add `foldConditionalReturns()` to V6CBranchOpt
+### Approach: Add `foldConditionalReturns()` to V6ClangBranchOpt
 
-Add a new method to the existing `V6CBranchOpt` pass in
-`V6CBranchOpt.cpp`. After `invertConditionalBranch` and
+Add a new method to the existing `V6ClangBranchOpt` pass in
+`V6ClangBranchOpt.cpp`. After `invertConditionalBranch` and
 `removeRedundantJMP` have cleaned up branch patterns, scan for
 conditional branches targeting RET-only blocks and replace them with
 the corresponding conditional return instruction.
@@ -65,7 +65,7 @@ the corresponding conditional return instruction.
 4. **No register/flag side effects** — Rcc uses the same FLAGS as Jcc
    and pops SP identically to RET. No new register pressure.
 
-### Run order within V6CBranchOpt::runOnMachineFunction
+### Run order within V6ClangBranchOpt::runOnMachineFunction
 
 ```
 invertConditionalBranch  — may change which Jcc targets the RET block
@@ -78,10 +78,10 @@ removeDeadBlocks         — removes RET block if now unreachable
 
 | Step | What | Where |
 |------|------|-------|
-| Add foldConditionalReturns | Replace Jcc→RET with Rcc | V6CBranchOpt.cpp |
-| Add helper functions | getConditionalReturn, isReturnOnlyBlock | V6CBranchOpt.cpp |
-| Wire into runOnMachineFunction | Call after removeRedundantJMP | V6CBranchOpt.cpp |
-| Lit test | conditional-return.ll | tests/lit/CodeGen/V6C/ |
+| Add foldConditionalReturns | Replace Jcc→RET with Rcc | V6ClangBranchOpt.cpp |
+| Add helper functions | getConditionalReturn, isReturnOnlyBlock | V6ClangBranchOpt.cpp |
+| Wire into runOnMachineFunction | Call after removeRedundantJMP | V6ClangBranchOpt.cpp |
+| Lit test | conditional-return.ll | tests/lit/CodeGen/V6CLANG/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/10/ | tests/features/ |
 
@@ -89,9 +89,9 @@ removeDeadBlocks         — removes RET block if now unreachable
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add helper functions and `foldConditionalReturns()` to V6CBranchOpt.cpp [x]
+### Step 3.1 — Add helper functions and `foldConditionalReturns()` to V6ClangBranchOpt.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
 
 Add two static helpers:
 
@@ -99,14 +99,14 @@ Add two static helpers:
 /// Map Jcc opcode to corresponding Rcc opcode, or 0 if not a Jcc.
 static unsigned getConditionalReturn(unsigned JccOpc) {
   switch (JccOpc) {
-  case V6C::JZ:  return V6C::RZ;
-  case V6C::JNZ: return V6C::RNZ;
-  case V6C::JC:  return V6C::RC;
-  case V6C::JNC: return V6C::RNC;
-  case V6C::JPE: return V6C::RPE;
-  case V6C::JPO: return V6C::RPO;
-  case V6C::JP:  return V6C::RP;
-  case V6C::JM:  return V6C::RM;
+  case V6CLANG::JZ:  return V6CLANG::RZ;
+  case V6CLANG::JNZ: return V6CLANG::RNZ;
+  case V6CLANG::JC:  return V6CLANG::RC;
+  case V6CLANG::JNC: return V6CLANG::RNC;
+  case V6CLANG::JPE: return V6CLANG::RPE;
+  case V6CLANG::JPO: return V6CLANG::RPO;
+  case V6CLANG::JP:  return V6CLANG::RP;
+  case V6CLANG::JM:  return V6CLANG::RM;
   default: return 0;
   }
 }
@@ -116,7 +116,7 @@ static bool isReturnOnlyBlock(const MachineBasicBlock &MBB) {
   for (const MachineInstr &MI : MBB) {
     if (MI.isDebugInstr())
       continue;
-    return MI.getOpcode() == V6C::RET && MI.isTerminator();
+    return MI.getOpcode() == V6CLANG::RET && MI.isTerminator();
   }
   return false; // empty block
 }
@@ -125,7 +125,7 @@ static bool isReturnOnlyBlock(const MachineBasicBlock &MBB) {
 Add the method to the class:
 
 ```cpp
-bool V6CBranchOpt::foldConditionalReturns(MachineFunction &MF) {
+bool V6ClangBranchOpt::foldConditionalReturns(MachineFunction &MF) {
   bool Changed = false;
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
 
@@ -159,7 +159,7 @@ bool V6CBranchOpt::foldConditionalReturns(MachineFunction &MF) {
 Wire into `runOnMachineFunction`:
 
 ```cpp
-bool V6CBranchOpt::runOnMachineFunction(MachineFunction &MF) {
+bool V6ClangBranchOpt::runOnMachineFunction(MachineFunction &MF) {
   if (DisableBranchOpt)
     return false;
 
@@ -197,7 +197,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: conditional-return.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/conditional-return.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/conditional-return.ll`
 
 Test cases:
 1. `JZ .Lret; .Lret: RET` → `RZ` (zero condition)
@@ -221,17 +221,17 @@ python tests\run_all.py
 
 ### Step 3.5 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests\features\10\v6llvmc.c` to `v6llvmc_new01.asm` and verify
+Compile `tests\features\10\v6clang.c` to `v6clang_new01.asm` and verify
 that `JZ`/`JNZ` to RET-only blocks are replaced with `RZ`/`RNZ`.
 
-> **Implementation Notes**: v6llvmc_new01.asm confirms: test_ne_zero 9B→6B,
+> **Implementation Notes**: v6clang_new01.asm confirms: test_ne_zero 9B→6B,
 > test_eq_zero 9B→6B, test_multi_cond 30B→27B (all JZ→RZ folded).
 > test_null_guard unchanged (correct: RET block not RET-only).
 
 ### Step 3.6 — Make sure result.txt is created. `tests\features\README.md` [x]
 
-> **Implementation Notes**: result.txt created with c8080 vs v6llvmc comparison.
-> Overall: 74B (c8080) vs 51B (v6llvmc) = 31% smaller.
+> **Implementation Notes**: result.txt created with c8080 vs v6clang comparison.
+> Overall: 74B (c8080) vs 51B (v6clang) = 31% smaller.
 
 ### Step 3.7 — Sync mirror [x]
 
@@ -312,8 +312,8 @@ Same savings apply. `JZ .Lret` → `RZ` when the RET block is the target.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O30 Feature Description](design\future_plans\O30_conditional_return.md)
-* [V6CBranchOpt.cpp](llvm\lib\Target\V6C\V6CBranchOpt.cpp)
+* [V6ClangBranchOpt.cpp](llvm\lib\Target\V6CLANG\V6ClangBranchOpt.cpp)

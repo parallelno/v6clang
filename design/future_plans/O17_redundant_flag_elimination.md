@@ -5,7 +5,7 @@
 
 ## Problem
 
-The V6C backend frequently emits `ORA A` (or `ANA A`) before conditional
+The V6CLANG backend frequently emits `ORA A` (or `ANA A`) before conditional
 branches to set the zero flag, even when the preceding ALU instruction
 already set the flags correctly.
 
@@ -15,7 +15,7 @@ ORA  A          ; redundant — Z already reflects A's value
 JZ   .label
 ```
 
-V6C's `V6CEliminateZeroTest` pass handles the `ZERO_TEST` pseudo, but this
+V6CLANG's `V6ClangEliminateZeroTest` pass handles the `ZERO_TEST` pseudo, but this
 is limited to specific patterns at pseudo expansion time. Post-RA code may
 have additional redundant flag-setting instructions that are missed.
 

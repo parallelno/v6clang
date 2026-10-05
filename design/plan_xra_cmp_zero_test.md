@@ -38,17 +38,17 @@ combined with downstream value tracking (O13 LoadImmCombine).
 
 ## 2. Strategy
 
-### Approach: New pattern in V6CPeephole + pipeline reorder + LoadImmCombine tracking
+### Approach: New pattern in V6ClangPeephole + pipeline reorder + LoadImmCombine tracking
 
 Three coordinated changes:
 
-1. **V6CPeephole**: Add `foldXraCmpZeroTest()` — replaces `MOV A,r; ORA A; Jcc`
+1. **V6ClangPeephole**: Add `foldXraCmpZeroTest()` — replaces `MOV A,r; ORA A; Jcc`
    with `XRA A; CMP r; Jcc` when A is dead or A=0 is acceptable on fallthrough.
 
-2. **V6CTargetMachine**: Swap Peephole before LoadImmCombine so that O13 sees
+2. **V6ClangTargetMachine**: Swap Peephole before LoadImmCombine so that O13 sees
    the XRA A seeding and eliminates downstream `MVI A, 0`.
 
-3. **V6CLoadImmCombine**: Track `XRA A` as setting A = 0 (currently invalidated).
+3. **V6ClangLoadImmCombine**: Track `XRA A` as setting A = 0 (currently invalidated).
 
 ### Why this works
 
@@ -62,9 +62,9 @@ Three coordinated changes:
 
 | Step | What | Where |
 |------|------|-------|
-| 3.1 | Add `foldXraCmpZeroTest()` pattern | V6CPeephole.cpp |
-| 3.2 | Move Peephole before LoadImmCombine | V6CTargetMachine.cpp |
-| 3.3 | Track XRA A → A=0 | V6CLoadImmCombine.cpp |
+| 3.1 | Add `foldXraCmpZeroTest()` pattern | V6ClangPeephole.cpp |
+| 3.2 | Move Peephole before LoadImmCombine | V6ClangTargetMachine.cpp |
+| 3.3 | Track XRA A → A=0 | V6ClangLoadImmCombine.cpp |
 | 3.4 | Build | — |
 | 3.5 | Lit test | xra-cmp-zero-test.ll |
 | 3.6 | Run regression tests | — |
@@ -74,9 +74,9 @@ Three coordinated changes:
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `foldXraCmpZeroTest()` to V6CPeephole [x]
+### Step 3.1 — Add `foldXraCmpZeroTest()` to V6ClangPeephole [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a new method `foldXraCmpZeroTest(MachineBasicBlock &MBB)` that:
 
@@ -90,8 +90,8 @@ Add a new method `foldXraCmpZeroTest(MachineBasicBlock &MBB)` that:
      the branch (fallthrough) is `MVI A, 0`. Since XRA A already set A=0,
      the value change from A=r to A=0 is benign — it matches what the
      code expects. The `MVI A, 0` will be eliminated by O13 later.
-4. Replaces `MOV A, r` with `XRA A` (V6C::XRAr, all operands = A).
-5. Replaces `ORA A` with `CMP r` (V6C::CMPr, lhs=A, rs=r).
+4. Replaces `MOV A, r` with `XRA A` (V6CLANG::XRAr, all operands = A).
+5. Replaces `ORA A` with `CMP r` (V6CLANG::CMPr, lhs=A, rs=r).
 6. Leaves the branch instruction unchanged.
 
 Call from `runOnMachineFunction` alongside existing patterns.
@@ -99,7 +99,7 @@ Call from `runOnMachineFunction` alongside existing patterns.
 ~45 lines of new code.
 
 > **Design Notes**: Uses the existing `isRegDeadAfter()` helper and
-> `isRedundantZeroTest()` predicate already in V6CPeephole.cpp.
+> `isRedundantZeroTest()` predicate already in V6ClangPeephole.cpp.
 > Condition 2 catches the primary example where `isRegDeadAfter()` is
 > too conservative (returns false because the taken-path successor has
 > A as livein, even though A=0 is correct on both paths).
@@ -111,10 +111,10 @@ Call from `runOnMachineFunction` alongside existing patterns.
 
 ### Step 3.2 — Reorder pipeline: Peephole before LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
 
-In `addPreEmitPass()`, swap the order of `createV6CPeepholePass()` and
-`createV6CLoadImmCombinePass()` so Peephole runs first:
+In `addPreEmitPass()`, swap the order of `createV6ClangPeepholePass()` and
+`createV6ClangLoadImmCombinePass()` so Peephole runs first:
 
 ```
 Before: AccPlanning → LoadImmCombine → Peephole → ...
@@ -133,14 +133,14 @@ eliminate downstream `MVI A, 0`.
 
 ### Step 3.3 — Track XRA A → A=0 in LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
 
 Before the ALU invalidation switch (~line 366), add a special case:
 
 ```cpp
 // XRA A: A = A ^ A = 0 → track A as holding 0.
-if (Opc == V6C::XRAr && MI.getOperand(2).getReg() == V6C::A) {
-  int AIdx = regIndex(V6C::A);
+if (Opc == V6CLANG::XRAr && MI.getOperand(2).getReg() == V6CLANG::A) {
+  int AIdx = regIndex(V6CLANG::A);
   KnownVal[AIdx] = 0;
   continue;
 }
@@ -170,13 +170,13 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: xra-cmp-zero-test.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/xra-cmp-zero-test.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/xra-cmp-zero-test.ll`
 
 Test cases:
 1. Basic pattern: `MOV A, r; ORA A; JZ → XRA A; CMP r; JZ`
 2. JNZ variant: same pattern with JNZ
 3. A live after (no transform): verify MOV+ORA preserved when A is live
-4. Disabled test: `-v6c-disable-peephole` prevents transform
+4. Disabled test: `-v6clang-disable-peephole` prevents transform
 
 > **Implementation Notes**: Single test function with enabled/disabled CHECK
 > prefixes. Verifies XRA A; CMP E pattern and absence of ORA A / MVI A,0.
@@ -191,10 +191,10 @@ python tests\run_all.py
 
 ### Step 3.7 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests/features/17/v6llvmc.c` and analyze the assembly for the
+Compile `tests/features/17/v6clang.c` and analyze the assembly for the
 XRA+CMP pattern and downstream MVI A,0 elimination.
 
-> **Implementation Notes**: v6llvmc_new.asm shows XRA A; CMP E; RZ; JMP bar.
+> **Implementation Notes**: v6clang_new.asm shows XRA A; CMP E; RZ; JMP bar.
 > 7B saved in test_two_cond_tailcall (13B → 6B).
 
 ### Step 3.8 — Create result.txt [x]
@@ -268,9 +268,9 @@ Cascade saving: eliminates MVI A,0 on both branch paths when A=0 from XRA.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
-* [V6CPeephole.cpp](llvm-project\llvm\lib\Target\V6C\V6CPeephole.cpp)
-* [V6CLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6C\V6CLoadImmCombine.cpp)
-* [V6CTargetMachine.cpp](llvm-project\llvm\lib\Target\V6C\V6CTargetMachine.cpp)
+* [V6ClangPeephole.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangPeephole.cpp)
+* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp)
+* [V6ClangTargetMachine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangTargetMachine.cpp)

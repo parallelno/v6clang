@@ -6,7 +6,7 @@
 ## Problem
 
 When the register allocator needs to copy between DE and HL, it calls
-`V6CInstrInfo::copyPhysReg()` which unconditionally emits two MOV
+`V6ClangInstrInfo::copyPhysReg()` which unconditionally emits two MOV
 instructions (2 bytes, 16cc). The 8080 has `XCHG` (1 byte, 4cc) which
 swaps DE↔HL.
 
@@ -15,7 +15,7 @@ dead after the copy. In that case XCHG is semantically safe — the
 "reverse swap" into the source pair doesn't matter since nobody reads it.
 
 This is a strictly better approach than relying on the post-RA peephole
-(V6CXchgOpt), because:
+(V6ClangXchgOpt), because:
 - The RA has **authoritative liveness** — `KillSrc` is always correct
 - No pattern-matching heuristics needed
 - Runs earlier, giving downstream passes better code to work with
@@ -71,19 +71,19 @@ a value into HL for memory addressing. Estimated frequency: Medium-High
 
 ### What this does NOT cover
 
-- MOV pairs emitted by `expandPostRAPseudos()` (e.g., V6C_LOAD16_P address
+- MOV pairs emitted by `expandPostRAPseudos()` (e.g., V6CLANG_LOAD16_P address
   setup) — these bypass `copyPhysReg`
 - RA copies where `KillSrc=false` but the source becomes dead later due to
   other post-RA optimizations
 - MOV pairs introduced by other post-RA passes
 
-These remaining cases are handled by O33 (V6CXchgOpt relaxation).
+These remaining cases are handled by O33 (V6ClangXchgOpt relaxation).
 
 ## Implementation
 
 ### Location
 
-`V6CInstrInfo::copyPhysReg()` in `V6CInstrInfo.cpp` (lines 23-55).
+`V6ClangInstrInfo::copyPhysReg()` in `V6ClangInstrInfo.cpp` (lines 23-55).
 
 ### Change
 
@@ -92,15 +92,15 @@ in {DE, HL} and `KillSrc` is true, emit XCHG instead of two MOVs.
 
 ```cpp
 // 16-bit pair copy: two MOV instructions (hi byte, then lo byte)
-if (V6C::GR16RegClass.contains(DestReg) &&
-    V6C::GR16RegClass.contains(SrcReg)) {
+if (V6CLANG::GR16RegClass.contains(DestReg) &&
+    V6CLANG::GR16RegClass.contains(SrcReg)) {
 
   // DE↔HL with source killed: use XCHG (1B/4cc vs 2B/16cc).
   // Safe because source is dead — the reverse swap side-effect is harmless.
   if (KillSrc &&
-      ((DestReg == V6C::HL && SrcReg == V6C::DE) ||
-       (DestReg == V6C::DE && SrcReg == V6C::HL))) {
-    BuildMI(MBB, MI, DL, get(V6C::XCHG));
+      ((DestReg == V6CLANG::HL && SrcReg == V6CLANG::DE) ||
+       (DestReg == V6CLANG::DE && SrcReg == V6CLANG::HL))) {
+    BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
     return;
   }
 
@@ -127,5 +127,5 @@ if (V6C::GR16RegClass.contains(DestReg) &&
 ### Dependencies
 
 - None. Standalone change to `copyPhysReg()`.
-- Supersedes most cases that V6CXchgOpt (existing peephole) catches.
+- Supersedes most cases that V6ClangXchgOpt (existing peephole) catches.
 - O33 handles remaining edge cases.

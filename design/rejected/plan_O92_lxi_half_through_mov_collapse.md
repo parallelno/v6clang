@@ -44,7 +44,7 @@ also erased (saves 12cc / 3B).
 
 ### Root cause
 
-`collapseMovChain` in `V6CPeephole.cpp` already handles two producer kinds:
+`collapseMovChain` in `V6ClangPeephole.cpp` already handles two producer kinds:
 
 | Producer | Variant | Status |
 |----------|---------|--------|
@@ -64,7 +64,7 @@ matching byte from the immediate.
 ### Approach: add an `LXI`-producer loop to `collapseMovChain`
 
 After the existing O88 `MVIr`-producer loop, add a third forward-scan loop
-that handles `V6C::LXI` producers.  When the sole consumer `MOV Z, RP_HALF`
+that handles `V6CLANG::LXI` producers.  When the sole consumer `MOV Z, RP_HALF`
 is reached and `RP_HALF` is dead after that consumer, emit `MVI Z, byte` in
 place of the `MOV` and (if the full pair is now dead) erase the `LXI` too.
 
@@ -89,8 +89,8 @@ place of the `MOV` and (if the full pair is now dead) erase the `LXI` too.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp` | Add `LXI`-producer loop in `collapseMovChain`; local `pairHalves(RP)` helper |
-| `llvm-project/llvm/test/CodeGen/V6C/peephole-lxi-half-mov-collapse.ll` | New lit test (CHECK + DISABLED) |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `LXI`-producer loop in `collapseMovChain`; local `pairHalves(RP)` helper |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll` | New lit test (CHECK + DISABLED) |
 | `tests/features/75/` | C source, baseline asm, post-fix asm, `result.txt` |
 | `design/future_plans/README.md` | Mark O92 `[x]` after completion |
 
@@ -100,7 +100,7 @@ place of the `MOV` and (if the full pair is now dead) erase the `LXI` too.
 
 ### Step 3.1 — Add `pairHalves(RP)` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a file-static helper near `isO61PatchedImm` returning `{Hi, Lo}` for an
 i16 pair physical register, or `{NoRegister, NoRegister}` for any other
@@ -110,23 +110,23 @@ register:
 // Map a GR16 pair to its {Hi, Lo} 8-bit halves.  Returns {0,0} for non-pairs.
 static std::pair<Register, Register> pairHalves(Register RP) {
   switch (RP.id()) {
-  case V6C::HL: return {V6C::H, V6C::L};
-  case V6C::DE: return {V6C::D, V6C::E};
-  case V6C::BC: return {V6C::B, V6C::C};
+  case V6CLANG::HL: return {V6CLANG::H, V6CLANG::L};
+  case V6CLANG::DE: return {V6CLANG::D, V6CLANG::E};
+  case V6CLANG::BC: return {V6CLANG::B, V6CLANG::C};
   default:      return {Register(), Register()};
   }
 }
 ```
 
-> **Design Notes**: identical pattern is used in `V6CArgAllocator::halves`
-> inside `V6CISelLowering.cpp`; duplicating a 5-line switch here is simpler
+> **Design Notes**: identical pattern is used in `V6ClangArgAllocator::halves`
+> inside `V6ClangISelLowering.cpp`; duplicating a 5-line switch here is simpler
 > than exposing the existing helper.
 
 > **Implementation Notes**:
 
 ### Step 3.2 — Add `LXI`-producer loop in `collapseMovChain` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 After the existing O88 `MVIr`-producer loop (ends before `return Changed;`),
 insert:
@@ -140,7 +140,7 @@ insert:
   //            the LXI site, erase LXI too.
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6C::LXI)
+    if (ProducerMI.getOpcode() != V6CLANG::LXI)
       continue;
     if (isO61PatchedImm(ProducerMI))
       continue;
@@ -163,9 +163,9 @@ insert:
         continue;
       ++Steps;
 
-      bool IsLoConsumer = J->getOpcode() == V6C::MOVrr &&
+      bool IsLoConsumer = J->getOpcode() == V6CLANG::MOVrr &&
                           TRI->regsOverlap(J->getOperand(1).getReg(), RPLo);
-      bool IsHiConsumer = !IsLoConsumer && J->getOpcode() == V6C::MOVrr &&
+      bool IsHiConsumer = !IsLoConsumer && J->getOpcode() == V6CLANG::MOVrr &&
                           TRI->regsOverlap(J->getOperand(1).getReg(), RPHi);
       bool IsConsumer   = IsLoConsumer || IsHiConsumer;
       Register Half     = IsLoConsumer ? RPLo : RPHi;
@@ -197,7 +197,7 @@ insert:
         Register Z = J->getOperand(0).getReg();
         const TargetInstrInfo &TII =
             *MBB.getParent()->getSubtarget().getInstrInfo();
-        BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6C::MVIr), Z).addImm(Byte);
+        BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6CLANG::MVIr), Z).addImm(Byte);
         auto Next = std::next(I);
         J->eraseFromParent();
         // Erase LXI only if the entire pair is now dead at the LXI site.
@@ -240,7 +240,7 @@ If the build fails, diagnose and fix, then rebuild.
 
 ### Step 3.4 — Lit test: `peephole-lxi-half-mov-collapse.ll` [ ]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/peephole-lxi-half-mov-collapse.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll`
 
 Cover four cases:
 
@@ -252,7 +252,7 @@ Cover four cases:
 4. **Negative** — a non-immediate LXI (global address) MUST NOT be folded
 
 Add `RUN: llc ... < %s | FileCheck %s` and a second
-`RUN: llc ... --v6c-disable-peephole < %s | FileCheck %s --check-prefix=DISABLED`
+`RUN: llc ... --v6clang-disable-peephole < %s | FileCheck %s --check-prefix=DISABLED`
 to exhibit the baseline behaviour.
 
 > **Implementation Notes**:
@@ -269,8 +269,8 @@ If any test fails, diagnose and fix, rebuild, rerun.
 
 ### Step 3.6 — Verification assembly steps from `tests\features\README.md` [ ]
 
-Use `tests/features/75/` (prepared in Phase 1).  Compile `v6llvmc.c` with the
-fix and save as `v6llvmc_new01.asm`.  Inspect:
+Use `tests/features/75/` (prepared in Phase 1).  Compile `v6clang.c` with the
+fix and save as `v6clang_new01.asm`.  Inspect:
 
 - `p2_lxi_lo_used` — expect `MVI A, 0xFF` replacing `MOV A, E`
 - `p3_lxi_hi_used` — expect `MVI A, 0xB4` replacing `MOV A, D`
@@ -285,8 +285,8 @@ Populate `tests/features/75/result.txt` with:
 - C test case code
 - `c8080` asm body (main + helpers) converted to i8080
 - `c8080` per-function stats (worst-case cycles, bytes)
-- v6llvmc old asm
-- v6llvmc new asm
+- v6clang old asm
+- v6clang new asm
 - Comparison table
 
 > **Implementation Notes**:
@@ -413,7 +413,7 @@ used in a single 16-bit context that then dies, followed by a half consumer.
 
 * [Future Improvements](design/future_plans/README.md)
 * [O92 Feature Description](design/future_plans/O92_lxi_half_through_mov_collapse.md)
-* [V6C Build Guide](docs/V6CBuildGuide.md)
-* [Vector 06c CPU Timings](docs/V6CInstructionTimings.md)
+* [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
+* [Vector 06c CPU Timings](docs/V6ClangInstructionTimings.md)
 * [Pipeline Feature](design/pipeline_feature.md)
 * [Plan O88 — MVI-through-MOV Collapse](design/plan_O88_mvi_through_mov_collapse.md)

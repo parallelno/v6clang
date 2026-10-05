@@ -18,7 +18,7 @@ static u16 crc_byte(u16 crc, u8 b) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     /* Volatile seeds prevent the whole computation from collapsing to a
-     * constant under aggressive optimization (otherwise v6llvmc -O2
+     * constant under aggressive optimization (otherwise v6clang -O2
      * folds the program to a single OUT). */
     volatile u8 seed_a = 0;
     volatile u8 seed_b = 1;

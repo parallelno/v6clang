@@ -26,9 +26,9 @@ A pre-RA `MachineFunctionPass` (~60 lines):
    folding the load into the consumer
 3. If successful, delete the load and update the consumer
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
-Implement `V6CInstrInfo::optimizeLoadInstr()` to fold memory loads into
+Implement `V6ClangInstrInfo::optimizeLoadInstr()` to fold memory loads into
 their consumers when the consumer has an M-operand variant:
 
 | Load + Consumer | Folded Form |
@@ -44,7 +44,7 @@ The load must have exactly one use, and HL must still point to the correct
 address at the consumer.
 
 ```cpp
-MachineInstr *V6CInstrInfo::optimizeLoadInstr(MachineInstr &MI,
+MachineInstr *V6ClangInstrInfo::optimizeLoadInstr(MachineInstr &MI,
     const MachineRegisterInfo *MRI, Register &FoldAsLoadDefReg,
     MachineInstr *&DefMI) const {
   // Check if MI is a MOV r, M with single use
@@ -72,7 +72,7 @@ ADD  C       ;  4cc, 1B
 ## Complexity
 
 Medium. ~60 lines for the pass + ~40 lines for `optimizeLoadInstr()` in
-`V6CInstrInfo`. Must verify HL is still valid at the consumer.
+`V6ClangInstrInfo`. Must verify HL is still valid at the consumer.
 
 ## Risk
 

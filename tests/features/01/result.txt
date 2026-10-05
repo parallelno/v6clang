@@ -53,7 +53,7 @@ c8080 stats:
   Total CPU cc: 248cc
   Length: 39B
 
-== v6llvmc assembly (after tail call optimization) ==
+== v6clang assembly (after tail call optimization) ==
 
 wrapper:
     JMP  helper               ; 12cc, 3B
@@ -76,16 +76,16 @@ main:                                   ; @main
 	LXI	HL, 0                 ; 12cc, 3B
 	RET                       ; 12cc, 1B
 
-v6llvmc stats:
+v6clang stats:
   Total CPU cc: 188cc
   Length: 30B
 
 == Comparison ==
 
-| Function       | c8080  | v6llvmc |  Savings   |
+| Function       | c8080  | v6clang |  Savings   |
 |----------------|--------|---------|------------|
 | **Total**      | 248cc  | 188cc   | 60cc (24%) |
 | **Size**       | 39B    | 30B     | 9B (23%)   |
 
 Both compilers recognize tail calls (JMP instead of CALL+RET).
-v6llvmc is faster because it passes arguments in registers (no static stack store).
+v6clang is faster because it passes arguments in registers (no static stack store).

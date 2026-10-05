@@ -7,7 +7,7 @@ neg_i16_unary:                          ; @neg_i16_unary
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: neg_i16_unary:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
@@ -25,7 +25,7 @@ neg_i16_mul_left:                       ; @neg_i16_mul_left
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: neg_i16_mul_left:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
@@ -43,7 +43,7 @@ neg_i16_mul_right:                      ; @neg_i16_mul_right
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: neg_i16_mul_right:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
@@ -61,7 +61,7 @@ neg_i8_unary:                           ; @neg_i8_unary
 	;  x = A
 ; %bb.0:
 	;DEBUG_VALUE: neg_i8_unary:x <- $a
-	;--- V6C_NEG8 ---
+	;--- V6CLANG_NEG8 ---
 	CMA
 	INR	A
 	RET
@@ -73,9 +73,9 @@ neg_i16_global_unary:                   ; @neg_i16_global_unary
 .Lfunc_begin4:
 	;=== int neg_i16_global_unary(void) ===
 ; %bb.0:
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_i16
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
@@ -93,7 +93,7 @@ neg_i8_global_unary:                    ; @neg_i8_global_unary
 ; %bb.0:
 	LXI	H, g_i8
 	XRA	A
-	;--- V6C_SUB_M_P ---
+	;--- V6CLANG_SUB_M_P ---
 	SUB	M
 	RET
 .Lfunc_end5:
@@ -108,61 +108,61 @@ main:                                   ; @main
 ; %bb.0:
 	;DEBUG_VALUE: main:argc <- $hl
 	;DEBUG_VALUE: main:argv <- $de
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_i16
 	;DEBUG_VALUE: neg_i16_unary:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
 	MVI	A, 0
 	SBB	H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	out_i16
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_i16
 	;DEBUG_VALUE: neg_i16_mul_left:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
 	MVI	A, 0
 	SBB	H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	out_i16
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_i16
 	;DEBUG_VALUE: neg_i16_mul_right:x <- $hl
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
 	MVI	A, 0
 	SBB	H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	out_i16
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_i16
-	;--- V6C_NEG16 ---
+	;--- V6CLANG_NEG16 ---
 	XRA	A
 	SUB	L
 	MOV	L, A
 	MVI	A, 0
 	SBB	H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	out_i16
 	LXI	H, g_i8
 	;DEBUG_VALUE: neg_i8_unary:x <- undef
 	XRA	A
-	;--- V6C_SUB_M_P ---
+	;--- V6CLANG_SUB_M_P ---
 	SUB	M
 	STA	out_i8
 	XRA	A
-	;--- V6C_SUB_M_P ---
+	;--- V6CLANG_SUB_M_P ---
 	SUB	M
 	STA	out_i8
 	LXI	H, 0
@@ -191,15 +191,15 @@ out_i8:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

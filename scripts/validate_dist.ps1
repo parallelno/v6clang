@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    Smoke-test a staged V6C distributable.
+    Smoke-test a staged V6CLANG distributable.
 
 .DESCRIPTION
     Compiles a tiny C program with the staged clang.exe (no -nostartfiles,
     no -T override, no --defsym workaround), runs it through the separately
     installed v6emul, and asserts the expected output. This proves clang
-    resolves v6c.ld + crt0.o + freestanding headers via the "Installed"
+    resolves v6clang.ld + crt0.o + freestanding headers via the "Installed"
     branch of its driver lookup (ResourceDir-relative), not the dev-tree
     fallback, AND that crt0 auto-linkage delivers a working _start that
     calls main.
@@ -58,25 +58,25 @@ foreach ($p in @($StageDocsIndex, $StageSampleMain)) {
     if (-not (Test-Path $p)) { throw "Missing expected staged content: $p" }
 }
 
-$Tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("v6c-dist-smoke-" + [guid]::NewGuid())
+$Tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("v6clang-dist-smoke-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Force -Path $Tmp | Out-Null
 try {
     $Src = Join-Path $Tmp 'smoke.c'
     @'
 #include <stdint.h>
 int main(void) {
-    __builtin_v6c_out(0xED, 0x42);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, 0x42);
+    __builtin_v6clang_hlt();
     return 0;
 }
 '@ | Set-Content -Path $Src -NoNewline
 
     $Rom = Join-Path $Tmp 'smoke.rom'
 
-    # Full default flow: clang locates v6c.ld + crt0.o entirely via
+    # Full default flow: clang locates v6clang.ld + crt0.o entirely via
     # ResourceDir, ld.lld links, llvm-objcopy emits the flat ROM.
     Write-Host "Compiling smoke.c with staged clang ..."
-    & $Clang --target=i8080-unknown-v6c -O2 $Src -o $Rom
+    & $Clang --target=i8080-unknown-v6clang -O2 $Src -o $Rom
     if ($LASTEXITCODE -ne 0) { throw 'Staged clang failed to compile smoke.c' }
     if (-not (Test-Path $Rom)) { throw 'Staged clang did not produce smoke.rom' }
 
@@ -96,11 +96,11 @@ int main(void) {
         throw 'Smoke test failed: SP not at 0xFFFE; crt0 did not initialize stack'
     }
 
-    # Sanity-check that v6c.ld and crt0.o are actually present where
+    # Sanity-check that v6clang.ld and crt0.o are actually present where
     # clang expects them via -print-resource-dir.
     $resDir = (& $Clang -print-resource-dir).Trim()
-    $expectedScript = Join-Path $resDir 'v6c\v6c.ld'
-    $expectedCrt0   = Join-Path $resDir 'lib\v6c\crt0.o'
+    $expectedScript = Join-Path $resDir 'v6clang\v6clang.ld'
+    $expectedCrt0   = Join-Path $resDir 'lib\v6clang\crt0.o'
     if (-not (Test-Path $expectedScript)) {
         throw "Linker script not at expected install path: $expectedScript"
     }
@@ -109,10 +109,10 @@ int main(void) {
     }
 
     # O81: verify consolidated runtime headers are present in the staged tree.
-    $expectedStringH = Join-Path $resDir 'lib\v6c\include\string.h'
-    $expectedStdlibH = Join-Path $resDir 'lib\v6c\include\stdlib.h'
-    $expectedV6cH    = Join-Path $resDir 'lib\v6c\include\v6c.h'
-    foreach ($h in @($expectedStringH, $expectedStdlibH, $expectedV6cH)) {
+    $expectedStringH = Join-Path $resDir 'lib\v6clang\include\string.h'
+    $expectedStdlibH = Join-Path $resDir 'lib\v6clang\include\stdlib.h'
+    $expectedV6ClangH    = Join-Path $resDir 'lib\v6clang\include\v6clang.h'
+    foreach ($h in @($expectedStringH, $expectedStdlibH, $expectedV6ClangH)) {
         if (-not (Test-Path $h)) { throw "Runtime header not in staged tree: $h" }
     }
     Write-Host "Runtime headers verified in staged tree."
@@ -127,14 +127,14 @@ int main(void) {
 int main(void) {
     uint8_t buf[4];
     memset(buf, 0xAB, 4);
-    __builtin_v6c_out(0xED, buf[0]);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, buf[0]);
+    __builtin_v6clang_hlt();
     return 0;
 }
 '@ | Set-Content -Path $StringSrc -NoNewline
 
     $StringRom = Join-Path $Tmp 'string_smoke.rom'
-    & $Clang --target=i8080-unknown-v6c -O2 $StringSrc -o $StringRom
+    & $Clang --target=i8080-unknown-v6clang -O2 $StringSrc -o $StringRom
     if ($LASTEXITCODE -ne 0) { throw '<string.h> smoke: staged clang failed to compile' }
 
     $sout = & $Emul --rom $StringRom --load-addr 0x0100 --halt-exit --dump-cpu 2>&1 | Out-String
@@ -156,14 +156,14 @@ int main(void) {
 #include <stdlib.h>
 int main(void) {
     uint8_t x = (uint8_t)min(200, 100);  /* expects 100 = 0x64 */
-    __builtin_v6c_out(0xED, x);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, x);
+    __builtin_v6clang_hlt();
     return 0;
 }
 '@ | Set-Content -Path $StdlibSrc -NoNewline
 
     $StdlibRom = Join-Path $Tmp 'stdlib_smoke.rom'
-    & $Clang --target=i8080-unknown-v6c -O2 $StdlibSrc -o $StdlibRom
+    & $Clang --target=i8080-unknown-v6clang -O2 $StdlibSrc -o $StdlibRom
     if ($LASTEXITCODE -ne 0) { throw '<stdlib.h> smoke: staged clang failed to compile' }
 
     $lout = & $Emul --rom $StdlibRom --load-addr 0x0100 --halt-exit --dump-cpu 2>&1 | Out-String

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify V6C binary encoding against v6asm reference.
+"""Verify V6CLANG binary encoding against v6asm reference.
 
 For each test case, compiles LLVM IR → ELF .o → flat binary and compares
 the .text section bytes against v6asm-assembled reference.
@@ -211,7 +211,7 @@ def compile_ir(llc, ir_text, tmpdir):
     with open(ir_path, 'w') as f:
         f.write(ir_text + "\n")
     result = subprocess.run(
-        [str(llc), "-march=v6c", "-mtriple=i8080-unknown-v6c",
+        [str(llc), "-march=v6clang", "-mtriple=i8080-unknown-v6clang",
          "-filetype=obj", ir_path, "-o", obj_path],
         capture_output=True, text=True, timeout=30
     )
@@ -227,7 +227,7 @@ def compile_ir(llc, ir_text, tmpdir):
 
 def main():
     root = find_project_root()
-    parser = argparse.ArgumentParser(description='Verify V6C binary encoding')
+    parser = argparse.ArgumentParser(description='Verify V6CLANG binary encoding')
     parser.add_argument('--llc', default=str(root / "llvm-build" / "bin" / "llc.exe"))
     parser.add_argument('--v6asm', default=os.environ.get("V6ASM"),
                         help="Path to the separately installed v6asm executable")

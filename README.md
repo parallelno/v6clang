@@ -2,7 +2,7 @@
 
 An LLVM compiler backend and Clang frontend targeting the **Vector 06c** home computer (Intel 8080 / KR580VM80A CPU, 3 MHz, 64 KB RAM).
 
-**Full pipeline**: C source → Clang → LLVM IR → V6C backend → flat binary → Vector 06c
+**Full pipeline**: C source → Clang → LLVM IR → V6CLANG backend → flat binary → Vector 06c
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ An LLVM compiler backend and Clang frontend targeting the **Vector 06c** home co
 
 ```powershell
 # Build the bundled hello-world sample from the release root
-.\bin\clang.exe -target i8080-unknown-v6c -O2 .\samples\01_hello\main.c -o hello.rom
+.\bin\clang.exe -target i8080-unknown-v6clang -O2 .\samples\01_hello\main.c -o hello.rom
 
 # Run it in your configured emulator
 & $env:V6EMUL --rom hello.rom --load-addr 0x0100 --halt-exit --dump-cpu
@@ -50,17 +50,17 @@ For a faster build-only iteration loop:
 pwsh scripts\build.ps1 -SkipTests
 ```
 
-For manual and non-Windows setup details, see `docs/V6CBuildGuide.md` in the
-repository or `docs/V6CBuildGuide.md`.
+For manual and non-Windows setup details, see `docs/V6ClangBuildGuide.md` in the
+repository or `docs/V6ClangBuildGuide.md`.
 
 ### Compile a C Program from a Source Checkout
 
 ```powershell
 # C → assembly
-.\llvm-build\bin\clang.exe -target i8080-unknown-v6c -S hello.c -o hello.s
+.\llvm-build\bin\clang.exe -target i8080-unknown-v6clang -S hello.c -o hello.s
 
 # C → flat binary (ROM) — clang drives ld.lld + llvm-objcopy automatically
-.\llvm-build\bin\clang.exe -target i8080-unknown-v6c -O2 hello.c -o hello.rom
+.\llvm-build\bin\clang.exe -target i8080-unknown-v6clang -O2 hello.c -o hello.rom
 
 # Run in emulator
 & $env:V6EMUL --rom hello.rom --load-addr 0x0100 --halt-exit --dump-cpu
@@ -81,7 +81,7 @@ python tests\run_golden_tests.py        # Emulator trust baseline (16 tests)
 - **Functions**: Full calling convention with register + stack argument passing
 - **Globals**: Initialized and uninitialized data, `const` → `.rodata`
 - **Multi-file**: Cross-file linking via native `ld.lld` (driven by clang)
-- **Intrinsics**: `__builtin_v6c_in`, `__builtin_v6c_out`, `__builtin_v6c_di`, `__builtin_v6c_ei`, `__builtin_v6c_hlt`, `__builtin_v6c_nop`
+- **Intrinsics**: `__builtin_v6clang_in`, `__builtin_v6clang_out`, `__builtin_v6clang_di`, `__builtin_v6clang_ei`, `__builtin_v6clang_hlt`, `__builtin_v6clang_nop`
 - **Inline assembly**: `asm volatile("NOP")` (IR-level constraints)
 
 ### Limitations
@@ -96,8 +96,8 @@ python tests\run_golden_tests.py        # Emulator trust baseline (16 tests)
 | Path | Description |
 |------|-------------|
 | `llvm-project/` | LLVM monorepo (pinned `llvmorg-18.1.0`, gitignored) |
-| `llvm/` | Git-tracked mirror of V6C backend + modified upstream files |
-| `clang/` | Git-tracked mirror of Clang V6C integration |
+| `llvm/` | Git-tracked mirror of V6CLANG backend + modified upstream files |
+| `clang/` | Git-tracked mirror of Clang V6CLANG integration |
 | `compiler-rt/` | Runtime library, headers, and crt0 |
 | `scripts/` | Build, release, mirror sync, linker, and ELF→binary tooling |
 | `samples/` | Sample programs and demo projects |
@@ -115,11 +115,11 @@ Repository documentation lives under [docs/README.md](docs/README.md).
 
 Key entry points:
 
-- [Build Guide](docs/V6CBuildGuide.md) — detailed build instructions, mirror sync, binary emission
-- [Architecture](docs/V6CArchitecture.md) — CPU, data layout, memory map, runtime library
-- [Calling Convention](docs/V6CCallingConvention.md) — register/stack argument passing, frame layout
-- [Optimization Passes](docs/V6COptimization.md) — 8 custom passes with toggle flags
-- [Instruction Timings](docs/V6CInstructionTimings.md) — cycle costs for all 8080 instructions
+- [Build Guide](docs/V6ClangBuildGuide.md) — detailed build instructions, mirror sync, binary emission
+- [Architecture](docs/V6ClangArchitecture.md) — CPU, data layout, memory map, runtime library
+- [Calling Convention](docs/V6ClangCallingConvention.md) — register/stack argument passing, frame layout
+- [Optimization Passes](docs/V6ClangOptimization.md) — 8 custom passes with toggle flags
+- [Instruction Timings](docs/V6ClangInstructionTimings.md) — cycle costs for all 8080 instructions
 - [Benchmarks](docs/benchmarks.md) — head-to-head vs c8080 and z88dk on shared C programs
 
 ## Samples
@@ -132,7 +132,7 @@ Sample programs live in `samples/`.
 
 ## Benchmarks
 
-V6C is benchmarked head-to-head against [c8080](https://github.com/Aleksey-F-Morozov/c8080)
+V6CLANG is benchmarked head-to-head against [c8080](https://github.com/Aleksey-F-Morozov/c8080)
 and [z88dk](https://github.com/z88dk/z88dk) (sccz80 backend) on five pure-C
 programs (`bsort`, `sieve`, `fib_crc`, `fannkuch`, `lfsr16`).
 

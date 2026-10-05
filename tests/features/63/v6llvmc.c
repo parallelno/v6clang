@@ -10,8 +10,8 @@
 //   into a call-argument register, creating a dead intermediate.
 //
 // Compile (baseline before implementing O82):
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\63\v6llvmc.c -o tests\features\63\v6llvmc_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\63\v6clang.c -o tests\features\63\v6clang_old.asm
 
 __attribute__((leaf)) extern int  get_val(void);
 __attribute__((leaf)) extern void use_byte(char b);

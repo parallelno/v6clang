@@ -1,4 +1,4 @@
-// c8080 reference for O67 — i8 rotate ISel test. Same shape as v6llvmc.c.
+// c8080 reference for O67 — i8 rotate ISel test. Same shape as v6clang.c.
 
 typedef unsigned char u8;
 

@@ -50,34 +50,34 @@ draw_char:                              ; -- Begin function draw_char
 	;  arg1 = HL
 ; %bb.0:
 	MVI	E, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	D, E
 	MOV	E, A
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	XCHG
 	DAD	H
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	H
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	H
 	LXI	B, font-520
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	B
 	XCHG
 	MVI	A, 8
 .LBB17_1:                               ; =>This Inner Loop Header: Depth=1
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	XCHG
 	MOV	C, M
 	XCHG
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	MOV	M, C
-	;--- V6C_DCX16 ---
+	;--- V6CLANG_DCX16 ---
 	DCX	H
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
 	DCR	A
-	;--- V6C_BRCOND ---
+	;--- V6CLANG_BRCOND ---
 	JNZ	.LBB17_1
 ; %bb.2:
 	RET
@@ -94,18 +94,18 @@ draw_text:                              ; -- Begin function draw_text
 	PUSH	D
 	MOV	D, H
 	MOV	E, L
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	XCHG
 	MOV	E, M
 	XCHG
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	INR	L
 	DCR	L
-	;--- V6C_BRCOND ---
+	;--- V6CLANG_BRCOND ---
 	JZ	.LBB18_3
 ; %bb.1:
 	MVI	H, 0
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	H
 	LXI	H, 4
 	DAD	SP
@@ -113,13 +113,13 @@ draw_text:                              ; -- Begin function draw_text
 	INX	H
 	MOV	M, D
 	POP	H
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	D, H
 	MOV	E, B
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	B, A
 	MOV	C, H
-	;--- V6C_OR16 ---
+	;--- V6CLANG_OR16 ---
 	MOV	A, C
 	ORA	E
 	MOV	E, A
@@ -127,14 +127,14 @@ draw_text:                              ; -- Begin function draw_text
 	ORA	D
 	MOV	D, A
 	LXI	B, 0x8000
-	;--- V6C_XOR16 ---
+	;--- V6CLANG_XOR16 ---
 	MOV	A, E
 	XRA	C
 	MOV	C, A
 	MOV	A, D
 	XRA	B
 	MOV	B, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	PUSH	H
 	LXI	H, 4
 	DAD	SP
@@ -143,16 +143,16 @@ draw_text:                              ; -- Begin function draw_text
 	MOV	D, M
 	POP	H
 	MOV	A, L
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
 .LBB18_2:                               ; =>This Inner Loop Header: Depth=1
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	LXI	H, 0
 	DAD	SP
 	MOV	M, C
 	INX	H
 	MOV	M, B
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	LXI	H, 2
 	DAD	SP
 	MOV	M, E
@@ -161,30 +161,30 @@ draw_text:                              ; -- Begin function draw_text
 	MOV	H, B
 	MOV	L, C
 	CALL	draw_char
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	LXI	H, 0
 	DAD	SP
 	MOV	C, M
 	INX	H
 	MOV	B, M
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	LXI	H, 2
 	DAD	SP
 	MOV	E, M
 	INX	H
 	MOV	D, M
 	LXI	H, 0x100
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	B
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	LDAX	D
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
-	;--- V6C_CMP8_ZERO ---
+	;--- V6CLANG_CMP8_ZERO ---
 	ORA	A
-	;--- V6C_BRCOND ---
+	;--- V6CLANG_BRCOND ---
 	JNZ	.LBB18_2
 .LBB18_3:
 	POP	PSW
@@ -200,7 +200,7 @@ fill_rect:                              ; -- Begin function fill_rect
 	LXI	H, 0x8832
 .LBB19_1:                               ; =>This Loop Header: Depth=1
                                         ;     Child Loop BB19_2 Depth 2
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	XCHG
 	SHLD	.LLo61_0+1
 	XCHG
@@ -209,27 +209,27 @@ fill_rect:                              ; -- Begin function fill_rect
 	MOV	E, L
 .LBB19_2:                               ;   Parent Loop BB19_1 Depth=1
                                         ; =>  This Inner Loop Header: Depth=2
-	;--- V6C_STORE8_IMM_P ---
+	;--- V6CLANG_STORE8_IMM_P ---
 	MVI	A, 0xff
 	STAX	D
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
-	;--- V6C_DCX16 ---
+	;--- V6CLANG_DCX16 ---
 	DCX	B
-	;--- V6C_BR_CC16_IMM ---
+	;--- V6CLANG_BR_CC16_IMM ---
 	MOV	A, B
 	ORA	C
 	JNZ	.LBB19_2
 ; %bb.4:                                ;   in Loop: Header=BB19_1 Depth=1
 	LXI	D, 0x100
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	D
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 .LLo61_0:
 	LXI	D, 0
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
-	;--- V6C_BR_CC16_IMM ---
+	;--- V6CLANG_BR_CC16_IMM ---
 	MVI	A, 0x18
 	CMP	E
 	JNZ	.LBB19_1
@@ -273,15 +273,15 @@ palette:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

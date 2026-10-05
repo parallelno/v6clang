@@ -1,7 +1,7 @@
 // O81 feature test — SELECT_CC i8 through accumulator.
 // Used for:
-//   Baseline:   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\66\v6llvmc.c -o tests\features\66\v6llvmc_old.asm
-//   Post-O81:   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\66\v6llvmc.c -o tests\features\66\v6llvmc_new01.asm
+//   Baseline:   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\66\v6clang.c -o tests\features\66\v6clang_old.asm
+//   Post-O81:   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\66\v6clang.c -o tests\features\66\v6clang_new01.asm
 //
 // The critical pattern is fillscreen():
 //   - Outer loop counter (i8, 0..25) forces A to be claimed at outer-latch level.

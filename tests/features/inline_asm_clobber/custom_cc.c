@@ -1,12 +1,12 @@
 // Test ASM inlining + custom calling convention.
 
 // compile:
-// llvm-build\bin\clang -target i8080-unknown-v6c -O3 -S`
+// llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S`
 //    temp\asm_inline\custom_cc.c -o temp\asm_inline\custom_cc.rom
 
 #include <stdint.h>
 
-#define V6C_RT static __attribute__((noinline, used))
+#define V6CLANG_RT static __attribute__((noinline, used))
 
 // The default CC passes arg0 in HL and returns an int in HL.
 // `custom_cc` implements a manually-defined alternate CC that takes its
@@ -29,7 +29,7 @@
 // by the caller's register-asm bindings (see custom_cc_wrapper) plus the
 // `noinline` attribute that prevents the body from being inlined and reordered.
 // The closing `}` of the C function emits the standard RET.
-V6C_RT void custom_cc() {
+V6CLANG_RT void custom_cc() {
     asm (
         "STAX B           \n\t"   // store A at address BC (scratch / side-effect use)
         "ADD C            \n\t"   // A = A + C
@@ -88,7 +88,7 @@ uint16_t main(void) {
 
     uint16_t result = custom_cc_wrapper(0x3333, 0x63);
 
-    __builtin_v6c_out(0xDE, result & 0xFF);
-    __builtin_v6c_out(0xDE, result >> 8);
+    __builtin_v6clang_out(0xDE, result & 0xFF);
+    __builtin_v6clang_out(0xDE, result >> 8);
     return 0;
 }

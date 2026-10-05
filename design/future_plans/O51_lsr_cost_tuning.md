@@ -5,11 +5,11 @@
 
 ## Problem
 
-V6C already overrides `isLSRCostLess()` (implemented as part of O7), but
+V6CLANG already overrides `isLSRCostLess()` (implemented as part of O7), but
 the Z80 backend's approach differs in a significant way: it prioritizes
 **instruction count first**, ahead of register count.
 
-The current V6C ordering is:
+The current V6CLANG ordering is:
 ```
 NumRegs > Insns > NumBaseAdds > NumIVMuls > AddRecCost > ImmCost > SetupCost > ScaleCost
 ```
@@ -25,7 +25,7 @@ The Z80 rationale: each extra instruction costs 4-12cc and 1-3 bytes with
 certainty, while an extra register *may* cause a spill (52-104cc) but often
 doesn't if the register allocator finds slack.
 
-The current V6C rationale: register pressure is the dominant constraint with
+The current V6CLANG rationale: register pressure is the dominant constraint with
 only 3 GP pairs, so minimizing registers first avoids the worst case.
 
 **Which is better for i8080?** This depends on typical register pressure. If
@@ -37,10 +37,10 @@ may not occur.
 ## Implementation
 
 Evaluate the Z80 ordering on the test suite and compare with the current
-V6C ordering. The change is a single line:
+V6CLANG ordering. The change is a single line:
 
 ```cpp
-// Option A: Current V6C (register-first)
+// Option A: Current V6CLANG (register-first)
 return std::tie(C1.NumRegs, C1.Insns, C1.NumBaseAdds, ...) <
        std::tie(C2.NumRegs, C2.Insns, C2.NumBaseAdds, ...);
 
@@ -51,7 +51,7 @@ return std::tie(C1.Insns, C1.NumRegs, C1.AddRecCost, ...) <
 
 A `-mllvm` flag could allow switching between strategies:
 ```cpp
-static cl::opt<bool> InsnFirst("v6c-lsr-insns-first",
+static cl::opt<bool> InsnFirst("v6clang-lsr-insns-first",
   cl::desc("Prioritize instruction count over register count in LSR"),
   cl::init(false));
 ```

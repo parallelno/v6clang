@@ -2,7 +2,7 @@
 // --gc-sections drops asm functions unreachable from _start.
 //
 // Build (see run.py):
-//   clang -target i8080-unknown-v6c -O2 -ffunction-sections \
+//   clang -target i8080-unknown-v6clang -O2 -ffunction-sections \
 //         main.c external.s -Wl,--gc-sections -o out.rom
 //
 // Expected behavior:
@@ -16,6 +16,6 @@
 
 int main(void) {
     extern_func();
-    __builtin_v6c_hlt();
+    __builtin_v6clang_hlt();
     return 0;
 }

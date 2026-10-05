@@ -4,12 +4,12 @@
 *Extension of O11 (Dual Cost Model) with MachineInstr-level cost queries.*
 
 ## Rejected
- its goals are already met in practice. Revisit only if a future pass needs to compare arbitrary MachineInstr sequences (e.g., a generic peephole framework). Keep V6CInstrCost.h as-is; pre-defined constants are sufficient.
+ its goals are already met in practice. Revisit only if a future pass needs to compare arbitrary MachineInstr sequences (e.g., a generic peephole framework). Keep V6ClangInstrCost.h as-is; pre-defined constants are sufficient.
 
 ## Problem
 
-O11 introduced `V6CInstrCost` with pre-defined constants (e.g.,
-`V6CCost::MOVrr`, `V6CCost::LXI`). Each optimization pass manually selects
+O11 introduced `V6ClangInstrCost` with pre-defined constants (e.g.,
+`V6ClangCost::MOVrr`, `V6ClangCost::LXI`). Each optimization pass manually selects
 the appropriate constant. This works but has limitations:
 
 1. **No MachineInstr → cost mapping**: Passes must manually map opcodes to
@@ -21,41 +21,41 @@ the appropriate constant. This works but has limitations:
    `PUSH HL; POP DE` (24cc) for a DE←HL pair copy, or that XCHG (4cc) is
    cheapest when both pairs are live.
 
-3. **No scheduling integration**: The V6CSchedule.td defines SchedWrite
-   resources with latencies, but these aren't connected to V6CInstrCost.
+3. **No scheduling integration**: The V6ClangSchedule.td defines SchedWrite
+   resources with latencies, but these aren't connected to V6ClangInstrCost.
    Passes that compare expansion costs must duplicate cycle counts.
 
 ## Implementation
 
 ### getInstrCost(const MachineInstr &MI)
 
-Add to `V6CInstrCost.h`:
+Add to `V6ClangInstrCost.h`:
 
 ```cpp
 /// Compute the cost of a single MachineInstr.
-inline V6CInstrCost getInstrCost(const MachineInstr &MI) {
+inline V6ClangInstrCost getInstrCost(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
-  case V6C::MOVrr:  return V6CCost::MOVrr;
-  case V6C::MOVrM:  return V6CCost::MOVrM;
-  case V6C::MOVMr:  return V6CCost::MOVMr;
-  case V6C::MVIr:   return V6CCost::MVI;
-  case V6C::LXIrp:  return V6CCost::LXI;
-  case V6C::INXrp:  return V6CCost::INX;
-  case V6C::DCXrp:  return V6CCost::INX;  // same cost
-  case V6C::DADrp:  return V6CCost::DAD;
-  case V6C::PUSH:   return V6CCost::PUSH;
-  case V6C::POP:    return V6CCost::POP;
-  case V6C::CALL:   return V6CCost::CALL;
-  case V6C::RET:    return V6CCost::RET;
+  case V6CLANG::MOVrr:  return V6ClangCost::MOVrr;
+  case V6CLANG::MOVrM:  return V6ClangCost::MOVrM;
+  case V6CLANG::MOVMr:  return V6ClangCost::MOVMr;
+  case V6CLANG::MVIr:   return V6ClangCost::MVI;
+  case V6CLANG::LXIrp:  return V6ClangCost::LXI;
+  case V6CLANG::INXrp:  return V6ClangCost::INX;
+  case V6CLANG::DCXrp:  return V6ClangCost::INX;  // same cost
+  case V6CLANG::DADrp:  return V6ClangCost::DAD;
+  case V6CLANG::PUSH:   return V6ClangCost::PUSH;
+  case V6CLANG::POP:    return V6ClangCost::POP;
+  case V6CLANG::CALL:   return V6ClangCost::CALL;
+  case V6CLANG::RET:    return V6ClangCost::RET;
   // ... ALU ops, branches, etc.
-  default:           return V6CInstrCost(1, 4); // conservative default
+  default:           return V6ClangInstrCost(1, 4); // conservative default
   }
 }
 
 /// Compute total cost of a range of MachineInstrs.
-inline V6CInstrCost getSequenceCost(MachineBasicBlock::iterator Begin,
+inline V6ClangInstrCost getSequenceCost(MachineBasicBlock::iterator Begin,
                                      MachineBasicBlock::iterator End) {
-  V6CInstrCost Total(0, 0);
+  V6ClangInstrCost Total(0, 0);
   for (auto I = Begin; I != End; ++I)
     Total = Total + getInstrCost(*I);
   return Total;
@@ -66,29 +66,29 @@ inline V6CInstrCost getSequenceCost(MachineBasicBlock::iterator Begin,
 
 ```cpp
 /// Cost of copying between physical registers or register pairs.
-inline V6CInstrCost copyCost(MCRegister Src, MCRegister Dst) {
+inline V6ClangInstrCost copyCost(MCRegister Src, MCRegister Dst) {
   // 8-bit register copy
-  if (V6C::GR8RegClass.contains(Src) && V6C::GR8RegClass.contains(Dst))
-    return V6CCost::MOVrr;  // MOV dst, src: 8cc, 1B
+  if (V6CLANG::GR8RegClass.contains(Src) && V6CLANG::GR8RegClass.contains(Dst))
+    return V6ClangCost::MOVrr;  // MOV dst, src: 8cc, 1B
 
   // 16-bit pair copy
-  if (Src == V6C::HL && Dst == V6C::DE)
-    return V6CCost::MOVrr * 2;  // MOV D,H; MOV E,L: 16cc, 2B
-  if (Src == V6C::DE && Dst == V6C::HL)
-    return V6CCost::MOVrr * 2;  // MOV H,D; MOV L,E: 16cc, 2B
+  if (Src == V6CLANG::HL && Dst == V6CLANG::DE)
+    return V6ClangCost::MOVrr * 2;  // MOV D,H; MOV E,L: 16cc, 2B
+  if (Src == V6CLANG::DE && Dst == V6CLANG::HL)
+    return V6ClangCost::MOVrr * 2;  // MOV H,D; MOV L,E: 16cc, 2B
   // BC↔HL, BC↔DE: also 2 MOVs
-  return V6CCost::MOVrr * 2;    // 16cc, 2B for any pair copy
+  return V6ClangCost::MOVrr * 2;    // 16cc, 2B for any pair copy
 }
 
 /// Cost of XCHG (DE↔HL swap) — only valid when both are live.
-inline V6CInstrCost xchgCost() {
-  return V6CInstrCost(1, 4);  // XCHG: 4cc, 1B
+inline V6ClangInstrCost xchgCost() {
+  return V6ClangInstrCost(1, 4);  // XCHG: 4cc, 1B
 }
 ```
 
 ### Scheduling integration (optional)
 
-Map SchedWrite resources from V6CSchedule.td to V6CInstrCost in a
+Map SchedWrite resources from V6ClangSchedule.td to V6ClangInstrCost in a
 helper table. This ensures consistency between the scheduler's latency
 model and the cost model used by optimization passes.
 
@@ -99,12 +99,12 @@ model and the cost model used by optimization passes.
   choose the cheapest sequence at expansion time
 - **copyCost**: Enables O12 (global copy opt) and O20 (honest store/load
   defs) to make cost-aware register transfer decisions
-- **getSequenceCost**: Use in V6CLoadStoreOpt, V6CSPTrickOpt, etc. to
+- **getSequenceCost**: Use in V6ClangLoadStoreOpt, V6ClangSPTrickOpt, etc. to
   compare before/after costs of transformations
 
 ## Complexity
 
-Low. ~60-80 lines in V6CInstrCost.h. Pure infrastructure — header-only,
+Low. ~60-80 lines in V6ClangInstrCost.h. Pure infrastructure — header-only,
 no new passes.
 
 ## Risk

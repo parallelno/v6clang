@@ -5,7 +5,7 @@
 add_lld_unittests(LLDAsLibELFTests
   ROCm.cpp
   SomeDrivers.cpp
-  V6CPackedSectionsTest.cpp
+  V6ClangPackedSectionsTest.cpp
 )
 
 target_include_directories(LLDAsLibELFTests PRIVATE ${LLD_SOURCE_DIR}/ELF)

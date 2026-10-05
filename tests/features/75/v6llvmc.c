@@ -4,7 +4,7 @@
  * of that constant is later read into a register via MOV A, RP_HALF, the
  * peephole should rewrite that MOV to a direct MVI carrying the byte.
  *
- * Both compilers (c8080 and v6llvmc) build a single main() that calls
+ * Both compilers (c8080 and v6clang) build a single main() that calls
  * every test function so the produced assembly is directly comparable.
  */
 

@@ -108,32 +108,32 @@ sumarray loop body (per iteration, worst case):
 Total per iteration: 416cc, 60B loop body
 sumarray function total: 416*100 + setup/teardown ≈ 41,700cc
 
---- v6llvmc ASM (with --enable-deferred-spilling) ---
+--- v6clang ASM (with --enable-deferred-spilling) ---
 
 sumarray:
     LXI  BC, arr2              ; 12cc 3B
     LXI  DE, arr1              ; 12cc 3B
     LXI  HL, 0                 ; 12cc 3B
 .LBB0_1:
-    SHLD __v6c_ss.sumarray     ; 20cc 3B  spill sum
+    SHLD __v6clang_ss.sumarray     ; 20cc 3B  spill sum
     XCHG                       ;  4cc 1B  swap for SHLD
-    SHLD __v6c_ss.sumarray+2   ; 20cc 3B  spill arr1_ptr
+    SHLD __v6clang_ss.sumarray+2   ; 20cc 3B  spill arr1_ptr
     MOV  E, M                  ;  8cc 1B  load arr1[i] lo  ← XCHG pair cancelled!
     INX  HL                    ;  8cc 1B
     MOV  D, M                  ;  8cc 1B  load arr1[i] hi
     XCHG                       ;  4cc 1B  DE=arr1[i], HL=ptr
-    LHLD __v6c_ss.sumarray     ; 20cc 3B  reload sum
+    LHLD __v6clang_ss.sumarray     ; 20cc 3B  reload sum
     DAD  DE                    ; 12cc 1B  sum += arr1[i]
-    SHLD __v6c_ss.sumarray     ; 20cc 3B  spill sum
+    SHLD __v6clang_ss.sumarray     ; 20cc 3B  spill sum
     MOV  H, B                  ;  8cc 1B  HL = BC (arr2 ptr)
     MOV  L, C                  ;  8cc 1B
     MOV  E, M                  ;  8cc 1B  load arr2[i] lo
     INX  HL                    ;  8cc 1B
     MOV  D, M                  ;  8cc 1B  load arr2[i] hi
-    LHLD __v6c_ss.sumarray     ; 20cc 3B  reload sum
+    LHLD __v6clang_ss.sumarray     ; 20cc 3B  reload sum
     DAD  DE                    ; 12cc 1B  sum += arr2[i]
     XCHG                       ;  4cc 1B
-    LHLD __v6c_ss.sumarray+2   ; 20cc 3B  reload arr1_ptr
+    LHLD __v6clang_ss.sumarray+2   ; 20cc 3B  reload arr1_ptr
     XCHG                       ;  4cc 1B
     INX  BC                    ;  8cc 1B  arr2_ptr += 2
     INX  BC                    ;  8cc 1B
@@ -147,7 +147,7 @@ sumarray:
     JNZ  .LBB0_1               ; 12cc 3B
     RET                        ; 12cc 1B
 
---- v6llvmc stats ---
+--- v6clang stats ---
 
 sumarray loop body (per iteration, worst case both JNZ not taken):
   Total per iteration: 328cc, 44B loop body
@@ -157,4 +157,4 @@ sumarray loop body (per iteration, worst case both JNZ not taken):
 
 sumarray function total: 328*100 + 36 (setup) ≈ 32,836cc
 c8080 function total: 416*100 + ~80 (setup) ≈ 41,680cc
-Overall: v6llvmc is ~21% faster than c8080 on this loop
+Overall: v6clang is ~21% faster than c8080 on this loop

@@ -23,7 +23,7 @@ int test_one_path_zero(int x) {
     return x;
 }
 
-=== v6llvmc ASM (before O37 — baseline) ===
+=== v6clang ASM (before O37 — baseline) ===
 
 test_cond_zero_return_zero:     ; 11B
     MOV  D, H                   ; 8cc, 1B — save x to DE
@@ -40,7 +40,7 @@ test_one_path_zero:             ; 6B (already optimal)
     JZ   bar                    ; 12cc, 3B
     RET                         ; 12cc, 1B
 
-=== v6llvmc ASM (after O37) ===
+=== v6clang ASM (after O37) ===
 
 test_cond_zero_return_zero:     ; 9B
     MOV  A, H                   ; 8cc, 1B — zero-test directly on HL

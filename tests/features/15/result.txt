@@ -54,7 +54,7 @@ c8080 stats:
   test_cond_zero_return_zero: 15B
   test_nonzero_path:         6B, nonzero path: 20cc, zero path: 24cc
 
-=== v6llvmc ASM (before O36) ===
+=== v6clang ASM (before O36) ===
 
 test_cond_zero_tailcall:        ; 9 bytes
     MOV  A, H                   ; 8cc, 1B
@@ -70,11 +70,11 @@ test_nonzero_path:              ; 9 bytes (same pattern)
     LXI  HL, 0                  ; 12cc, 3B  <- REDUNDANT
     JMP  bar                    ; 12cc, 3B
 
-v6llvmc stats (before):
+v6clang stats (before):
   test_cond_zero_tailcall:   9B, zero path: 36cc, nonzero path: 20cc
   test_nonzero_path:         9B, zero path: 36cc, nonzero path: 20cc
 
-=== v6llvmc ASM (after O36) ===
+=== v6clang ASM (after O36) ===
 
 test_cond_zero_tailcall:        ; 6 bytes
     MOV  A, H                   ; 8cc, 1B
@@ -88,7 +88,7 @@ test_nonzero_path:              ; 6 bytes (same improvement)
     JZ   bar                    ; 12cc, 3B
     RET                         ; 12cc, 1B
 
-v6llvmc stats (after):
+v6clang stats (after):
   test_cond_zero_tailcall:   6B, zero path: 24cc, nonzero path: 24cc
   test_nonzero_path:         6B, zero path: 24cc, nonzero path: 24cc
 

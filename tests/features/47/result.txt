@@ -5,7 +5,7 @@ O54: Optimal stack adjustment via PUSH/POP for small frames
 Summary
 -------
 For SP adjustments with small even sizes (n ∈ {2,4} in non-Size mode,
-n ∈ {2,4,6} in Size mode), the V6C backend now emits PUSH/POP of a
+n ∈ {2,4,6} in Size mode), the V6CLANG backend now emits PUSH/POP of a
 register pair whose halves are dead at the adjustment point. When no
 dead pair is available, it falls back to DCX/INX SP × n for n ∈ {2,4}
 (no clobber, 1B/8cc per step). Otherwise it keeps the existing
@@ -21,7 +21,7 @@ For a 2-byte even frame: PUSH+POP = 2 B / 28 cc beats LXI×2 = 10 B / 64 cc.
 For a 4-byte even frame: 2× PUSH/POP = 4 B / 56 cc beats LXI×2 = 10 B / 64 cc.
 
 ================================================================================
-C test case (tests/features/47/v6llvmc.c)
+C test case (tests/features/47/v6clang.c)
 ================================================================================
 extern unsigned char ext_fn(unsigned char x, unsigned char y);
 
@@ -91,10 +91,10 @@ c8080 stats (excluding ext_fn body):
   worker:  ~30 instr,    ~71 bytes,   ~302 cc (incl. 3 calls to ext_fn)
   Note: c8080 uses static stack alloc (per-function arg/local globals);
         no SP adjustment, no register save. main() has zero prologue
-        cost vs. v6llvmc's 1B/16cc PUSH PSW prologue.
+        cost vs. v6clang's 1B/16cc PUSH PSW prologue.
 
 ================================================================================
-v6llvmc asm — new (tests/features/47/v6llvmc_new01.asm)
+v6clang asm — new (tests/features/47/v6clang_new01.asm)
 ================================================================================
 worker:
     LXI    H, 0xfffb              ; 5B odd frame → LXI+DAD+SPHL
@@ -123,12 +123,12 @@ main:
     XCHG
     RET
 
-v6llvmc stats:
+v6clang stats:
   worker:  35 instr,  84 bytes,  ~360 cc  (5-byte odd frame, unchanged)
   main:    19 instr,  29 bytes,  ~189 cc  (was 23 instr / 37 bytes / 225 cc)
 
 ================================================================================
-Improvement vs. v6llvmc_old.asm
+Improvement vs. v6clang_old.asm
 ================================================================================
 Function: main()
   Prologue: LXI H,0xfffe / DAD SP / SPHL  →  PUSH PSW

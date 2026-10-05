@@ -1,7 +1,7 @@
-Feature 67 — O85: V6CTypeNarrowing ExtraPNUses / ExtraAddUses
+Feature 67 — O85: V6ClangTypeNarrowing ExtraPNUses / ExtraAddUses
 =============================================================
 
-This feature extends the V6C type-narrowing pass (V6CTypeNarrowing) to allow
+This feature extends the V6CLANG type-narrowing pass (V6ClangTypeNarrowing) to allow
 loop IV narrowing (i16 → i8) even when the PHI node or the add-step have
 extra users beyond the icmp exit condition, provided those extra users can be
 rewritten via a zext of the narrowed i8 value.
@@ -78,7 +78,7 @@ Code size: exit check shrinks from 5 instructions (INX+MVI+CMP+JNZ+CMP+JNZ)
 
 
 Regression tests:
-  tests/lit/CodeGen/V6C/type-narrowing-iv-arith-users.ll  — PASS (5 test cases)
-  tests/lit/CodeGen/V6C/peephole-pop-push-elim.ll         — PASS (updated for O85)
-  tests/lit/CodeGen/V6C/peephole-inx-dcx-spill-fold.ll   — PASS (updated for O85)
+  tests/lit/CodeGen/V6CLANG/type-narrowing-iv-arith-users.ll  — PASS (5 test cases)
+  tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll         — PASS (updated for O85)
+  tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll   — PASS (updated for O85)
   python tests/run_all.py                                  — 3/3 suites PASS

@@ -2076,7 +2076,7 @@ void Sema::checkTypeSupport(QualType Ty, SourceLocation Loc, ValueDecl *D) {
         targetDiag(D->getLocation(), diag::note_defined_here, FD) << D;
     }
 
-    // V6C (i8080): warn about expensive types.
+    // V6CLANG (i8080): warn about expensive types.
     if (TI.getTriple().getArch() == llvm::Triple::i8080) {
       bool IsLongLong = UnqualTy == Context.LongLongTy ||
                         UnqualTy == Context.UnsignedLongLongTy;
@@ -2084,7 +2084,7 @@ void Sema::checkTypeSupport(QualType Ty, SourceLocation Loc, ValueDecl *D) {
                         UnqualTy == Context.DoubleTy ||
                         UnqualTy == Context.LongDoubleTy;
       if (IsLongLong || IsFloating)
-        Diag(Loc, diag::warn_v6c_expensive_type)
+        Diag(Loc, diag::warn_v6clang_expensive_type)
             << Ty << TI.getTriple().str();
     }
 

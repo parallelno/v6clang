@@ -1,12 +1,12 @@
 # O27. i16 Zero-Test Optimization
 
-*Identified from analysis of temp/compare/07/v6llvmc.c output.*
+*Identified from analysis of temp/compare/07/v6clang.c output.*
 *Replaces full CMP-based 16-bit zero comparison with `MOV A, Hi; ORA Lo`.*
 
 ## Problem
 
 The most common i16 comparison in C is testing against zero: `if (x)`,
-`if (!ptr)`, `while (n)`, etc. Currently, `V6C_BR_CC16_IMM` with RHS=0
+`if (!ptr)`, `while (n)`, etc. Currently, `V6CLANG_BR_CC16_IMM` with RHS=0
 generates a full two-byte CMP expansion with MBB splitting:
 
 ### Current output (comparing i16 HL against 0, EQ):
@@ -59,7 +59,7 @@ Because O27 preserves HL and avoids the MBB split:
   (e.g., `if (x) return bar(x)`), HL stays intact. Currently the compiler
   moves HL→DE before the LXI/comparison, then DE→HL afterward. O27 saves
   an additional **2-4 MOVs (8-16cc, 2-4B)** in these cases.
-- **Branch inversion enabled**: Single-block code allows V6CBranchOpt's
+- **Branch inversion enabled**: Single-block code allows V6ClangBranchOpt's
   Jcc+JMP inversion to fire (see O28), potentially saving another 3B+10cc.
 
 ### Real-world example: `if (x) return bar(x); return 0;`
@@ -71,9 +71,9 @@ Because O27 preserves HL and avoids the MBB split:
 
 ## Implementation
 
-### Approach: Special case in `V6C_BR_CC16_IMM` expansion
+### Approach: Special case in `V6CLANG_BR_CC16_IMM` expansion
 
-In `V6CInstrInfo.cpp`, `expandPostRAPseudo()` case `V6C::V6C_BR_CC16_IMM`:
+In `V6ClangInstrInfo.cpp`, `expandPostRAPseudo()` case `V6CLANG::V6CLANG_BR_CC16_IMM`:
 
 1. Before the existing MBB-splitting code, add a check for immediate == 0
 2. If `RhsOp.isImm() && RhsOp.getImm() == 0`:
@@ -83,23 +83,23 @@ In `V6CInstrInfo.cpp`, `expandPostRAPseudo()` case `V6C::V6C_BR_CC16_IMM`:
 
 ### Pseudocode:
 ```cpp
-case V6C::V6C_BR_CC16_IMM: {
+case V6CLANG::V6CLANG_BR_CC16_IMM: {
   Register LhsReg = MI.getOperand(0).getReg();
   MachineOperand &RhsOp = MI.getOperand(1);
   int64_t CC = MI.getOperand(2).getImm();
   MachineBasicBlock *Target = MI.getOperand(3).getMBB();
 
-  assert((CC == V6CCC::COND_Z || CC == V6CCC::COND_NZ) && "EQ/NE only");
+  assert((CC == V6ClangCC::COND_Z || CC == V6ClangCC::COND_NZ) && "EQ/NE only");
 
-  MCRegister LhsLo = RI.getSubReg(LhsReg, V6C::sub_lo);
-  MCRegister LhsHi = RI.getSubReg(LhsReg, V6C::sub_hi);
+  MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
+  MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
 
   // --- O27: Fast zero-test path ---
   if (RhsOp.isImm() && RhsOp.getImm() == 0) {
-    unsigned JccOpc = (CC == V6CCC::COND_Z) ? V6C::JZ : V6C::JNZ;
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsHi);
-    BuildMI(MBB, MI, DL, get(V6C::ORAr), V6C::A)
-        .addReg(V6C::A).addReg(LhsLo);
+    unsigned JccOpc = (CC == V6ClangCC::COND_Z) ? V6CLANG::JZ : V6CLANG::JNZ;
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
+        .addReg(V6CLANG::A).addReg(LhsLo);
     BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
     MI.eraseFromParent();
     return true;
@@ -128,7 +128,7 @@ case V6C::V6C_BR_CC16_IMM: {
 - All existing lit tests must pass (no regressions)
 
 ### Integration test:
-- Compile `temp/compare/07/v6llvmc.c` and verify output matches expected
+- Compile `temp/compare/07/v6clang.c` and verify output matches expected
   assembly
 
 ## Benefit
@@ -140,8 +140,8 @@ case V6C::V6C_BR_CC16_IMM: {
 
 ## Complexity
 
-Low-Medium. ~15 lines added to existing `V6C_BR_CC16_IMM` expansion in
-`V6CInstrInfo.cpp`. No new pseudo instructions, no new passes, no ISel
+Low-Medium. ~15 lines added to existing `V6CLANG_BR_CC16_IMM` expansion in
+`V6ClangInstrInfo.cpp`. No new pseudo instructions, no new passes, no ISel
 changes.
 
 ## Risk
@@ -157,7 +157,7 @@ expansion.
 
 ## Future Enhancements
 
-- **V6C_BR_CC16 (register-register)**: Could also detect when RHS register
+- **V6CLANG_BR_CC16 (register-register)**: Could also detect when RHS register
   is known to be zero (via O13 value tracking), but this is rare enough to
   defer.
 - **SELECT_CC with 0**: Similar optimization for `x ? a : b` when x is i16.

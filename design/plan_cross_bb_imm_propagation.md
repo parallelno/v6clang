@@ -4,12 +4,12 @@
 
 ### Current behavior
 
-When `V6C_BR_CC16_IMM` expands a 16-bit comparison with a non-zero
+When `V6CLANG_BR_CC16_IMM` expands a 16-bit comparison with a non-zero
 immediate, it splits the MBB into two blocks. The second block
 (CompareHiMBB) always emits `MVI A, hi8(imm)` even when `lo8 == hi8`,
 meaning A already holds the correct value from the first block.
 
-More generally, `V6CLoadImmCombine` resets all register tracking at each
+More generally, `V6ClangLoadImmCombine` resets all register tracking at each
 basic block boundary. Blocks with a single predecessor lose knowledge of
 register values that are provably available from the predecessor's exit
 state.
@@ -35,11 +35,11 @@ state.
 
 ### Approach: Two-pronged fix
 
-1. **Quick fix in BR_CC16_IMM expansion** (~5 lines in V6CInstrInfo.cpp):
+1. **Quick fix in BR_CC16_IMM expansion** (~5 lines in V6ClangInstrInfo.cpp):
    Guard the CompareHiMBB's `MVI A, hi8` with `lo8 != hi8`. This is trivially
    correct because CMP and Jcc/JMP don't modify A.
 
-2. **Cross-BB propagation in LoadImmCombine** (~30 lines in V6CLoadImmCombine.cpp):
+2. **Cross-BB propagation in LoadImmCombine** (~30 lines in V6ClangLoadImmCombine.cpp):
    Add `initFromPredecessor()` that forward-scans a single predecessor's
    instructions using existing `updateKnownValues` logic, then uses the exit
    state to initialize `KnownVal[]` for the current block.
@@ -56,9 +56,9 @@ state.
 
 | Step | What | Where |
 |------|------|-------|
-| Quick fix | Skip hi-byte MVI when lo8 == hi8 | V6CInstrInfo.cpp |
-| Cross-BB init | Add initFromPredecessor() | V6CLoadImmCombine.cpp |
-| Lit test | Cross-BB propagation test | tests/lit/CodeGen/V6C/ |
+| Quick fix | Skip hi-byte MVI when lo8 == hi8 | V6ClangInstrInfo.cpp |
+| Cross-BB init | Add initFromPredecessor() | V6ClangLoadImmCombine.cpp |
+| Lit test | Cross-BB propagation test | tests/lit/CodeGen/V6CLANG/ |
 
 ---
 
@@ -66,9 +66,9 @@ state.
 
 ### Step 3.1 — Quick fix: skip hi-byte MVI when lo8 == hi8 in BR_CC16_IMM [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-In the V6C_BR_CC16_IMM expansion (both NE and EQ paths), wrap the
+In the V6CLANG_BR_CC16_IMM expansion (both NE and EQ paths), wrap the
 CompareHiMBB's `MVI A, hi8` in `if (!sameLoHi)` where `sameLoHi` is
 true when the RHS operand is an integer and `(imm & 0xFF) == ((imm >> 8) & 0xFF)`.
 
@@ -83,14 +83,14 @@ bool SameLoHi = RhsOp.isImm() &&
 Then for NE path, change:
 ```cpp
 {
-  auto MIB = BuildMI(CompareHiMBB, DL, get(V6C::MVIr), V6C::A);
+  auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
   addImmHi(MIB);
 }
 ```
 to:
 ```cpp
 if (!SameLoHi) {
-  auto MIB = BuildMI(CompareHiMBB, DL, get(V6C::MVIr), V6C::A);
+  auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
   addImmHi(MIB);
 }
 ```
@@ -101,7 +101,7 @@ Same for EQ path.
 
 ### Step 3.2 — Cross-BB propagation: add initFromPredecessor() to LoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
 
 Add a new method that, for blocks with a single predecessor, forward-scans
 the predecessor block using the same instruction-processing logic as
@@ -124,7 +124,7 @@ branch-implied values where applicable.
 
 > **Design Note**: This reuses all existing tracking logic — no new
 > value-update code. The predecessor scan can be expensive for large blocks
-> but single-predecessor blocks in typical V6C code are small (from MBB
+> but single-predecessor blocks in typical V6CLANG code are small (from MBB
 > splits).
 
 > **Implementation Notes**: _empty_
@@ -139,7 +139,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: cross-bb-imm-propagation.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/cross-bb-imm-propagation.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/cross-bb-imm-propagation.ll`
 
 Test cases:
 1. **NE with lo8==hi8 (0x4242)**: Verify only one `MVI A, 66` appears.
@@ -160,7 +160,7 @@ python tests\run_all.py
 
 ### Step 3.6 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile the feature test case (`tests/features/18/v6llvmc.c`) and verify
+Compile the feature test case (`tests/features/18/v6clang.c`) and verify
 the redundant MVI instructions are eliminated.
 
 > **Implementation Notes**: _empty_
@@ -261,7 +261,7 @@ BB1:
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O29 Design](design\future_plans\O29_cross_bb_imm_propagation.md)

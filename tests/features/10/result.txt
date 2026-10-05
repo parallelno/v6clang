@@ -80,7 +80,7 @@ l_8:
 c8080 stats: test_ne_zero 12B 68cc | test_eq_zero 15B 68cc | test_multi_cond 33B ~184cc | test_null_guard 14B 76cc
 Total: 74B
 
-== v6llvmc ASM ==
+== v6clang ASM ==
 
 test_ne_zero:                           ; 6B
     MOV  A, H                           ; 1B  4cc
@@ -132,12 +132,12 @@ test_null_guard:                        ; 12B
     MOV  L, E                           ; 1B  8cc
     RET                                 ; 1B 12cc
 
-v6llvmc stats: test_ne_zero 6B 24cc | test_eq_zero 6B 24cc | test_multi_cond 27B ~80cc | test_null_guard 12B 68cc
+v6clang stats: test_ne_zero 6B 24cc | test_eq_zero 6B 24cc | test_multi_cond 27B ~80cc | test_null_guard 12B 68cc
 Total: 51B
 
 == Comparison ==
 
-| Function       | c8080  | v6llvmc | Savings |
+| Function       | c8080  | v6clang | Savings |
 |----------------|--------|---------|---------|
 | test_ne_zero   | 12B    | 6B      | -6B (50%) |
 | test_eq_zero   | 15B    | 6B      | -9B (60%) |
@@ -145,7 +145,7 @@ Total: 51B
 | test_null_guard| 14B    | 12B     | -2B (14%) |
 | **Total**      | **74B**| **51B** | **-23B (31%)** |
 
-O30-specific savings (vs v6llvmc_old.asm):
+O30-specific savings (vs v6clang_old.asm):
 - test_ne_zero: 9B → 6B (-3B, JZ+RET block → RZ)
 - test_eq_zero: 9B → 6B (-3B, JZ+RET block → RZ)
 - test_multi_cond: 30B → 27B (-3B, first JZ+RET block → RZ)

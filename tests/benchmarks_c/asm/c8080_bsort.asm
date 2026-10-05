@@ -25,12 +25,12 @@ __init_loop:
 ; 35         add  hl, de
 ; 36         jp   nc, __init_loop
 ; 37     }
-; 38 
+; 38
 ; 39     /* Init stack */
 ; 40 #if __has_include(<c8080/initstack.inc>) && !defined(ARCH_CPM_CCP) && !defined(ARCH_CPM_BDOS) && !defined(ARCH_CPM_BIOS)
 ; 41 #include <c8080/initstack.inc>
 ; 42 #endif
-; 43 
+; 43
 ; 44 #ifdef ARCH_CPM_CCP /* CCP remains in memory */
 ; 45     // clang-format off
 ; 46     asm {
@@ -44,7 +44,7 @@ __init_loop:
 ; 54     }
 ; 55     // clang-format on
 ; 56 #endif
-; 57 
+; 57
 ; 58 #ifdef ARCH_CPM_BDOS /* BDOS remains in memory */
 ; 59     asm {
 ; 60         ld   a, (7)
@@ -55,11 +55,11 @@ __init_loop:
 ; 65         push hl
 ; 66     }
 ; 67 #endif
-; 68 
+; 68
 ; 69 #ifdef ARCH_CPM_BIOS /* BIOS remains in memory */
 ; 70 #error TODO
 ; 71 #endif
-; 72 
+; 72
 ; 73     main(0, NULL);
 	ld hl, 0
 	ld (__a_1_main), hl
@@ -69,7 +69,7 @@ main:
 ; 7     (void)argc; (void)argv;
 ; 8     u8 a[N];
 ; 9     u8 i, j, t;
-; 10 
+; 10
 ; 11     /* Deterministic fill: 255 distinct bytes (gcd(31,256)=1). */
 ; 12     for (i = 0; i < N; i++) {
 	xor a
@@ -99,7 +99,7 @@ l_0:
 	jp l_0
 l_2:
 ; 14     }
-; 15 
+; 15
 ; 16     for (i = (u8)(N - 1); i != 0; i--) {
 	ld a, 254
 	ld (main_i), a
@@ -162,7 +162,7 @@ l_5:
 ; 22             }
 ; 23         }
 ; 24     }
-; 25 
+; 25
 ; 26     u8 sum = 0;
 	xor a
 	ld (main_sum), a
@@ -183,7 +183,7 @@ l_11:
 	ld (main_i), a
 	jp l_11
 l_13:
-; 28 
+; 28
 ; 29     bench_finish(sum);
 	ld a, (main_sum)
 	call bench_finish
@@ -214,4 +214,4 @@ main_t equ __s_main + 257
 main_sum equ __s_main + 258
 __s_bench_finish equ __static_stack + 0
 __a_1_bench_finish equ __s_bench_finish + 0
-    savebin "C:\Work\Programming\v6llvmc\tests\benchmarks_c\build\c8080_bsort.com", __begin, __bss - __begin
+    savebin "C:\Work\Programming\v6clang\tests\benchmarks_c\build\c8080_bsort.com", __begin, __bss - __begin

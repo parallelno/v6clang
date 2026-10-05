@@ -3,7 +3,7 @@ Feature 57 — O75: Flag-Producing Arithmetic SDNodes
 
 Goal
 ----
-Always lower i8 ADD/SUB/AND/OR/XOR through new V6CISD::*F nodes that
+Always lower i8 ADD/SUB/AND/OR/XOR through new V6ClangISD::*F nodes that
 expose FLAGS as a second SSA result, so a downstream BR_CC / SELECT_CC
 that compares the result to zero (EQ/NE) can consume those FLAGS
 directly instead of emitting a redundant CPI 0 / ORA A.
@@ -11,7 +11,7 @@ directly instead of emitting a redundant CPI 0 / ORA A.
 Phases
 ------
 - Phase A: rewire FLAGS as an SSA i8 value (replace MVT::Glue chain).
-- Phase B: 12 V6CISD::*F nodes (ADDF/SUBF/ANDF/ORF/XORF, *_IMM, INCF,
+- Phase B: 12 V6ClangISD::*F nodes (ADDF/SUBF/ANDF/ORF/XORF, *_IMM, INCF,
            DECF) + setOperationAction(...,Custom) on i8 ADD/SUB/AND/OR/XOR
            + EQ/NE-against-zero short-circuit in LowerBR_CC / LowerSELECT_CC.
 
@@ -22,7 +22,7 @@ Golden suite ............ PASS
 Full regression ......... 132/132 PASS  (run_all.py — 2/2 suites)
 
 
-C test case (tests/features/57/v6llvmc.c)
+C test case (tests/features/57/v6clang.c)
 -----------------------------------------
 extern volatile u8 g_sink;
 u16 dec_loop(u8 n) {
@@ -150,7 +150,7 @@ c8080 stats (worst-case CPU cycles / length in bytes)
     main          :  396cc / 64B
 
 
-v6llvmc — BASELINE (`v6llvmc_old.asm`, before O75)
+v6clang — BASELINE (`v6clang_old.asm`, before O75)
 --------------------------------------------------
 dec_loop:                          ; counter pinned to A: g_sink store
         ORA   A                    ;  4cc / 1B   forces n in A; loop iv
@@ -215,7 +215,7 @@ main:                              ; (sum of all instructions)
                                    ; ---------- 676cc / 126B
 
 
-v6llvmc — AFTER O75 (`v6llvmc_new02.asm`)
+v6clang — AFTER O75 (`v6clang_new02.asm`)
 -----------------------------------------
 dec_loop:       unchanged          ; ---------- 172cc / 28B
                                    ; (g_sink store inside loop body
@@ -272,7 +272,7 @@ main:                              ; (sum of all instructions)
 Comparison table (worst-case CPU cycles / length in bytes)
 ----------------------------------------------------------
 +------------------+----------------+----------------+----------------+----------------+
-| Function         | c8080          | v6llvmc OLD    | v6llvmc NEW    | NEW vs OLD     |
+| Function         | c8080          | v6clang OLD    | v6clang NEW    | NEW vs OLD     |
 |                  | cycles / bytes | cycles / bytes | cycles / bytes | Δcc / ΔB       |
 +------------------+----------------+----------------+----------------+----------------+
 | dec_loop         |  228 /  40     |  172 /  28     |  172 /  28     |    0 /   0     |
@@ -287,7 +287,7 @@ Comparison table (worst-case CPU cycles / length in bytes)
 
 Notes
 -----
-- v6llvmc's `dec_loop` is much smaller than c8080's because the loop
+- v6clang's `dec_loop` is much smaller than c8080's because the loop
   body is fully register-resident; c8080 spills `n` and `sum` to a
   static stack across each iteration.
 - `dec_loop` is unchanged by O75 because the C source forces `n` into
@@ -307,7 +307,7 @@ Notes
 
 Implementation summary
 ----------------------
-- 12 new V6CISD nodes (each producing (i8 value, i8 flags)):
+- 12 new V6ClangISD nodes (each producing (i8 value, i8 flags)):
     ADDF, SUBF, ANDF, ORF, XORF,
     ADDF_IMM, SUBF_IMM, ANDF_IMM, ORF_IMM, XORF_IMM,
     INCF, DECF
@@ -316,9 +316,9 @@ Implementation summary
     ADDr / SUBr / ANAr / ORAr / XRAr,
     ADI  / SUI  / ANI  / ORI  / XRI,
     INRr / DCRr,
-    V6C_ADD_M_P / V6C_SUB_M_P / V6C_ANA_M_P / V6C_ORA_M_P / V6C_XRA_M_P,
-    V6C_INR_M_P / V6C_DCR_M_P
-  All emit `[(set i8:$dst, FLAGS, (V6C*f ...))]`.
+    V6CLANG_ADD_M_P / V6CLANG_SUB_M_P / V6CLANG_ANA_M_P / V6CLANG_ORA_M_P / V6CLANG_XRA_M_P,
+    V6CLANG_INR_M_P / V6CLANG_DCR_M_P
+  All emit `[(set i8:$dst, FLAGS, (V6CLANG*f ...))]`.
 
 - LowerArithF: setOperationAction(Custom) on i8 ADD/SUB/AND/OR/XOR.
   Always rewrites to *F variants. Special case: `XOR x, -1` stays as
@@ -326,16 +326,16 @@ Implementation summary
   affect FLAGS, so it intentionally stays out of the *F family).
 
 - LowerBR_CC / LowerSELECT_CC: when LHS.getOpcode() is in
-  [V6CISD::ADDF .. V6CISD::DECF] and the comparison is EQ/NE against
+  [V6ClangISD::ADDF .. V6ClangISD::DECF] and the comparison is EQ/NE against
   zero, consume LHS.getValue(1) directly as FLAGS — no redundant
   CMP / CPI 0.
 
 Files touched
 -------------
-- llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td
-- llvm-project/llvm/lib/Target/V6C/V6CISelLowering.h
-- llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp
-- llvm-project/llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp
-- llvm-project/llvm/test/CodeGen/V6C/o75-flag-arith-fold.ll      (new)
-- llvm-project/llvm/test/CodeGen/V6C/peephole-mvi-zero-to-xra.ll (CHECK loosen)
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp
+- llvm-project/llvm/test/CodeGen/V6CLANG/o75-flag-arith-fold.ll      (new)
+- llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll (CHECK loosen)
 - llvm/  mirror synced via scripts/sync_llvm_mirror.ps1

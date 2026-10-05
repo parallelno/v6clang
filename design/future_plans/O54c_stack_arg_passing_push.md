@@ -6,12 +6,12 @@
 
 ## Problem
 
-When a call has more arguments than the V6C ABI can pass in registers
+When a call has more arguments than the V6CLANG ABI can pass in registers
 (>3 register-eligible values, or i32-tail values), the overflow goes on the
 stack. Today `LowerCall` materialises each stack arg via SP-relative store:
 
 ```asm
-; per i16 stack arg, current code (≈ V6CISelLowering.cpp ~line 1140)
+; per i16 stack arg, current code (≈ V6ClangISelLowering.cpp ~line 1140)
 LXI  H, off       ; 3B 12cc
 DAD  SP           ; 1B 12cc
 MOV  M, lo        ; 1B  7cc
@@ -65,10 +65,10 @@ For i8 args, the pushed high byte is garbage; the callee's matching slot
 
 ## Implementation sketch
 
-In `V6CISelLowering::LowerCall`, replace the overflow-store loop with:
+In `V6ClangISelLowering::LowerCall`, replace the overflow-store loop with:
 
 ```cpp
-// 1. Partition Outs into RegArgs (assigned a physreg by V6CArgAllocator)
+// 1. Partition Outs into RegArgs (assigned a physreg by V6ClangArgAllocator)
 //    and StackArgs (allocator returned NoRegister).
 // 2. For StackArgs, emit pushes in REVERSE order (last stack arg pushed first):
 for (auto It = StackArgs.rbegin(); It != StackArgs.rend(); ++It) {
@@ -77,24 +77,24 @@ for (auto It = StackArgs.rbegin(); It != StackArgs.rend(); ++It) {
 
   if (VT == MVT::i16) {
     // CopyToReg into a fresh GR16 vreg, then PUSH it.
-    Register VReg = MRI.createVirtualRegister(&V6C::GR16AllRegClass);
+    Register VReg = MRI.createVirtualRegister(&V6CLANG::GR16AllRegClass);
     Chain = DAG.getCopyToReg(Chain, DL, VReg, Arg, Glue);
     Glue  = Chain.getValue(1);
-    Chain = DAG.getNode(V6CISD::PUSH, DL, MVT::Other,
+    Chain = DAG.getNode(V6ClangISD::PUSH, DL, MVT::Other,
                         Chain, DAG.getRegister(VReg, MVT::i16), Glue);
   } else {                                  // i8
     // MOV A, Arg; PUSH PSW.
-    Chain = DAG.getCopyToReg(Chain, DL, V6C::A, Arg, Glue);
+    Chain = DAG.getCopyToReg(Chain, DL, V6CLANG::A, Arg, Glue);
     Glue  = Chain.getValue(1);
-    Chain = DAG.getNode(V6CISD::PUSH_PSW, DL, MVT::Other, Chain, Glue);
+    Chain = DAG.getNode(V6ClangISD::PUSH_PSW, DL, MVT::Other, Chain, Glue);
   }
   Glue = Chain.getValue(1);
 }
 // 3. Then the existing register-arg CopyToReg chain runs.
 ```
 
-`V6CISD::PUSH` and `PUSH_PSW` are new SDNodes lowered to the existing
-`V6C::PUSH` MachineInstr. Alternatively a single `V6C_STACK_ARG_PUSH` pseudo
+`V6ClangISD::PUSH` and `PUSH_PSW` are new SDNodes lowered to the existing
+`V6CLANG::PUSH` MachineInstr. Alternatively a single `V6CLANG_STACK_ARG_PUSH` pseudo
 that takes any GR16All / GR8 and gets expanded post-RA, sidestepping the
 GR16All-vreg dance.
 
@@ -106,7 +106,7 @@ pass ≤3 args, so the immediate impact on cycles is modest. Real wins surface
 in:
 
 - C library entry points (`memcpy`, `memmove`, varargs-style helpers).
-- Inter-module calls in larger programs once libv6c-builtins is rebuilt.
+- Inter-module calls in larger programs once libv6clang-builtins is rebuilt.
 - Functions returning structs by value (sret pointer + several scalars).
 
 Code-size win is meaningful even at low frequency: −6B per i16 stack arg.
@@ -114,7 +114,7 @@ Code-size win is meaningful even at low frequency: −6B per i16 stack arg.
 ## Complexity
 
 Medium. ~120 LOC across `LowerCall`, plus a new SDNode + Pat<> for `PUSH`,
-plus the `V6CArgAllocator` interaction (no change needed — the allocator
+plus the `V6ClangArgAllocator` interaction (no change needed — the allocator
 already returns NoRegister for overflow args).
 
 ## Risk

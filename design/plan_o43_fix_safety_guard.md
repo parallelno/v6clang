@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-O43 (`foldShldLhldToPushPop` in `V6CPeephole.cpp`) replaces adjacent
+O43 (`foldShldLhldToPushPop` in `V6ClangPeephole.cpp`) replaces adjacent
 `SHLD addr` / `LHLD addr` pairs with `PUSH HL` / `POP HL` when they
 share the same address and the SP delta between them is zero. However,
 the fold replaces a memory writeback (SHLD) with a hardware stack push.
@@ -27,8 +27,8 @@ the same BB.
 ### Impact
 
 In the `interleaved_add` loop (static stack mode, O16 disabled), O43
-folds the `SHLD __v6c_ss+0` / `LHLD __v6c_ss+0` pair into `PUSH HL` /
-`POP HL`. The `LHLD __v6c_ss+0` at the top of the loop reads a stale
+folds the `SHLD __v6clang_ss+0` / `LHLD __v6clang_ss+0` pair into `PUSH HL` /
+`POP HL`. The `LHLD __v6clang_ss+0` at the top of the loop reads a stale
 pointer — the loop processes `src2[0]` every iteration instead of `src2[i]`.
 
 ---
@@ -54,8 +54,8 @@ found, the fold is safe.
 
 | Step | What | Where |
 |------|------|-------|
-| Add safety helper | `isUncoveredLhldReachable()` | V6CPeephole.cpp |
-| Guard the fold | Call helper before replacing SHLD/LHLD | V6CPeephole.cpp |
+| Add safety helper | `isUncoveredLhldReachable()` | V6ClangPeephole.cpp |
+| Guard the fold | Call helper before replacing SHLD/LHLD | V6ClangPeephole.cpp |
 | Lit test: negative | interleaved_add loop — fold must NOT happen | shld-lhld-push-pop-peephole.ll |
 | Regression | Existing sumarray test unchanged — fold still happens | shld-lhld-push-pop-peephole.ll |
 
@@ -65,7 +65,7 @@ found, the fold is safe.
 
 ### Step 3.1 — Add `isUncoveredLhldReachable` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a static helper before `foldShldLhldToPushPop`:
 
@@ -81,9 +81,9 @@ static bool isUncoveredLhldReachable(
 
   // 1. Scan remainder of current BB after the folded LHLD.
   for (auto I = AfterD, E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() == V6C::SHLD && isSameAddress(Addr, I->getOperand(1)))
+    if (I->getOpcode() == V6CLANG::SHLD && isSameAddress(Addr, I->getOperand(1)))
       return false;  // another SHLD covers all forward paths
-    if (I->getOpcode() == V6C::LHLD && isSameAddress(Addr, I->getOperand(1)))
+    if (I->getOpcode() == V6CLANG::LHLD && isSameAddress(Addr, I->getOperand(1)))
       return true;   // uncovered reader in same BB
   }
 
@@ -103,9 +103,9 @@ static bool isUncoveredLhldReachable(
     auto ScanEnd = IsSelf ? MachineBasicBlock::iterator(ShldC) : Cur->end();
 
     for (auto I = Cur->begin(); I != ScanEnd; ++I) {
-      if (I->getOpcode() == V6C::SHLD && isSameAddress(Addr, I->getOperand(1)))
+      if (I->getOpcode() == V6CLANG::SHLD && isSameAddress(Addr, I->getOperand(1)))
         goto next_bb;  // covered — don't follow successors
-      if (I->getOpcode() == V6C::LHLD && isSameAddress(Addr, I->getOperand(1)))
+      if (I->getOpcode() == V6CLANG::LHLD && isSameAddress(Addr, I->getOperand(1)))
         return true;   // uncovered reader
     }
 
@@ -131,7 +131,7 @@ static bool isUncoveredLhldReachable(
 
 ### Step 3.2 — Guard the fold in `foldShldLhldToPushPop` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Insert the guard immediately before the "Replace SHLD with PUSH HL"
 block, after `if (Abort || !Found) continue;`:
@@ -154,7 +154,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: add negative test case [x]
 
-**File**: `tests/lit/CodeGen/V6C/shld-lhld-push-pop-peephole.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/shld-lhld-push-pop-peephole.ll`
 
 Add a second function to the existing lit test that exercises the bug
 scenario: a loop where LHLD at the top reads a slot that is SHLD+LHLD'd
@@ -168,7 +168,7 @@ The function should be a static-stack leaf function with a loop body that:
 - Loops back
 
 The CHECK lines verify:
-- `SHLD __v6c_ss.func_name` is preserved (NOT replaced by PUSH HL)
+- `SHLD __v6clang_ss.func_name` is preserved (NOT replaced by PUSH HL)
 - The existing sumarray test still shows PUSH/POP (positive case unchanged)
 
 > **Implementation Notes**: Added `interleaved_add` function from real C test IR. CHECK lines verify LHLD→SHLD→LHLD sequence with `{{$}}` anchors to distinguish from +2/+7 slots.
@@ -181,7 +181,7 @@ python tests\run_all.py
 
 Or targeted:
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6C\shld-lhld-push-pop-peephole.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\shld-lhld-push-pop-peephole.ll -v
 ```
 
 > **Implementation Notes**: `shld-lhld-push-pop-peephole.ll` PASS (test #80 of 102).
@@ -202,13 +202,13 @@ All existing tests must pass. Key tests to watch:
 ### Step 3.7 — Verification assembly steps from `tests\features\README.md` [x]
 
 Create test folder `tests/features/29/` with:
-- `v6llvmc.c` — interleaved_add with leaf-attributed functions
+- `v6clang.c` — interleaved_add with leaf-attributed functions
 - `c8080.c` — matching c8080 version
-- Compile baseline: `v6llvmc_old.asm` (before fix)
-- Compile new: `v6llvmc_new01.asm` (after fix)
+- Compile baseline: `v6clang_old.asm` (before fix)
+- Compile new: `v6clang_new01.asm` (after fix)
 - Analyze: verify the SHLD is preserved (not folded to PUSH HL)
 
-> **Implementation Notes**: `v6llvmc_new01.asm` compiled. SHLD at line 51 preserved (was PUSH HL in v6llvmc_old.asm).
+> **Implementation Notes**: `v6clang_new01.asm` compiled. SHLD at line 51 preserved (was PUSH HL in v6clang_old.asm).
 
 ### Step 3.8 — Make sure result.txt is created [x]
 
@@ -236,7 +236,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 Before fix — O43 incorrectly folds:
 ```asm
 .LBB0_2:
-        LHLD    __v6c_ss+0        ; reads stale ptr (PUSH below doesn't update slot)
+        LHLD    __v6clang_ss+0        ; reads stale ptr (PUSH below doesn't update slot)
         ...
         PUSH    HL                ; ← incorrect: was SHLD, slot not updated
         POP     HL                ; ← incorrect: was LHLD, value from HW stack
@@ -247,9 +247,9 @@ Before fix — O43 incorrectly folds:
 After fix — O43 correctly preserves SHLD:
 ```asm
 .LBB0_2:
-        LHLD    __v6c_ss+0        ; reads correct updated ptr
+        LHLD    __v6clang_ss+0        ; reads correct updated ptr
         ...
-        SHLD    __v6c_ss+0        ; ← preserved: slot correctly updated
+        SHLD    __v6clang_ss+0        ; ← preserved: slot correctly updated
         ...                       ; (LHLD eliminated by O16, or kept if O16 disabled)
         JNZ     .LBB0_2
 ```
@@ -305,7 +305,7 @@ No regression.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O43 Design](design\future_plans\O43_shld_lhld_to_push_pop.md)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""O51 A/B measurement: compile every tests/features/*/v6llvmc.c at -O2 with
+"""O51 A/B measurement: compile every tests/features/*/v6clang.c at -O2 with
 three LSR strategy settings, then report per-test asm sizes (proxy for
 in-loop instruction count) and aggregate deltas.
 
@@ -20,12 +20,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 VARIANTS = {
     "auto":  [],
-    "insns": ["-mllvm", "-v6c-lsr-strategy=insns-first"],
-    "regs":  ["-mllvm", "-v6c-lsr-strategy=regs-first"],
+    "insns": ["-mllvm", "-v6clang-lsr-strategy=insns-first"],
+    "regs":  ["-mllvm", "-v6clang-lsr-strategy=regs-first"],
 }
 
 def build(src: Path, dst: Path, extra):
-    cmd = [str(CLANG), "-target", "i8080-unknown-v6c", "-O2", "-S",
+    cmd = [str(CLANG), "-target", "i8080-unknown-v6clang", "-O2", "-S",
            str(src), "-o", str(dst), *extra]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
@@ -37,7 +37,7 @@ def main():
     for d in sorted(TESTS.iterdir()):
         if not d.is_dir():
             continue
-        src = d / "v6llvmc.c"
+        src = d / "v6clang.c"
         if not src.exists():
             continue
         sizes = {}

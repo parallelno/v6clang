@@ -34,7 +34,7 @@ add_lld_library(lldELF
   Arch/RISCV.cpp
   Arch/SPARCV9.cpp
   Arch/SystemZ.cpp
-  Arch/V6C.cpp
+  Arch/V6Clang.cpp
   Arch/X86.cpp
   Arch/X86_64.cpp
   ARMErrataFix.cpp
@@ -59,7 +59,7 @@ add_lld_library(lldELF
   SyntheticSections.cpp
   Target.cpp
   Thunks.cpp
-  V6CPackedSections.cpp
+  V6ClangPackedSections.cpp
   Writer.cpp
 
   LINK_COMPONENTS

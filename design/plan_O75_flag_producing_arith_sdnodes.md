@@ -4,18 +4,18 @@
 
 ### Current behavior
 
-In V6C, only `V6CISD::CMP` and `V6CISD::CMP_ZERO` produce FLAGS, and they
+In V6CLANG, only `V6ClangISD::CMP` and `V6ClangISD::CMP_ZERO` produce FLAGS, and they
 do so via `SDNPOutGlue`. Every flag-setting ALU SDAG node (i8 ADD, SUB,
 AND, OR, XOR; INC/DEC) discards its FLAGS at the SDAG level — its
 TableGen `Pat<>` only matches `[(set i8:$dst, (add i8:$lhs, i8:$rs))]`.
 
-`LowerBR_CC` for i8 unconditionally emits a fresh `V6CISD::CMP` node:
+`LowerBR_CC` for i8 unconditionally emits a fresh `V6ClangISD::CMP` node:
 
 ```cpp
-// V6CISelLowering.cpp — current i8 path
-SDValue Glue = DAG.getNode(V6CISD::CMP, DL, MVT::Glue, LHS, RHS);
-SDValue CCVal = DAG.getConstant(V6CC, DL, MVT::i8);
-return DAG.getNode(V6CISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
+// V6ClangISelLowering.cpp — current i8 path
+SDValue Glue = DAG.getNode(V6ClangISD::CMP, DL, MVT::Glue, LHS, RHS);
+SDValue CCVal = DAG.getConstant(V6ClangC, DL, MVT::i8);
+return DAG.getNode(V6ClangISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
 ```
 
 Even when `LHS` is itself an arithmetic op (`x - 1`, `x & MASK`, …)
@@ -32,7 +32,7 @@ producer (`DCRr`) must funnel through A:
 %8:gr8  = DCRr %1:gr8(tied-def 0), implicit-def dead $flags
 %19:acc = COPY %8:gr8                 ; Acc-class operand of CPI
 CPI %19:acc, 0, implicit-def $flags
-V6C_BRCOND %bb.2, COND_NZ, implicit $flags
+V6CLANG_BRCOND %bb.2, COND_NZ, implicit $flags
 ```
 
 After regalloc that becomes:
@@ -76,7 +76,7 @@ JZ   .lab        ; 12cc
 
 Two coupled root causes:
 
-1. **FLAGS travel only via `MVT::Glue`** in the V6C SDAG. Glue is a
+1. **FLAGS travel only via `MVT::Glue`** in the V6CLANG SDAG. Glue is a
    non-SSA edge: a node with `SDNPOutGlue` cannot have its value safely
    replaced (`ReplaceAllUsesOfValueWith`) when it has multiple uses,
    because the glue chain participates in the replacement and the
@@ -86,7 +86,7 @@ Two coupled root causes:
    (4294967296)` whenever multi-use RAUW was attempted on a glue-bearing
    node — see repo memory.
 
-2. **Only `V6CISD::CMP` exposes a flag SDAG output.** Every other
+2. **Only `V6ClangISD::CMP` exposes a flag SDAG output.** Every other
    flag-setting ALU node (`add i8`, `sub i8`, `and i8`, `or i8`, `xor i8`,
    plus INX/DEC immediates) is matched from a plain `[(set i8:$dst, …)]`
    pattern that throws the FLAGS away at the SDAG level. There is
@@ -113,8 +113,8 @@ is the canonical reference:
 
 The user's hint at the top of `O75_flag_producing_arith_sdnodes.md`
 ("X86-style: `setOperationAction(ISD::ADD/SUB/AND/OR/XOR, MVT::i8,
-Custom)` + always-lower to `V6CISD::*F`") is the right architecture.
-This plan ports that architecture to V6C.
+Custom)` + always-lower to `V6ClangISD::*F`") is the right architecture.
+This plan ports that architecture to V6CLANG.
 
 ---
 
@@ -125,24 +125,24 @@ This plan ports that architecture to V6C.
 Two structural changes, in order:
 
 **Phase A — FLAGS as an SSA-i8 value (replaces glue).**
-* `V6CISD::CMP` and `V6CISD::CMP_ZERO` are redefined to return a single
+* `V6ClangISD::CMP` and `V6ClangISD::CMP_ZERO` are redefined to return a single
   i8 result (FLAGS), not glue.
-* `V6CISD::BRCOND` and `V6CISD::SELECT_CC` are redefined to take FLAGS
+* `V6ClangISD::BRCOND` and `V6ClangISD::SELECT_CC` are redefined to take FLAGS
   as a regular i8 operand (last operand), not glue.
 * TableGen patterns reference the physical `FLAGS` register: e.g.
-  `[(set FLAGS, (V6Ccmp i8:$lhs, i8:$rs))]` for `CMPr`, and
-  `[(V6Cbrcond bb:$dst, (i8 imm:$cc), FLAGS)]` for `BRCOND`.
+  `[(set FLAGS, (V6Clangcmp i8:$lhs, i8:$rs))]` for `CMPr`, and
+  `[(V6Clangbrcond bb:$dst, (i8 imm:$cc), FLAGS)]` for `BRCOND`.
 * This phase is **regression-only** — the same code is generated, but
   the wire format for FLAGS becomes SSA-typed. It unblocks safe RAUW.
 
-**Phase B — Flag-producing arith nodes (`V6CISD::*F`).**
+**Phase B — Flag-producing arith nodes (`V6ClangISD::*F`).**
 * New SDNodes: `ADDF`, `SUBF`, `ANDF`, `ORF`, `XORF` (register form);
   `ADDF_IMM`, `SUBF_IMM`, `ANDF_IMM`, `ORF_IMM`, `XORF_IMM` (immediate);
   `INCF`, `DECF` (constant ±1, maps to `INR`/`DCR`). Each returns
   `(i8 value, i8 flags)`.
 * TableGen `Pat<>`s for each *F node target the same machine instruction
   that the plain-ISD pattern targets, but with both outputs:
-  `[(set GR8:$dst, FLAGS, (V6CADDF GR8:$lhs, GR8:$rs))]`.
+  `[(set GR8:$dst, FLAGS, (V6ClangADDF GR8:$lhs, GR8:$rs))]`.
 * `setOperationAction(ISD::ADD/SUB/AND/OR/XOR, MVT::i8, Custom)`. The
   custom-lowering hook always rewrites these into the corresponding
   *F node, choosing register vs immediate vs INC/DEC variant. The flags
@@ -150,10 +150,10 @@ Two structural changes, in order:
   safe because we are *creating* the new node, not RAUW-ing.
 * `LowerBR_CC` / `LowerSELECT_CC`, when comparing an i8 value to zero
   with EQ/NE, look at LHS:
-  * If LHS is a `V6CISD::*F` node, use `LHS.getValue(1)` (FLAGS) as the
+  * If LHS is a `V6ClangISD::*F` node, use `LHS.getValue(1)` (FLAGS) as the
     BRCOND/SELECT_CC operand directly. **No CMP emitted.**
-  * Otherwise, fall back to the existing path (emit `V6CISD::CMP_ZERO`
-    or `V6CISD::CMP rhs=0`).
+  * Otherwise, fall back to the existing path (emit `V6ClangISD::CMP_ZERO`
+    or `V6ClangISD::CMP rhs=0`).
 
 ### Why this works (and why the prior attempt failed)
 
@@ -170,9 +170,9 @@ Two structural changes, in order:
 
 ### What this plan explicitly does NOT do
 
-* Does not touch i16 paths. i16 BR_CC continues through `V6C_BR_CC16`
-  / `V6C_BR_CC16_IMM` (already non-glue at the pseudo level) and
-  through `V6CISD::CMP_ZERO` for i16 zero tests. Phase A's CMP_ZERO
+* Does not touch i16 paths. i16 BR_CC continues through `V6CLANG_BR_CC16`
+  / `V6CLANG_BR_CC16_IMM` (already non-glue at the pseudo level) and
+  through `V6ClangISD::CMP_ZERO` for i16 zero tests. Phase A's CMP_ZERO
   rewrite still applies (i16 CMP_ZERO returns SSA-i8 FLAGS) but no
   new i16 *F nodes are introduced.
 * Does not touch ADC/SBB. ADC/SBB *use* FLAGS (CY) as well as define
@@ -186,14 +186,14 @@ Two structural changes, in order:
 
 | What | Where | Phase |
 |------|-------|-------|
-| FLAGS as i8 SSA in CMP/BRCOND/SELECT_CC SDNodes | `V6CISelLowering.h`, `V6CInstrInfo.td` | A |
-| `LowerBR_CC` / `LowerSELECT_CC` — pass FLAGS as operand | `V6CISelLowering.cpp` | A |
-| TableGen patterns for `CMPr`/`CPI`/`BRCOND` use `FLAGS` reg | `V6CInstrInfo.td` | A |
-| Add 12 `V6CISD::*F` enum + name-printer entries | `V6CISelLowering.h`/`.cpp` | B |
-| Add SDTypeProfiles + SDNodes + Pat<>s for *F | `V6CInstrInfo.td` | B |
-| `setOperationAction(Custom)` on i8 ADD/SUB/AND/OR/XOR | `V6CISelLowering.cpp` ctor | B |
-| `LowerArithF` helper + LowerOperation dispatch | `V6CISelLowering.cpp` | B |
-| `LowerBR_CC`/`LowerSELECT_CC` — short-circuit when LHS is *F | `V6CISelLowering.cpp` | B |
+| FLAGS as i8 SSA in CMP/BRCOND/SELECT_CC SDNodes | `V6ClangISelLowering.h`, `V6ClangInstrInfo.td` | A |
+| `LowerBR_CC` / `LowerSELECT_CC` — pass FLAGS as operand | `V6ClangISelLowering.cpp` | A |
+| TableGen patterns for `CMPr`/`CPI`/`BRCOND` use `FLAGS` reg | `V6ClangInstrInfo.td` | A |
+| Add 12 `V6ClangISD::*F` enum + name-printer entries | `V6ClangISelLowering.h`/`.cpp` | B |
+| Add SDTypeProfiles + SDNodes + Pat<>s for *F | `V6ClangInstrInfo.td` | B |
+| `setOperationAction(Custom)` on i8 ADD/SUB/AND/OR/XOR | `V6ClangISelLowering.cpp` ctor | B |
+| `LowerArithF` helper + LowerOperation dispatch | `V6ClangISelLowering.cpp` | B |
+| `LowerBR_CC`/`LowerSELECT_CC` — short-circuit when LHS is *F | `V6ClangISelLowering.cpp` | B |
 
 ---
 
@@ -201,39 +201,39 @@ Two structural changes, in order:
 
 ### Step 3.1 — Phase A: Define FLAGS-as-SSA-i8 SDNode profiles [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
 Replace the glue-based definitions. New shape (paralleling X86):
 
 ```tablegen
 // FLAGS is a single i8-typed SSA value bound to the FLAGS physreg in patterns.
 
-// V6Ccmp:        (i8 flags) = cmp(i8 lhs, i8 rhs)
-def SDT_V6CCmp     : SDTypeProfile<1, 2, [SDTCisVT<0, i8>,
+// V6Clangcmp:        (i8 flags) = cmp(i8 lhs, i8 rhs)
+def SDT_V6ClangCmp     : SDTypeProfile<1, 2, [SDTCisVT<0, i8>,
                                           SDTCisSameAs<1, 2>,
                                           SDTCisVT<1, i8>]>;
-def V6Ccmp     : SDNode<"V6CISD::CMP",      SDT_V6CCmp, []>;
+def V6Clangcmp     : SDNode<"V6ClangISD::CMP",      SDT_V6ClangCmp, []>;
 
-// V6Ccmpzero:    (i8 flags) = cmpzero(i16 val)
-def SDT_V6CCmpZero : SDTypeProfile<1, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i16>]>;
-def V6Ccmpzero : SDNode<"V6CISD::CMP_ZERO", SDT_V6CCmpZero, []>;
+// V6Clangcmpzero:    (i8 flags) = cmpzero(i16 val)
+def SDT_V6ClangCmpZero : SDTypeProfile<1, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i16>]>;
+def V6Clangcmpzero : SDNode<"V6ClangISD::CMP_ZERO", SDT_V6ClangCmpZero, []>;
 
-// V6Cbrcond:     brcond(chain, dst, cc, i8 flags)
-def SDT_V6CBrCond  : SDTypeProfile<0, 3, [SDTCisVT<0, OtherVT>,
+// V6Clangbrcond:     brcond(chain, dst, cc, i8 flags)
+def SDT_V6ClangBrCond  : SDTypeProfile<0, 3, [SDTCisVT<0, OtherVT>,
                                           SDTCisVT<1, i8>,    // CC immediate
                                           SDTCisVT<2, i8>]>;  // FLAGS
-def V6Cbrcond  : SDNode<"V6CISD::BRCOND",   SDT_V6CBrCond, [SDNPHasChain]>;
+def V6Clangbrcond  : SDNode<"V6ClangISD::BRCOND",   SDT_V6ClangBrCond, [SDNPHasChain]>;
 
-// V6Cselectcc:   (T) = selectcc(T true, T false, cc, i8 flags)
-def SDT_V6CSelectCC : SDTypeProfile<1, 4, [SDTCisSameAs<0, 1>,
+// V6Clangselectcc:   (T) = selectcc(T true, T false, cc, i8 flags)
+def SDT_V6ClangSelectCC : SDTypeProfile<1, 4, [SDTCisSameAs<0, 1>,
                                            SDTCisSameAs<0, 2>,
                                            SDTCisVT<3, i8>,    // CC
                                            SDTCisVT<4, i8>]>;  // FLAGS
-def V6Cselectcc : SDNode<"V6CISD::SELECT_CC", SDT_V6CSelectCC, []>;
+def V6Clangselectcc : SDNode<"V6ClangISD::SELECT_CC", SDT_V6ClangSelectCC, []>;
 ```
 
 > **Design Note**: i8 is the FLAGS-as-SSA marker type. It's only ever
-> produced by V6CISD::CMP/CMP_ZERO/*F and only consumed by BRCOND /
+> produced by V6ClangISD::CMP/CMP_ZERO/*F and only consumed by BRCOND /
 > SELECT_CC. No risk of mixing with ordinary i8 values because no
 > generic ISD op produces a "FLAGS" SDValue.
 
@@ -241,51 +241,51 @@ def V6Cselectcc : SDNode<"V6CISD::SELECT_CC", SDT_V6CSelectCC, []>;
 
 ### Step 3.2 — Phase A: Update CMP/BRCOND TableGen patterns to use `FLAGS` [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-Convert `CMPr`/`CMPM`/`CPI` patterns to `[(set FLAGS, (V6Ccmp …))]`,
+Convert `CMPr`/`CMPM`/`CPI` patterns to `[(set FLAGS, (V6Clangcmp …))]`,
 where `FLAGS` refers to the physical register `def FLAGS` already in
-`V6CRegisterInfo.td`. `Defs = [FLAGS]` lets are dropped from the
+`V6ClangRegisterInfo.td`. `Defs = [FLAGS]` lets are dropped from the
 instructions whose `Pat<>` now sets FLAGS explicitly (TableGen derives
 the def from the pattern).
 
-Convert `V6C_BRCOND` pseudo:
+Convert `V6CLANG_BRCOND` pseudo:
 ```tablegen
 // Before
 let isBranch=1, isTerminator=1, Uses=[FLAGS] in
-def V6C_BRCOND : V6CPseudo<(outs), (ins brtarget:$dst, i8imm:$cc), …,
-    [(V6Cbrcond bb:$dst, (i8 imm:$cc))]>;
+def V6CLANG_BRCOND : V6ClangPseudo<(outs), (ins brtarget:$dst, i8imm:$cc), …,
+    [(V6Clangbrcond bb:$dst, (i8 imm:$cc))]>;
 
 // After
 let isBranch=1, isTerminator=1, Uses=[FLAGS] in
-def V6C_BRCOND : V6CPseudo<(outs), (ins brtarget:$dst, i8imm:$cc), …,
-    [(V6Cbrcond bb:$dst, (i8 imm:$cc), FLAGS)]>;
+def V6CLANG_BRCOND : V6ClangPseudo<(outs), (ins brtarget:$dst, i8imm:$cc), …,
+    [(V6Clangbrcond bb:$dst, (i8 imm:$cc), FLAGS)]>;
 ```
 
-Same for `V6C_SELECT_CC` (the FLAGS operand is appended).
+Same for `V6CLANG_SELECT_CC` (the FLAGS operand is appended).
 
 > **Implementation Notes**:
 
 ### Step 3.3 — Phase A: Update LowerBR_CC / LowerSELECT_CC for SSA FLAGS [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 Replace:
 ```cpp
-SDValue Glue = DAG.getNode(V6CISD::CMP, DL, MVT::Glue, LHS, RHS);
-return DAG.getNode(V6CISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
+SDValue Glue = DAG.getNode(V6ClangISD::CMP, DL, MVT::Glue, LHS, RHS);
+return DAG.getNode(V6ClangISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
 ```
 with:
 ```cpp
-SDValue Flags = DAG.getNode(V6CISD::CMP, DL, MVT::i8, LHS, RHS);
-return DAG.getNode(V6CISD::BRCOND, DL, MVT::Other,
+SDValue Flags = DAG.getNode(V6ClangISD::CMP, DL, MVT::i8, LHS, RHS);
+return DAG.getNode(V6ClangISD::BRCOND, DL, MVT::Other,
                    {Chain, Dest, CCVal, Flags});
 ```
 
 Same shape for `CMP_ZERO` (i16 zero test):
 ```cpp
-SDValue Flags = DAG.getNode(V6CISD::CMP_ZERO, DL, MVT::i8, LHS);
-return DAG.getNode(V6CISD::SELECT_CC, DL, VTs,
+SDValue Flags = DAG.getNode(V6ClangISD::CMP_ZERO, DL, MVT::i8, LHS);
+return DAG.getNode(V6ClangISD::SELECT_CC, DL, VTs,
                    {TrueVal, FalseVal, CCVal, Flags});
 ```
 
@@ -305,16 +305,16 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.5 — Lit: re-run all CodeGen tests after Phase A [ ]
 
 ```
-python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6C\
+python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6CLANG\
 ```
 
 Expectation: **0 regressions**. Phase A is structurally equivalent.
 
 > **Implementation Notes**:
 
-### Step 3.6 — Phase B: Add `V6CISD::*F` enum entries + name printer [ ]
+### Step 3.6 — Phase B: Add `V6ClangISD::*F` enum entries + name printer [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CISelLowering.h`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
 
 Add to `enum NodeType`:
 ```cpp
@@ -323,39 +323,39 @@ ADDF_IMM, SUBF_IMM, ANDF_IMM, ORF_IMM, XORF_IMM,
 INCF, DECF,
 ```
 
-**File**: `V6CISelLowering.cpp` `getTargetNodeName` — add 12 cases.
+**File**: `V6ClangISelLowering.cpp` `getTargetNodeName` — add 12 cases.
 
 > **Implementation Notes**:
 
 ### Step 3.7 — Phase B: SDTypeProfiles + SDNodes + Pat<>s for *F [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
 ```tablegen
 // (i8 dst, i8 flags) = OP_F(i8 lhs, i8 rs)
-def SDT_V6CArithF    : SDTypeProfile<2, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
+def SDT_V6ClangArithF    : SDTypeProfile<2, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
                                             SDTCisVT<2, i8>, SDTCisVT<3, i8>]>;
 // (i8 dst, i8 flags) = OP_F_IMM(i8 lhs, i8imm)
-def SDT_V6CArithFImm : SDTypeProfile<2, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
+def SDT_V6ClangArithFImm : SDTypeProfile<2, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
                                             SDTCisVT<2, i8>, SDTCisVT<3, i8>]>;
 // (i8 dst, i8 flags) = INCF/DECF(i8 src)
-def SDT_V6CIncDecF   : SDTypeProfile<2, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
+def SDT_V6ClangIncDecF   : SDTypeProfile<2, 1, [SDTCisVT<0, i8>, SDTCisVT<1, i8>,
                                             SDTCisVT<2, i8>]>;
 
-def V6Caddf : SDNode<"V6CISD::ADDF", SDT_V6CArithF, [SDNPCommutative]>;
-def V6Csubf : SDNode<"V6CISD::SUBF", SDT_V6CArithF, []>;
-def V6Candf : SDNode<"V6CISD::ANDF", SDT_V6CArithF, [SDNPCommutative]>;
-def V6Corf  : SDNode<"V6CISD::ORF",  SDT_V6CArithF, [SDNPCommutative]>;
-def V6Cxorf : SDNode<"V6CISD::XORF", SDT_V6CArithF, [SDNPCommutative]>;
+def V6Clangaddf : SDNode<"V6ClangISD::ADDF", SDT_V6ClangArithF, [SDNPCommutative]>;
+def V6Clangsubf : SDNode<"V6ClangISD::SUBF", SDT_V6ClangArithF, []>;
+def V6Clangandf : SDNode<"V6ClangISD::ANDF", SDT_V6ClangArithF, [SDNPCommutative]>;
+def V6Clangorf  : SDNode<"V6ClangISD::ORF",  SDT_V6ClangArithF, [SDNPCommutative]>;
+def V6Clangxorf : SDNode<"V6ClangISD::XORF", SDT_V6ClangArithF, [SDNPCommutative]>;
 
-def V6Caddf_imm : SDNode<"V6CISD::ADDF_IMM", SDT_V6CArithFImm, []>;
-def V6Csubf_imm : SDNode<"V6CISD::SUBF_IMM", SDT_V6CArithFImm, []>;
-def V6Candf_imm : SDNode<"V6CISD::ANDF_IMM", SDT_V6CArithFImm, []>;
-def V6Corf_imm  : SDNode<"V6CISD::ORF_IMM",  SDT_V6CArithFImm, []>;
-def V6Cxorf_imm : SDNode<"V6CISD::XORF_IMM", SDT_V6CArithFImm, []>;
+def V6Clangaddf_imm : SDNode<"V6ClangISD::ADDF_IMM", SDT_V6ClangArithFImm, []>;
+def V6Clangsubf_imm : SDNode<"V6ClangISD::SUBF_IMM", SDT_V6ClangArithFImm, []>;
+def V6Clangandf_imm : SDNode<"V6ClangISD::ANDF_IMM", SDT_V6ClangArithFImm, []>;
+def V6Clangorf_imm  : SDNode<"V6ClangISD::ORF_IMM",  SDT_V6ClangArithFImm, []>;
+def V6Clangxorf_imm : SDNode<"V6ClangISD::XORF_IMM", SDT_V6ClangArithFImm, []>;
 
-def V6Cincf : SDNode<"V6CISD::INCF", SDT_V6CIncDecF, []>;
-def V6Cdecf : SDNode<"V6CISD::DECF", SDT_V6CIncDecF, []>;
+def V6Clangincf : SDNode<"V6ClangISD::INCF", SDT_V6ClangIncDecF, []>;
+def V6Clangdecf : SDNode<"V6ClangISD::DECF", SDT_V6ClangIncDecF, []>;
 ```
 
 Patterns piggyback on existing instructions (`ADDr`, `ADI`, `INRr`,
@@ -367,12 +367,12 @@ follow-up cleanup. Keep them initially to minimize blast radius.
 
 ```tablegen
 // Examples (analogous patterns for SUBF/ANDF/ORF/XORF/etc.):
-def : Pat<(V6Caddf i8:$lhs, i8:$rs),
+def : Pat<(V6Clangaddf i8:$lhs, i8:$rs),
           (ADDr i8:$lhs, i8:$rs)>;          // implicit set FLAGS via Defs
-def : Pat<(V6Caddf_imm i8:$lhs, (i8 imm:$imm)),
+def : Pat<(V6Clangaddf_imm i8:$lhs, (i8 imm:$imm)),
           (ADI i8:$lhs, imm:$imm)>;
-def : Pat<(V6Cincf i8:$src), (INRr i8:$src)>;
-def : Pat<(V6Cdecf i8:$src), (DCRr i8:$src)>;
+def : Pat<(V6Clangincf i8:$src), (INRr i8:$src)>;
+def : Pat<(V6Clangdecf i8:$src), (DCRr i8:$src)>;
 ```
 
 > **Design Note**: TableGen accepts patterns with multi-result SDNodes
@@ -387,13 +387,13 @@ def : Pat<(V6Cdecf i8:$src), (DCRr i8:$src)>;
 
 ### Step 3.8 — Phase B: setOperationAction(Custom) + LowerArithF [ ]
 
-**File**: `V6CISelLowering.cpp` constructor:
+**File**: `V6ClangISelLowering.cpp` constructor:
 ```cpp
 for (unsigned Op : {ISD::ADD, ISD::SUB, ISD::AND, ISD::OR, ISD::XOR})
   setOperationAction(Op, MVT::i8, Custom);
 ```
 
-**File**: `V6CISelLowering.cpp` `LowerOperation` dispatch — new arms:
+**File**: `V6ClangISelLowering.cpp` `LowerOperation` dispatch — new arms:
 ```cpp
 case ISD::ADD: case ISD::SUB:
 case ISD::AND: case ISD::OR: case ISD::XOR:
@@ -402,7 +402,7 @@ case ISD::AND: case ISD::OR: case ISD::XOR:
 
 Implementation of `LowerArithF`:
 ```cpp
-SDValue V6CTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
+SDValue V6ClangTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
   assert(Op.getValueType() == MVT::i8);
   SDLoc DL(Op);
   SDValue LHS = Op.getOperand(0), RHS = Op.getOperand(1);
@@ -412,16 +412,16 @@ SDValue V6CTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
   if (ISDOpc == ISD::ADD) {
     if (auto *C = dyn_cast<ConstantSDNode>(RHS)) {
       int64_t V = C->getSExtValue();
-      if (V == 1)  return DAG.getNode(V6CISD::INCF, DL,
+      if (V == 1)  return DAG.getNode(V6ClangISD::INCF, DL,
                        DAG.getVTList(MVT::i8, MVT::i8), LHS).getValue(0);
-      if (V == -1) return DAG.getNode(V6CISD::DECF, DL,
+      if (V == -1) return DAG.getNode(V6ClangISD::DECF, DL,
                        DAG.getVTList(MVT::i8, MVT::i8), LHS).getValue(0);
     }
     if (auto *C = dyn_cast<ConstantSDNode>(LHS)) {
       int64_t V = C->getSExtValue();
-      if (V == 1)  return DAG.getNode(V6CISD::INCF, DL,
+      if (V == 1)  return DAG.getNode(V6ClangISD::INCF, DL,
                        DAG.getVTList(MVT::i8, MVT::i8), RHS).getValue(0);
-      if (V == -1) return DAG.getNode(V6CISD::DECF, DL,
+      if (V == -1) return DAG.getNode(V6ClangISD::DECF, DL,
                        DAG.getVTList(MVT::i8, MVT::i8), RHS).getValue(0);
     }
   }
@@ -431,11 +431,11 @@ SDValue V6CTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
     SDValue Imm = DAG.getTargetConstant(C->getZExtValue() & 0xFF, DL, MVT::i8);
     unsigned Opc;
     switch (ISDOpc) {
-    case ISD::ADD: Opc = V6CISD::ADDF_IMM; break;
-    case ISD::SUB: Opc = V6CISD::SUBF_IMM; break;
-    case ISD::AND: Opc = V6CISD::ANDF_IMM; break;
-    case ISD::OR:  Opc = V6CISD::ORF_IMM;  break;
-    case ISD::XOR: Opc = V6CISD::XORF_IMM; break;
+    case ISD::ADD: Opc = V6ClangISD::ADDF_IMM; break;
+    case ISD::SUB: Opc = V6ClangISD::SUBF_IMM; break;
+    case ISD::AND: Opc = V6ClangISD::ANDF_IMM; break;
+    case ISD::OR:  Opc = V6ClangISD::ORF_IMM;  break;
+    case ISD::XOR: Opc = V6ClangISD::XORF_IMM; break;
     default: llvm_unreachable("unexpected op");
     }
     return DAG.getNode(Opc, DL, DAG.getVTList(MVT::i8, MVT::i8),
@@ -445,11 +445,11 @@ SDValue V6CTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
   // Register form (canonicalize commutatively if LHS is the constant)
   unsigned Opc;
   switch (ISDOpc) {
-  case ISD::ADD: Opc = V6CISD::ADDF; break;
-  case ISD::SUB: Opc = V6CISD::SUBF; break;
-  case ISD::AND: Opc = V6CISD::ANDF; break;
-  case ISD::OR:  Opc = V6CISD::ORF;  break;
-  case ISD::XOR: Opc = V6CISD::XORF; break;
+  case ISD::ADD: Opc = V6ClangISD::ADDF; break;
+  case ISD::SUB: Opc = V6ClangISD::SUBF; break;
+  case ISD::AND: Opc = V6ClangISD::ANDF; break;
+  case ISD::OR:  Opc = V6ClangISD::ORF;  break;
+  case ISD::XOR: Opc = V6ClangISD::XORF; break;
   default: llvm_unreachable("unexpected op");
   }
   return DAG.getNode(Opc, DL, DAG.getVTList(MVT::i8, MVT::i8),
@@ -467,20 +467,20 @@ SDValue V6CTargetLowering::LowerArithF(SDValue Op, SelectionDAG &DAG) const {
 
 ### Step 3.9 — Phase B: short-circuit *F flags in LowerBR_CC [ ]
 
-**File**: `V6CISelLowering.cpp` — i8 path of `LowerBR_CC` and
+**File**: `V6ClangISelLowering.cpp` — i8 path of `LowerBR_CC` and
 `LowerSELECT_CC`, when CC is EQ/NE and RHS is `0`:
 
 ```cpp
 auto isFlagArith = [](unsigned Opc) {
-  return Opc >= V6CISD::ADDF && Opc <= V6CISD::DECF; // contiguous range
+  return Opc >= V6ClangISD::ADDF && Opc <= V6ClangISD::DECF; // contiguous range
 };
 
 if (LHS.getValueType() == MVT::i8 && isNullConstant(RHS) &&
-    (V6CC == V6CCC::COND_Z || V6CC == V6CCC::COND_NZ) &&
+    (V6ClangC == V6ClangCC::COND_Z || V6ClangC == V6ClangCC::COND_NZ) &&
     isFlagArith(LHS.getOpcode())) {
   SDValue Flags = LHS.getValue(1);
-  SDValue CCVal = DAG.getConstant(V6CC, DL, MVT::i8);
-  return DAG.getNode(V6CISD::BRCOND, DL, MVT::Other,
+  SDValue CCVal = DAG.getConstant(V6ClangC, DL, MVT::i8);
+  return DAG.getNode(V6ClangISD::BRCOND, DL, MVT::Other,
                      {Chain, Dest, CCVal, Flags});
 }
 ```
@@ -501,7 +501,7 @@ Same shape for `LowerSELECT_CC`.
 
 ### Step 3.11 — Lit test: `o75-flag-arith-fold.ll` [ ]
 
-New lit test under `llvm-project/llvm/test/CodeGen/V6C/`:
+New lit test under `llvm-project/llvm/test/CodeGen/V6CLANG/`:
 
 * `dec_loop`: `while (--c)` — expect `DCR C; JNZ` only, no `MOV A,C` /
   `MOV C,A` / `CPI 0`.
@@ -511,7 +511,7 @@ New lit test under `llvm-project/llvm/test/CodeGen/V6C/`:
 * `sub_test`: `(x - 5) != 0` — expect `SUI 5; JNZ`, no CPI.
 * `multi_use`: counter that is both decremented and used afterwards —
   must still fold the BRCOND, must still produce a correct value.
-* `disabled`: a flag like `-v6c-disable-flag-arith-fold` toggles the
+* `disabled`: a flag like `-v6clang-disable-flag-arith-fold` toggles the
   short-circuit (re-emits CPI 0) — for A/B comparison in regression.
 
 > **Implementation Notes**:
@@ -529,7 +529,7 @@ benchmarks (bsort/sieve/fib_crc) unchanged.
 
 ### Step 3.13 — Verification assembly steps from `tests\features\README.md` [ ]
 
-* Compile `tests/features/57/v6llvmc.c` to `v6llvmc_new01.asm`.
+* Compile `tests/features/57/v6clang.c` to `v6clang_new01.asm`.
 * Confirm the assembly shows the targeted shape: counter loops use
   `DCR R; JNZ` (no `MOV A,R / DCR A / MOV R,A / CPI 0`); mask tests
   use `ANA R / JZ` (no trailing `CPI 0`).
@@ -541,9 +541,9 @@ benchmarks (bsort/sieve/fib_crc) unchanged.
 
 ### Step 3.14 — Make sure result.txt is created [ ]
 
-Per `tests\features\README.md` — include c8080 reference, v6llvmc old
-asm (`tests/features/57/v6llvmc.asm`), v6llvmc new asm
-(`tests/features/57/v6llvmc_new01.asm` or last numbered), and the
+Per `tests\features\README.md` — include c8080 reference, v6clang old
+asm (`tests/features/57/v6clang.asm`), v6clang new asm
+(`tests/features/57/v6clang_new01.asm` or last numbered), and the
 comparison table.
 
 > **Implementation Notes**:
@@ -594,7 +594,7 @@ while (--n) { sum += n; }
 
 ### Indirect win: spill behavior in `bsort` inner loop
 
-The current `tests/features/43/v6llvmc_bsort_spillfrwd.asm` artifact
+The current `tests/features/43/v6clang_bsort_spillfrwd.asm` artifact
 (see TODO.md attached) shows A getting clobbered around a `LDAX BC` in
 a loop hot path because the surrounding code expects A to be free.
 Removing the Acc-pin from the loop counter / mask test in the same
@@ -609,10 +609,10 @@ which O61's patched-reload path can then exploit.
 |------|------------|
 | Phase A breaks all i8 BR_CC lit tests at once | Phase A is committed before Phase B; Step 3.5 must pass clean before proceeding. |
 | TableGen rejects a Pat<> that sets a 2-result SDNode but only the value-half is bound | Pattern style verified in X86 (`X86add_flag` → `ADD8rr`); use the same style: omit `FLAGS` from the Pat output, rely on `Defs=[FLAGS]` on the instruction. |
-| FLAGS-as-i8 SSA value is observed by a generic ISD pass that mistakes it for an ordinary i8 | i8 FLAGS is only produced and consumed by V6CISD nodes; no generic ISD op produces or consumes a FLAGS SDValue. Risk is theoretical. Mitigation: lit `verify-machineinstrs` runs in `tests/run_all.py`. |
-| `LowerArithF` with `setOperationAction(Custom)` causes infinite recursion if the new V6CISD::*F node is itself triggered | LowerOperation is dispatched from ISD opcodes only; V6CISD::*F is a target opcode, not an ISD op, so it skips LowerOperation. Verified pattern in X86. |
-| The 12-node enum range used by `isFlagArith` in Step 3.9 is non-contiguous if someone inserts a non-*F node between them | Group the 12 *F enum entries together in `V6CISD::NodeType` and add `static_assert`s that the range is contiguous, or replace the range check with an explicit switch. |
-| ADC/SBB inadvertently get matched to `V6Caddf` because `add+carry` lowers to the same SDAG shape | ADC/SBB are not lowered by this plan; ISD::ADDC/ADDE/SUBC/SUBE remain Expand or are matched by their own code paths. `setOperationAction(Custom)` only triggers for the 5 listed opcodes. |
+| FLAGS-as-i8 SSA value is observed by a generic ISD pass that mistakes it for an ordinary i8 | i8 FLAGS is only produced and consumed by V6ClangISD nodes; no generic ISD op produces or consumes a FLAGS SDValue. Risk is theoretical. Mitigation: lit `verify-machineinstrs` runs in `tests/run_all.py`. |
+| `LowerArithF` with `setOperationAction(Custom)` causes infinite recursion if the new V6ClangISD::*F node is itself triggered | LowerOperation is dispatched from ISD opcodes only; V6ClangISD::*F is a target opcode, not an ISD op, so it skips LowerOperation. Verified pattern in X86. |
+| The 12-node enum range used by `isFlagArith` in Step 3.9 is non-contiguous if someone inserts a non-*F node between them | Group the 12 *F enum entries together in `V6ClangISD::NodeType` and add `static_assert`s that the range is contiguous, or replace the range check with an explicit switch. |
+| ADC/SBB inadvertently get matched to `V6Clangaddf` because `add+carry` lowers to the same SDAG shape | ADC/SBB are not lowered by this plan; ISD::ADDC/ADDE/SUBC/SUBE remain Expand or are matched by their own code paths. `setOperationAction(Custom)` only triggers for the 5 listed opcodes. |
 | Phase A regresses `tests/features/13` (branch threading) or other branch-heavy tests because BRCOND gets a new operand position | Lit tests need updating along with the SDNode profile change; Step 3.5 expects this and the lit edits are part of Step 3.2. |
 
 ---
@@ -642,7 +642,7 @@ which O61's patched-reload path can then exploit.
   `SDTBinaryArithWithFlagsInOut`. Lets us fuse multi-byte adds with
   carry chains expressed in IR. Out of scope here.
 * **Cleanup of legacy `[(set i8:$dst, (add i8:$lhs, i8:$rs))]` patterns**
-  in `V6CInstrInfo.td` once Phase B is stable — they become
+  in `V6ClangInstrInfo.td` once Phase B is stable — they become
   unreachable for i8.
 
 ---
@@ -650,7 +650,7 @@ which O61's patched-reload path can then exploit.
 ## 8. References
 
 * [O75 design](design/future_plans/O75_flag_producing_arith_sdnodes.md)
-* [V6C Build Guide](docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](design/future_plans/README.md)
 * [Plan format reference: cmp_based_comparison](design/plan_cmp_based_comparison.md)

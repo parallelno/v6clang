@@ -110,11 +110,11 @@ Total per iteration: 420cc, 53B loop + 7B __o_sub_16
 sumarray function: 9B prologue + 53B loop + 4B epilogue = 66B (+7B sub)
 sumarray cycles: 52 + 200×420 + 100 + 32 = 84,184cc
 
---- v6llvmc ASM (sumarray with O43) ---
+--- v6clang ASM (sumarray with O43) ---
 
 sumarray:
     LXI  HL, arr2             ; 12cc 3B
-    SHLD __v6c_ss.sumarray    ; 20cc 3B  store arr2_ptr
+    SHLD __v6clang_ss.sumarray    ; 20cc 3B  store arr2_ptr
     LXI  HL, arr1             ; 12cc 3B
     LXI  DE, 0                ; 12cc 3B  sum = 0
 .LBB0_1:
@@ -127,7 +127,7 @@ sumarray:
     XCHG                      ;  4cc 1B
     DAD  BC                   ; 12cc 1B  HL = arr1[i] + sum
     PUSH HL                   ; 16cc 1B  ← O43: was SHLD +2
-    LHLD __v6c_ss.sumarray    ; 20cc 3B  load arr2_ptr
+    LHLD __v6clang_ss.sumarray    ; 20cc 3B  load arr2_ptr
     MOV  C, L                 ;  8cc 1B
     MOV  B, H                 ;  8cc 1B
     MOV  H, B                 ;  8cc 1B
@@ -142,7 +142,7 @@ sumarray:
     INX  BC                   ;  8cc 1B  arr2_ptr += 2
     INX  BC                   ;  8cc 1B
     PUSH HL                   ; 16cc 1B  save arr1_ptr
-    LXI  HL, __v6c_ss.sumarray; 12cc 3B
+    LXI  HL, __v6clang_ss.sumarray; 12cc 3B
     MOV  M, C                 ;  8cc 1B  store arr2_ptr
     INX  HL                   ;  8cc 1B
     MOV  M, B                 ;  8cc 1B
@@ -158,20 +158,20 @@ sumarray:
     XCHG                      ;  4cc 1B
     RET                       ; 12cc 1B
 
---- v6llvmc stats (Vector 06c timings) ---
+--- v6clang stats (Vector 06c timings) ---
 
 sumarray loop body per iteration (typical, first JNZ taken):  324cc, 41B
 sumarray function: 12B prologue + 41B loop + 6B 2nd compare + 2B epilogue = 61B
-                   (+6B static stack __v6c_ss.sumarray)
+                   (+6B static stack __v6clang_ss.sumarray)
 sumarray cycles: 56 + 200×324 + ~24 + 16 ≈ 64,896cc
 
 --- O43 improvement (vs same regalloc without peephole) ---
 
 Without O43, the loop has SHLD/LHLD instead of PUSH/POP:
-  SHLD __v6c_ss.sumarray+4  20cc 3B  →  PUSH HL  16cc 1B  (saves 4cc 2B)
-  SHLD __v6c_ss.sumarray+2  20cc 3B  →  PUSH HL  16cc 1B  (saves 4cc 2B)
-  LHLD __v6c_ss.sumarray+2  20cc 3B  →  POP  HL  12cc 1B  (saves 8cc 2B)
-  LHLD __v6c_ss.sumarray+4  20cc 3B  →  POP  HL  12cc 1B  (saves 8cc 2B)
+  SHLD __v6clang_ss.sumarray+4  20cc 3B  →  PUSH HL  16cc 1B  (saves 4cc 2B)
+  SHLD __v6clang_ss.sumarray+2  20cc 3B  →  PUSH HL  16cc 1B  (saves 4cc 2B)
+  LHLD __v6clang_ss.sumarray+2  20cc 3B  →  POP  HL  12cc 1B  (saves 8cc 2B)
+  LHLD __v6clang_ss.sumarray+4  20cc 3B  →  POP  HL  12cc 1B  (saves 8cc 2B)
 
   Savings per iteration:  24cc, 8B
   Savings (200 iter):     4,800cc total
@@ -179,14 +179,14 @@ Without O43, the loop has SHLD/LHLD instead of PUSH/POP:
   After  O43:             64,896cc, 41B loop (61B function)
   Improvement:            6.9% faster, 8B smaller loop body
 
-  LHLD __v6c_ss.sumarray (arr2_ptr) correctly NOT converted:
+  LHLD __v6clang_ss.sumarray (arr2_ptr) correctly NOT converted:
     intervening PUSH/POP between SHLD and LHLD makes SPDelta != 0 → abort.
 
---- v6llvmc vs c8080 (overall) ---
+--- v6clang vs c8080 (overall) ---
 
   c8080  sumarray:  84,184cc  66B (+7B sub)
-  v6llvmc sumarray: 64,896cc  61B (+6B static stack)
+  v6clang sumarray: 64,896cc  61B (+6B static stack)
   Difference:       19,288cc faster (22.9%), 5B smaller
 
-  Per iteration: 420cc (c8080) vs 324cc (v6llvmc) — 22.9% faster
+  Per iteration: 420cc (c8080) vs 324cc (v6clang) — 22.9% faster
   Key advantages: pointer-based loop (no reloads per access), O43 PUSH/POP spills

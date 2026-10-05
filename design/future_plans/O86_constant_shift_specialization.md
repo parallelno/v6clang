@@ -6,9 +6,9 @@ constant-amount case.
 
 ## Problem
 
-The current `V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16` expansions
-([V6CInstrInfo.cpp](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp), case
-`V6C_SHL16` ~line 2255, `V6C_SRL16` ~line 2311) handle two regimes:
+The current `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` expansions
+([V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp), case
+`V6CLANG_SHL16` ~line 2255, `V6CLANG_SRL16` ~line 2311) handle two regimes:
 
 * **ShAmt 1..7** — per-bit unrolled loop in the A register
   (`MOV A,r / ADD A,r / MOV r,A` for SHL; `MOV A,r / ORA A / RAR / MOV r,A`
@@ -37,7 +37,7 @@ The result is large pessimisations for several common shift amounts.
 ## Concrete cost comparison
 
 All values in Vector-06c cycles
-([docs/V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md)).
+([docs/V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md)).
 
 ### `SHL16` (logical / arithmetic left shift)
 
@@ -108,8 +108,8 @@ instead of zero. Two adaptations:
 
 ## Pseudo redesign (item 9 / item 10)
 
-Today a single pseudo per direction (`V6C_SHL16` / `V6C_SRL16` /
-`V6C_SRA16`) implicitly clobbers `A` and `FLAGS` because *some* of its
+Today a single pseudo per direction (`V6CLANG_SHL16` / `V6CLANG_SRL16` /
+`V6CLANG_SRA16`) implicitly clobbers `A` and `FLAGS` because *some* of its
 expansion paths use the accumulator. The DAD-H-based paths do not need
 A. Conflating them blocks the register allocator from keeping a hot i8
 value in A across the shift.
@@ -118,22 +118,22 @@ Split each pseudo by codegen strategy:
 
 | New pseudo | Inputs | Clobbers | Strategy |
 |------------|--------|----------|----------|
-| `V6C_SHL16_DAD_HL` | HL | HL, FLAGS | `DAD H × N` (N=1..7) — leaves A alone |
-| `V6C_SHL16_DAD_DE` | DE | DE, HL_tmp, FLAGS | `XCHG ; DAD H × N ; XCHG` (N=1..7) — leaves A alone |
-| `V6C_SHL16_AVIA`   | any GR16 | DstPair, A, FLAGS | current per-bit ADD A,A loop (only as fallback when both HL and DE busy) |
-| `V6C_SHL16_BYTE`   | any GR16 | DstPair, FLAGS | byte-lane (N == 8) |
-| `V6C_SHL16_RAM_HI` | any GR16 | DstPair, A, FLAGS | rotate-and-mask in A (N = 9..15) |
-| `V6C_SRL16_RAR_DE` | any GR16 | DstPair, A, FLAGS | current RAR loop (N = 1..2 only) |
-| `V6C_SRL16_24BIT_HL` | HL | HL, A, FLAGS | 24-bit trick (N = 3..7) — requires HL |
-| `V6C_SRL16_24BIT_DE` | DE | DE, HL_tmp, A, FLAGS | XCHG-wrapped 24-bit trick (N = 3..7) |
-| `V6C_SRL16_BYTE`   | any GR16 | DstPair, FLAGS | N = 8 |
-| `V6C_SRL16_RAM_LO` | any GR16 | DstPair, A, FLAGS | rotate-and-mask (N = 9..15) |
-| `V6C_SRA16_…`      |          |          | symmetric variants |
+| `V6CLANG_SHL16_DAD_HL` | HL | HL, FLAGS | `DAD H × N` (N=1..7) — leaves A alone |
+| `V6CLANG_SHL16_DAD_DE` | DE | DE, HL_tmp, FLAGS | `XCHG ; DAD H × N ; XCHG` (N=1..7) — leaves A alone |
+| `V6CLANG_SHL16_AVIA`   | any GR16 | DstPair, A, FLAGS | current per-bit ADD A,A loop (only as fallback when both HL and DE busy) |
+| `V6CLANG_SHL16_BYTE`   | any GR16 | DstPair, FLAGS | byte-lane (N == 8) |
+| `V6CLANG_SHL16_RAM_HI` | any GR16 | DstPair, A, FLAGS | rotate-and-mask in A (N = 9..15) |
+| `V6CLANG_SRL16_RAR_DE` | any GR16 | DstPair, A, FLAGS | current RAR loop (N = 1..2 only) |
+| `V6CLANG_SRL16_24BIT_HL` | HL | HL, A, FLAGS | 24-bit trick (N = 3..7) — requires HL |
+| `V6CLANG_SRL16_24BIT_DE` | DE | DE, HL_tmp, A, FLAGS | XCHG-wrapped 24-bit trick (N = 3..7) |
+| `V6CLANG_SRL16_BYTE`   | any GR16 | DstPair, FLAGS | N = 8 |
+| `V6CLANG_SRL16_RAM_LO` | any GR16 | DstPair, A, FLAGS | rotate-and-mask (N = 9..15) |
+| `V6CLANG_SRA16_…`      |          |          | symmetric variants |
 
 * Instruction selection picks the strategy from the constant `ShAmt`
   and the available physical register (or emits a copy hint preferring
   HL/DE).
-* `V6C_*_DAD_DE` variants explicitly mark `HL` as clobbered to expose
+* `V6CLANG_*_DAD_DE` variants explicitly mark `HL` as clobbered to expose
   the XCHG wrap to the allocator (item 10) — allows DE pairs to be
   shifted without spilling, easing register pressure that a strict
   `requires HL` policy would create.
@@ -214,7 +214,7 @@ plus `16cc × (8-N)` iterations. The per-bit RAR cost is roughly `44cc × N`.
 Crossover is at N ≈ 2.47, so N=1, N=2 stay with the current sequence:
 
 ```
-; current SRL16 N=1..2 expansion (unchanged from V6CInstrInfo.cpp)
+; current SRL16 N=1..2 expansion (unchanged from V6ClangInstrInfo.cpp)
 for i in 0..N:
     MOV A, Hi         ; 8cc
     ORA A             ; 4cc    (skipped on first iter if priorClearsCarry)
@@ -292,7 +292,7 @@ vs. current 7-iter RAR loop = 308cc. **Saves 272cc per occurrence.**
 * **SRA16 N=3..15** (excluding N=8): comparable savings minus 12..16cc
   sign-prep overhead.
 
-In aggregate this is the largest per-occurrence saving in the V6C
+In aggregate this is the largest per-occurrence saving in the V6CLANG
 shift pipeline — shifts of 7, 14, 15 (common in bit-packing /
 unpacking, scaling by 128, pixel index math) drop by an order of
 magnitude.
@@ -301,11 +301,11 @@ magnitude.
 
 1. **Selection point**: extend `LowerSHL_i16` / `LowerSRL_i16` /
    `LowerSRA_i16` in
-   [V6CISelLowering.cpp](../../llvm/lib/Target/V6C/V6CISelLowering.cpp)
-   to emit a strategy-specific `V6CISD::*` node carrying `(Val, ShAmt)`.
+   [V6ClangISelLowering.cpp](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp)
+   to emit a strategy-specific `V6ClangISD::*` node carrying `(Val, ShAmt)`.
    The strategy is chosen purely from the constant `ShAmt`.
-2. **Pseudo expansion**: implement each `V6C_*` variant in
-   `V6CInstrInfo::expandPostRAPseudo`. The DAD-H pseudos use neither
+2. **Pseudo expansion**: implement each `V6CLANG_*` variant in
+   `V6ClangInstrInfo::expandPostRAPseudo`. The DAD-H pseudos use neither
    A nor the per-bit loop, so their `Defs` list omits `A` (item 9).
 3. **DE-via-XCHG path** (item 10): pseudo expansion wraps the DAD
    sequence in `XCHG / XCHG`. List `HL` as a clobber so the allocator

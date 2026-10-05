@@ -1,7 +1,7 @@
 /* Feature 75 — O92 LXI-half-through-MOV collapse — c8080 reference
  *
  * c8080 uses 'unsigned int' for 16-bit and 'unsigned char' for 8-bit.
- * This program mirrors v6llvmc.c so the produced assembly is comparable.
+ * This program mirrors v6clang.c so the produced assembly is comparable.
  */
 
 typedef unsigned char u8;

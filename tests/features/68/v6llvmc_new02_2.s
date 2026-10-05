@@ -7,7 +7,7 @@ shl_u16_3:                              ; @shl_u16_3
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shl_u16_3:x <- $hl
-	;--- V6C_SHL16_DAD ---
+	;--- V6CLANG_SHL16_DAD ---
 	DAD	H
 	DAD	H
 	DAD	H
@@ -22,7 +22,7 @@ shl_u16_9:                              ; @shl_u16_9
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shl_u16_9:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	ADD	A
 	MVI	L, 0
@@ -38,7 +38,7 @@ shl_u16_13:                             ; @shl_u16_13
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shl_u16_13:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	ADD	A
 	ADD	A
@@ -58,7 +58,7 @@ shl_u16_15:                             ; @shl_u16_15
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shl_u16_15:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	RRC
 	ANI	0x80
@@ -75,7 +75,7 @@ shr_u16_1:                              ; @shr_u16_1
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_1:x <- $hl
-	;--- V6C_SRL16_RAR ---
+	;--- V6CLANG_SRL16_RAR ---
 	MOV	A, H
 	ORA	A
 	RAR
@@ -94,7 +94,7 @@ shr_u16_2:                              ; @shr_u16_2
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_2:x <- $hl
-	;--- V6C_SRL16_RAR ---
+	;--- V6CLANG_SRL16_RAR ---
 	MOV	A, H
 	ORA	A
 	RAR
@@ -120,7 +120,7 @@ shr_u16_7:                              ; @shr_u16_7
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_7:x <- $hl
-	;--- V6C_SRL16_24BIT ---
+	;--- V6CLANG_SRL16_24BIT ---
 	XRA	A
 	DAD	H
 	ADC	A
@@ -137,7 +137,7 @@ shr_u16_9:                              ; @shr_u16_9
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_9:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RRC
 	ANI	0x7f
@@ -154,7 +154,7 @@ shr_u16_15:                             ; @shr_u16_15
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_15:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RLC
 	ANI	1
@@ -171,7 +171,7 @@ sar_i16_7:                              ; @sar_i16_7
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: sar_i16_7:x <- $hl
-	;--- V6C_SRA16_24BIT ---
+	;--- V6CLANG_SRA16_24BIT ---
 	MOV	A, H
 	RLC
 	SBB	A
@@ -190,7 +190,7 @@ sar_i16_9:                              ; @sar_i16_9
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: sar_i16_9:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	MOV	L, H
 	RLC
@@ -212,7 +212,7 @@ sar_i16_15:                             ; @sar_i16_15
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: sar_i16_15:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	RLC
 	SBB	A
@@ -231,14 +231,14 @@ consume_pair_u16:                       ; @consume_pair_u16
 ; %bb.0:
 	;DEBUG_VALUE: consume_pair_u16:a <- $hl
 	;DEBUG_VALUE: consume_pair_u16:b <- $de
-	;--- V6C_XOR16 ---
+	;--- V6CLANG_XOR16 ---
 	MOV	A, E
 	XRA	L
 	MOV	L, A
 	MOV	A, D
 	XRA	H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
 	RET
 .Lfunc_end12:
@@ -253,7 +253,7 @@ shl_u16_3_de:                           ; @shl_u16_3_de
 ; %bb.0:
 	;DEBUG_VALUE: shl_u16_3_de:keep <- $hl
 	;DEBUG_VALUE: shl_u16_3_de:x <- $de
-	;--- V6C_SHL16_DAD ---
+	;--- V6CLANG_SHL16_DAD ---
 	XCHG
 	DAD	H
 	DAD	H
@@ -272,7 +272,7 @@ shr_u16_7_de:                           ; @shr_u16_7_de
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_7_de:keep <- $hl
 	;DEBUG_VALUE: shr_u16_7_de:x <- $de
-	;--- V6C_SRL16_24BIT ---
+	;--- V6CLANG_SRL16_24BIT ---
 	XCHG
 	XRA	A
 	DAD	H
@@ -291,7 +291,7 @@ shr_u16_9_trunc:                        ; @shr_u16_9_trunc
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_9_trunc:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RRC
 	ANI	0x7f
@@ -306,7 +306,7 @@ shr_u16_15_trunc:                       ; @shr_u16_15_trunc
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: shr_u16_15_trunc:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RLC
 	ANI	1
@@ -321,7 +321,7 @@ sar_i16_9_trunc:                        ; @sar_i16_9_trunc
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: sar_i16_9_trunc:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	RLC
 	MOV	A, H
@@ -337,7 +337,7 @@ sar_i16_15_trunc:                       ; @sar_i16_15_trunc
 	;  x = HL
 ; %bb.0:
 	;DEBUG_VALUE: sar_i16_15_trunc:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	RLC
 	SBB	A
@@ -350,29 +350,29 @@ main:                                   ; @main
 .Lfunc_begin19:
 	;=== int main(void) ===
 ; %bb.0:
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shl_u16_3:x <- $hl
-	;--- V6C_SHL16_DAD ---
+	;--- V6CLANG_SHL16_DAD ---
 	DAD	H
 	DAD	H
 	DAD	H
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shl_u16_9:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	ADD	A
 	MVI	L, 0
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shl_u16_13:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	ADD	A
 	ADD	A
@@ -381,35 +381,35 @@ main:                                   ; @main
 	ADD	A
 	MVI	L, 0
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shl_u16_15:x <- $hl
-	;--- V6C_SHL16_RAM_HI ---
+	;--- V6CLANG_SHL16_RAM_HI ---
 	MOV	A, L
 	RRC
 	ANI	0x80
 	MVI	L, 0
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shr_u16_1:x <- $hl
-	;--- V6C_SRL16_RAR ---
+	;--- V6CLANG_SRL16_RAR ---
 	MOV	A, H
 	RAR
 	MOV	H, A
 	MOV	A, L
 	RAR
 	MOV	L, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shr_u16_2:x <- $hl
-	;--- V6C_SRL16_RAR ---
+	;--- V6CLANG_SRL16_RAR ---
 	MOV	A, H
 	ORA	A
 	RAR
@@ -424,45 +424,45 @@ main:                                   ; @main
 	MOV	A, L
 	RAR
 	MOV	L, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shr_u16_7:x <- $hl
-	;--- V6C_SRL16_24BIT ---
+	;--- V6CLANG_SRL16_24BIT ---
 	XRA	A
 	DAD	H
 	ADC	A
 	MOV	L, H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shr_u16_9:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RRC
 	ANI	0x7f
 	MOV	L, A
 	MVI	H, 0
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u
 	;DEBUG_VALUE: shr_u16_15:x <- $hl
-	;--- V6C_SRL16_RAM_LO ---
+	;--- V6CLANG_SRL16_RAM_LO ---
 	MOV	A, H
 	RLC
 	ANI	1
 	MOV	L, A
 	MVI	H, 0
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_u
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_s
 	;DEBUG_VALUE: sar_i16_7:x <- $hl
-	;--- V6C_SRA16_24BIT ---
+	;--- V6CLANG_SRA16_24BIT ---
 	MOV	A, H
 	RLC
 	SBB	A
@@ -470,12 +470,12 @@ main:                                   ; @main
 	ADC	A
 	MOV	L, H
 	MOV	H, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_s
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_s
 	;DEBUG_VALUE: sar_i16_9:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	MOV	L, H
 	RLC
@@ -486,18 +486,18 @@ main:                                   ; @main
 	MOV	A, L
 	RAR
 	MOV	L, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_s
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_s
 	;DEBUG_VALUE: sar_i16_15:x <- $hl
-	;--- V6C_SRA16_RAM_LO ---
+	;--- V6CLANG_SRA16_RAM_LO ---
 	MOV	A, H
 	RLC
 	SBB	A
 	MOV	H, A
 	MOV	L, A
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_out_s
 	LXI	H, 0
 	RET
@@ -527,15 +527,15 @@ g_out_s:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

@@ -145,7 +145,7 @@ C8080 STATS (per function — bodies only)
 | shape_a_live_loop   |   46  |   80 + 132·N (per iter)      |
 
 ================================================================================
-V6LLVMC OLD (-O2, pre-O80)  —  tests/features/62/v6llvmc_old.asm
+V6CLANG OLD (-O2, pre-O80)  —  tests/features/62/v6clang_old.asm
 ================================================================================
 
 shape_a:
@@ -212,7 +212,7 @@ shape_a_live_loop:
 ;  per-iter (loop body):  ~104cc / 17B
 
 ================================================================================
-V6LLVMC NEW (-O2, post-O80)  —  tests/features/62/v6llvmc_new01.asm
+V6CLANG NEW (-O2, post-O80)  —  tests/features/62/v6clang_new01.asm
 ================================================================================
 
 shape_a:                           ; (unchanged — shape 1)
@@ -281,7 +281,7 @@ shape_a_live_loop:                 ; A-live across loop test → shape 3
 COMPARISON TABLE (worst-case cycles / bytes)
 ================================================================================
 
-| Function           | c8080   | v6llvmc_old | v6llvmc_new | Δ vs old  |
+| Function           | c8080   | v6clang_old | v6clang_new | Δ vs old  |
 |--------------------|---------|-------------|-------------|-----------|
 | shape_a            | 48 / 12 |   36 /  7   |   36 /  7   |   = / =   |
 | shape_a_dead       | 60 / 15 |   56 /  9   |   32 /  5   | −24 / −4  |
@@ -304,13 +304,13 @@ NOTES:
 - All 137 lit tests pass; 5 golden tests pass.
 
 ================================================================================
-PSEUDO ANNOTATIONS (with -mllvm -mv6c-annotate-pseudos)
+PSEUDO ANNOTATIONS (with -mllvm -mv6clang-annotate-pseudos)
 ================================================================================
 
 Every i8 zero-compare site now emits:
 
-        ;--- V6C_CMP8_ZERO ---
+        ;--- V6CLANG_CMP8_ZERO ---
         <expansion>
 
 confirming the pseudo replaces the prior unannotated CPI 0 / MOV+ORA
-sequence (see the historical note in tests/features/37/v6llvmc.s line 76).
+sequence (see the historical note in tests/features/37/v6clang.s line 76).

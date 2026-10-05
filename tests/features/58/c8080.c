@@ -1,10 +1,10 @@
-// c8080 reference for O76 — V6C_LOAD8_P per-shape redesign.
+// c8080 reference for O76 — V6CLANG_LOAD8_P per-shape redesign.
 //
 // c8080 cannot pin specific physical registers, so this is a plain
 // baseline: each test reads a byte through a pointer and consumes
 // it alongside another live value, forcing the compiler to keep
 // both alive across the load. The cycle/byte cost from c8080 is
-// the comparison anchor for v6llvmc's old vs new shapes.
+// the comparison anchor for v6clang's old vs new shapes.
 
 typedef unsigned char u8;
 typedef unsigned short u16;

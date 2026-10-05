@@ -3,8 +3,8 @@
 // Uses a simplified Sieve of Eratosthenes kernel (SIZE=200) which is known
 // to generate redundant POP/PUSH pairs in the outer loop maintenance code.
 // The pairs arise when:
-//   (a) V6C_ADD16 pseudo expansion wraps DAD with PUSH/POP HL, and
-//   (b) the immediately following V6C_SPILL16 also begins with PUSH HL.
+//   (a) V6CLANG_ADD16 pseudo expansion wraps DAD with PUSH/POP HL, and
+//   (b) the immediately following V6CLANG_SPILL16 also begins with PUSH HL.
 // Both the ADD16-epilogue POP and the SPILL16-prologue PUSH are redundant
 // because HL is immediately overwritten by the spill's MOV H,B / MOV L,C.
 //
@@ -24,8 +24,8 @@
 // After O83 both pairs are eliminated.
 //
 // Compile (baseline, before O83):
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-//       tests\features\64\v6llvmc.c -o tests\features\64\v6llvmc_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+//       tests\features\64\v6clang.c -o tests\features\64\v6clang_old.asm
 
 typedef unsigned short u16;
 typedef unsigned char  u8;

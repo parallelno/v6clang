@@ -1,6 +1,6 @@
-# Plan: C Compilers Benchmark Suite for V6C / i8080
+# Plan: C Compilers Benchmark Suite for V6CLANG / i8080
 
-Set up a head-to-head cycle-count benchmark of v6llvmc against three other
+Set up a head-to-head cycle-count benchmark of v6clang against three other
 i8080-capable C compilers (c8080, z88dk/sccz80, ACK), running each compiled ROM
 through `v6emul --halt-exit --dump-cpu` and aggregating results.
 
@@ -8,7 +8,7 @@ through `v6emul --halt-exit --dump-cpu` and aggregating results.
 
 | # | Compiler | Source | i8080 capable? | Acquisition |
 |---|---|---|---|---|
-| 1 | v6llvmc | this repo | Yes (baseline 100%) | already built in `llvm-build/` |
+| 1 | v6clang | this repo | Yes (baseline 100%) | already built in `llvm-build/` |
 | 2 | c8080 | already in `tools/c8080/` | Yes | already present |
 | 3 | z88dk (sccz80) | https://github.com/z88dk/z88dk | Yes (`+8080`, `+cpm` targets) | **download nightly Windows zip** from http://nightly.z88dk.org/ → unpack to `tools/z88dk/` |
 | 4 | ACK | https://github.com/davidgiven/ack | Yes (`-mcpm`, i80 .COM) | **build from source under MSYS2** (flex+yacc+lua-posix+python+make); install to `tools/ack/` |
@@ -39,7 +39,7 @@ Each compiler needs a tiny target-specific startup that:
 
 | Compiler | Mechanism |
 |---|---|
-| v6llvmc | use existing pipeline `clang --target=i8080-unknown-v6c -O2 prog.c -o prog.rom` (already wraps crt0 + lld + objcopy). Append `_Pragma`-free `__attribute__((noreturn))` exit helper `__halt()` calling `__asm__("HLT")` from main, OR provide a custom crt0 that calls main then HLTs. **Prefer**: small custom crt0 in `tests/benchmarks_c/crt/v6llvmc_crt.s` invoked via `-nostartfiles`. |
+| v6clang | use existing pipeline `clang --target=i8080-unknown-v6clang -O2 prog.c -o prog.rom` (already wraps crt0 + lld + objcopy). Append `_Pragma`-free `__attribute__((noreturn))` exit helper `__halt()` calling `__asm__("HLT")` from main, OR provide a custom crt0 that calls main then HLTs. **Prefer**: small custom crt0 in `tests/benchmarks_c/crt/v6clang_crt.s` invoked via `-nostartfiles`. |
 | c8080 | invoke `c8080.exe -a out.asm prog.c`, prepend a small ASM header that does `CALL main` then `OUT 0xED` (optional) then `HLT`, assemble with `v6asm`. Or use c8080's built-in crt mechanism if present (check `tools/c8080/include/`). |
 | z88dk | use `+8080 -create-app -startup=0` and supply a custom `crt0` that calls main and HLTs. Output binary is ORG=0x100 raw. Concrete: `zcc +8080 -SO3 -compiler=sccz80 -startup=...` — actual flags TBD during implementation. |
 | ACK | `ack -mcpm -O prog.c -o prog.com` → `.COM` file already starts at 0x100. Patch the BDOS-exit hook (RET to address 0x0000) so on return from main, it does HLT instead. Alternative: prepend `JMP 0x0103; HLT` and patch the .COM. |
@@ -52,7 +52,7 @@ Verification port: standard `OUT 0xED, A` (already used by v6emul for `TEST_OUT`
 tests/benchmarks_c/
   README.md                          # rewritten (see Phase 6)
   crt/
-    v6llvmc_crt.s                    # halt after main
+    v6clang_crt.s                    # halt after main
     c8080_crt.asm                    # call main; HLT
     z88dk_crt.asm                    # custom z88dk crt; HLT
     ack_crt.asm                      # post-process patch (or wrapper)
@@ -61,7 +61,7 @@ tests/benchmarks_c/
     sieve.c                          # benchmark 2 source
     fib_crc.c                        # benchmark 3 source
   build/                             # gitignored, generated ROMs
-    v6llvmc_bsort.rom v6llvmc_sieve.rom v6llvmc_fib_crc.rom
+    v6clang_bsort.rom v6clang_sieve.rom v6clang_fib_crc.rom
     c8080_bsort.rom   c8080_sieve.rom   c8080_fib_crc.rom
     z88dk_bsort.rom   z88dk_sieve.rom   z88dk_fib_crc.rom
     ack_bsort.rom     ack_sieve.rom     ack_fib_crc.rom
@@ -73,7 +73,7 @@ tools/ack/                           # built from source
 docs/benchmarks.md                   # results table (cross-posted)
 ```
 
-The existing `tests/benchmarks_c/v6llvmc_bsort.c` (1-line stub) is **moved** to
+The existing `tests/benchmarks_c/v6clang_bsort.c` (1-line stub) is **moved** to
 `tests/benchmarks_c/src/bsort.c` and fleshed out as a real benchmark.
 
 ---
@@ -91,15 +91,15 @@ The existing `tests/benchmarks_c/v6llvmc_bsort.c` (1-line stub) is **moved** to
    prebuilt Windows artifact and using that. If both fail: document blocker in
    README and exclude ACK from the table.
 3. **c8080**: already present, no action.
-4. **v6llvmc**: already built (verify `llvm-build/bin/clang --target=i8080-unknown-v6c -v` works).
+4. **v6clang**: already built (verify `llvm-build/bin/clang --target=i8080-unknown-v6clang -v` works).
 
 *Risk*: ACK build on Windows is fragile. If it fails after 2 attempts, mark ACK
 as "TBD" and proceed with 3 compilers.
 
 ### Phase 2 — Per-compiler crt0 + ROM build script
 
-5. Author `crt/v6llvmc_crt.s` (tiny: `JMP main` at 0x100, post-main HLT — but
-   v6llvmc already provides a default crt0 in `compiler-rt/lib/builtins/v6c/`
+5. Author `crt/v6clang_crt.s` (tiny: `JMP main` at 0x100, post-main HLT — but
+   v6clang already provides a default crt0 in `compiler-rt/lib/builtins/v6clang/`
    per repo memory; **first inspect** to see if HLT-on-return is already done
    or if it loops forever). Adjust as needed.
 6. Author `crt/c8080_crt.asm` — assembled by `v6asm`, linked before c8080 output.
@@ -128,7 +128,7 @@ All three: pure C, no `<stdio.h>`, only the implicit `out(0xED, x)` mechanism
 14. Verify all 12 ROMs produce the **same** OUT byte per program (correctness
     cross-check across compilers).
 15. Generated `docs/benchmarks.md` contains:
-    - Matrix table: rows=programs, cols=compilers, cells=`cycles (ratio vs v6llvmc)`
+    - Matrix table: rows=programs, cols=compilers, cells=`cycles (ratio vs v6clang)`
     - ROM size table
     - Compiler version + flags footnote
 
@@ -148,8 +148,8 @@ All three: pure C, no `<stdio.h>`, only the implicit `out(0xED, x)` mechanism
 |---|---|---|---|
 | 1 | Download z88dk nightly | — | 1 |
 | 2 | Build ACK (or fallback) | — *(parallel w/ 1)* | 1 |
-| 3 | Verify c8080 + v6llvmc | — *(parallel)* | 1 |
-| 4 | Inspect v6llvmc default crt0; design HLT exit | 3 | 2 |
+| 3 | Verify c8080 + v6clang | — *(parallel)* | 1 |
+| 4 | Inspect v6clang default crt0; design HLT exit | 3 | 2 |
 | 5 | Write 4 crt0 files | 1, 2, 4 | 2 |
 | 6 | Author bench.h (per-compiler `out_port` macro) | 4 | 2 |
 | 7 | Author 3 benchmark .c files | 6 | 3 |
@@ -168,13 +168,13 @@ across the 3 programs. Steps 8 onward are sequential.
 
 - [tests/benchmarks_c/README.md](tests/benchmarks_c/README.md) — current
   scaffold; rewrite in step 11
-- [tests/benchmarks_c/v6llvmc_bsort.c](tests/benchmarks_c/v6llvmc_bsort.c) —
+- [tests/benchmarks_c/v6clang_bsort.c](tests/benchmarks_c/v6clang_bsort.c) —
   1-line stub; move/rename to `src/bsort.c` and flesh out
 - [tools/c8080/c8080.exe](tools/c8080/c8080.exe) — already present compiler
 - [tools/v6emul/v6emul.exe](tools/v6emul/v6emul.exe) — emulator, prints
   `HALT at PC=... after N cpu_cycles` and `TEST_OUT port=0xED value=0xNN`
 - [tools/v6asm/v6asm.exe](tools/v6asm/v6asm.exe) — assembler for our crt0 files
-- `compiler-rt/lib/builtins/v6c/crt0.s` — existing v6llvmc crt0 (inspect for
+- `compiler-rt/lib/builtins/v6clang/crt0.s` — existing v6clang crt0 (inspect for
   HLT semantics in step 4)
 - [docs/README.md](docs/README.md) — index, add link to benchmarks.md
 - [README.md](README.md) — root, add a Benchmarks section
@@ -187,7 +187,7 @@ across the 3 programs. Steps 8 onward are sequential.
 2. After Phase 2: each crt0 individually assembles + links; trivial "out 0x42, HLT" hello produces correct emulator output for **each** compiler.
 3. After Phase 3: each .c file compiles cleanly with **all** 4 compilers (or 3 if ACK skipped), producing a ROM ≤ ~2KB.
 4. After Phase 4: 12 (or 9) ROMs run to HALT in finite cycles, all compilers produce the **same** OUT byte per program (correctness invariant). If any disagree, the program has UB/portability issue → fix before recording results.
-5. After Phase 5: results table in `docs/benchmarks.md` shows v6llvmc as 100% baseline and others as ratios; root README links it.
+5. After Phase 5: results table in `docs/benchmarks.md` shows v6clang as 100% baseline and others as ratios; root README links it.
 
 ---
 
@@ -206,7 +206,7 @@ across the 3 programs. Steps 8 onward are sequential.
 
 1. **ACK build feasibility on Windows** — high risk. Recommendation: time-box to
    one MSYS2 attempt; if it fails, document the prereq steps in README and ship
-   the suite with 3 compilers (v6llvmc + c8080 + z88dk).
+   the suite with 3 compilers (v6clang + c8080 + z88dk).
 2. **z88dk default optimization level** — sccz80 vs zsdcc backend choice
    matters. Recommendation: use `sccz80` (the native 8080-aware backend) at
    `-SO3` and document; optionally also benchmark `-O2`.

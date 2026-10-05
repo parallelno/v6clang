@@ -6,13 +6,13 @@ main:                                   ; @main
 ; %bb.0:
 	LXI	H, 0x1111
 	LXI	D, 0x1141
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	M, E
 	INX	H
 	MOV	M, D
 	LXI	H, 0x2222
 	LXI	D, 0x2252
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	M, E
 	INX	H
 	MOV	M, D
@@ -23,7 +23,7 @@ main:                                   ; @main
 	;NO_APP
 	MOV	A, C
 	OUT	0xde
-	;--- V6C_SRL16 ---
+	;--- V6CLANG_SRL16 ---
 	MOV	L, B
 	MVI	H, 0
 	MOV	A, L
@@ -33,15 +33,15 @@ main:                                   ; @main
                                         ; -- End function
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

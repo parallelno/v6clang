@@ -1,0 +1,136 @@
+# RUN: llc -mtriple=i8080-unknown-v6clang -run-pass=prologepilog %s -o - | FileCheck %s
+#
+# Regression: isRegDeadAfterMI(V6CLANG::HL/DE/BC, ...) used to be queried
+# directly at spill/reload expansion sites that need to know whether the
+# *whole* pair is safe to clobber. Because LLVM's regsOverlap()-based
+# liveness sees the pair as a single value, a later instruction that
+# defines just one half (e.g. `$l = MOVrr ...`) made the helper report
+# "dead", letting the expansion skip PUSH/POP $hl. That corrupted the
+# other half (`$h`) which was still live.
+#
+# Fix: V6ClangSpillExpand.{h,cpp} now exports `isPairDeadAfterMI`, which
+# returns true only if BOTH 8-bit halves of the pair are dead. All
+# pair-deadness call sites in V6ClangRegisterInfo.cpp,
+# V6ClangSpillExpand.cpp and V6ClangSpillPatchedReload.cpp were migrated.
+#
+# Each of the four functions below has a later `$<lo-half> = ...` def
+# that would have tricked the old helper into skipping the preservation
+# wrappers.  After the fix, the expanded pseudo MUST emit PUSH/POP
+# around the LXI/DAD-SP address computation.
+
+--- |
+  target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"
+  target triple = "i8080-unknown-v6clang"
+
+  define i8 @spill16_de_with_l_def_later() { ret i8 0 }
+  define i8 @reload16_de_with_l_def_later() { ret i8 0 }
+  define i8 @spill8_b_with_l_def_later() { ret i8 0 }
+  define i8 @reload8_b_with_l_def_later() { ret i8 0 }
+...
+
+# CHECK-LABEL: name: spill16_de_with_l_def_later
+# Pair $hl is *not* fully dead (only $l is redefined later, $h is read),
+# so the spill expansion must wrap LXI/DAD with PUSH/POP $hl.
+# CHECK: PUSH $hl
+# CHECK: $hl = LXI
+# CHECK: DAD $sp
+# CHECK: MOVMr killed $e
+# CHECK: $hl = POP
+---
+name:            spill16_de_with_l_def_later
+alignment:       1
+tracksRegLiveness: true
+liveins:
+  - { reg: '$a' }
+  - { reg: '$de' }
+  - { reg: '$hl' }
+frameInfo: { maxAlignment: 1 }
+stack:
+  - { id: 0, type: spill-slot, size: 2, alignment: 1 }
+body: |
+  bb.0:
+    liveins: $a, $de, $hl
+    V6CLANG_SPILL16 killed $de, %stack.0, implicit-def $flags
+    $l = MOVrr killed $a
+    $a = MOVrr $h
+    RET implicit $a, implicit-def $sp, implicit $sp
+...
+
+# CHECK-LABEL: name: reload16_de_with_l_def_later
+# $hl is not fully dead (only $l is redefined, $h is read), so the
+# reload expansion must wrap LXI/DAD with PUSH/POP $hl.
+# CHECK: PUSH $hl
+# CHECK: $hl = LXI
+# CHECK: DAD $sp
+# CHECK: $hl = POP
+---
+name:            reload16_de_with_l_def_later
+alignment:       1
+tracksRegLiveness: true
+liveins:
+  - { reg: '$hl' }
+frameInfo: { maxAlignment: 1 }
+stack:
+  - { id: 0, type: spill-slot, size: 2, alignment: 1 }
+body: |
+  bb.0:
+    liveins: $hl
+    $de = V6CLANG_RELOAD16 %stack.0, implicit-def $flags
+    $l = MOVrr $e
+    $a = MOVrr $h
+    RET implicit $a, implicit-def $sp, implicit $sp
+...
+
+# CHECK-LABEL: name: spill8_b_with_l_def_later
+# 8-bit spill of $b lowers via Shape B (HL ladder).  $hl is not fully
+# dead (only $l is redefined, $h is read), so PUSH/POP $hl must wrap
+# the LXI/DAD computation.
+# CHECK: PUSH $hl
+# CHECK: $hl = LXI
+# CHECK: DAD $sp
+# CHECK: $hl = POP
+---
+name:            spill8_b_with_l_def_later
+alignment:       1
+tracksRegLiveness: true
+liveins:
+  - { reg: '$a' }
+  - { reg: '$bc' }
+  - { reg: '$hl' }
+frameInfo: { maxAlignment: 1 }
+stack:
+  - { id: 0, type: spill-slot, size: 1, alignment: 1 }
+body: |
+  bb.0:
+    liveins: $a, $bc, $hl
+    V6CLANG_SPILL8 killed $b, %stack.0, implicit-def $flags
+    $l = MOVrr killed $a
+    $a = MOVrr $h
+    RET implicit $a, implicit-def $sp, implicit $sp
+...
+
+# CHECK-LABEL: name: reload8_b_with_l_def_later
+# 8-bit reload into $b via Shape B (HL ladder).  $hl is not fully dead
+# (only $l is redefined, $h is read), so PUSH/POP $hl must wrap the
+# LXI/DAD computation.
+# CHECK: PUSH $hl
+# CHECK: $hl = LXI
+# CHECK: DAD $sp
+# CHECK: $hl = POP
+---
+name:            reload8_b_with_l_def_later
+alignment:       1
+tracksRegLiveness: true
+liveins:
+  - { reg: '$hl' }
+frameInfo: { maxAlignment: 1 }
+stack:
+  - { id: 0, type: spill-slot, size: 1, alignment: 1 }
+body: |
+  bb.0:
+    liveins: $hl
+    $b = V6CLANG_RELOAD8 %stack.0, implicit-def $flags
+    $l = MVIr 42
+    $a = MOVrr $h
+    RET implicit $a, implicit-def $sp, implicit $sp
+...

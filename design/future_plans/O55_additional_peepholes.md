@@ -7,11 +7,11 @@
 
 | Pattern | Status | Evidence |
 |---|---|---|
-| 1. `XRI 0FFH` → `CMA`              | **Obsolete** — already handled at ISel | `(not i8) → CMA` is a tablegen pattern in `V6CInstrInfo.td:539`. Corpus-wide grep finds zero `XRI 0FFH` (or `XRI 0xff`) instances anywhere in the V6C lit suite, benchmark output, or feature regression asm. |
-| 2. `MVI A, 0` → `XRA A` (FLAGS dead) | **✅ Implemented**                   | [`design/plan_O55_mvi_zero_to_xra_a.md`](../plan_O55_mvi_zero_to_xra_a.md) — feature test 46. New peephole `foldMviZeroToXraA` in `V6CPeephole.cpp`. Lit test `peephole-mvi-zero-to-xra.ll`. Saves 1 byte / 4 cycles per site (5 sites in feature test 46 = -5 B / -12 cc). |
+| 1. `XRI 0FFH` → `CMA`              | **Obsolete** — already handled at ISel | `(not i8) → CMA` is a tablegen pattern in `V6ClangInstrInfo.td:539`. Corpus-wide grep finds zero `XRI 0FFH` (or `XRI 0xff`) instances anywhere in the V6CLANG lit suite, benchmark output, or feature regression asm. |
+| 2. `MVI A, 0` → `XRA A` (FLAGS dead) | **✅ Implemented**                   | [`design/plan_O55_mvi_zero_to_xra_a.md`](../plan_O55_mvi_zero_to_xra_a.md) — feature test 46. New peephole `foldMviZeroToXraA` in `V6ClangPeephole.cpp`. Lit test `peephole-mvi-zero-to-xra.ll`. Saves 1 byte / 4 cycles per site (5 sites in feature test 46 = -5 B / -12 cc). |
 | 3. Idempotent `ANI n; ANI n` / `ORI n; ORI n` | **Obsolete** — never produced | Corpus-wide grep finds zero adjacent-identical ALU-immediate pairs. DAGCombine already folds these constants away before they reach codegen. |
 
-Pattern 2 was the only one with non-zero opportunity in real V6C
+Pattern 2 was the only one with non-zero opportunity in real V6CLANG
 codegen output. The implementation is complete; this file remains as
 historical context for the rejected/skipped patterns.
 
@@ -20,7 +20,7 @@ historical context for the rejected/skipped patterns.
 ## Problem
 
 Several byte-saving peephole patterns exist on the 8080 that are not
-currently handled by any V6C optimization pass.
+currently handled by any V6CLANG optimization pass.
 
 ## Patterns
 
@@ -63,22 +63,22 @@ ANI  0FH   ; 8cc, 2B  ; (deleted)
 
 ## Implementation
 
-Add to the existing `V6CPeephole` pass:
+Add to the existing `V6ClangPeephole` pass:
 
 ```cpp
 // Pattern 1: XRI 0FFH → CMA
-if (MI.getOpcode() == V6C::XRI && MI.getOperand(0).getImm() == 0xFF) {
-  MI.setDesc(TII->get(V6C::CMA));
+if (MI.getOpcode() == V6CLANG::XRI && MI.getOperand(0).getImm() == 0xFF) {
+  MI.setDesc(TII->get(V6CLANG::CMA));
   MI.removeOperand(0);  // Remove immediate operand
   Changed = true;
 }
 
 // Pattern 2: MVI A, 0 → XRA A (when flags dead)
-if (MI.getOpcode() == V6C::MVI_A && MI.getOperand(0).getImm() == 0 &&
-    !isLiveAfter(V6C::FLAGS, MI)) {
-  MI.setDesc(TII->get(V6C::XRA));
+if (MI.getOpcode() == V6CLANG::MVI_A && MI.getOperand(0).getImm() == 0 &&
+    !isLiveAfter(V6CLANG::FLAGS, MI)) {
+  MI.setDesc(TII->get(V6CLANG::XRA));
   MI.removeOperand(0);
-  MachineInstrBuilder(MF, MI).addReg(V6C::A);  // XRA A
+  MachineInstrBuilder(MF, MI).addReg(V6CLANG::A);  // XRA A
   Changed = true;
 }
 

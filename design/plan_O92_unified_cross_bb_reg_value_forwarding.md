@@ -19,7 +19,7 @@ first init loop of `repro`:
 
 ```asm
 ; %bb.0
-        LDA     __v6c_a.repro     ; A = n
+        LDA     __v6clang_a.repro     ; A = n
         MOV     D, A              ; D = n
         ORA     A                 ; A unchanged (= n)
         JZ      .LBB15_3
@@ -64,9 +64,9 @@ The redundancy is established in one block and carried across a CFG edge
 
 - **upstream `machine-cp`** reasons intra-block only — it cannot prove the
   fact holds on entry from the predecessor *and* survives the back-edge.
-- **`V6CAccumulatorPlanning::eliminateRedundantAccMoves`** is A-specific and
+- **`V6ClangAccumulatorPlanning::eliminateRedundantAccMoves`** is A-specific and
   block-local.
-- **`V6CPeephole::eliminateRedundantMov`** only removes two *adjacent*
+- **`V6ClangPeephole::eliminateRedundantMov`** only removes two *adjacent*
   identical `MOVrr`s.
 
 Three partial implementations of the same abstraction, none cross-BB.
@@ -77,7 +77,7 @@ Three partial implementations of the same abstraction, none cross-BB.
 
 ### Approach: a single cross-BB physreg value-forwarding MachineFunctionPass
 
-Add `V6CRegValueForwarding`, a post-RA `MachineFunctionPass` scheduled in
+Add `V6ClangRegValueForwarding`, a post-RA `MachineFunctionPass` scheduled in
 `addPreEmitPass` (after `machine-cp` and the existing peepholes). It runs an
 iterative forward dataflow over the MIR CFG with a per-physical-register
 value lattice and erases writes that re-establish a value the register
@@ -133,7 +133,7 @@ invalidates `H`/`L`/`HL`, writing `A` invalidates `PSW`, etc.
 
 ### Why this works
 
-By `addPreEmitPass` time all V6C pseudos (incl. spill/reloads) are already
+By `addPreEmitPass` time all V6CLANG pseudos (incl. spill/reloads) are already
 expanded — confirmed empirically (post-`postrapseudos` MIR of the repro is
 real instructions, no pseudos). So the pass sees a flat instruction stream
 **and** has full CFG + liveness + `TRI`. The only special instruction is the
@@ -149,15 +149,15 @@ redundancy elimination, not register-pressure reduction.
 
 | File | Change |
 |------|--------|
-| `V6CRegValueForwarding.cpp` (new) | The pass |
-| `V6C.h` | Declare `createV6CRegValueForwardingPass` |
+| `V6ClangRegValueForwarding.cpp` (new) | The pass |
+| `V6Clang.h` | Declare `createV6ClangRegValueForwardingPass` |
 | `CMakeLists.txt` | Add source file |
-| `V6CTargetMachine.cpp` | Register pass in `addPreEmitPass`; CLI toggle |
-| `V6CAccumulatorPlanning.cpp` | Remove `eliminateRedundantAccMoves` (folded in) |
-| `V6CPeephole.cpp` | Remove `eliminateRedundantMov` (folded in); expose `isO61PatchedImm` |
-| `scripts/sync_llvm_mirror.ps1`, `scripts/populate_llvm_project.ps1` | (full-dir mirror already covers V6C/; verify) |
+| `V6ClangTargetMachine.cpp` | Register pass in `addPreEmitPass`; CLI toggle |
+| `V6ClangAccumulatorPlanning.cpp` | Remove `eliminateRedundantAccMoves` (folded in) |
+| `V6ClangPeephole.cpp` | Remove `eliminateRedundantMov` (folded in); expose `isO61PatchedImm` |
+| `scripts/sync_llvm_mirror.ps1`, `scripts/populate_llvm_project.ps1` | (full-dir mirror already covers V6CLANG/; verify) |
 | `tests/features/76/` | Feature test |
-| `llvm-project/llvm/test/CodeGen/V6C/reg-value-forwarding-cross-bb.ll` | Lit test |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll` | Lit test |
 
 ---
 
@@ -165,12 +165,12 @@ redundancy elimination, not register-pressure reduction.
 
 ### Step 3.1 — Skeleton pass + registration + CLI toggle [x]
 
-Create `llvm-project/llvm/lib/Target/V6C/V6CRegValueForwarding.cpp`: a
-`MachineFunctionPass` named "V6C Register Value Forwarding" with
-`-v6c-disable-reg-value-forwarding` (default off = enabled). Initially a
-no-op returning `false`. Declare `createV6CRegValueForwardingPass()` in
-`V6C.h`, add the file to `CMakeLists.txt`, and register it in
-`V6CTargetMachine::addPreEmitPass` just before `createV6CRedundantFlagElimPass`.
+Create `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp`: a
+`MachineFunctionPass` named "V6CLANG Register Value Forwarding" with
+`-v6clang-disable-reg-value-forwarding` (default off = enabled). Initially a
+no-op returning `false`. Declare `createV6ClangRegValueForwardingPass()` in
+`V6Clang.h`, add the file to `CMakeLists.txt`, and register it in
+`V6ClangTargetMachine::addPreEmitPass` just before `createV6ClangRedundantFlagElimPass`.
 
 > **Design Notes**: Position after Peephole/LoadStoreOpt/XchgOpt so it cleans
 > up what they leave; before RedundantFlagElim so flag passes see the final
@@ -189,7 +189,7 @@ single block with empty in-state. Erase redundant `MOVrr` and `MVIr` within a
 block. Guard with `isO61PatchedImm` and assert no FLAGS def on erase.
 
 > **Design Notes**: Reuse `isO61PatchedImm` — move it to an internal header or
-> a shared anonymous helper exposed from `V6CPeephole`. Simplest: duplicate
+> a shared anonymous helper exposed from `V6ClangPeephole`. Simplest: duplicate
 > the tiny predicate locally (it's 6 lines) to avoid a header churn, with a
 > comment cross-referencing the canonical copy. Decide during impl.
 > Maintain a small allowlist of value-preserving A-defs (`ORA A`, `ANA A`)
@@ -215,7 +215,7 @@ change. Then a final erase pass using the converged In-states.
 
 ### Step 3.6 — Lit test: reg-value-forwarding-cross-bb.ll [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6C/reg-value-forwarding-cross-bb.ll`.
+Create `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll`.
 This is the **deterministic non-A / register-agnostic coverage** for the pass
 (C codegen reliably forces redundancy only on `A`, since RA reuses the GP
 registers between blocks — see note below). Hand-written MIR / IR covers:
@@ -235,15 +235,15 @@ registers between blocks — see note below). Hand-written MIR / IR covers:
 - (h) **negative**: value-preserving `ORA A`/`ANA A` does NOT clobber the
   `A == reg` equality.
 
-Run via `llvm-lit`. Use both `--v6c-disable-reg-value-forwarding` (CHECK-OFF)
+Run via `llvm-lit`. Use both `--v6clang-disable-reg-value-forwarding` (CHECK-OFF)
 and default (CHECK) run lines to A/B each case.
 
-> **Implementation Notes**: V6C has no `-run-pass`/`INITIALIZE_PASS` infra —
-> every V6C lit test is IR-based through full `llc`, so hand-written MIR per
+> **Implementation Notes**: V6CLANG has no `-run-pass`/`INITIALIZE_PASS` infra —
+> every V6CLANG lit test is IR-based through full `llc`, so hand-written MIR per
 > register is not feasible here. The test is IR-based: it reproduces the
 > headline cross-BB loop `MOV A, D` elision (a, d) and the value-correct
 > negative (h: `ORA A` preserves `A == D`; legitimate `.LBB15_6` reload kept),
-> with default vs `--v6c-disable-reg-value-forwarding` A/B run lines.
+> with default vs `--v6clang-disable-reg-value-forwarding` A/B run lines.
 > Register-agnostic / non-A / 16-bit-pair safety (b, c, e) is exercised by the
 > feature test `walk16` (tests/features/76) and guaranteed by the lattice's
 > TRI-based alias logic; O61 patched-imm safety (f) is covered by
@@ -260,10 +260,10 @@ and default (CHECK) run lines to A/B each case.
 
 ### Step 3.7 — Unify: remove folded logic from the two passes [x]
 
-Delete `V6CAccumulatorPlanning::eliminateRedundantAccMoves` (and its now-dead
+Delete `V6ClangAccumulatorPlanning::eliminateRedundantAccMoves` (and its now-dead
 helpers `definesA`/`usesA`/`definesReg` if unused elsewhere); make
 `runOnMachineFunction` a no-op or keep only any remaining responsibilities.
-Delete `V6CPeephole::eliminateRedundantMov` and its call site. Rebuild and
+Delete `V6ClangPeephole::eliminateRedundantMov` and its call site. Rebuild and
 re-run the lit suite to confirm no regression from removal.
 
 > **Design Notes**: Keep `collapseMovChain` (O82/O88 dead-hi chain rewriting —
@@ -279,27 +279,27 @@ re-run the lit suite to confirm no regression from removal.
 failure. Confirm benchmark cycle counts do not regress and improve where the
 pattern occurs (fannkuch).
 
-> **Result**: golden PASS, lit PASS (128 V6C tests), benchmarks PASS (all five
+> **Result**: golden PASS, lit PASS (128 V6CLANG tests), benchmarks PASS (all five
 > checksums unchanged). fannkuch -O2 improved 328 B / 28,798,404 cc ->
 > 325 B / 28,748,820 cc. Four peephole/shift lit tests needed their
-> *baseline* RUN lines extended with `--v6c-disable-reg-value-forwarding`
+> *baseline* RUN lines extended with `--v6clang-disable-reg-value-forwarding`
 > (O92 now also removes the round-trips their "disabled" prefixes expected).
 
 ### Step 3.10 — Verification assembly steps (tests/features/76) [x]
 
-Compile `tests/features/76/v6llvmc.c` → `v6llvmc_new01.asm`; confirm `repro`'s
+Compile `tests/features/76/v6clang.c` → `v6clang_new01.asm`; confirm `repro`'s
 loop body has no redundant `MOV A, D` and the value is established once before
 the loop, while the legitimate `.LBB15_6` reload (`A == 1`) is **preserved**.
 Confirm `walk16` (non-A / 16-bit-pair-heavy) is unchanged or improved and
 never miscompiled. Iterate (`_new02`, …) if needed. A/B with
-`--v6c-disable-reg-value-forwarding`.
+`--v6clang-disable-reg-value-forwarding`.
 
 ### Step 3.11 — Create result.txt (tests/features/result.md format) [x]
 
 ### Step 3.12 — Sync mirror [x]
 
 `powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1`;
-verify `V6CRegValueForwarding.cpp` and the lit test appear under the mirrors.
+verify `V6ClangRegValueForwarding.cpp` and the lit test appear under the mirrors.
 
 ---
 
@@ -307,7 +307,7 @@ verify `V6CRegValueForwarding.cpp` and the lit test appear under the mirrors.
 
 ### Example 1 — fannkuch init loop
 Removes the per-iteration `MOV A, D` (8cc/1B) from the hot init loop and two
-more redundant sites. In the test repro ([tests/features/76](../tests/features/76/v6llvmc.c))
+more redundant sites. In the test repro ([tests/features/76](../tests/features/76/v6clang.c))
 two of the three `MOV A, D` reloads are redundant (loop body at `.LBB15_2`
 and the block-entry reload at `.LBB15_3`); the third (`.LBB15_6`, where
 `A == 1` not `D`) is a genuine reload and **must be preserved** — the
@@ -348,7 +348,7 @@ partial ones, centralizing the `isO61PatchedImm` guard.
 - Track constants materialized by `LXI`/`XRA A` for 16-bit `Const` CSE.
 
 ## 8. References
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](future_plans/README.md)
 * [O92 design](future_plans/O92_unified_cross_bb_reg_value_forwarding.md)

@@ -1,7 +1,7 @@
 Inline-asm clobber + --gc-sections end-to-end test (Phase 4)
 ============================================================
 
-Verifies three properties of the V6C asm-interop pipeline:
+Verifies three properties of the V6CLANG asm-interop pipeline:
 
 1. **Inline-asm clobber lists are honored** — `extern_func()` issues
    `__asm__ volatile("CALL func1" : : : "A", "memory")`. The Style-B
@@ -31,7 +31,7 @@ Prints `OK: ...` on success.
 
 ## Files
 
-- `main.c`        — calls `extern_func()` then `__builtin_v6c_hlt()`.
+- `main.c`        — calls `extern_func()` then `__builtin_v6clang_hlt()`.
 - `external.h`    — `static inline __asm__ volatile("CALL func1" ... "A","memory")`.
 - `external.s`    — bodies of `func1`..`func4` in per-function sections.
 - `expected.txt`  — `12` (the expected stdout).

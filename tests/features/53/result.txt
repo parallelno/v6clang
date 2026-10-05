@@ -1,9 +1,9 @@
-O71 — V6C_LOAD16_P redesign
+O71 — V6CLANG_LOAD16_P redesign
 ============================
 
 Goal
 ----
-Replace the old monolithic `V6C_LOAD16_P` post-RA expander with six
+Replace the old monolithic `V6CLANG_LOAD16_P` post-RA expander with six
 explicit per-shape sequences (six combinations of `addr ∈ {HL,DE,BC}`
 × `dst ∈ {HL,BC,DE}`). The old expander had five known correctness
 bugs; the worst was bug 3 (addr=DE, dst=DE) which silently corrupted
@@ -30,7 +30,7 @@ Wins targeted by O71:
 
 Test sources
 ------------
-v6llvmc.c (and equivalent c8080.c) — see the file for the full text;
+v6clang.c (and equivalent c8080.c) — see the file for the full text;
 the four functions are:
 
     /* Case 4 — addr=DE, dst=DE.  Bug-3 reproducer. */
@@ -58,14 +58,14 @@ the four functions are:
         return (uint8_t)(v >> 8) ^ a_keep;
     }
 
-Note on shape coverage: V6C's calling convention places the first
+Note on shape coverage: V6CLANG's calling convention places the first
 16-bit argument in HL and the second in DE, so the natural-source
 pointers all land in HL. `bug3_de_de` is the only function whose
 RA happens to place the address in DE (because HL is already pinned
 by the `sum_in_hl` argument). Cases 3 / 5 / 6 are exercised
 indirectly by other O-pass tests and the `temp/asm_inline/custom_cc.c`
 end-to-end runner; granular per-shape pinning lives in the lit test
-`llvm/test/CodeGen/V6C/load16p-shapes.ll`.
+`llvm/test/CodeGen/V6CLANG/load16p-shapes.ll`.
 
 
 c8080 reference (i8080 mnemonics, only main + key callees)
@@ -120,9 +120,9 @@ case16_a_live          :  9 instrs / ~76 cy
 main                   : 36 instrs / ~280 cy   (every arg goes through SHLD)
 
 
-v6llvmc — BASELINE (pre-O71, old monolithic expander)
+v6clang — BASELINE (pre-O71, old monolithic expander)
 -----------------------------------------------------
-v6llvmc_old.asm — `bug3_de_de` (BUG 3 — *wrong result*):
+v6clang_old.asm — `bug3_de_de` (BUG 3 — *wrong result*):
 
     bug3_de_de:
             XCHG          ; HL := address, DE := sum
@@ -150,9 +150,9 @@ Old stats:
     case16_a_live           :  3 instrs /  3 B
 
 
-v6llvmc — O71 (six-shape expander, dead-GR8 spare preferred)
+v6clang — O71 (six-shape expander, dead-GR8 spare preferred)
 ------------------------------------------------------------
-v6llvmc_new01.asm:
+v6clang_new01.asm:
 
     bug3_de_de:                     ; case 4 (addr=DE, dst=DE)
             XCHG                    ; HL := address, DE := sum
@@ -223,20 +223,19 @@ Phase 4 — addr=BC LDAX-Based Refinement
 The original O71 expander handled cases 5 (addr=BC, dst=BC/DE) and 6
 (addr=BC, dst=HL) with a single `MOV H,B; MOV L,C; ...` template
 that clobbered HL (recovered by `PUSH H`/`POP H` when HL was
-live). Phase 4 adds a per-shape decision tree using V6C's `LDAX rp`;
+live). Phase 4 adds a per-shape decision tree using V6CLANG's `LDAX rp`;
 for most BC-addr live-sets the LDAX template is strictly cheaper.
 
-This test (v6llvmc.c) does not naturally exercise addr=BC because the
-V6C ABI places i16/ptr arguments 1 and 2 in HL and DE. None of the
+This test (v6clang.c) does not naturally exercise addr=BC because the
+V6CLANG ABI places i16/ptr arguments 1 and 2 in HL and DE. None of the
 functions here changes asm output as a result of Phase 4. Per-shape
 verification of the new sequences lives in the lit tests:
 
-    llvm-project/llvm/test/CodeGen/V6C/load16p-shapes.ll
+    llvm-project/llvm/test/CodeGen/V6CLANG/load16p-shapes.ll
       * case6_bc_hl_simple:  `LDAX B; MOV L,A; INX B; LDAX B; MOV H,A` (5B/40cc)
       * case5a_bc_de:        `LDAX B; MOV E,A; INX B; LDAX B; MOV D,A` (5B/40cc)
 
 The full Phase 4 dispatch is documented in
-design/future_plans/O71_V6C_LOAD16_P_redesign.md (per-shape table
-rows 5a, 5b, 6) and design/plan_O71_V6C_LOAD16_P_redesign.md
+design/future_plans/O71_V6CLANG_LOAD16_P_redesign.md (per-shape table
+rows 5a, 5b, 6) and design/plan_O71_V6CLANG_LOAD16_P_redesign.md
 (Phase 4 — addr=BC LDAX-Based Refinement).
-

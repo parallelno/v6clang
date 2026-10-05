@@ -4,10 +4,10 @@
 
 ### Current behavior
 
-The V6C backend frequently emits a two-instruction sequence to perform
+The V6CLANG backend frequently emits a two-instruction sequence to perform
 an i8 ALU operation against an immediate value when the immediate has
 already been materialized into a non-A register (post-RA, after
-`V6CLoadImmCombine`, after O64 reload lowering, or as a result of
+`V6ClangLoadImmCombine`, after O64 reload lowering, or as a result of
 ISel choices that do not select the ALU-immediate form):
 
 ```asm
@@ -16,17 +16,17 @@ MVI  R, NN     ; 7cc, 2B   — R is one of B,C,D,E,H,L
 ADD  R         ; 4cc, 1B   ; or SUB/ANA/ORA/ADC/SBB/XRA/CMP
 ```
 
-The two instructions need not be adjacent; `V6CLoadImmCombine` and
-`V6CXchgOpt` may schedule unrelated instructions between them. The
+The two instructions need not be adjacent; `V6ClangLoadImmCombine` and
+`V6ClangXchgOpt` may schedule unrelated instructions between them. The
 register `R` is generally otherwise unused — its only purpose was to
 hold the immediate for the ALU op.
 
 The single most-frequent shape of this pattern is the O61
 self-modifying patched-reload landing pad emitted by
-`V6CSpillPatchedReload`:
+`V6ClangSpillPatchedReload`:
 
 ```asm
-;--- V6C_RELOAD8 ---
+;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
         MVI     L, 0          ; the "0" byte is patched at runtime
         ADD     L
@@ -68,9 +68,9 @@ recovers the optimal form.
 
 ## 2. Strategy
 
-### Approach: forward-scan local peephole in `V6CPeephole`
+### Approach: forward-scan local peephole in `V6ClangPeephole`
 
-Add a new MBB-local helper `foldMviAluImm` to `V6CPeephole.cpp`. For
+Add a new MBB-local helper `foldMviAluImm` to `V6ClangPeephole.cpp`. For
 each `MVIr R, imm` (with `R != A`), forward-scan the rest of the MBB
 looking for an ALU-on-`R` instruction. Bail on any read/write of `R`
 or its 16-bit alias, on calls (regmask kills `R`), on inline asm,
@@ -108,9 +108,9 @@ helper already used by other peepholes in this file.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp` | Add `foldMviAluImm` method + opcode map + CLI flag; wire into `runOnMachineFunction` |
-| `llvm-project/llvm/test/CodeGen/V6C/peephole-mvi-alu-imm-fold.ll` | New lit test covering all 8 ALU ops + 5 edge cases |
-| `tests/features/61/` | Feature regression test (c8080.c, v6llvmc.c, asms, result.txt) |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `foldMviAluImm` method + opcode map + CLI flag; wire into `runOnMachineFunction` |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-alu-imm-fold.ll` | New lit test covering all 8 ALU ops + 5 edge cases |
+| `tests/features/61/` | Feature regression test (c8080.c, v6clang.c, asms, result.txt) |
 | `design/future_plans/README.md` | Mark O79 complete |
 | `design/future_plans/O79_mvi_alu_reg_to_alu_imm_fold.md` | (already authored) — implementation reference |
 
@@ -118,19 +118,19 @@ helper already used by other peepholes in this file.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `foldMviAluImm` to `V6CPeephole.cpp` [x]
+### Step 3.1 — Add `foldMviAluImm` to `V6ClangPeephole.cpp` [x]
 
 Add the new method and opcode helper at the end of the helper
 section (after `foldXraCmpZeroTest` / before
 `runOnMachineFunction`). Declaration goes into the private
-section of the `V6CPeephole` class.
+section of the `V6ClangPeephole` class.
 
 Key details:
 
 - Opcode map (8 entries):
   `ADDr→ADI, ADCr→ACI, SUBr→SUI, SBBr→SBI, ANAr→ANI, XRAr→XRI,
   ORAr→ORI, CMPr→CPI`.
-- Source MI: `V6C::MVIr` only. Skip if dst register == A.
+- Source MI: `V6CLANG::MVIr` only. Skip if dst register == A.
 - Forward scan from `std::next(MVI)`:
   - Hard barriers: `isCall`, `isInlineAsm`,
     `hasUnmodeledSideEffects`. Also `regmask.clobbersPhysReg(R)`.
@@ -171,7 +171,7 @@ Key details:
 
 ### Step 3.2 — Add CLI flag [x]
 
-Add a new `cl::opt<bool> DisableMviAluFold("v6c-disable-mvi-alu-fold", ...)`
+Add a new `cl::opt<bool> DisableMviAluFold("v6clang-disable-mvi-alu-fold", ...)`
 near the existing `DisablePeephole`. Honour it by an early
 `if (DisableMviAluFold) return false;` at the top of
 `foldMviAluImm`.
@@ -181,7 +181,7 @@ near the existing `DisablePeephole`. Honour it by an early
 ### Step 3.3 — Wire into `runOnMachineFunction` [x]
 
 Add `Changed |= foldMviAluImm(MBB);` to the per-MBB pass list
-in `V6CPeephole::runOnMachineFunction`. Place it after
+in `V6ClangPeephole::runOnMachineFunction`. Place it after
 `foldXraCmpZeroTest` so it can consume any residual
 `MVI R, NN; ... ; ALU R` produced by earlier peepholes in the
 same pass.
@@ -198,7 +198,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: `peephole-mvi-alu-imm-fold.ll` [x]
 
-New file at `llvm-project/llvm/test/CodeGen/V6C/peephole-mvi-alu-imm-fold.ll`.
+New file at `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-alu-imm-fold.ll`.
 
 Cases (one per CHECK label):
 1. `add_l`: `MVI L,5; ADD L; A live` → `ADI 5`.
@@ -212,7 +212,7 @@ Cases (one per CHECK label):
 9. `gap_no_clobber`: `MVI L,5; <unrelated MOV B,C>; ADD L` → folds.
 10. `blocked_by_l_clobber`: `MVI L,5; LXI HL,0x1000; ADD L` → no fold.
 11. `blocked_by_r_live_out`: `MVI L,5; ADD L; OUT 0xde,L` → no fold.
-12. `disabled` variant exercising `-v6c-disable-mvi-alu-fold` (run-line).
+12. `disabled` variant exercising `-v6clang-disable-mvi-alu-fold` (run-line).
 
 > **Implementation Notes**: Plain `MVI R, imm; ALU R` cannot be
 > reached at -O0 (no MVI-r emitted) and at -O2 ISel selects ALU-imm
@@ -220,11 +220,11 @@ Cases (one per CHECK label):
 > in isolation. The shipped test instead drives the fold through
 > O61 patched-reload (the only path that produces real `MVI R,0;
 > ALU R` shapes in production): an 8-arg i8 XOR-chain function
-> with `norecurse`, compiled at `-O2 -mv6c-spill-patched-reload`,
+> with `norecurse`, compiled at `-O2 -mv6clang-spill-patched-reload`,
 > spills H through a non-A landing pad whose reload site is
 > `MVI L, 0; XRA L`. The test checks `XRI 0` after `.LLo61_0:` in
 > the `CHECK` mode and `MVI [BCDEHL], 0; XRA [BCDEHL]` in the
-> `DIS` (-v6c-disable-mvi-alu-fold) mode — directly proving the
+> `DIS` (-v6clang-disable-mvi-alu-fold) mode — directly proving the
 > patched-reload-symbol is preserved across the fold.
 
 ### Step 3.6 — Run regression tests [x]
@@ -239,8 +239,8 @@ If anything fails, diagnose, fix, return to Step 3.4.
 
 ### Step 3.7 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests/features/61/v6llvmc.c` to `v6llvmc_new01.asm`,
-compare against `v6llvmc_old.asm`, and verify each test function
+Compile `tests/features/61/v6clang.c` to `v6clang_new01.asm`,
+compare against `v6clang_old.asm`, and verify each test function
 shows the expected `MVI ... ; ALU ...` → `ALU-imm` collapse.
 
 > **Implementation Notes**: `fold_spill` shows the only effective
@@ -252,7 +252,7 @@ shows the expected `MVI ... ; ALU ...` → `ALU-imm` collapse.
 ### Step 3.8 — Make sure result.txt is created [x]
 
 Per `tests/features/result.md` — include C source, c8080 asm,
-v6llvmc old + new asm, and a comparison table (cycles & bytes
+v6clang old + new asm, and a comparison table (cycles & bytes
 per function across all three).
 
 > **Implementation Notes**: Done.
@@ -301,7 +301,7 @@ After O79 fires on the second pair:
 ### Example 2 — O61 patched reload
 
 ```asm
-;--- V6C_RELOAD8 ---
+;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
         MVI     L, 0
         ADD     L
@@ -310,7 +310,7 @@ After O79 fires on the second pair:
 After O79:
 
 ```asm
-;--- V6C_RELOAD8 ---
+;--- V6CLANG_RELOAD8 ---
 .LLo61_0:
         ADI     0
 ```
@@ -324,7 +324,7 @@ region — measurable on every i8 spill in O61's hot path.
 
 When O13 has already turned the `MVI R,N` into `MOV R,R'`
 (another live reg holds N), O79 doesn't fire. When O13 cannot
-collapse (no live constant-holder — the dominant case on V6C's
+collapse (no live constant-holder — the dominant case on V6CLANG's
 narrow GPR file), O79 catches the residual.
 
 ---
@@ -340,7 +340,7 @@ narrow GPR file), O79 catches the residual.
 | Inline asm with side effects. | `isInlineAsm` + `hasUnmodeledSideEffects` are hard barriers. |
 | `R` live-out via successor MBB. | `isRegDeadAfter` checks successor liveins via `MCRegAliasIterator`. |
 | `CMPr` has no destination operand, different `BuildMI` shape. | Dispatch on opcode; `CPI` builder uses `(outs)(ins Acc:$lhs, imm)`, no `addReg(A, Define)`. |
-| Pass placement — running before O13 might claim shapes O13 could collapse. | Place after existing peepholes in `V6CPeephole`. Pipeline order is: `Peephole → LoadImmCombine → ...`. The fold runs in Peephole (which precedes LoadImmCombine) so the residual O79 catches what LoadImmCombine would not have collapsed anyway. |
+| Pass placement — running before O13 might claim shapes O13 could collapse. | Place after existing peepholes in `V6ClangPeephole`. Pipeline order is: `Peephole → LoadImmCombine → ...`. The fold runs in Peephole (which precedes LoadImmCombine) so the residual O79 catches what LoadImmCombine would not have collapsed anyway. |
 
 ---
 
@@ -371,7 +371,7 @@ narrow GPR file), O79 catches the residual.
 
 ## 8. References
 
-- [V6C Build Guide](docs\V6CBuildGuide.md)
+- [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 - [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 - [Future Improvements](design\future_plans\README.md)
 - [O79 Design](design\future_plans\O79_mvi_alu_reg_to_alu_imm_fold.md)

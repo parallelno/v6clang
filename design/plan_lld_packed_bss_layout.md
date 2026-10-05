@@ -2,7 +2,7 @@
 
 ## Goal
 
-Teach the V6C `ld.lld` target to pack independently garbage-collectable,
+Teach the V6CLANG `ld.lld` target to pack independently garbage-collectable,
 runtime-only data blocks into the smallest practical contiguous BSS arena while
 respecting the Vector-06c 256-byte page constraints.
 
@@ -21,7 +21,7 @@ The three input-section kinds are:
 
 All three kinds are `SHT_NOBITS`, `SHF_ALLOC | SHF_WRITE` input sections. They
 reserve runtime address space, but contribute no bytes to the ROM/COM file.
-Their final addresses may move freely because V6C relocations are absolute.
+Their final addresses may move freely because V6CLANG relocations are absolute.
 
 ## Repository and Mirror Workflow
 
@@ -32,8 +32,8 @@ they are not durable until synchronized to the git-tracked mirrors:
 | Build-tree path | Git-tracked mirror | Sync policy |
 |---|---|---|
 | `llvm-project/lld/ELF/...` | `lld/ELF/...` | Individual `xcopy` entries for every modified or new upstream LLD file. |
-| `llvm-project/clang/lib/Driver/ToolChains/V6C/v6c.ld` | `clang/lib/Driver/ToolChains/V6C/v6c.ld` | Existing individual `xcopy` entry. |
-| `llvm-project/llvm/test/Linker/V6C/...` | `tests/lit/Linker/V6C/...` | Existing full `robocopy /MIR`, excluding `Output/`. |
+| `llvm-project/clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld` | Existing individual `xcopy` entry. |
+| `llvm-project/llvm/test/Linker/V6CLANG/...` | `tests/lit/Linker/V6CLANG/...` | Existing full `robocopy /MIR`, excluding `Output/`. |
 
 `scripts/build.ps1` runs `scripts/sync_llvm_mirror.ps1` at the start of every
 build. Therefore the implementation workflow is:
@@ -69,7 +69,7 @@ inside `llvm-project/`.
    BSS and the packed arena so crt0 zero-initializes every packed block.
 8. The 23-block reference workload packs 3232 live bytes into a 3232-byte
    arena with zero waste.
-9. Links that contain no packed sections, non-V6C links, and relocatable
+9. Links that contain no packed sections, non-V6CLANG links, and relocatable
    (`ld.lld -r`) links retain existing behavior.
 
 ## Required Producer Contract
@@ -89,7 +89,7 @@ independent input section**.
 - Each block should have at least one symbol through which live code/data can
   reference it. Normal relocations provide the GC reachability edge.
 - Input `sh_addralign` should be 1 for all three kinds. The semantic 256-byte
-  constraints are imposed by the V6C packer; setting every anchor's ELF
+  constraints are imposed by the V6CLANG packer; setting every anchor's ELF
   alignment to 256 would unnecessarily align the whole output arena and lose a
   usable leading hole.
 
@@ -163,7 +163,7 @@ smaller hole. Append the filler if no hole fits. Fillers may cross pages.
 - Emit a stable map even though semantic source/link order was discarded.
 
 Do not preserve source order: references are resolved through symbols and all
-V6C relocations (`R_V6C_8`, `R_V6C_16`, `R_V6C_LO8`, `R_V6C_HI8`) are absolute.
+V6CLANG relocations (`R_V6CLANG_8`, `R_V6CLANG_16`, `R_V6CLANG_LO8`, `R_V6CLANG_HI8`) are absolute.
 
 ## LLD Integration Design
 
@@ -171,19 +171,19 @@ V6C relocations (`R_V6C_8`, `R_V6C_16`, `R_V6C_LO8`, `R_V6C_HI8`) are absolute.
 
 Gate the behavior on all of the following:
 
-- `config->emachine == EM_V6C`;
+- `config->emachine == EM_V6Clang`;
 - final executable link (not `-r`);
 - a dedicated output section containing recognized packed inputs;
 - every allocatable input in that output section is a recognized packed kind.
 
 Do not change generic ELF layout for other targets. Avoid a new command-line
-option in the first implementation: the explicit input names plus the V6C
+option in the first implementation: the explicit input names plus the V6CLANG
 target are the opt-in contract. A disable/debug switch may be added later if
 field diagnosis demonstrates a need.
 
 ### Dedicated output section
 
-Update the default V6C script so packed inputs are isolated from ordinary BSS:
+Update the default V6CLANG script so packed inputs are isolated from ordinary BSS:
 
 ```ld
 __bss_start = .;
@@ -207,23 +207,23 @@ NOBITS writing straightforward. Because both output sections are NOBITS and
 
 Custom scripts must use the same dedicated-output-section structure to enable
 packing. If recognized packed inputs are instead swallowed by a broad `.bss*`
-rule, LLD should either lay them out normally or issue one clear V6C warning;
+rule, LLD should either lay them out normally or issue one clear V6CLANG warning;
 it must not partially pack a mixed output section. Lock the choice with a test
 and document it. Prefer normal layout plus a warning for compatibility.
 
 ### Placement hook
 
-Implement a small V6C-owned packing module rather than putting the algorithm in
-`Arch/V6C.cpp`, which only owns target relocation behavior today:
+Implement a small V6CLANG-owned packing module rather than putting the algorithm in
+`Arch/V6Clang.cpp`, which only owns target relocation behavior today:
 
-- `llvm-project/lld/ELF/V6CPackedSections.h`
-- `llvm-project/lld/ELF/V6CPackedSections.cpp`
+- `llvm-project/lld/ELF/V6ClangPackedSections.h`
+- `llvm-project/lld/ELF/V6ClangPackedSections.cpp`
 
 The module should expose narrowly-scoped operations such as:
 
 ```cpp
-bool isV6CPackedInput(const InputSection &sec);
-bool assignV6CPackedOffsets(OutputSection &osec, uint64_t startAddr,
+bool isV6ClangPackedInput(const InputSection &sec);
+bool assignV6ClangPackedOffsets(OutputSection &osec, uint64_t startAddr,
                             uint64_t &endAddr);
 ```
 
@@ -277,7 +277,7 @@ The implementation must assert or diagnose:
 - no packed input has relocations applying *to bytes inside it* (NOBITS cannot
   carry initialized contents); relocations from other sections to its symbols
   are expected;
-- computed addresses remain in the V6C 16-bit address space and do not overlap
+- computed addresses remain in the V6CLANG 16-bit address space and do not overlap
   later sections, reserved memory, video RAM constraints expressed by a custom
   script, or the stack boundary;
 - packed `outSecOff` values are monotonic after final sorting, avoiding hidden
@@ -291,7 +291,7 @@ and `SectionBase::getVA()` adds the newly assigned `outSecOff`.
 
 ### Phase 1 - Lock the ELF contract
 
-1. Create a minimal V6C assembly fixture containing two same-kind blocks in one
+1. Create a minimal V6CLANG assembly fixture containing two same-kind blocks in one
    object and one block in a second object.
 2. Verify the LLVM MC unique-section syntax with `llvm-readelf -S -s -r`.
 3. Verify all blocks are separate `SHT_NOBITS`, alloc/write, alignment 1 input
@@ -322,9 +322,9 @@ the reference layout size without invoking the full linker.
 
 ### Phase 3 - Integrate with LLD layout
 
-1. Add `V6CPackedSections.cpp` to `llvm-project/lld/ELF/CMakeLists.txt`.
+1. Add `V6ClangPackedSections.cpp` to `llvm-project/lld/ELF/CMakeLists.txt`.
 2. Classify recognized input section names and validate type/flags/size.
-3. Add the V6C-gated packed-output path to
+3. Add the V6CLANG-gated packed-output path to
    `LinkerScript::assignOffsets(OutputSection *)`.
 4. Preserve original-order tie-break metadata across repeated
    `assignAddresses()` calls.
@@ -337,17 +337,17 @@ the reference layout size without invoking the full linker.
 Exit gate: full `ld.lld` tests pass with correct addresses and no changes to
 non-packed links.
 
-### Phase 4 - Update the default V6C script and runtime bounds
+### Phase 4 - Update the default V6CLANG script and runtime bounds
 
 1. Add the dedicated `.bss.pack` output section before ordinary `.bss` in
-   `clang/lib/Driver/ToolChains/V6C/v6c.ld`.
+   `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`.
 2. Place `__bss_start` before `.bss.pack` and `__bss_end` after ordinary
    `.bss`.
 3. Verify an empty packed arena does not create an address gap or alter existing
    binaries unexpectedly.
 4. Verify crt0 zeros packed and ordinary BSS in one contiguous range.
 5. Document custom-script requirements and packed section semantics in
-   `docs/V6CArchitecture.md` and `docs/V6CBuildGuide.md`.
+   `docs/V6ClangArchitecture.md` and `docs/V6ClangBuildGuide.md`.
 
 Exit gate: the standard clang driver path enables packing automatically and
 produces a runnable image.
@@ -356,22 +356,22 @@ produces a runnable image.
 
 1. After the first working build-tree implementation, run
    `scripts/sync_llvm_mirror.ps1` and verify these durable tracked copies exist:
-   - `lld/ELF/V6CPackedSections.h`
-   - `lld/ELF/V6CPackedSections.cpp`
+   - `lld/ELF/V6ClangPackedSections.h`
+   - `lld/ELF/V6ClangPackedSections.cpp`
    - `lld/ELF/LinkerScript.cpp`
    - `lld/ELF/CMakeLists.txt`
-   - `clang/lib/Driver/ToolChains/V6C/v6c.ld`
-   - all new tests under `tests/lit/Linker/V6C/`
+   - `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`
+   - all new tests under `tests/lit/Linker/V6CLANG/`
 2. Add individual, symmetric `xcopy` entries for both new packed-section files
    and the newly modified upstream `LinkerScript.cpp`. Keep the existing
-   `CMakeLists.txt` and `v6c.ld` entries. Update both scripts:
+   `CMakeLists.txt` and `v6clang.ld` entries. Update both scripts:
    - `scripts/sync_llvm_mirror.ps1`
    - `scripts/populate_llvm_project.ps1`
 3. Author linker tests only under
-   `llvm-project/llvm/test/Linker/V6C/`. Rely on the existing full-directory
-   mirror to populate `tests/lit/Linker/V6C/`; do not add individual test
+   `llvm-project/llvm/test/Linker/V6CLANG/`. Rely on the existing full-directory
+   mirror to populate `tests/lit/Linker/V6CLANG/`; do not add individual test
    `xcopy` commands and do not edit the tracked test mirror directly.
-4. Ensure the updated V6C linker script is copied into the staged clang
+4. Ensure the updated V6CLANG linker script is copied into the staged clang
    resource tree by the existing packaging flow.
 5. Run `sync_llvm_mirror.ps1`, inspect the tracked diff, then recreate or clean
    the relevant `llvm-project/` files and run `populate_llvm_project.ps1`.
@@ -397,14 +397,14 @@ come from `ld.lld`.
 
 ## Test Plan
 
-Add canonical project tests under `llvm-project/llvm/test/Linker/V6C/`. The
+Add canonical project tests under `llvm-project/llvm/test/Linker/V6CLANG/`. The
 existing `robocopy /MIR` rule synchronizes them to the durable
-`tests/lit/Linker/V6C/` mirror. Do not add the feature only under
+`tests/lit/Linker/V6CLANG/` mirror. Do not add the feature only under
 `llvm-project/lld/test/ELF/`: that directory is gitignored and currently has no
 tracked mirror in this repository. Relevant upstream LLD ELF tests may still be
 run as non-persistent compatibility checks.
 
-Add one V6C end-to-end feature fixture under the existing tracked feature-test
+Add one V6CLANG end-to-end feature fixture under the existing tracked feature-test
 structure as well.
 
 ### ELF/linker tests
@@ -430,7 +430,7 @@ structure as well.
     and the address of the output section after BSS.
 11. **Custom script:** mixed-output collection does not partially pack and
     produces the chosen warning/normal-layout behavior.
-12. **No regression:** no packed sections, non-V6C target, and `-r` retain
+12. **No regression:** no packed sections, non-V6CLANG target, and `-r` retain
     ordinary layout.
 13. **File size:** compare ELF program headers and flat binary size; NOBITS
     blocks reserve memory but do not add initialized bytes.
@@ -473,7 +473,7 @@ python tests\run_all.py
 During development, use the narrow linker suite first:
 
 ```powershell
-llvm-build\bin\llvm-lit.exe -sv llvm-project\llvm\test\Linker\V6C\v6c-pack-*.s
+llvm-build\bin\llvm-lit.exe -sv llvm-project\llvm\test\Linker\V6CLANG\v6clang-pack-*.s
 ```
 
 Inspect representative outputs with:
@@ -489,7 +489,7 @@ Final gates:
 - targeted LLD packing tests pass;
 - relevant upstream LLD ELF tests affected by `LinkerScript.cpp` still pass as
    compatibility checks;
-- V6C codegen/linker/feature suites pass;
+- V6CLANG codegen/linker/feature suites pass;
 - 23-block arena is 3232 bytes with zero constraint violations;
 - every changed build-tree file and canonical test appears in its tracked
    mirror after sync;
@@ -534,7 +534,7 @@ or determinism. An exponential exact solver is out of scope.
 
 ### Upstream maintenance
 
-`LinkerScript.cpp` is an upstream core file. Keep its change to one V6C-gated
+`LinkerScript.cpp` is an upstream core file. Keep its change to one V6CLANG-gated
 call into a target-owned helper, add generic no-regression tests, and mirror the
 file explicitly in both sync directions.
 
@@ -544,7 +544,7 @@ file explicitly in both sync directions.
 - Packing a subrange of one ELF input section.
 - Preserving declaration, object, or command-line order in final addresses.
 - Page sizes other than 256 bytes in the first implementation.
-- Applying this policy to non-V6C targets.
+- Applying this policy to non-V6CLANG targets.
 - Mathematically optimal general bin packing.
 - Repacking relocatable (`-r`) output; preserve input constraints for the final
   link instead.
@@ -563,7 +563,7 @@ Phase 2 - Packer
 - [x] Reproduce the 3232-byte reference arena
 
 Phase 3 - LLD integration
-- [x] Add V6C packed-section module and CMake entry
+- [x] Add V6CLANG packed-section module and CMake entry
 - [x] Integrate with repeated `LinkerScript::assignOffsets()`
 - [x] Preserve monotonic final section order and offsets
 - [x] Validate scripts, symbols, map output, and memory regions
@@ -576,7 +576,7 @@ Phase 4 - Default script/runtime
 
 Phase 5 - Mirroring/distribution
 - [x] Add symmetric copies for both new files and `LinkerScript.cpp`
-- [x] Sync canonical Linker/V6C tests into the read-only tracked test mirror
+- [x] Sync canonical Linker/V6CLANG tests into the read-only tracked test mirror
 - [x] Inspect and retain all resulting tracked `lld/`, `clang/`, and test diffs
 - [x] Verify staged toolchain contains the updated script/linker
 - [x] Complete clean mirror round-trip rebuild
@@ -588,7 +588,7 @@ Phase 6 - Migration and final validation
 
 ## Status
 
-**Implemented and feature-complete.** The V6C-only final-link path, pure
+**Implemented and feature-complete.** The V6CLANG-only final-link path, pure
 allocator, default script integration, diagnostics, durable mirrors, direct
 unit tests, linker tests, and emulator fixture are in place. The external
 `v6asm` producer emits one alignment-1 NOBITS section per logical block and its
@@ -597,7 +597,7 @@ tracked 23-block fixture links to a zero-waste `0xCA0` arena.
 Validated results:
 
 - 5/5 direct packed allocator tests pass.
-- 7/7 `Linker/V6C` tests pass after a mirror sync/reverse-populate rebuild.
+- 7/7 `Linker/V6CLANG` tests pass after a mirror sync/reverse-populate rebuild.
 - The packed-BSS driver/emulator test passes and emits success byte `0x5A`.
 - The external 23-block v6asm object contains 4 anchor, 4 window, and 15 filler
    sections totaling 3232 bytes; LLD produces a `0xCA0` NOBITS arena and a

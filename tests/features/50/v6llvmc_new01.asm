@@ -6,13 +6,13 @@ sum4_global:                            ; @sum4_global
 ; %bb.0:
 	LXI	H, g_s
 	LDA	g_s+1
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	LXI	H, g_s+2
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	INX	H
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	RET
                                         ; -- End function
@@ -42,26 +42,26 @@ sum4_array:                             ; @sum4_array
 ; %bb.0:
 	MOV	D, H
 	MOV	E, L
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
 	INX	D
 	INX	D
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	LDAX	D
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	MOV	D, H
 	MOV	E, L
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	D
 	INX	D
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	XCHG
 	ADD	M
 	XCHG
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	H
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	RET
                                         ; -- End function
@@ -74,13 +74,13 @@ main:                                   ; @main
 ; %bb.0:
 	LXI	H, g_s
 	LDA	g_s+1
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	LXI	H, g_s+2
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	INX	H
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	MOV	E, A
 	ADI	0xa
@@ -100,17 +100,17 @@ main:                                   ; @main
 	STA	g_d
 	LXI	H, g_b
 	LDA	g_a
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	LXI	H, g_c
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	LXI	H, g_d
-	;--- V6C_ADD_M_P ---
+	;--- V6CLANG_ADD_M_P ---
 	ADD	M
 	CALL	ext_sink
 	MVI	L, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	H, L
 	MOV	L, A
 	RET

@@ -64,7 +64,7 @@ c8080 totals (function bodies only, excl. bar/baz):
   test_pattern_c: 44cc bar / 56cc baz, 11B
 
 
-## v6llvmc assembly (BEFORE O23)
+## v6clang assembly (BEFORE O23)
 
 test_pattern_a:                        ; 24B
     MOV  D, H                  ;  8cc  1B
@@ -102,7 +102,7 @@ test_pattern_b:                        ; 21B
 ; zero path (lo!=0): 8+8+12+8+4+12+12 = 64cc, 12B
 
 
-## v6llvmc assembly (AFTER O23)
+## v6clang assembly (AFTER O23)
 
 test_pattern_a:                        ; 24B
     MOV  D, H                  ;  8cc  1B

@@ -198,7 +198,7 @@ static std::tuple<ELFKind, uint16_t, uint8_t> parseEmulation(StringRef emul) {
           .Case("elf_iamcu", {ELF32LEKind, EM_IAMCU})
           .Case("elf64_sparc", {ELF64BEKind, EM_SPARCV9})
           .Case("msp430elf", {ELF32LEKind, EM_MSP430})
-          .Case("elf32v6c", {ELF32LEKind, EM_V6C})
+          .Case("elf32v6clang", {ELF32LEKind, EM_V6Clang})
           .Case("elf64_amdgpu", {ELF64LEKind, EM_AMDGPU})
           .Case("elf64loongarch", {ELF64LEKind, EM_LOONGARCH})
           .Case("elf64_s390", {ELF64BEKind, EM_S390})
@@ -208,7 +208,7 @@ static std::tuple<ELFKind, uint16_t, uint8_t> parseEmulation(StringRef emul) {
     error("unknown emulation: " + emul);
   if (ret.second == EM_MSP430)
     osabi = ELFOSABI_STANDALONE;
-  else if (ret.second == EM_V6C)
+  else if (ret.second == EM_V6Clang)
     osabi = ELFOSABI_STANDALONE;
   else if (ret.second == EM_AMDGPU)
     osabi = ELFOSABI_AMDGPU_HSA;
@@ -1308,7 +1308,7 @@ static void readConfigs(opt::InputArgList &args) {
       args.hasFlag(OPT_lto_unique_basic_block_section_names,
                    OPT_no_lto_unique_basic_block_section_names, false);
   config->mapFile = args.getLastArgValue(OPT_Map);
-  config->v6cConstantsMap = args.getLastArgValue(OPT_v6c_constants_map);
+  config->v6clangConstantsMap = args.getLastArgValue(OPT_v6clang_constants_map);
   config->mipsGotSize = args::getInteger(args, OPT_mips_got_size, 0xfff0);
   config->mergeArmExidx =
       args.hasFlag(OPT_merge_exidx_entries, OPT_no_merge_exidx_entries, true);

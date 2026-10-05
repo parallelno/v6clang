@@ -1,11 +1,11 @@
 # O92 — Unified Cross-BB Physical-Register Value Forwarding
 
-**Source:** V6C — observed in `tests/benchmarks_c/asm/v6llvmc_fannkuch_O2.s` (`main`), reproduced in `temp/acc_loop_repro2.c`
+**Source:** V6CLANG — observed in `tests/benchmarks_c/asm/v6clang_fannkuch_O2.s` (`main`), reproduced in `temp/acc_loop_repro2.c`
 **Savings:** 8cc, 1B per eliminated `MOV r, s` / `MVI r, imm`; recurs **per loop iteration** when the redundant write sits in a loop body
 **Frequency:** Any loop/region where a value already resident in a physical register is re-materialised (re-`MOV`'d or re-`MVI`'d) on entry to or inside a block — common for accumulator reloads of loop-invariant values
 **Complexity:** Medium — iterative cross-BB dataflow (fixpoint over the CFG), but lives in the existing `MachineFunctionPass` peephole vehicle
-**Risk:** Medium — physical-register liveness + alias tracking + the O61 patched-immediate guard; bugs corrupt a register value silently. By preEmit there are **no V6C pseudos left** (all expanded, incl. spill/reloads), so the only special-case is the patched `MVI`/`LXI`/`STA`/`SHLD`.
-**Dependencies:** None new. Subsumes parts of `V6CAccumulatorPlanning` and `V6CPeephole`; complements (does not replace) upstream `machine-cp`
+**Risk:** Medium — physical-register liveness + alias tracking + the O61 patched-immediate guard; bugs corrupt a register value silently. By preEmit there are **no V6CLANG pseudos left** (all expanded, incl. spill/reloads), so the only special-case is the patched `MVI`/`LXI`/`STA`/`SHLD`.
+**Dependencies:** None new. Subsumes parts of `V6ClangAccumulatorPlanning` and `V6ClangPeephole`; complements (does not replace) upstream `machine-cp`
 **Status:** [ ] not started
 
 ---
@@ -22,7 +22,7 @@ that the allocator parked in a general register.
 
 ```asm
 ; %bb.0
-        LDA     __v6c_a.repro     ; A = n
+        LDA     __v6clang_a.repro     ; A = n
         MOV     D, A              ; D = n
         ORA     A                 ; A unchanged (= n), sets Z
         JZ      .LBB15_3
@@ -68,32 +68,32 @@ The redundancy is established in one block and carried across a CFG edge
    **intra-block** only. It cannot prove `A == D` holds on entry to `.LBB15_2`
    from the predecessor *and* survives the back-edge, so it leaves the `MOV A, D`.
 
-2. **`V6CAccumulatorPlanning::eliminateRedundantAccMoves`.** A-specific and
+2. **`V6ClangAccumulatorPlanning::eliminateRedundantAccMoves`.** A-specific and
    **local**: it eliminates `MOV A,X; MOV X,A` round-trips and redundant
    `MOV X,A` within a block via value tracking. It does not carry an
    "A holds X on block entry" fact across edges.
 
-3. **`V6CPeephole::eliminateRedundantMov` / `collapseMovChain`.** Local MOV/MVI
+3. **`V6ClangPeephole::eliminateRedundantMov` / `collapseMovChain`.** Local MOV/MVI
    cleanups, single forward scan within a block.
 
 So three mechanisms each implement a fragment of the same abstraction — "reg
 already holds value, drop the redundant write" — none of them cross-BB, and each
 re-derives its own guards (notably the O61 patched-immediate skip; see
-`isO61PatchedImm` in `V6CPeephole.cpp`).
+`isO61PatchedImm` in `V6ClangPeephole.cpp`).
 
 ### Pipeline timing makes this tractable
 
-By the time `addPreEmitPass` runs, **all V6C pseudos are already expanded** —
+By the time `addPreEmitPass` runs, **all V6CLANG pseudos are already expanded** —
 including the spill/reload family. The relevant expanders all run in the
 postRegAlloc region, *before* `addPreEmitPass`:
 
-- `ExpandPostRAPseudos` lowers `V6C_LOAD8_P`/`STORE8_P`, `V6C_DAD`, `INX16`,
-  `BUILD_PAIR`, etc. (see `V6CInstrInfo::expandPostRAPseudo`).
-- `V6CSpillPatchedReload` (in `addPostRegAlloc`) rewrites *eligible*
+- `ExpandPostRAPseudos` lowers `V6CLANG_LOAD8_P`/`STORE8_P`, `V6CLANG_DAD`, `INX16`,
+  `BUILD_PAIR`, etc. (see `V6ClangInstrInfo::expandPostRAPseudo`).
+- `V6ClangSpillPatchedReload` (in `addPostRegAlloc`) rewrites *eligible*
   spill/reload groups into the patched `MVI r,0` / `LXI rp,0` form, tagged with
   a `.LLo61_N:` pre-instr label and `MO_PATCH_IMM` on the imm operand.
-- `PrologEpilogInserter::eliminateFrameIndex` (`V6CRegisterInfo.cpp`) expands
-  every *remaining* `V6C_SPILL8`/`RELOAD8` (and 16-bit forms) into real
+- `PrologEpilogInserter::eliminateFrameIndex` (`V6ClangRegisterInfo.cpp`) expands
+  every *remaining* `V6CLANG_SPILL8`/`RELOAD8` (and 16-bit forms) into real
   `STA`/`LDA` / O64-ladder instructions.
 
 Confirmed empirically (post-`postrapseudos` MIR of the repro): the inner loop is
@@ -105,7 +105,7 @@ full MIR CFG + liveness + `TRI`.
 reloads, however, look like ordinary `MVI r, 0` (or `LXI`/`STA`/`SHLD`) yet
 their immediate byte is self-modified at runtime — so the one real special-case
 is the O61 patched-immediate guard (`isO61PatchedImm` / `MO_PATCH_IMM`), exactly
-as existing V6C peepholes already handle.
+as existing V6CLANG peepholes already handle.
 
 This also corrects an earlier mis-framing: a "peephole" here is a
 `MachineFunctionPass` and already uses liveness (`MBB.isLiveIn`,
@@ -195,12 +195,12 @@ Walking a block with the in-state:
 
 ## Unification plan
 
-Fold the two overlapping **V6C** redundant-move mechanisms into this pass:
+Fold the two overlapping **V6CLANG** redundant-move mechanisms into this pass:
 
-- Replace `V6CAccumulatorPlanning::eliminateRedundantAccMoves` (its
+- Replace `V6ClangAccumulatorPlanning::eliminateRedundantAccMoves` (its
   redundant-A-move/value-tracking part). Keep AccumulatorPlanning's
   **reordering/scheduling** role — that is a different job.
-- Replace `V6CPeephole::eliminateRedundantMov` and the redundant-MOV portion of
+- Replace `V6ClangPeephole::eliminateRedundantMov` and the redundant-MOV portion of
   `collapseMovChain` (keep the dead-hi / build-pair-specific collapses that are
   not pure value-forwarding).
 - Centralise the `isO61PatchedImm` guard so it cannot be forgotten in one place.
@@ -213,18 +213,18 @@ passes rely on. The new pass runs after it and handles only the cross-BB cases
 
 ## Implementation sketch
 
-1. New file `llvm/lib/Target/V6C/V6CRegValueForwarding.cpp` (+ mirror under
+1. New file `llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp` (+ mirror under
    `llvm-project/...`), `MachineFunctionPass`.
-2. CLI toggle `-v6c-disable-reg-value-forwarding` (double-dash via `-mllvm`).
-3. Register in `V6CTargetMachine::addPreEmitPass` **after** the existing
+2. CLI toggle `-v6clang-disable-reg-value-forwarding` (double-dash via `-mllvm`).
+3. Register in `V6ClangTargetMachine::addPreEmitPass` **after** the existing
    peephole/loadstore passes (position TBD by measurement; likely just before
    `RedundantFlagElim`).
 4. Worklist fixpoint over MBBs; per-block in/out lattice maps; alias-correct
    invalidation via `TRI`.
-5. Wire `createV6CRegValueForwardingPass` into `V6C.h`, `CMakeLists.txt`,
-   `V6CTargetMachine.cpp`. Add xcopy lines to **both** `sync_llvm_mirror.ps1`
+5. Wire `createV6ClangRegValueForwardingPass` into `V6Clang.h`, `CMakeLists.txt`,
+   `V6ClangTargetMachine.cpp`. Add xcopy lines to **both** `sync_llvm_mirror.ps1`
    and `populate_llvm_project.ps1` (per repo convention for new backend files).
-6. Excise the folded logic from `V6CAccumulatorPlanning` / `V6CPeephole`.
+6. Excise the folded logic from `V6ClangAccumulatorPlanning` / `V6ClangPeephole`.
 
 ---
 
@@ -233,7 +233,7 @@ passes rely on. The new pass runs after it and handles only the cross-BB cases
 - **Feature test:** new `tests/features/NN/` from `temp/acc_loop_repro2.c`;
   assert the loop body has no `MOV A, D` and the value is established once before
   the loop.
-- **Lit test:** `llvm-project/llvm/test/CodeGen/V6C/reg-value-forwarding-cross-bb.ll`
+- **Lit test:** `llvm-project/llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll`
   covering (a) cross-BB `MOV` elision, (b) loop back-edge convergence, (c)
   `MVI` constant redundancy, (d) **negative**: a patched-imm `MVI` (carrying a
   `.LLo61_N:` pre-instr label / `MO_PATCH_IMM`) is preserved and is **not**
@@ -254,10 +254,10 @@ passes rely on. The new pass runs after it and handles only the cross-BB cases
 pwsh scripts\build.ps1 -SkipTests
 
 # Repro before/after
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 temp\acc_loop_repro2.c -S `
-  -o temp\acc_loop_repro2.s -mllvm -mv6c-annotate-pseudos
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 temp\acc_loop_repro2.c -S `
+  -o temp\acc_loop_repro2.s -mllvm -mv6clang-annotate-pseudos
 
 # A/B the pass
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 temp\acc_loop_repro2.c -S -o - `
-  -mllvm --v6c-disable-reg-value-forwarding | Select-String "MOV.*A, D"
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 temp\acc_loop_repro2.c -S -o - `
+  -mllvm --v6clang-disable-reg-value-forwarding | Select-String "MOV.*A, D"
 ```

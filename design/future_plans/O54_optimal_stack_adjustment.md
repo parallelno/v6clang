@@ -5,11 +5,11 @@
 
 ## Problem
 
-V6C currently uses a fixed approach for stack pointer adjustment in function
+V6CLANG currently uses a fixed approach for stack pointer adjustment in function
 prologues/epilogues: `LXI HL, -N; DAD SP; SPHL` (5 bytes, 32cc). For small
 adjustments this is wasteful — there are cheaper alternatives.
 
-Per [docs/V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md):
+Per [docs/V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md):
 `PUSH rp` = 1B / **16cc**, `POP rp` = 1B / 12cc, `LXI rp,d16` = 3B / 12cc,
 `DAD rp` = 1B / 12cc, `SPHL` = 1B / 8cc. POP and PUSH have **different**
 cycle costs, so the tradeoff differs between prologue (PUSH) and epilogue
@@ -54,11 +54,11 @@ Any dead register pair can be pushed — the value stored is garbage.
 
 ## Implementation
 
-In `V6CFrameLowering::emitPrologue()` and `emitEpilogue()`:
+In `V6ClangFrameLowering::emitPrologue()` and `emitEpilogue()`:
 
 ```cpp
 void adjustSP(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
-              int Amount, const DebugLoc &DL, V6COptMode Mode) {
+              int Amount, const DebugLoc &DL, V6ClangOptMode Mode) {
   // Amount > 0 = increment SP (deallocate, POP), Amount < 0 = decrement (PUSH)
   unsigned AbsAmount = std::abs(Amount);
   bool IsInc = Amount > 0;
@@ -72,30 +72,30 @@ void adjustSP(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
   if (AbsAmount > 0 && (AbsAmount % 2) == 0) {
     if (AbsAmount <= 4) {
       UsePopPush = true;                   // wins or ties on both axes
-    } else if (AbsAmount == 6 && Mode == V6COptMode::Size) {
+    } else if (AbsAmount == 6 && Mode == V6ClangOptMode::Size) {
       UsePopPush = true;                   // size-only
     }
   }
 
   if (UsePopPush) {
-    unsigned Opc = IsInc ? V6C::POP : V6C::PUSH;
+    unsigned Opc = IsInc ? V6CLANG::POP : V6CLANG::PUSH;
     for (unsigned i = 0; i < AbsAmount / 2; i++) {
       auto MIB = BuildMI(MBB, MBBI, DL, TII->get(Opc));
       if (IsInc)
-        MIB.addReg(V6C::PSW, RegState::Define);    // POP PSW
+        MIB.addReg(V6CLANG::PSW, RegState::Define);    // POP PSW
       else
-        MIB.addReg(V6C::PSW);                      // PUSH PSW
+        MIB.addReg(V6CLANG::PSW);                      // PUSH PSW
     }
   } else {
     // LXI+DAD+SPHL for large, odd, or speed-mode +6 adjustments
-    BuildMI(MBB, MBBI, DL, TII->get(V6C::LXI), V6C::HL).addImm(Amount);
-    BuildMI(MBB, MBBI, DL, TII->get(V6C::DAD), V6C::HL).addReg(V6C::SP);
-    BuildMI(MBB, MBBI, DL, TII->get(V6C::SPHL));
+    BuildMI(MBB, MBBI, DL, TII->get(V6CLANG::LXI), V6CLANG::HL).addImm(Amount);
+    BuildMI(MBB, MBBI, DL, TII->get(V6CLANG::DAD), V6CLANG::HL).addReg(V6CLANG::SP);
+    BuildMI(MBB, MBBI, DL, TII->get(V6CLANG::SPHL));
   }
 }
 ```
 
-Mode is obtained via `getV6COptMode(MF)` (see O11 dual cost model).
+Mode is obtained via `getV6ClangOptMode(MF)` (see O11 dual cost model).
 
 ## Before → After
 
@@ -113,7 +113,7 @@ SPHL            ;  8cc, 1B
   - epilogue ±2: -4B, -20cc; ±4: -3B, -8cc; ±6 (`-Os`): -2B, +4cc
   - prologue ±2: -4B, -16cc; ±4: -3B, ±0cc; ±6 (`-Os`): -2B, +16cc
 - **Frequency**: Low in current pipeline. Most bsort/sieve/fib_crc functions are
-  promoted to static globals by `V6CAllocaPromote` + `V6CStaticStackAlloc`
+  promoted to static globals by `V6ClangAllocaPromote` + `V6ClangStaticStackAlloc`
   (O10) and never touch the hardware stack. Only functions that fall outside
   those passes (recursive, callback-taking, or with var-sized objects) still
   hit `LXI+DAD+SPHL`. Verified 2026-04-30: 0 hits in C benchmarks, 8 hits

@@ -108,7 +108,7 @@ byte values where those existing transforms do not fire.
 
 ## Root-cause analysis
 
-`collapseMovChain` in `V6CPeephole.cpp` (O82/O88/O89) handles two producer kinds:
+`collapseMovChain` in `V6ClangPeephole.cpp` (O82/O88/O89) handles two producer kinds:
 - **`MOVrr` producer** (O82 Pattern B, O89 rewrite-producer): `MOV X, Y ; ... ; MOV Z, X`
 - **`MVIr` producer** (O88): `MVI X, Imm ; ... ; MOV Z, X`
 
@@ -129,7 +129,7 @@ Because `collapseMovChain` only checks for `MVIr` as the O88 producer, the
 
 ## Proposed implementation
 
-Extend the O88 loop in `V6CPeephole::collapseMovChain` with a second producer
+Extend the O88 loop in `V6ClangPeephole::collapseMovChain` with a second producer
 loop (or extend the existing one) that matches `LXIrp`:
 
 ```cpp
@@ -140,17 +140,17 @@ loop (or extend the existing one) that matches `LXIrp`:
 //            If RP is now dead at the LXI site, erase LXI too.
 for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
   MachineInstr &ProducerMI = *I;
-  if (ProducerMI.getOpcode() != V6C::LXIrp)
+  if (ProducerMI.getOpcode() != V6CLANG::LXIrp)
     continue;
 
-  Register RP  = ProducerMI.getOperand(0).getReg(); // e.g. V6C::DE
+  Register RP  = ProducerMI.getOperand(0).getReg(); // e.g. V6CLANG::DE
   int64_t  Imm = ProducerMI.getOperand(1).getImm(); // 16-bit immediate
   uint8_t  Lo  = (uint8_t)(Imm & 0xFF);
   uint8_t  Hi  = (uint8_t)((Imm >> 8) & 0xFF);
 
   // Determine the two half-registers for RP.
-  Register RPLo = pairLo(RP); // e.g. V6C::E for DE
-  Register RPHi = pairHi(RP); // e.g. V6C::D for DE
+  Register RPLo = pairLo(RP); // e.g. V6CLANG::E for DE
+  Register RPHi = pairHi(RP); // e.g. V6CLANG::D for DE
 
   // Scan forward for a consumer MOV Z, RPLo or MOV Z, RPHi.
   unsigned Steps = 0;
@@ -159,9 +159,9 @@ for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     ++Steps;
 
     // Detect consumer: MOV Z, RPLo or MOV Z, RPHi
-    bool IsLoConsumer = J->getOpcode() == V6C::MOVrr &&
+    bool IsLoConsumer = J->getOpcode() == V6CLANG::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), RPLo);
-    bool IsHiConsumer = J->getOpcode() == V6C::MOVrr &&
+    bool IsHiConsumer = J->getOpcode() == V6CLANG::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), RPHi);
     bool IsConsumer   = IsLoConsumer || IsHiConsumer;
 
@@ -182,7 +182,7 @@ for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
       if (!isRegDeadAfter(MBB, J, Half, TRI)) break;
 
       // Emit MVI Z, Byte at the consumer's position.
-      BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6C::MVIr), Z).addImm(Byte);
+      BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6CLANG::MVIr), Z).addImm(Byte);
       J->eraseFromParent();
       // If the full RP is now dead at the LXI site, erase LXI too.
       if (isRegDeadAfter(MBB, I, RP, TRI)) {
@@ -206,7 +206,7 @@ Helper functions `pairLo` / `pairHi` map a GR16 register to its half:
 | `HL`  | `H` | `L` |
 
 These are already implicitly available via `TRI->getSubRegs` or can be
-implemented as a small switch as is done in `V6CArgAllocator::halves`.
+implemented as a small switch as is done in `V6ClangArgAllocator::halves`.
 
 ---
 
@@ -294,7 +294,7 @@ prioritised first.
    - `p2_nonzero_lo`: `MOV A, E` → `MVI A, 0xFF`
    - `p3_nonzero_hi`: `MOV A, D` → `MVI A, 0xB4`
 
-2. **Lit test**: `llvm-project/llvm/test/CodeGen/V6C/peephole-lxi-half-mov-collapse.ll`
+2. **Lit test**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-lxi-half-mov-collapse.ll`
    — at minimum two IR test cases:
    - i16 constant used in XOR + lo byte extracted separately
    - i16 constant used in XOR + hi byte extracted separately

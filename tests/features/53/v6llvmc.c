@@ -1,7 +1,7 @@
-/* tests/features/53/v6llvmc.c
+/* tests/features/53/v6clang.c
  *
- * O71 — V6C_LOAD16_P redesign. The old expander has five
- * correctness bugs (see design/future_plans/O71_V6C_LOAD16_P_redesign.md).
+ * O71 — V6CLANG_LOAD16_P redesign. The old expander has five
+ * correctness bugs (see design/future_plans/O71_V6CLANG_LOAD16_P_redesign.md).
  * This test focuses on:
  *
  *   1. The bug-3 reproducer: addr=DE, dst=DE producing wrong values.
@@ -10,12 +10,12 @@
  *   2. Shape coverage: load through three different pointer pairs,
  *      and a few "pointer reused after the load" patterns to force
  *      DCX rp recovery (case 2 / case 3).
- *   3. Runtime guard: main() prints a checksum via __builtin_v6c_out
+ *   3. Runtime guard: main() prints a checksum via __builtin_v6clang_out
  *      so the v6emul --halt-exit run has a single-byte witness for
  *      bug 3.
  *
  * Per-shape granular CHECK coverage is in the lit tests
- * (llvm-project/llvm/test/CodeGen/V6C/load16p_*.ll); this file is
+ * (llvm-project/llvm/test/CodeGen/V6CLANG/load16p_*.ll); this file is
  * the integration-level cross-check.
  */
 
@@ -66,16 +66,16 @@ int main(void) {
 
     g_r = bug3_de_de(0x1000, &buf[0]);          /* expect 0x2234 */
     g_byte = (uint8_t)g_r;                       /* witness lo byte */
-    __builtin_v6c_out(0xDE, g_byte);
+    __builtin_v6clang_out(0xDE, g_byte);
 
     g_r = case2_hl_reused(&buf[1]);              /* expect 0xACF0 */
-    __builtin_v6c_out(0xDE, (uint8_t)g_r);
+    __builtin_v6clang_out(0xDE, (uint8_t)g_r);
 
     g_r = case5_bc_with_hl_live(&buf[0], 0x0001); /* expect 0x1235 */
-    __builtin_v6c_out(0xDE, (uint8_t)g_r);
+    __builtin_v6clang_out(0xDE, (uint8_t)g_r);
 
     g_byte = case16_a_live(&buf[1], 0x42);       /* expect 0x56^0x42 = 0x14 */
-    __builtin_v6c_out(0xDE, g_byte);
+    __builtin_v6clang_out(0xDE, g_byte);
 
     return 0;
 }

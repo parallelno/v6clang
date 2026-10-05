@@ -41,7 +41,7 @@ c8080 stats (4 functions):
   read_offset4: 44cc, 6B
   Total: 152cc, 18B
 
-== v6llvmc assembly BEFORE (O11 not applied) ==
+== v6clang assembly BEFORE (O11 not applied) ==
 
 read_offset1:
     LXI  DE, 1                        ; 12cc, 3B
@@ -71,14 +71,14 @@ read_offset4:
     RET                               ; 12cc, 1B
                                       ; total: 44cc, 6B
 
-v6llvmc BEFORE stats (4 functions):
+v6clang BEFORE stats (4 functions):
   read_offset1: 44cc, 6B
   read_offset2: 44cc, 6B
   read_offset3: 44cc, 6B
   read_offset4: 44cc, 6B
   Total: 176cc, 24B
 
-== v6llvmc assembly AFTER (O11 cost model applied) ==
+== v6clang assembly AFTER (O11 cost model applied) ==
 
 read_offset1:
     INX  HL                           ;  8cc, 1B
@@ -108,7 +108,7 @@ read_offset4:
     RET                               ; 12cc, 1B
                                       ; total: 44cc, 6B
 
-v6llvmc AFTER stats (4 functions):
+v6clang AFTER stats (4 functions):
   read_offset1: 28cc, 3B  (saved 16cc, 3B)
   read_offset2: 36cc, 4B  (saved  8cc, 2B)
   read_offset3: 44cc, 5B  (saved  0cc, 1B)
@@ -122,6 +122,6 @@ v6llvmc AFTER stats (4 functions):
   Total bytes:   24B           18B           18B
   Savings:      -24cc, -6B    (matches c8080 exactly)
 
-O11 brings v6llvmc to parity with c8080 for pointer offset patterns.
+O11 brings v6clang to parity with c8080 for pointer offset patterns.
 The cost model correctly derives the INX/DAD threshold: INX for ≤3,
 LXI+DAD for ≥4.

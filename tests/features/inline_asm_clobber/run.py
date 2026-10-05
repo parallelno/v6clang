@@ -2,7 +2,7 @@
 
 Verifies three things end-to-end:
 
-1.  ROM produced by the V6C clang driver, when executed in v6emul, emits
+1.  ROM produced by the V6CLANG clang driver, when executed in v6emul, emits
     exactly the expected TEST_OUT byte stream (`expected.txt`).
 2.  After --gc-sections, the unreachable asm helpers `func3` and `func4`
     are absent from the linked ELF (verified via `llvm-nm`).
@@ -33,7 +33,7 @@ V6EMUL = os.environ.get("V6EMUL")
 ROM = HERE / "out.rom"
 ELF = HERE / "out.elf"
 ASM = HERE / "main.s"
-CRT0_S = ROOT / "compiler-rt" / "lib" / "builtins" / "v6c" / "crt0.s"
+CRT0_S = ROOT / "compiler-rt" / "lib" / "builtins" / "v6clang" / "crt0.s"
 CRT0_O = HERE / "crt0.o"
 
 
@@ -44,12 +44,12 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 
 def step0_assemble_crt0() -> None:
-    run([CLANG, "-target", "i8080-unknown-v6c", "-c", CRT0_S, "-o", CRT0_O])
+    run([CLANG, "-target", "i8080-unknown-v6clang", "-c", CRT0_S, "-o", CRT0_O])
 
 
 def step1_compile_rom() -> None:
     run([
-        CLANG, "-target", "i8080-unknown-v6c", "-O2",
+        CLANG, "-target", "i8080-unknown-v6clang", "-O2",
         "-ffunction-sections", "-nostartfiles",
         CRT0_O, HERE / "main.c", HERE / "external.s",
         "-Wl,--gc-sections",
@@ -60,7 +60,7 @@ def step1_compile_rom() -> None:
 def step1b_keep_elf() -> None:
     # Re-link, but produce ELF (extension .elf -> driver skips objcopy).
     run([
-        CLANG, "-target", "i8080-unknown-v6c", "-O2",
+        CLANG, "-target", "i8080-unknown-v6clang", "-O2",
         "-ffunction-sections", "-nostartfiles",
         CRT0_O, HERE / "main.c", HERE / "external.s",
         "-Wl,--gc-sections",
@@ -96,7 +96,7 @@ def step4_check_no_overspill() -> None:
     # Emit .s for main.c only (not the bodies in external.s) to inspect
     # the inline-asm CALL site.
     run([
-        CLANG, "-target", "i8080-unknown-v6c", "-O2",
+        CLANG, "-target", "i8080-unknown-v6clang", "-O2",
         "-ffunction-sections", "-S",
         HERE / "main.c",
         "-o", ASM,

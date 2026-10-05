@@ -6,7 +6,7 @@
 
 ## Problem
 
-`V6C_ADD16` is a pseudo-instruction for 16-bit addition. It accepts any
+`V6CLANG_ADD16` is a pseudo-instruction for 16-bit addition. It accepts any
 register pair (BC, DE, HL) for all three operands (dst, lhs, rhs). The
 existing expansion in `expandPostRAPseudo()` has two paths:
 
@@ -22,8 +22,8 @@ MOV pair + DAD is cheaper than the byte chain.
 ### Post-RA MIR for `nested_calls`
 
 ```
-$bc = V6C_ADD16 $hl, $bc    ; Case 1: HL is an operand, dst=BC
-$hl = V6C_ADD16 $bc, $de    ; Case 2: dst=HL, neither operand is HL
+$bc = V6CLANG_ADD16 $hl, $bc    ; Case 1: HL is an operand, dst=BC
+$hl = V6CLANG_ADD16 $bc, $de    ; Case 2: dst=HL, neither operand is HL
 ```
 
 **Case 1** currently expands to:
@@ -76,7 +76,7 @@ When `DstReg == HL`: copy one operand into HL, DAD the other.
 
 ## Solution
 
-Enhance the `V6C_ADD16` expansion in `V6CInstrInfo::expandPostRAPseudo()`
+Enhance the `V6CLANG_ADD16` expansion in `V6ClangInstrInfo::expandPostRAPseudo()`
 with two new DAD-based paths, inserted between the existing DAD check and
 the general byte-chain fallback.
 
@@ -127,7 +127,7 @@ future three-operand form, prefer the other).
 
 ### Case Matrix
 
-All possible `$dst = V6C_ADD16 $lhs, $rhs` register pair assignments:
+All possible `$dst = V6CLANG_ADD16 $lhs, $rhs` register pair assignments:
 
 | dst | lhs | rhs | Path | Expansion | Cost |
 |-----|-----|-----|------|-----------|------|
@@ -142,7 +142,7 @@ All possible `$dst = V6C_ADD16 $lhs, $rhs` register pair assignments:
 Notes:
 - `rp = HL + rp` when HL is **live** after → falls to byte chain (40cc, 6B)
 - `rp1 = rp2 + rp3` (no HL involved at all) → byte chain (only option)
-- New path 1 requires `isRegDeadAfter(MBB, MI, V6C::HL, TRI)` check
+- New path 1 requires `isRegDeadAfter(MBB, MI, V6CLANG::HL, TRI)` check
 - New path 2 requires no liveness check (HL is the destination)
 
 ### Cost comparison
@@ -157,7 +157,7 @@ Notes:
 
 ### Location
 
-`V6CInstrInfo::expandPostRAPseudo()`, case `V6C::V6C_ADD16`, between the
+`V6ClangInstrInfo::expandPostRAPseudo()`, case `V6CLANG::V6CLANG_ADD16`, between the
 existing `DstReg == HL` DAD check (line ~521) and the general byte-chain
 fallback (line ~536).
 
@@ -166,20 +166,20 @@ fallback (line ~536).
 ```cpp
 // --- New path 1: rp = ADD16 (HL, rp) or (rp, HL), HL dead after ---
 // One operand is HL, dst != HL. Use DAD + copy out.
-if (DstReg != V6C::HL) {
+if (DstReg != V6CLANG::HL) {
   Register OtherReg = Register();
-  if (LhsReg == V6C::HL || RhsReg == V6C::HL) {
-    OtherReg = (LhsReg == V6C::HL) ? RhsReg : LhsReg;
+  if (LhsReg == V6CLANG::HL || RhsReg == V6CLANG::HL) {
+    OtherReg = (LhsReg == V6CLANG::HL) ? RhsReg : LhsReg;
   }
-  if (OtherReg && isRegDeadAfter(MBB, MI.getIterator(), V6C::HL, &RI)) {
+  if (OtherReg && isRegDeadAfter(MBB, MI.getIterator(), V6CLANG::HL, &RI)) {
     // DAD OtherReg (or DAD DstReg if OtherReg == DstReg)
     // Note: DAD adds HL + rp → HL. We need HL + OtherReg.
     // If OtherReg == DstReg, we can DAD DstReg directly.
-    BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(OtherReg);
-    MCRegister DstHi = RI.getSubReg(DstReg, V6C::sub_hi);
-    MCRegister DstLo = RI.getSubReg(DstReg, V6C::sub_lo);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstHi).addReg(V6C::H);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstLo).addReg(V6C::L);
+    BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(OtherReg);
+    MCRegister DstHi = RI.getSubReg(DstReg, V6CLANG::sub_hi);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::H);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::L);
     MI.eraseFromParent();
     return true;
   }
@@ -187,13 +187,13 @@ if (DstReg != V6C::HL) {
 
 // --- New path 2: HL = ADD16 (rp1, rp2), neither is HL ---
 // Copy one operand to HL, DAD the other.
-if (DstReg == V6C::HL && LhsReg != V6C::HL && RhsReg != V6C::HL) {
+if (DstReg == V6CLANG::HL && LhsReg != V6CLANG::HL && RhsReg != V6CLANG::HL) {
   // Copy LhsReg into HL, DAD RhsReg.
-  MCRegister LhsHi = RI.getSubReg(LhsReg, V6C::sub_hi);
-  MCRegister LhsLo = RI.getSubReg(LhsReg, V6C::sub_lo);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::H).addReg(LhsHi);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::L).addReg(LhsLo);
-  BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(RhsReg);
+  MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
+  MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::H).addReg(LhsHi);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(LhsLo);
+  BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(RhsReg);
   MI.eraseFromParent();
   return true;
 }
@@ -223,7 +223,7 @@ if (DstReg == V6C::HL && LhsReg != V6C::HL && RhsReg != V6C::HL) {
    because BC is only the destination (not an input operand in this case).
 
 6. **Interaction with XCHG optimization**: The MOV pair in path 1 output
-   (`MOV D,H; MOV E,L`) will be caught by V6CXchgOpt and converted to XCHG
+   (`MOV D,H; MOV E,L`) will be caught by V6ClangXchgOpt and converted to XCHG
    when DE is the destination. This would further optimize to `DAD rp; XCHG`
    (16cc, 2B). This interaction is free — no special handling needed.
 
@@ -231,10 +231,10 @@ if (DstReg == V6C::HL && LhsReg != V6C::HL && RhsReg != V6C::HL) {
 
 ### Lit test
 
-File: `tests/lit/CodeGen/V6C/add16-dad-expansion.ll`
+File: `tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll`
 
 ```llvm
-; RUN: llc -march=v6c -O2 < %s | FileCheck %s
+; RUN: llc -march=v6clang -O2 < %s | FileCheck %s
 
 ; Case 1: rp = ADD16 HL, rp — should use DAD + copy out
 ; nested_calls puts a+b into BC via ADD16 where one operand is HL.
@@ -267,7 +267,7 @@ declare i16 @get_val()
 
 ### Feature test
 
-Reuse `tests/features/21/v6llvmc.c` — the `nested_calls` function is the
+Reuse `tests/features/21/v6clang.c` — the `nested_calls` function is the
 primary beneficiary. After the fix, expected output:
 
 ```asm
@@ -319,6 +319,6 @@ ADD16 instances in non-HL pairs.
 ## Dependencies
 
 - None. Standalone enhancement to `expandPostRAPseudo()`.
-- V6CXchgOpt (existing pass) will further optimize `MOV D,H; MOV E,L`
+- V6ClangXchgOpt (existing pass) will further optimize `MOV D,H; MOV E,L`
   to `XCHG` when applicable, turning `DAD rp; MOV D,H; MOV E,L` into
   `DAD rp; XCHG` (16cc, 2B) — a free bonus.

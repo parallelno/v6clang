@@ -1,10 +1,10 @@
-# Plan: Post-RA Store-to-Load Forwarding (O16) for V6C
+# Plan: Post-RA Store-to-Load Forwarding (O16) for V6CLANG
 
 ## 1. Problem
 
 ### Current behavior
 
-After register allocation, V6C inserts SPILL/RELOAD pseudos for stack access.
+After register allocation, V6CLANG inserts SPILL/RELOAD pseudos for stack access.
 Each expands to a 5–10 instruction sequence costing 40–68cc.  Often the
 register being reloaded **still holds the same value that was spilled** — the
 register was not clobbered between the spill and reload.
@@ -24,8 +24,8 @@ The RELOAD is redundant — BC still holds the stored value.  A simple
 A separate but related pattern: SPILL with `isKill` immediately followed
 by RELOAD of the same slot:
 ```
-V6C_SPILL16 HL(kill) → fi    ; kills HL (expansion skips HL restore)
-V6C_RELOAD16 fi → HL          ; immediately restores HL from stack
+V6CLANG_SPILL16 HL(kill) → fi    ; kills HL (expansion skips HL restore)
+V6CLANG_RELOAD16 fi → HL          ; immediately restores HL from stack
 ```
 By clearing `isKill`, the expansion restores HL in-place (adding 16cc, 2B)
 and the RELOAD (68cc, 10B) is eliminated entirely.
@@ -80,7 +80,7 @@ DenseMap<int, MCPhysReg> Avail;   // frame_index → register holding that slot'
 
 ```
 for each MI in MBB:
-  if MI is V6C_SPILL8 or V6C_SPILL16:
+  if MI is V6CLANG_SPILL8 or V6CLANG_SPILL16:
     src = MI.getOperand(0).getReg()
     fi  = MI.getOperand(1).getIndex()
     isKill = MI.getOperand(0).isKill()
@@ -104,7 +104,7 @@ for each MI in MBB:
 
     Avail[fi] = src                          // register alive, maps to slot
 
-  else if MI is V6C_RELOAD8 or V6C_RELOAD16:
+  else if MI is V6CLANG_RELOAD8 or V6CLANG_RELOAD16:
     dst = MI.getOperand(0).getReg()
     fi  = MI.getOperand(1).getIndex()
     if Avail[fi] exists:
@@ -128,46 +128,46 @@ for each MI in MBB:
 
 | Step | What | Where |
 |------|------|-------|
-| Create pass | V6CSpillForwarding.cpp | New file |
-| Declare factory | `createV6CSpillForwardingPass()` | V6C.h |
-| Register pass | `addPostRegAlloc()` override | V6CTargetMachine.cpp |
-| Add to build | CMakeLists.txt | V6C target |
-| CLI toggle | `-v6c-disable-spill-forwarding` | V6CSpillForwarding.cpp |
+| Create pass | V6ClangSpillForwarding.cpp | New file |
+| Declare factory | `createV6ClangSpillForwardingPass()` | V6Clang.h |
+| Register pass | `addPostRegAlloc()` override | V6ClangTargetMachine.cpp |
+| Add to build | CMakeLists.txt | V6CLANG target |
+| CLI toggle | `-v6clang-disable-spill-forwarding` | V6ClangSpillForwarding.cpp |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CSpillForwarding.cpp skeleton [x]
+### Step 3.1 — Create V6ClangSpillForwarding.cpp skeleton [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillForwarding.cpp` (new)
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillForwarding.cpp` (new)
 
 Create the `MachineFunctionPass` skeleton:
-- `class V6CSpillForwarding : public MachineFunctionPass`
-- `char V6CSpillForwarding::ID`
+- `class V6ClangSpillForwarding : public MachineFunctionPass`
+- `char V6ClangSpillForwarding::ID`
 - `runOnMachineFunction()` stub (returns false)
-- `createV6CSpillForwardingPass()` factory
+- `createV6ClangSpillForwardingPass()` factory
 - `cl::opt<bool> DisableSpillForwarding` toggle
 
-Model on `V6CLoadImmCombine.cpp`.
+Model on `V6ClangLoadImmCombine.cpp`.
 
 > **Implementation Notes**: Created with full logic (~250 lines) in one step,
-> combining steps 3.1, 3.4, and 3.5.  CLI toggle: `-v6c-disable-spill-forwarding`.
+> combining steps 3.1, 3.4, and 3.5.  CLI toggle: `-v6clang-disable-spill-forwarding`.
 
 ### Step 3.2 — Declare pass and register in the pipeline [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6C/V6C.h` — add declaration
-- `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp` — add `addPostRegAlloc()` override with the new pass
-- `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt` — add `V6CSpillForwarding.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h` — add declaration
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` — add `addPostRegAlloc()` override with the new pass
+- `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add `V6ClangSpillForwarding.cpp`
 
 > **Design Note**: The pass runs in `addPostRegAlloc()`, after RA but before
 > `ExpandPostRAPseudos` and `PrologEpilogInserter`.  This ensures SPILL/RELOAD
 > pseudos are present and have physical-register operands.
 
-> **Implementation Notes**: Done.  Declaration in V6C.h, `addPostRegAlloc()`
-> override in V6CTargetMachine.cpp, CMakeLists.txt entry between
-> V6CRegisterInfo.cpp and V6CSPTrickOpt.cpp.
+> **Implementation Notes**: Done.  Declaration in V6Clang.h, `addPostRegAlloc()`
+> override in V6ClangTargetMachine.cpp, CMakeLists.txt entry between
+> V6ClangRegisterInfo.cpp and V6ClangSPTrickOpt.cpp.
 
 ### Step 3.3 — Build [x]
 
@@ -183,7 +183,7 @@ Verify the skeleton compiles cleanly (pass registered but no-op).
 
 ### Step 3.4 — Implement core forwarding logic [x]
 
-**File**: `V6CSpillForwarding.cpp`
+**File**: `V6ClangSpillForwarding.cpp`
 
 Implement `runOnMachineFunction()`:
 1. Iterate MBBs.
@@ -199,8 +199,8 @@ For 8-bit forwarding: replace RELOAD8 with `MOVrr dst, src`.
 For 16-bit forwarding: replace RELOAD16 with two `MOVrr` instructions
 using sub-register indices (`sub_lo`, `sub_hi`).
 
-> **Design Note**: Use `TRI->getSubReg(PairReg, V6C::sub_hi)` and
-> `TRI->getSubReg(PairReg, V6C::sub_lo)` to decompose register pairs.
+> **Design Note**: Use `TRI->getSubReg(PairReg, V6CLANG::sub_hi)` and
+> `TRI->getSubReg(PairReg, V6CLANG::sub_lo)` to decompose register pairs.
 > For 16-bit same-pair case (srcPair == dstPair), simply erase the RELOAD.
 
 > **Implementation Notes**: Implemented in step 3.1 (combined).  Uses
@@ -208,7 +208,7 @@ using sub-register indices (`sub_lo`, `sub_hi`).
 
 ### Step 3.5 — Implement killed-SPILL + adjacent-RELOAD optimization [x]
 
-**File**: `V6CSpillForwarding.cpp`
+**File**: `V6ClangSpillForwarding.cpp`
 
 Add the killed-source peephole:
 - When SPILL has `isKill=true` and the very next instruction is a RELOAD
@@ -233,7 +233,7 @@ Rebuild after core implementation.
 
 ### Step 3.7 — Lit test: spill-forwarding.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/spill-forwarding.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/spill-forwarding.ll`
 
 Test cases:
 1. **8-bit forwarding**: SPILL8 + ALU + RELOAD8 same slot → expect MOV.
@@ -241,7 +241,7 @@ Test cases:
 3. **Cross-register forwarding**: SPILL16 BC → RELOAD16 DE → expect MOV D,B; MOV E,C.
 4. **Kill barrier**: SPILL + clobber + RELOAD → expect full reload (no forwarding).
 5. **Killed SPILL + adjacent RELOAD**: SPILL(kill) + RELOAD → expect forwarding.
-6. **Disabled**: `-v6c-disable-spill-forwarding` → expect full spill/reload.
+6. **Disabled**: `-v6clang-disable-spill-forwarding` → expect full spill/reload.
 
 Use `CHECK-NOT` for eliminated reload sequences and `CHECK` for MOV
 replacements.
@@ -264,10 +264,10 @@ All lit + golden + runtime tests must pass.
 
 ### Step 3.9 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests/features/20/v6llvmc.c` to `v6llvmc_new01.asm` and
+Compile `tests/features/20/v6clang.c` to `v6clang_new01.asm` and
 analyze for spill/reload elimination in loop bodies.
 
-> **Implementation Notes**: Generated v6llvmc_new01.asm.  Diff confirmed 2
+> **Implementation Notes**: Generated v6clang_new01.asm.  Diff confirmed 2
 > RELOAD16 eliminations in multi_ptr_copy loop: XCHG replacement and
 > MOV E,C; MOV D,B replacement.  12 fewer instructions, 16 fewer bytes,
 > ~116 fewer cycles per iteration in the loop body.
@@ -275,7 +275,7 @@ analyze for spill/reload elimination in loop bodies.
 ### Step 3.10 — Make sure result.txt is created. `tests\features\README.md` [x]
 
 Create `tests/features/20/result.txt` with C code, c8080 asm,
-v6llvmc asm, and cycle/byte statistics.
+v6clang asm, and cycle/byte statistics.
 
 > **Implementation Notes**: Created with full before/after comparison.
 > Per-iteration savings: 12 instructions, 16 bytes, 116 cycles (18.8%).
@@ -460,9 +460,9 @@ Beyond V2, additional forwarding opportunities:
 
 ## 9. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O16 Design](design\future_plans\O16_store_to_load_forwarding.md)
 * [Z80 Backend Analysis](design\future_plans\llvm_z80_analysis.md) — §S5, §S6
-* [V6CLoadImmCombine.cpp](llvm\lib\Target\V6C\V6CLoadImmCombine.cpp) — pass structure reference
+* [V6ClangLoadImmCombine.cpp](llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp) — pass structure reference

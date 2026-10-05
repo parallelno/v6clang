@@ -10,15 +10,15 @@
 
 Pointer increment `gep ptr, 1` lowers through the standard i16 add path:
 
-1. **ISel**: `add i16 ptr, 1` → `V6CISD::DAD` (since result is used as
-   store/load pointer) → `V6C_DAD HL, HL, <vreg>`
+1. **ISel**: `add i16 ptr, 1` → `V6ClangISD::DAD` (since result is used as
+   store/load pointer) → `V6CLANG_DAD HL, HL, <vreg>`
 2. **RA**: `<vreg>` holds constant 1 → allocates a physical register pair
    (e.g. BC) → `LXI BC, 1` materialized in the preheader
 3. **Post-RA peephole**: Detects `LXI BC, 1` + `DAD BC` → converts to
    `INX HL`, but the dead `LXI BC, 1` from a predecessor block can't
    always be erased, and **BC was already reserved by RA**.
 
-The same applies to `V6C_ADD16` and `V6C_SUB16` for ±1..±3 constants.
+The same applies to `V6CLANG_ADD16` and `V6CLANG_SUB16` for ±1..±3 constants.
 
 ### Example: fill_array after O20
 
@@ -46,12 +46,12 @@ Add new single-operand pseudos that represent `rp ± N` without a constant
 register:
 
 ```tablegen
-def V6C_INX16 : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i8imm:$count),
+def V6CLANG_INX16 : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i8imm:$count),
     "# INX16 $dst, $src, $count", []> {
   let Constraints = "$dst = $src";
 }
 
-def V6C_DCX16 : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i8imm:$count),
+def V6CLANG_DCX16 : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i8imm:$count),
     "# DCX16 $dst, $src, $count", []> {
   let Constraints = "$dst = $src";
 }
@@ -65,7 +65,7 @@ register operand — no constant pair is allocated.
 In `PerformDAGCombine` for `ISD::ADD`, before the existing DAD conversion:
 
 1. Check if one operand is `ConstantSDNode` with value ±1..±3
-2. If so, emit `V6CISD::INX16` or `V6CISD::DCX16` instead of `V6CISD::DAD`
+2. If so, emit `V6ClangISD::INX16` or `V6ClangISD::DCX16` instead of `V6ClangISD::DAD`
 3. This applies both when the result is used as a pointer (currently goes
    to DAD) and for general i16 add (currently goes to ADD16)
 
@@ -74,10 +74,10 @@ For the DAD path (pointer arithmetic):
 if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(1))) {
   int64_t Val = C->getSExtValue();
   if (Val >= 1 && Val <= 3)
-    return DAG.getNode(V6CISD::INX16, DL, MVT::i16,
+    return DAG.getNode(V6ClangISD::INX16, DL, MVT::i16,
                        N->getOperand(0), DAG.getTargetConstant(Val, DL, MVT::i8));
   if (Val >= -3 && Val <= -1)
-    return DAG.getNode(V6CISD::DCX16, DL, MVT::i16,
+    return DAG.getNode(V6ClangISD::DCX16, DL, MVT::i16,
                        N->getOperand(0), DAG.getTargetConstant(-Val, DL, MVT::i8));
 }
 // Check operand(0) too (commutative)
@@ -88,11 +88,11 @@ if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(1))) {
 Trivial — emit N copies of `INX rp` or `DCX rp`:
 
 ```cpp
-case V6C::V6C_INX16: {
+case V6CLANG::V6CLANG_INX16: {
   Register Rp = MI.getOperand(0).getReg();
   unsigned Count = MI.getOperand(2).getImm();
   for (unsigned I = 0; I < Count; ++I)
-    BuildMI(MBB, MI, DL, get(V6C::INX), Rp).addReg(Rp);
+    BuildMI(MBB, MI, DL, get(V6CLANG::INX), Rp).addReg(Rp);
   MI.eraseFromParent();
   return true;
 }
@@ -100,8 +100,8 @@ case V6C::V6C_INX16: {
 
 ### Interaction with existing INX peephole
 
-The existing `findDefiningLXI` + INX conversion in V6C_DAD / V6C_ADD16 /
-V6C_SUB16 expansion remains as a **fallback** for larger constants (±4+)
+The existing `findDefiningLXI` + INX conversion in V6CLANG_DAD / V6CLANG_ADD16 /
+V6CLANG_SUB16 expansion remains as a **fallback** for larger constants (±4+)
 where the cost model allows INX chains. For ±1..±3, the new pseudo
 intercepts earlier in the pipeline and avoids register allocation entirely.
 
@@ -120,7 +120,7 @@ intercepts earlier in the pipeline and avoids register allocation entirely.
     LXI     DE, array1          ; pointer
 .loop:                          ; BC is FREE for RA
     STAX    DE
-    INX     DE                  ; directly from V6C_INX16 pseudo
+    INX     DE                  ; directly from V6CLANG_INX16 pseudo
     ...
 ```
 

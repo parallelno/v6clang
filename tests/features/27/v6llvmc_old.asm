@@ -6,25 +6,25 @@ sumarray:                               ; @sumarray
 	LXI	DE, arr1
 	LXI	HL, 0
 .LBB0_1:                                ; =>This Inner Loop Header: Depth=1
-	SHLD	__v6c_ss.sumarray
+	SHLD	__v6clang_ss.sumarray
 	XCHG
-	SHLD	__v6c_ss.sumarray+2
+	SHLD	__v6clang_ss.sumarray+2
 	MOV	E, M
 	INX	HL
 	MOV	D, M
 	XCHG
-	LHLD	__v6c_ss.sumarray
+	LHLD	__v6clang_ss.sumarray
 	DAD	DE
-	SHLD	__v6c_ss.sumarray
+	SHLD	__v6clang_ss.sumarray
 	MOV	H, B
 	MOV	L, C
 	MOV	E, M
 	INX	HL
 	MOV	D, M
-	LHLD	__v6c_ss.sumarray
+	LHLD	__v6clang_ss.sumarray
 	DAD	DE
 	XCHG
-	LHLD	__v6c_ss.sumarray+2
+	LHLD	__v6clang_ss.sumarray+2
 	XCHG
 	INX	BC
 	INX	BC
@@ -47,25 +47,25 @@ main:                                   ; @main
 	LXI	DE, arr1
 	LXI	HL, 0
 .LBB1_1:                                ; =>This Inner Loop Header: Depth=1
-	SHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main
 	XCHG
-	SHLD	__v6c_ss.main+2
+	SHLD	__v6clang_ss.main+2
 	MOV	E, M
 	INX	HL
 	MOV	D, M
 	XCHG
-	LHLD	__v6c_ss.main
+	LHLD	__v6clang_ss.main
 	DAD	DE
-	SHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main
 	MOV	H, B
 	MOV	L, C
 	MOV	E, M
 	INX	HL
 	MOV	D, M
-	LHLD	__v6c_ss.main
+	LHLD	__v6clang_ss.main
 	DAD	DE
 	XCHG
-	LHLD	__v6c_ss.main+2
+	LHLD	__v6clang_ss.main+2
 	XCHG
 	INX	BC
 	INX	BC
@@ -88,10 +88,10 @@ arr1:
 	.globl	arr2                            ; @arr2
 arr2:
 
-	.local	__v6c_ss.sumarray               ; @__v6c_ss.sumarray
-	.comm	__v6c_ss.sumarray,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,4,1
+	.local	__v6clang_ss.sumarray               ; @__v6clang_ss.sumarray
+	.comm	__v6clang_ss.sumarray,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,4,1
 	.addrsig
 	.addrsig_sym arr1
 	.addrsig_sym arr2

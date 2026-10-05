@@ -1,7 +1,0 @@
-00000107 T __bss_end
-00000107 T __bss_start
-00000104 T __entry
-00000000 A __stack_top
-00000100 T _start
-00000104 T alt
-00000100 T main

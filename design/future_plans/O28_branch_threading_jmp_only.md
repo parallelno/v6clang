@@ -1,6 +1,6 @@
 # O28. Branch Threading Through JMP-Only Blocks
 
-*Identified from analysis of temp/compare/07/v6llvmc.c output.*
+*Identified from analysis of temp/compare/07/v6clang.c output.*
 *Synergy between O27 (i16 zero-test) and O14/O23 (tail calls).*
 
 ## Problem
@@ -40,9 +40,9 @@ After threading:
 ; BB1 removed (dead code, no predecessors)
 ```
 
-### How V6CBranchOpt's existing inversion relates
+### How V6ClangBranchOpt's existing inversion relates
 
-The existing `invertConditionalBranch()` in V6CBranchOpt handles a different
+The existing `invertConditionalBranch()` in V6ClangBranchOpt handles a different
 pattern: `Jcc .Lskip / JMP .Ltarget / .Lskip:` at the **end of the same
 block**. It inverts to `J!cc .Ltarget` when the Jcc target is the layout
 successor.
@@ -105,21 +105,21 @@ Savings: **14 bytes (64%)** and ~30+ cycles.
 
 ## Implementation
 
-### Approach: Add JMP-threading pass to V6CBranchOpt
+### Approach: Add JMP-threading pass to V6ClangBranchOpt
 
-Add a new method `threadJMPOnlyBlocks()` to `V6CBranchOpt.cpp`:
+Add a new method `threadJMPOnlyBlocks()` to `V6ClangBranchOpt.cpp`:
 
 ```cpp
 /// Thread conditional branches through JMP-only successor blocks.
 /// If a Jcc targets a block whose only instruction is JMP target,
 /// redirect the Jcc to target directly.
-bool V6CBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
+bool V6ClangBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
   bool Changed = false;
 
   for (MachineBasicBlock &MBB : MF) {
     for (MachineInstr &MI : MBB.terminators()) {
       unsigned InvOpc = getInvertedJcc(MI.getOpcode());
-      if (!InvOpc && MI.getOpcode() != V6C::JMP)
+      if (!InvOpc && MI.getOpcode() != V6CLANG::JMP)
         continue;  // Not a branch to an MBB
 
       if (!MI.getOperand(0).isMBB())
@@ -131,7 +131,7 @@ bool V6CBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
       if (Target->size() != 1)
         continue;
       MachineInstr &TargetMI = Target->front();
-      if (TargetMI.getOpcode() != V6C::JMP)
+      if (TargetMI.getOpcode() != V6CLANG::JMP)
         continue;
       if (!TargetMI.getOperand(0).isMBB())
         continue;
@@ -156,7 +156,7 @@ Add `threadJMPOnlyBlocks()` **before** `invertConditionalBranch()` and
 `removeRedundantJMP()` in `runOnMachineFunction()`:
 
 ```cpp
-bool V6CBranchOpt::runOnMachineFunction(MachineFunction &MF) {
+bool V6ClangBranchOpt::runOnMachineFunction(MachineFunction &MF) {
   if (DisableBranchOpt)
     return false;
 
@@ -182,7 +182,7 @@ blocks that become unreachable after threading.
 
 ## Complexity
 
-Low. ~20-25 lines added to existing `V6CBranchOpt.cpp`. Uses existing
+Low. ~20-25 lines added to existing `V6ClangBranchOpt.cpp`. Uses existing
 infrastructure (terminator iteration, CFG edge updates, dead block removal).
 
 ## Risk

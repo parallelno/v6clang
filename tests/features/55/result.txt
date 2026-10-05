@@ -1,9 +1,9 @@
-O73 — V6C_LOAD16_G redesign
+O73 — V6CLANG_LOAD16_G redesign
 ============================
 
 Goal
 ----
-Per-shape liveness-aware dispatch for `V6C_LOAD16_G`:
+Per-shape liveness-aware dispatch for `V6CLANG_LOAD16_G`:
 
   Row 1   — dst=HL              : LHLD addr                          (3B / 20cc)
   Row 2a  — dst=DE, HL dead     : LHLD addr; XCHG                    (4B / 24cc)  [NEW]
@@ -15,7 +15,7 @@ Per-shape liveness-aware dispatch for `V6C_LOAD16_G`:
 
 C test source
 -------------
-v6llvmc.c (excerpted):
+v6clang.c (excerpted):
 
     volatile uint16_t g_a, g_b, g_c, g_r;
 
@@ -34,14 +34,14 @@ v6llvmc.c (excerpted):
 
     int main(void) {
         g_a = 0x1234; g_b = 0x5678; g_c = 0x0001;
-        g_r = case1_dst_hl();        __builtin_v6c_out(0xDE, (uint8_t)g_r);
-        g_r = case2_dst_de(0x0100);  __builtin_v6c_out(0xDE, (uint8_t)g_r);
-        g_r = case3_dst_bc();        __builtin_v6c_out(0xDE, (uint8_t)g_r);
+        g_r = case1_dst_hl();        __builtin_v6clang_out(0xDE, (uint8_t)g_r);
+        g_r = case2_dst_de(0x0100);  __builtin_v6clang_out(0xDE, (uint8_t)g_r);
+        g_r = case3_dst_bc();        __builtin_v6clang_out(0xDE, (uint8_t)g_r);
         return 0;
     }
 
 (c8080.c is the same minus `__attribute__((noinline))` and
-`__builtin_v6c_out`; the c8080 frontend does not inline so the
+`__builtin_v6clang_out`; the c8080 frontend does not inline so the
 attribute is redundant there.)
 
 
@@ -117,7 +117,7 @@ c8080 stats (worst-case CPU cycles / length in bytes)
     main          :  316cc / 49B
 
 
-v6llvmc — BASELINE (`v6llvmc_old.asm`, before O73)
+v6clang — BASELINE (`v6clang_old.asm`, before O73)
 ---------------------------------------------------
 case1_dst_hl:
         LHLD g_a                ; 20cc / 3B
@@ -151,7 +151,7 @@ case3_dst_bc:
                                 ; ---------- 124cc / 18B
 
 
-v6llvmc — AFTER O73 (`v6llvmc_new02.asm`)
+v6clang — AFTER O73 (`v6clang_new02.asm`)
 ------------------------------------------
 case1_dst_hl: unchanged                     ;  32cc /  4B
 case2_dst_de: unchanged (HL live, row 2b)   ;  48cc /  6B
@@ -173,7 +173,7 @@ case3_dst_bc:                               ; row 3b: A dead, HL live
 Comparison table
 ----------------
 +----------------+----------------+----------------+----------------+----------------+
-| Function       | c8080          | v6llvmc OLD    | v6llvmc NEW    | NEW vs OLD     |
+| Function       | c8080          | v6clang OLD    | v6clang NEW    | NEW vs OLD     |
 |                | cycles / bytes | cycles / bytes | cycles / bytes | Δcc /  ΔB      |
 +----------------+----------------+----------------+----------------+----------------+
 | case1_dst_hl   |   32 /   4     |   32 /   4     |   32 /   4     |    0 /   0     |
@@ -182,7 +182,7 @@ Comparison table
 | case3_dst_bc   |  100 /  15 †   |  124 /  18     |  108 /  19     |  -16 /  +1     |
 +----------------+----------------+----------------+----------------+----------------+
 
-  * case2_dst_de: HL holds `hl_keep` across the V6C_LOAD16_G site, so
+  * case2_dst_de: HL holds `hl_keep` across the V6CLANG_LOAD16_G site, so
     row 2b (the fallback) is selected. The new row 2a path is
     exercised by the lit test `case2b_dst_de_hl_dead` instead.
   † c8080's case3_dst_bc figure excludes the fall-through into add3
@@ -208,7 +208,7 @@ Per-row dispatch matrix (post-O73)
 
 Lit coverage
 ------------
-`llvm-project/llvm/test/CodeGen/V6C/load16g-shapes.ll` pins all
+`llvm-project/llvm/test/CodeGen/V6CLANG/load16g-shapes.ll` pins all
 six rows above. Each `CHECK-LABEL` block asserts the literal
 expected mnemonics and a `CHECK-NOT` exclusion of shapes that
 must not appear:
@@ -223,8 +223,8 @@ must not appear:
 Risks resolved
 --------------
 * `addr+1` operand: confirmed via `LDA g_c+1` literal text in
-  `v6llvmc_new02.asm` and `; CHECK-NEXT: LDA g+1` in the lit
-  test — the V6C MC printer correctly serialises
+  `v6clang_new02.asm` and `; CHECK-NEXT: LDA g+1` in the lit
+  test — the V6CLANG MC printer correctly serialises
   `MachineOperand::ChangeToGA(g, offset+1)`.
 * No regressions: `python tests\run_all.py` reports 2/2 suites pass
   (golden 16/16, lit 106/106 — 131 tests total).

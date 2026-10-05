@@ -1,5 +1,5 @@
 // c8080 reference for O75 — flag-producing arithmetic SDNodes.
-// Same shape as v6llvmc.c. Each function exercises one shape that
+// Same shape as v6clang.c. Each function exercises one shape that
 // the optimization is supposed to fold into a flag-producing arith
 // instruction followed by a conditional branch, eliminating the
 // trailing CPI 0 / ORA A and the accumulator round-trip.

@@ -7,10 +7,10 @@
 // chain of `RLC` / `RRC` (1 byte / 4 cycles each).
 //
 // Compile baseline / new:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\44\v6llvmc.c -o tests\features\44\v6llvmc_old.asm
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\44\v6llvmc.c -o tests\features\44\v6llvmc_new01.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\44\v6clang.c -o tests\features\44\v6clang_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\44\v6clang.c -o tests\features\44\v6clang_new01.asm
 
 typedef unsigned char u8;
 

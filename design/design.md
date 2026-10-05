@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-This document defines the high-level architecture for `llvm-v6c`, a custom LLVM backend targeting the Vector 06c home computer, which uses an Intel 8080-compatible 8-bit CPU with a 64 KB flat memory model. The backend transforms LLVM IR into native 8080 machine code with Vector 06c-specific instruction timing.
+This document defines the high-level architecture for `llvm-v6clang`, a custom LLVM backend targeting the Vector 06c home computer, which uses an Intel 8080-compatible 8-bit CPU with a 64 KB flat memory model. The backend transforms LLVM IR into native 8080 machine code with Vector 06c-specific instruction timing.
 
 ### 1.1 Goals
 
@@ -40,13 +40,13 @@ LLVM's backend infrastructure is written in C++ and exposes only C++ APIs; all e
 ### 2.1 Target Triple
 
 ```
-i8080-unknown-v6c
+i8080-unknown-v6clang
 ```
 
 Components:
 - **Arch**: `i8080`
 - **Vendor**: `unknown`
-- **OS**: `v6c` (bare-metal Vector 06c runtime)
+- **OS**: `v6clang` (bare-metal Vector 06c runtime)
 
 ### 2.2 Data Layout String
 
@@ -127,13 +127,13 @@ These sub-register indices enable the register allocator to split/coalesce 8-bit
 ### 4.1 TableGen Organization
 
 ```
-llvm/lib/Target/V6C/
-  V6C.td                    # Top-level target description
-  V6CRegisterInfo.td         # Register classes & sub-registers (§3)
-  V6CInstrInfo.td            # Instruction definitions (§4.2)
-  V6CInstrFormats.td         # Encoding formats (§4.3)
-  V6CSchedule.td             # Scheduling model & costs (§4.4)
-  V6CCallingConv.td          # Calling conventions (§6)
+llvm/lib/Target/V6CLANG/
+  V6CLANG.td                    # Top-level target description
+  V6ClangRegisterInfo.td         # Register classes & sub-registers (§3)
+  V6ClangInstrInfo.td            # Instruction definitions (§4.2)
+  V6ClangInstrFormats.td         # Encoding formats (§4.3)
+  V6ClangSchedule.td             # Scheduling model & costs (§4.4)
+  V6ClangCallingConv.td          # Calling conventions (§6)
 ```
 
 ### 4.2 Instruction Modeling
@@ -223,7 +223,7 @@ Each instruction class maps to a `SchedWriteRes` with its cycle cost. The cost t
                         └──────┬───────┘
                                │
                         ┌──────▼───────┐
-                        │  RegAlloc     │  (greedy allocator + V6C constraints)
+                        │  RegAlloc     │  (greedy allocator + V6CLANG constraints)
                         └──────┬───────┘
                                │
                         ┌──────▼─────────────┐
@@ -289,24 +289,24 @@ Pseudo-instructions that expand during or after register allocation:
 
 | Pseudo | Expansion | Purpose |
 |--------|-----------|---------|
-| `V6C_MOV16rr` | Two `MOV` (hi, lo) | 16-bit register-pair move |
-| `V6C_LOAD16` | `LHLD` / `LXI+MOV+MOV` | 16-bit memory load |
-| `V6C_STORE16` | `SHLD` / `MOV+MOV` | 16-bit memory store |
-| `V6C_ADD16` | `DAD` / 8-bit expand | 16-bit addition |
-| `V6C_SUB16` | 8-bit SUB+SBB chain | 16-bit subtraction |
-| `V6C_CMP16` | 8-bit compare chain | 16-bit comparison |
-| `V6C_SHIFT_L` | Unrolled `RAL`/`ADD A,A` | Left shift by N |
-| `V6C_SHIFT_R` | Unrolled `RAR`/RRC chain | Right shift by N |
-| `V6C_CALL_SEQ_START` | SP adjustment | Call frame setup |
-| `V6C_CALL_SEQ_END` | SP adjustment | Call frame teardown |
-| `V6C_RET_FLAG` | `RET` | Return with glue |
-| `V6C_SELECT_CC` | Compare + branch | Conditional select |
+| `V6CLANG_MOV16rr` | Two `MOV` (hi, lo) | 16-bit register-pair move |
+| `V6CLANG_LOAD16` | `LHLD` / `LXI+MOV+MOV` | 16-bit memory load |
+| `V6CLANG_STORE16` | `SHLD` / `MOV+MOV` | 16-bit memory store |
+| `V6CLANG_ADD16` | `DAD` / 8-bit expand | 16-bit addition |
+| `V6CLANG_SUB16` | 8-bit SUB+SBB chain | 16-bit subtraction |
+| `V6CLANG_CMP16` | 8-bit compare chain | 16-bit comparison |
+| `V6CLANG_SHIFT_L` | Unrolled `RAL`/`ADD A,A` | Left shift by N |
+| `V6CLANG_SHIFT_R` | Unrolled `RAR`/RRC chain | Right shift by N |
+| `V6CLANG_CALL_SEQ_START` | SP adjustment | Call frame setup |
+| `V6CLANG_CALL_SEQ_END` | SP adjustment | Call frame teardown |
+| `V6CLANG_RET_FLAG` | `RET` | Return with glue |
+| `V6CLANG_SELECT_CC` | Compare + branch | Conditional select |
 
 ---
 
 ## 6. Calling Convention & ABI
 
-### 6.1 Primary Calling Convention: `V6C_CConv`
+### 6.1 Primary Calling Convention: `V6CLANG_CConv`
 
 Designed for the extreme register scarcity of the 8080:
 
@@ -349,11 +349,11 @@ High addresses
 Low addresses          ← SP points here
 ```
 
-### 6.2 Alternative Convention: `V6C_FastCall`
+### 6.2 Alternative Convention: `V6CLANG_FastCall`
 
 All arguments on stack. No register arguments. Simpler for variadic functions and functions called via pointer.
 
-### 6.3 Interrupt Handler Convention: `V6C_ISR`
+### 6.3 Interrupt Handler Convention: `V6CLANG_ISR`
 
 - All registers saved/restored (PUSH PSW, PUSH B, PUSH D, PUSH H).
 - Returns with `EI` + `RET`.
@@ -416,30 +416,30 @@ For trivial leaf functions with no locals, prologue/epilogue are omitted entirel
 The optimization pipeline is organized in three phases:
 
 ```
-Phase 1: IR-Level (Target-Independent + V6C-Aware)
+Phase 1: IR-Level (Target-Independent + V6CLANG-Aware)
   ├── Standard -O2 pipeline (mem2reg, SROA, GVN, licm, etc.)
-  ├── V6CPromoteToRegisters        — Aggressive alloca promotion
-  ├── V6CLoopStrengthReduce        — Pointer-increment loops → INX
-  └── V6CTypeNarrowing             — Narrow i16/i32 to i8 where safe
+  ├── V6ClangPromoteToRegisters        — Aggressive alloca promotion
+  ├── V6ClangLoopStrengthReduce        — Pointer-increment loops → INX
+  └── V6ClangTypeNarrowing             — Narrow i16/i32 to i8 where safe
 
 Phase 2: CodeGen (Pre-RA)
   ├── ISel (§5)
-  ├── V6CPeephole                  — Pattern-based local optimizations
-  ├── V6CAccumulatorPlanning       — Schedule A-register usage
+  ├── V6ClangPeephole                  — Pattern-based local optimizations
+  ├── V6ClangAccumulatorPlanning       — Schedule A-register usage
   ├── MachineLICM                  — Hoist invariants out of loops
   └── MachineCSE                   — Eliminate redundant computations
 
 Phase 3: CodeGen (Post-RA)
-  ├── V6CLoadStoreOpt              — Merge adjacent loads/stores
-  ├── V6CXchgOpt                   — Insert XCHG to avoid MOV chains
-  ├── V6CBranchOpt                 — Branch relaxation, tail calls
-  ├── V6CZeroTestOpt               — CPI 0 → ORA A
-  └── V6CSPTrickOpt                — SP-based block copy for memcpy/memset
+  ├── V6ClangLoadStoreOpt              — Merge adjacent loads/stores
+  ├── V6ClangXchgOpt                   — Insert XCHG to avoid MOV chains
+  ├── V6ClangBranchOpt                 — Branch relaxation, tail calls
+  ├── V6ClangZeroTestOpt               — CPI 0 → ORA A
+  └── V6ClangSPTrickOpt                — SP-based block copy for memcpy/memset
 ```
 
 ### 8.2 Custom Optimization Passes
 
-#### 8.2.1 `V6CAccumulatorPlanning` (MachineFunction Pass)
+#### 8.2.1 `V6ClangAccumulatorPlanning` (MachineFunction Pass)
 
 *Problem*: Nearly all ALU operations route through register A. Naive scheduling causes excessive MOV-to-A / MOV-from-A traffic.
 
@@ -452,7 +452,7 @@ Output: Reordered MachineFunction
 Preserved: CFG, liveness (updated)
 ```
 
-#### 8.2.2 `V6CXchgOpt` (MachineFunction Pass)
+#### 8.2.2 `V6ClangXchgOpt` (MachineFunction Pass)
 
 *Problem*: Many operations need values in HL (for memory access) or DE (for DAD). Moving 16-bit values between pairs costs 2×MOV = 16cc. XCHG costs 4cc.
 
@@ -465,7 +465,7 @@ Output: MachineFunction with XCHG insertions, redundant MOV pairs removed
 Preserved: Register liveness (updated)
 ```
 
-#### 8.2.3 `V6CSPTrickOpt` (MachineFunction Pass)
+#### 8.2.3 `V6ClangSPTrickOpt` (MachineFunction Pass)
 
 *Problem*: The 8080 has no block-move instruction. Copying N bytes naively requires N×(MOV+MOV) = 16cc/byte.
 
@@ -492,17 +492,17 @@ Output: MachineFunction with SP-trick sequences where profitable
 Constraint: Wraps sequence in DI/EI; not applicable inside ISRs
 ```
 
-#### 8.2.4 `V6CZeroTestOpt` (Peephole, MachineFunction Pass)
+#### 8.2.4 `V6ClangZeroTestOpt` (Peephole, MachineFunction Pass)
 
 Replace `CPI 0` (8cc) with `ORA A` (4cc) when testing the accumulator against zero. Generalized: replace `CMP r` where r is known-zero with `ORA A`.
 
-#### 8.2.5 `V6CTypeNarrowing` (IR Pass)
+#### 8.2.5 `V6ClangTypeNarrowing` (IR Pass)
 
 Analyze i16 computations where the upper byte is unused (e.g., loop counters bounded < 256). Narrow to i8 operations, halving register pressure and cycle cost.
 
 ### 8.3 Register Allocation Strategy
 
-**Allocator**: LLVM's Greedy Register Allocator with V6C-specific weight adjustments.
+**Allocator**: LLVM's Greedy Register Allocator with V6CLANG-specific weight adjustments.
 
 **Key customizations:**
 - **Spill cost inflation**: Stack access costs ~32cc minimum. Spill weights must reflect this to force the allocator to try harder before spilling.
@@ -539,14 +539,14 @@ An optional **Intel HEX** (`.hex`) output is provided for EPROM programmers and 
 Command-line option:
 
 ```
--mv6c-start-address=0x100    (default)
+-mv6clang-start-address=0x100    (default)
 ```
 
 Accepted range: `0x0000`–`0xFFFF`. The emitted binary's origin (`ORG`) directive and all absolute address relocations are adjusted accordingly.
 
 ### 9.4 Linker
 
-A minimal custom linker (or LLD with a V6C-specific target) that:
+A minimal custom linker (or LLD with a V6CLANG-specific target) that:
 
 - Resolves symbol references across compilation units.
 - Lays out sections (`.text`, `.data`, `.rodata`, `.bss`) contiguously starting at the configured origin.
@@ -573,15 +573,15 @@ A minimal custom linker (or LLD with a V6C-specific target) that:
 
 ## 10. Frontend Integration
 
-### 10.1 Approach: Clang with V6C Target
+### 10.1 Approach: Clang with V6CLANG Target
 
-Use Clang as the C frontend. Register `i8080-unknown-v6c` as a target, providing:
+Use Clang as the C frontend. Register `i8080-unknown-v6clang` as a target, providing:
 
-| Clang Component | V6C Implementation |
+| Clang Component | V6CLANG Implementation |
 |-----------------|--------------------|
 | `TargetInfo` | Defines type sizes, alignments, endianness, built-in macros |
 | `TargetCodeGenInfo` | ABI lowering for function calls |
-| Built-in macros | `__V6C__`, `__I8080__`, `__CHAR_UNSIGNED__` |
+| Built-in macros | `__V6CLANG__`, `__I8080__`, `__CHAR_UNSIGNED__` |
 
 ### 10.2 Language Restrictions
 
@@ -601,74 +601,74 @@ The frontend enforces constraints appropriate for the target:
 
 | Intrinsic | Maps To | Purpose |
 |-----------|---------|---------|
-| `__builtin_v6c_in(port)` | `IN port` | Read I/O port |
-| `__builtin_v6c_out(port, val)` | `OUT port` | Write I/O port |
-| `__builtin_v6c_di()` | `DI` | Disable interrupts |
-| `__builtin_v6c_ei()` | `EI` | Enable interrupts |
-| `__builtin_v6c_hlt()` | `HLT` | Halt processor |
-| `__builtin_v6c_nop()` | `NOP` | No-operation |
+| `__builtin_v6clang_in(port)` | `IN port` | Read I/O port |
+| `__builtin_v6clang_out(port, val)` | `OUT port` | Write I/O port |
+| `__builtin_v6clang_di()` | `DI` | Disable interrupts |
+| `__builtin_v6clang_ei()` | `EI` | Enable interrupts |
+| `__builtin_v6clang_hlt()` | `HLT` | Halt processor |
+| `__builtin_v6clang_nop()` | `NOP` | No-operation |
 
 ---
 
 ## 11. Runtime Support Library
 
-A minimal freestanding runtime (`libv6crt`) provides:
+A minimal freestanding runtime (`libv6clangrt`) provides:
 
 | Component | Contents |
 |-----------|----------|
 | `crt0.s` | Startup: set SP, zero `.bss`, call `main`, `HLT` |
-| `libv6c_math` | `__mulhi3` (8×8→16), `__mulsi3` (16×16→32), `__divhi3`, `__modhi3`, `__udivhi3`, `__umodhi3` |
-| `libv6c_shift` | `__ashlhi3`, `__ashrhi3`, `__lshrhi3` for variable-count shifts |
-| `libv6c_mem` | `memcpy`, `memset`, `memmove` (with SP-trick optimization) |
-| `libv6c_io` | Thin wrappers for Vector 06c I/O ports (keyboard, display, sound) |
+| `libv6clang_math` | `__mulhi3` (8×8→16), `__mulsi3` (16×16→32), `__divhi3`, `__modhi3`, `__udivhi3`, `__umodhi3` |
+| `libv6clang_shift` | `__ashlhi3`, `__ashrhi3`, `__lshrhi3` for variable-count shifts |
+| `libv6clang_mem` | `memcpy`, `memset`, `memmove` (with SP-trick optimization) |
+| `libv6clang_io` | Thin wrappers for Vector 06c I/O ports (keyboard, display, sound) |
 
-All runtime functions follow `V6C_CConv` (§6.1).
+All runtime functions follow `V6CLANG_CConv` (§6.1).
 
 ---
 
 ## 12. Project Structure
 
 ```
-llvm-v6c/
+llvm-v6clang/
 ├── llvm/
 │   └── lib/
 │       └── Target/
-│           └── V6C/
+│           └── V6CLANG/
 │               ├── CMakeLists.txt
-│               ├── V6C.td                      # Top-level TableGen
-│               ├── V6CTargetMachine.h/.cpp      # TargetMachine subclass
-│               ├── V6CSubtarget.h/.cpp          # Subtarget features
-│               ├── V6CRegisterInfo.td           # Register descriptions
-│               ├── V6CRegisterInfo.h/.cpp       # Register info implementation
-│               ├── V6CInstrInfo.td              # Instruction descriptions
-│               ├── V6CInstrFormats.td           # Encoding formats
-│               ├── V6CInstrInfo.h/.cpp          # Instruction info implementation
-│               ├── V6CSchedule.td              # Scheduling model
-│               ├── V6CCallingConv.td            # Calling conventions
-│               ├── V6CISelLowering.h/.cpp       # Legalization & custom lowering
-│               ├── V6CISelDAGToDAG.h/.cpp       # Instruction selection
-│               ├── V6CFrameLowering.h/.cpp      # Prologue/epilogue, stack access
-│               ├── V6CAsmPrinter.h/.cpp         # Assembly output
-│               ├── V6CMCInstLower.h/.cpp        # MachineInstr → MCInst
-│               ├── V6CTargetObjectFile.h/.cpp   # Section layout
+│               ├── V6CLANG.td                      # Top-level TableGen
+│               ├── V6ClangTargetMachine.h/.cpp      # TargetMachine subclass
+│               ├── V6ClangSubtarget.h/.cpp          # Subtarget features
+│               ├── V6ClangRegisterInfo.td           # Register descriptions
+│               ├── V6ClangRegisterInfo.h/.cpp       # Register info implementation
+│               ├── V6ClangInstrInfo.td              # Instruction descriptions
+│               ├── V6ClangInstrFormats.td           # Encoding formats
+│               ├── V6ClangInstrInfo.h/.cpp          # Instruction info implementation
+│               ├── V6ClangSchedule.td              # Scheduling model
+│               ├── V6ClangCallingConv.td            # Calling conventions
+│               ├── V6ClangISelLowering.h/.cpp       # Legalization & custom lowering
+│               ├── V6ClangISelDAGToDAG.h/.cpp       # Instruction selection
+│               ├── V6ClangFrameLowering.h/.cpp      # Prologue/epilogue, stack access
+│               ├── V6ClangAsmPrinter.h/.cpp         # Assembly output
+│               ├── V6ClangMCInstLower.h/.cpp        # MachineInstr → MCInst
+│               ├── V6ClangTargetObjectFile.h/.cpp   # Section layout
 │               ├── MCTargetDesc/
-│               │   ├── V6CMCAsmInfo.h/.cpp      # Assembly syntax config
-│               │   ├── V6CMCCodeEmitter.h/.cpp  # Binary encoding
-│               │   ├── V6CMCTargetDesc.h/.cpp   # MC layer registration
-│               │   └── V6CAsmBackend.h/.cpp     # Fixups & relocations
+│               │   ├── V6ClangMCAsmInfo.h/.cpp      # Assembly syntax config
+│               │   ├── V6ClangMCCodeEmitter.h/.cpp  # Binary encoding
+│               │   ├── V6ClangMCTargetDesc.h/.cpp   # MC layer registration
+│               │   └── V6ClangAsmBackend.h/.cpp     # Fixups & relocations
 │               └── TargetInfo/
-│                   └── V6CTargetInfo.h/.cpp     # Target registration
+│                   └── V6ClangTargetInfo.h/.cpp     # Target registration
 │
 ├── clang/
 │   └── lib/
 │       └── Basic/
 │           └── Targets/
-│               └── V6C.h/.cpp                   # Clang TargetInfo
+│               └── V6Clang.h/.cpp                   # Clang TargetInfo
 │
 ├── compiler-rt/
 │   └── lib/
 │       └── builtins/
-│           └── v6c/                             # Runtime library (§11)
+│           └── v6clang/                             # Runtime library (§11)
 │               ├── crt0.s
 │               ├── mulhi3.s
 │               ├── divhi3.s
@@ -676,9 +676,9 @@ llvm-v6c/
 │               └── memory.s
 │
 ├── lld/                                         # Linker support (§9.4)
-│   └── V6C/
-│       ├── V6CLinker.h/.cpp
-│       └── V6CLinkerScript.ld
+│   └── V6CLANG/
+│       ├── V6ClangLinker.h/.cpp
+│       └── V6ClangLinkerScript.ld
 │
 ├── tests/
 │   ├── unit/
@@ -696,29 +696,29 @@ llvm-v6c/
 │   │       ├── test_calling_convention.c
 │   │       └── test_struct_return.c
 │   ├── lit/
-│   │   ├── CodeGen/V6C/                         # LLVM IR → asm FileCheck tests
+│   │   ├── CodeGen/V6CLANG/                         # LLVM IR → asm FileCheck tests
 │   │   │   ├── add-i8.ll
 │   │   │   ├── add-i16.ll
 │   │   │   ├── call-conv.ll
 │   │   │   ├── frame-lowering.ll
 │   │   │   ├── branch.ll
 │   │   │   └── peephole-ora.ll
-│   │   └── MC/V6C/                              # Assembler/disassembler tests
+│   │   └── MC/V6CLANG/                              # Assembler/disassembler tests
 │   │       ├── encoding.s
 │   │       └── relocations.s
 │   └── integration/
-│       ├── hello_v6c.c                          # End-to-end: C → binary → emulator verify
+│       ├── hello_v6clang.c                          # End-to-end: C → binary → emulator verify
 │       ├── fibonacci.c
 │       └── memcpy_benchmark.c
 │
 └── docs/
     ├── README.md
-    ├── V6CArchitecture.md
-    ├── V6CBuildGuide.md
-    ├── V6CProjectStructure.md
-    ├── V6CCallingConvention.md
-    ├── V6COptimization.md
-    └── V6CInstructionTimings.md
+    ├── V6ClangArchitecture.md
+    ├── V6ClangBuildGuide.md
+    ├── V6ClangProjectStructure.md
+    ├── V6ClangCallingConvention.md
+    ├── V6ClangOptimization.md
+    └── V6ClangInstructionTimings.md
 ```
 
 ---
@@ -756,9 +756,9 @@ A Vector 06c emulator executes the compiled binaries and validates output agains
 ### 14.1 TargetMachine
 
 ```
-V6CTargetMachine : LLVMTargetMachine
-  ├── getSubtargetImpl(Function&) → V6CSubtarget&
-  ├── createPassConfig(PassManagerBase&) → V6CPassConfig
+V6ClangTargetMachine : LLVMTargetMachine
+  ├── getSubtargetImpl(Function&) → V6ClangSubtarget&
+  ├── createPassConfig(PassManagerBase&) → V6ClangPassConfig
   └── Options:
         ├── StartAddress : uint16_t = 0x0100
         ├── UseFramePointer : bool = false
@@ -768,23 +768,23 @@ V6CTargetMachine : LLVMTargetMachine
 ### 14.2 Subtarget
 
 ```
-V6CSubtarget : TargetSubtargetInfo
-  ├── getInstrInfo()      → V6CInstrInfo&
-  ├── getRegisterInfo()   → V6CRegisterInfo&
-  ├── getFrameLowering()  → V6CFrameLowering&
-  ├── getTargetLowering() → V6CTargetLowering&
+V6ClangSubtarget : TargetSubtargetInfo
+  ├── getInstrInfo()      → V6ClangInstrInfo&
+  ├── getRegisterInfo()   → V6ClangRegisterInfo&
+  ├── getFrameLowering()  → V6ClangFrameLowering&
+  ├── getTargetLowering() → V6ClangTargetLowering&
   └── getSelectionDAGInfo() → SelectionDAGTargetInfo&
 ```
 
 ### 14.3 Custom Pass Registration
 
 ```
-V6CPassConfig : TargetPassConfig
-  ├── addPreISel()          → { V6CTypeNarrowing }
-  ├── addInstSelector()     → { V6CDAGToDAGISel }
-  ├── addPreRegAlloc()      → { V6CAccumulatorPlanning, V6CPeephole }
-  ├── addPostRegAlloc()     → { V6CXchgOpt, V6CLoadStoreOpt }
-  └── addPreEmitPass()      → { V6CZeroTestOpt, V6CSPTrickOpt, V6CBranchOpt }
+V6ClangPassConfig : TargetPassConfig
+  ├── addPreISel()          → { V6ClangTypeNarrowing }
+  ├── addInstSelector()     → { V6ClangDAGToDAGISel }
+  ├── addPreRegAlloc()      → { V6ClangAccumulatorPlanning, V6ClangPeephole }
+  ├── addPostRegAlloc()     → { V6ClangXchgOpt, V6ClangLoadStoreOpt }
+  └── addPreEmitPass()      → { V6ClangZeroTestOpt, V6ClangSPTrickOpt, V6ClangBranchOpt }
 ```
 
 ---
@@ -794,7 +794,7 @@ V6CPassConfig : TargetPassConfig
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Register pressure causes excessive spilling | Major performance degradation | Aggressive inlining, type narrowing, rematerialization, SP-trick for bulk moves |
-| Accumulator bottleneck serializes ALU ops | Suboptimal scheduling | V6CAccumulatorPlanning pass; consider A as conflict resource |
+| Accumulator bottleneck serializes ALU ops | Suboptimal scheduling | V6ClangAccumulatorPlanning pass; consider A as conflict resource |
 | Stack access cost (32cc/byte) | Slow function calls | Promote aggressively; favor leaf functions; inline small functions |
 | 16-bit operations are synthesized | 2× cost of native ops | Type narrowing pass; prefer i8 where possible |
 | Multiply/divide are library calls | Very slow | Strength reduction: shift for power-of-2, repeated add for small constants |
@@ -808,46 +808,46 @@ V6CPassConfig : TargetPassConfig
 The backend integrates into the LLVM build system:
 
 ```cmake
-# llvm/lib/Target/V6C/CMakeLists.txt
-set(LLVM_TARGET_DEFINITIONS V6C.td)
+# llvm/lib/Target/V6CLANG/CMakeLists.txt
+set(LLVM_TARGET_DEFINITIONS V6CLANG.td)
 
-tablegen(LLVM V6CGenRegisterInfo.inc   -gen-register-info)
-tablegen(LLVM V6CGenInstrInfo.inc      -gen-instr-info)
-tablegen(LLVM V6CGenDAGISel.inc        -gen-dag-isel)
-tablegen(LLVM V6CGenCallingConv.inc    -gen-callingconv)
-tablegen(LLVM V6CGenSubtargetInfo.inc  -gen-subtarget)
-tablegen(LLVM V6CGenMCCodeEmitter.inc  -gen-emitter)
-tablegen(LLVM V6CGenAsmWriter.inc      -gen-asm-writer)
-tablegen(LLVM V6CGenDisassemblerTables.inc -gen-disassembler)
+tablegen(LLVM V6ClangGenRegisterInfo.inc   -gen-register-info)
+tablegen(LLVM V6ClangGenInstrInfo.inc      -gen-instr-info)
+tablegen(LLVM V6ClangGenDAGISel.inc        -gen-dag-isel)
+tablegen(LLVM V6ClangGenCallingConv.inc    -gen-callingconv)
+tablegen(LLVM V6ClangGenSubtargetInfo.inc  -gen-subtarget)
+tablegen(LLVM V6ClangGenMCCodeEmitter.inc  -gen-emitter)
+tablegen(LLVM V6ClangGenAsmWriter.inc      -gen-asm-writer)
+tablegen(LLVM V6ClangGenDisassemblerTables.inc -gen-disassembler)
 
-add_llvm_target(V6CCodeGen
-  V6CTargetMachine.cpp
-  V6CSubtarget.cpp
-  V6CRegisterInfo.cpp
-  V6CInstrInfo.cpp
-  V6CISelLowering.cpp
-  V6CISelDAGToDAG.cpp
-  V6CFrameLowering.cpp
-  V6CAsmPrinter.cpp
-  V6CMCInstLower.cpp
-  V6CTargetObjectFile.cpp
+add_llvm_target(V6ClangCodeGen
+  V6ClangTargetMachine.cpp
+  V6ClangSubtarget.cpp
+  V6ClangRegisterInfo.cpp
+  V6ClangInstrInfo.cpp
+  V6ClangISelLowering.cpp
+  V6ClangISelDAGToDAG.cpp
+  V6ClangFrameLowering.cpp
+  V6ClangAsmPrinter.cpp
+  V6ClangMCInstLower.cpp
+  V6ClangTargetObjectFile.cpp
   # Custom passes
-  V6CAccumulatorPlanning.cpp
-  V6CXchgOpt.cpp
-  V6CSPTrickOpt.cpp
-  V6CZeroTestOpt.cpp
-  V6CBranchOpt.cpp
-  V6CLoadStoreOpt.cpp
-  V6CTypeNarrowing.cpp
-  V6CPeephole.cpp
+  V6ClangAccumulatorPlanning.cpp
+  V6ClangXchgOpt.cpp
+  V6ClangSPTrickOpt.cpp
+  V6ClangZeroTestOpt.cpp
+  V6ClangBranchOpt.cpp
+  V6ClangLoadStoreOpt.cpp
+  V6ClangTypeNarrowing.cpp
+  V6ClangPeephole.cpp
 )
 ```
 
 Build command:
 ```bash
 cmake -G Ninja ../llvm \
-  -DLLVM_TARGETS_TO_BUILD="V6C" \
-  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6C" \
+  -DLLVM_TARGETS_TO_BUILD="V6CLANG" \
+  -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="V6CLANG" \
   -DCMAKE_BUILD_TYPE=Release
 ninja
 ```

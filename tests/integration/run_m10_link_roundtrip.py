@@ -5,7 +5,7 @@ Compiles multiple LLVM IR files with llc, links them with ld.lld
 (to validate cross-object relocations), and runs the resulting binary in
 v6emul to verify correct cross-file symbol resolution and execution.
 
-Because V6C has no MC AsmParser, the startup stub cannot be assembled to
+Because V6CLANG has no MC AsmParser, the startup stub cannot be assembled to
 ELF and prepended via the linker. We use a hybrid path: ld.lld validates
 the .o files link cleanly, then the IR is recompiled to text asm, stripped
 of directives, prepended with a startup wrapper, and assembled with v6asm
@@ -50,7 +50,7 @@ def compile_ir_to_obj(llc, ir_text, out_path):
         ir_path = f.name
     try:
         result = subprocess.run(
-            [str(llc), "-mtriple=i8080-unknown-v6c", "-O2",
+            [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2",
              "-filetype=obj", ir_path, "-o", out_path],
             capture_output=True, text=True, timeout=30,
         )
@@ -68,7 +68,7 @@ def compile_ir_to_asm(llc, ir_text):
         ir_path = f.name
     try:
         result = subprocess.run(
-            [str(llc), "-mtriple=i8080-unknown-v6c", "-O2",
+            [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2",
              ir_path, "-o", "-"],
             capture_output=True, text=True, timeout=30,
         )
@@ -82,7 +82,7 @@ def compile_ir_to_asm(llc, ir_text):
 def link_objects(obj_paths, out_path, base_addr=0, entry="main"):
     """Link .o files with ld.lld and convert to flat binary via llvm-objcopy."""
     elf_path = str(out_path) + ".elf"
-    cmd = [str(LD_LLD), "-m", "elf32v6c",
+    cmd = [str(LD_LLD), "-m", "elf32v6clang",
            f"-Ttext=0x{base_addr:04X}", "-e", entry,
            "-o", elf_path] + [str(p) for p in obj_paths]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -220,18 +220,18 @@ def run_tests(llc, v6asm, v6emul, verbose=False):
 
                 # Actually, let's use the linker approach:
                 # 1. Compile each IR to .o
-                # 2. Link with v6c_link.py at base that accounts for startup
+                # 2. Link with v6clang_link.py at base that accounts for startup
                 # 3. Prepend startup stub as a separate .o? No, simpler approach:
 
                 # Simplest: compile all IR to asm, combine, wrap with startup,
                 # then assemble with v6asm. This tests the IR compilation
                 # and relies on the already-tested M7 round-trip approach.
 
-                # For a proper linker test, let's use llc -filetype=obj + v6c_link:
+                # For a proper linker test, let's use llc -filetype=obj + v6clang_link:
                 for i, ir_text in enumerate(ir_files):
                     full_ir = (
                         f'target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"\n'
-                        f'target triple = "i8080-unknown-v6c"\n\n'
+                        f'target triple = "i8080-unknown-v6clang"\n\n'
                         f'{ir_text}'
                     )
                     obj_path = os.path.join(tmpdir, f"file{i}.o")
@@ -270,7 +270,7 @@ def run_tests(llc, v6asm, v6emul, verbose=False):
                 for ir_text in ir_files:
                     full_ir = (
                         f'target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"\n'
-                        f'target triple = "i8080-unknown-v6c"\n\n'
+                        f'target triple = "i8080-unknown-v6clang"\n\n'
                         f'{ir_text}'
                     )
                     asm_text = compile_ir_to_asm(llc, full_ir)

@@ -11,9 +11,9 @@ for the other half.
 
 ```asm
 ; After CALL use8, need to reload spilled 'a' from static stack:
-LDA   __v6c_ss.multi_live+1   ; A = b (reloaded)
+LDA   __v6clang_ss.multi_live+1   ; A = b (reloaded)
 MOV   D, H                    ; save H — RA thinks HL is live
-LXI   HL, __v6c_ss.multi_live ; load address (clobbers both H and L)
+LXI   HL, __v6clang_ss.multi_live ; load address (clobbers both H and L)
 MOV   L, M                    ; L = *HL = a (the value we need)
 MOV   H, D                    ; restore H — DEAD, never read again
 ADD   L                       ; only L is used
@@ -30,7 +30,7 @@ individually.
 ```asm
 PUSH  DE
 MOV   D, H                    ; save H (RA thinks HL pair is live)
-LXI   HL, __v6c_ss...+6       ; clobbers HL
+LXI   HL, __v6clang_ss...+6       ; clobbers HL
 MOV   L, M                    ; only L needed
 MOV   H, D                    ; restore H — used later by INX HL, SHLD
 ```
@@ -58,7 +58,7 @@ the pair, so RA saves H around it — even though H is dead post-reload.
 
 ### Approach: `enableSubRegLiveness()` (RA-level, global)
 
-Override in `V6CSubtarget`:
+Override in `V6ClangSubtarget`:
 
 ```cpp
 bool enableSubRegLiveness() const override { return true; }
@@ -69,7 +69,7 @@ level (sub_hi = H, sub_lo = L for HL pair, etc.). The RA would see that H
 is dead after the reload and skip the save/restore pair entirely.
 
 **Prerequisites:**
-- Every instruction in `V6CInstrInfo.td` that partially writes a register
+- Every instruction in `V6ClangInstrInfo.td` that partially writes a register
   pair must correctly declare sub-register defs and uses via implicit-def /
   implicit-use operands.
 - Instructions like `LXI`, `LHLD`, `MVI` that write sub-registers must have

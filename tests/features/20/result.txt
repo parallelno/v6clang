@@ -42,7 +42,7 @@ l_0:
         JMP     l_0                             ; 3B  10cc  loop
 ; c8080 stats: 25 instructions, 50 bytes, 265 cycles/iteration
 
-== v6llvmc assembly — BEFORE spill forwarding (compiled with -v6c-disable-spill-forwarding) ==
+== v6clang assembly — BEFORE spill forwarding (compiled with -v6clang-disable-spill-forwarding) ==
 ; Without forwarding: redundant reload/store sequences in the loop body
 .LBB0_2:
         LXI     HL, 7           ;  3B  10cc  spill loop counter
@@ -131,9 +131,9 @@ l_0:
         MOV     A, B            ;  1B   4cc  test counter
         ORA     C               ;  1B   4cc
         JNZ     .LBB0_2         ;  3B  10cc  loop
-; v6llvmc (before O16) stats: 86 instructions, 110 bytes, 628 cycles/iteration
+; v6clang (before O16) stats: 86 instructions, 110 bytes, 628 cycles/iteration
 
-== v6llvmc assembly — AFTER spill forwarding (O16 enabled, default) ==
+== v6clang assembly — AFTER spill forwarding (O16 enabled, default) ==
 ; With forwarding: redundant reload/store sequences eliminated
 .LBB0_2:
         LXI     HL, 7           ;  3B  10cc  spill loop counter
@@ -198,23 +198,23 @@ l_0:
         MOV     A, B            ;  1B   4cc  test counter
         ORA     C               ;  1B   4cc
         JNZ     .LBB0_2         ;  3B  10cc  loop
-; v6llvmc (after O16) stats: 62 instructions, 80 bytes, 464 cycles/iteration
+; v6clang (after O16) stats: 62 instructions, 80 bytes, 464 cycles/iteration
 
 == Comparison ==
 
-                      | c8080   | v6llvmc (before O16) | v6llvmc (after O16) | Savings
+                      | c8080   | v6clang (before O16) | v6clang (after O16) | Savings
   --------------------|---------|----------------------|---------------------|--------
   Loop instructions   | 25      | 86                   | 62                  | -24
   Loop bytes          | 50 B    | 110 B                | 80 B                | -30 B
   Loop cycles/iter    | 265 cc  | 628 cc               | 464 cc              | -164 cc
 
 Note: c8080 uses static allocation (no stack frame), so has no spill/reload
-overhead at all. v6llvmc uses a stack-based calling convention, which causes
+overhead at all. v6clang uses a stack-based calling convention, which causes
 inherent overhead from spills. O16 reduces this in non-leaf functions.
 
 == CLI ==
-Compile without O16: clang -target i8080-unknown-v6c -O2 -S file.c -mllvm -v6c-disable-spill-forwarding
-Compile with    O16: clang -target i8080-unknown-v6c -O2 -S file.c   (enabled by default)
+Compile without O16: clang -target i8080-unknown-v6clang -O2 -S file.c -mllvm -v6clang-disable-spill-forwarding
+Compile with    O16: clang -target i8080-unknown-v6clang -O2 -S file.c   (enabled by default)
 
 == Summary ==
 Post-RA Store-to-Load Forwarding (O16) eliminates 24 redundant instructions
@@ -268,7 +268,7 @@ l_0:
         jp l_0                          ; 3B  10cc  loop
 ; Loop body: 20 instructions, 39 bytes, 188 cycles/iteration
 
-== v6llvmc assembly — BEFORE spill forwarding ==
+== v6clang assembly — BEFORE spill forwarding ==
 ; Without forwarding: 2 redundant RELOAD16 sequences in the loop body
 .LBB0_2:
         PUSH HL         ;  1B  12cc  spill loop counter
@@ -348,7 +348,7 @@ l_0:
         JNZ  .LBB0_2               ;  3B  10cc  loop
 ; Loop body: 75 instructions, 95 bytes, 616 cycles/iteration
 
-== v6llvmc assembly — AFTER spill forwarding (O16) ==
+== v6clang assembly — AFTER spill forwarding (O16) ==
 ; With forwarding: 2 RELOAD16 sequences replaced by register MOVs
 .LBB0_2:
         PUSH HL         ;  1B  12cc  spill loop counter
@@ -418,14 +418,14 @@ l_0:
 
 == Comparison ==
 
-                      | c8080   | v6llvmc (before) | v6llvmc (after O16) | Savings
+                      | c8080   | v6clang (before) | v6clang (after O16) | Savings
   --------------------|---------|------------------|---------------------|--------
   Loop instructions   | 20      | 75               | 63                  | -12
   Loop bytes          | 39 B    | 95 B             | 79 B                | -16 B
   Loop cycles/iter    | 188 cc  | 616 cc           | 500 cc              | -116 cc
 
 Note: c8080 uses static allocation (no stack frame), so has no spill/reload
-overhead at all. The v6llvmc backend uses a stack-based calling convention,
+overhead at all. The v6clang backend uses a stack-based calling convention,
 which causes inherent overhead from spills. The O16 optimization reduces this.
 
 == Summary ==
@@ -446,11 +446,11 @@ Total per-iteration savings: 12 instructions, 16 bytes, 116 cycles (18.8% fewer 
 // Same interleaved_add test case but with __attribute__((leaf)) on use8 and get8.
 // This enables static stack allocation — spills use SHLD/LHLD/STA/LDA
 // to fixed memory locations instead of PUSH HL;LXI;DAD SP;MOV;POP HL.
-// Compiled with: clang --target=v6c -S -O2
-//   Without O16: -mllvm -v6c-disable-spill-forwarding
+// Compiled with: clang --target=v6clang -S -O2
+//   Without O16: -mllvm -v6clang-disable-spill-forwarding
 //   With O16:    (default, no flag needed)
 
-== v6llvmc (static stack) — BEFORE spill forwarding ==
+== v6clang (static stack) — BEFORE spill forwarding ==
 .LBB0_2:
         MOV     L, C            ;  1B   4cc  load counter low
         MOV     H, B            ;  1B   4cc  load counter high
@@ -492,7 +492,7 @@ Total per-iteration savings: 12 instructions, 16 bytes, 116 cycles (18.8% fewer 
         JNZ     .LBB0_2         ;  3B  10cc  loop
 ; Static stack (before O16): 38 instructions, 50 bytes, 301 cycles/iteration
 
-== v6llvmc (static stack) — AFTER spill forwarding (O16 enabled) ==
+== v6clang (static stack) — AFTER spill forwarding (O16 enabled) ==
 .LBB0_2:
         MOV     L, C            ;  1B   4cc
         MOV     H, B            ;  1B   4cc
@@ -536,8 +536,8 @@ Total per-iteration savings: 12 instructions, 16 bytes, 116 cycles (18.8% fewer 
 
 == Static Stack Summary ==
 
-v6llvmc static stack (before O16): 38 instructions, 50 bytes, 301 cycles/iteration
-v6llvmc static stack (after O16):  35 instructions, 49 bytes, 273 cycles/iteration
+v6clang static stack (before O16): 38 instructions, 50 bytes, 301 cycles/iteration
+v6clang static stack (after O16):  35 instructions, 49 bytes, 273 cycles/iteration
 
 Improvement from O16: -3 instructions, -1 byte, -28 cycles (-9.3%)
 
@@ -549,10 +549,10 @@ sequences (7B, ~50cc for PUSH HL;LXI HL,n;DAD SP;MOV M,r;...;POP HL).
 
                               | Instructions | Bytes | Cycles/iter |
 c8080 (baseline)              |     25       |   50  |    265      |
-v6llvmc SP-stack before O16   |     86       |  110  |    628      |
-v6llvmc SP-stack after O16    |     62       |   80  |    464      |
-v6llvmc static-stack before   |     38       |   50  |    301      |
-v6llvmc static-stack after    |     35       |   49  |    273      |
+v6clang SP-stack before O16   |     86       |  110  |    628      |
+v6clang SP-stack after O16    |     62       |   80  |    464      |
+v6clang static-stack before   |     38       |   50  |    301      |
+v6clang static-stack after    |     35       |   49  |    273      |
 
 Best result (static stack + O16) vs c8080:
   +10 instructions, -1 byte, +8 cycles (+3.0%)

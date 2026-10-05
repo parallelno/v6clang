@@ -61,7 +61,7 @@ int main(void) {
 ; c8080 outer-loop latch cycles (per iteration): 180cc
 ; c8080 outer-loop latch size:  28 bytes
 
-== v6llvmc_old — outer-loop latch (.LBB16_8, BEFORE O84, i.e. after O83) =======
+== v6clang_old — outer-loop latch (.LBB16_8, BEFORE O84, i.e. after O83) =======
 ; O83 has already removed the two POP/PUSH pairs.
 ; O84 has NOT yet fired; the round-trip MOV sequences are still present (marked <<<).
 
@@ -106,12 +106,12 @@ int main(void) {
         CMP     E                ;  4cc  1B
         JNZ     .LBB16_3         ; 12cc  3B  back to outer header
 
-; v6llvmc_old outer-loop latch cycles (per iteration): 432cc  (O83 baseline)
-; v6llvmc_old outer-loop latch size:  52 bytes
+; v6clang_old outer-loop latch cycles (per iteration): 432cc  (O83 baseline)
+; v6clang_old outer-loop latch size:  52 bytes
 ; Note: O83 result was 376cc/48B; this "old" baseline is the O83 result with
 ;       O84 disabled to show the pre-O84 round-trip sequences clearly.
 
-== v6llvmc_new01 — outer-loop latch (.LBB16_8, AFTER O84) =======================
+== v6clang_new01 — outer-loop latch (.LBB16_8, AFTER O84) =======================
 ; Pattern A: MOV C,L/MOV B,H/INX B/MOV L,C/MOV H,B/SHLD → INX H/SHLD  (×2)
 ; Pattern B: MOV B,H/MOV C,L/MOV L,C/MOV H,B/SHLD → SHLD               (×1)
 
@@ -144,8 +144,8 @@ int main(void) {
         CMP     E                ;  4cc  1B
         JNZ     .LBB16_3         ; 12cc  3B  back to outer header
 
-; v6llvmc_new01 outer-loop latch cycles (per iteration): 288cc
-; v6llvmc_new01 outer-loop latch size:  38 bytes
+; v6clang_new01 outer-loop latch cycles (per iteration): 288cc
+; v6clang_new01 outer-loop latch size:  38 bytes
 
 == Comparison table =============================================================
 ; Outer loop runs 13 iterations for sieve_count(200)  (i = 2..14, i_sq < 200).
@@ -155,9 +155,9 @@ Outer-loop latch (per iteration):
   Compiler         | cc / iter | B (code) | Notes
   -----------------|-----------|----------|----------------------------------
   c8080            |    180 cc |    28 B  | all vars in LHLD/SHLD; no regs
-  v6llvmc pre-O83  |    432 cc |    52 B  | 2 redundant POP/PUSH pairs + round-trips
-  v6llvmc O83      |    376 cc |    48 B  | O83: 2 POP/PUSH pairs eliminated
-  v6llvmc O84      |    288 cc |    38 B  | O84: 3 round-trip sequences folded
+  v6clang pre-O83  |    432 cc |    52 B  | 2 redundant POP/PUSH pairs + round-trips
+  v6clang O83      |    376 cc |    48 B  | O83: 2 POP/PUSH pairs eliminated
+  v6clang O84      |    288 cc |    38 B  | O84: 3 round-trip sequences folded
 
 O84 savings over O83 baseline (per outer iteration):
   Pattern A ×2: 2 × (4 MOVs + INX B removed, INX H added) = 2 × (32cc, 4B) = -64cc, -8B
@@ -169,5 +169,5 @@ Over 13 outer loop iterations:
   Bytes saved:  12 bytes (from 48B to 38B in latch, net -12B for this section)
 
 Full function asm line counts:
-  v6llvmc old (O83 result):  ~294 instruction lines
-  v6llvmc new (O84 result):  ~282 instruction lines  (-12 instructions)
+  v6clang old (O83 result):  ~294 instruction lines
+  v6clang new (O84 result):  ~282 instruction lines  (-12 instructions)

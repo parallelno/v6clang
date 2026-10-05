@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-V6C emits a redundant flag-setting instruction after `DCR` in loop
+V6CLANG emits a redundant flag-setting instruction after `DCR` in loop
 counter patterns because the compiler doesn't track that `DCR r` already
 sets the Z flag:
 
@@ -59,7 +59,7 @@ no pass tracks that DCR/INR already set Z.
 
 ## 2. Strategy
 
-### Approach: Post-RA peephole patterns in V6CPeephole.cpp
+### Approach: Post-RA peephole patterns in V6ClangPeephole.cpp
 
 Add a new `foldCounterBranch` method to the existing peephole pass.
 Scan each basic block for conditional branches (`JNZ`/`JZ`) preceded by
@@ -90,21 +90,21 @@ instructions, leaving just `DCR r`/`INR r` + `Jcc`.
 
 | Step | What | Where |
 |------|------|-------|
-| Add `isRegDeadAfter` helper | Reuse pattern from V6CXchgOpt | V6CPeephole.cpp |
-| Add `foldCounterBranch` | Match 3 pattern variants, remove redundant ops | V6CPeephole.cpp |
-| Wire into runOnMachineFunction | Call from main loop | V6CPeephole.cpp |
+| Add `isRegDeadAfter` helper | Reuse pattern from V6ClangXchgOpt | V6ClangPeephole.cpp |
+| Add `foldCounterBranch` | Match 3 pattern variants, remove redundant ops | V6ClangPeephole.cpp |
+| Wire into runOnMachineFunction | Call from main loop | V6ClangPeephole.cpp |
 | Lit test | Verify DCR+JNZ/JZ pattern in IR | loop-counter-peephole.ll |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `isRegDeadAfter` helper and `foldCounterBranch` to V6CPeephole.cpp [x]
+### Step 3.1 — Add `isRegDeadAfter` helper and `foldCounterBranch` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
-Add a static `isRegDeadAfter` helper (same pattern as V6CXchgOpt.cpp)
-and a new `foldCounterBranch` method to the V6CPeephole class.
+Add a static `isRegDeadAfter` helper (same pattern as V6ClangXchgOpt.cpp)
+and a new `foldCounterBranch` method to the V6ClangPeephole class.
 
 The method scans backward from each `JNZ`/`JZ` instruction looking for
 the three pattern variants:
@@ -130,7 +130,7 @@ the three pattern variants:
 > wins. The INR variant is symmetric: `INR r` also sets Z, so `INR` is
 > handled alongside `DCR` in every pattern.
 
-> **Implementation Notes**: Added `isRegDeadAfter` (same pattern as V6CXchgOpt),
+> **Implementation Notes**: Added `isRegDeadAfter` (same pattern as V6ClangXchgOpt),
 > `isRedundantZeroTest` (matches both ORA A and CPI 0 — needed because
 > ZeroTestOpt runs after Peephole), `isDcrOrInr`, and `foldCounterBranch`.
 > Pattern C → B → A order. Wired into runOnMachineFunction before eliminateTailCall.
@@ -145,7 +145,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: loop-counter-peephole.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/loop-counter-peephole.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/loop-counter-peephole.ll`
 
 Test cases:
 1. `@dcr_a_loop` — counter in A, Pattern A: verify `DCR A` immediately
@@ -167,12 +167,12 @@ python tests\run_all.py
 ### Step 3.5 — Verification assembly steps from `tests\features\README.md` [x]
 
 1. Create test folder `tests/features/02/`.
-2. Create `v6llvmc.c` and `c8080.c` with loop counter test cases.
+2. Create `v6clang.c` and `c8080.c` with loop counter test cases.
 3. Compile baseline assembly, then post-optimization assembly.
 4. Analyze and document improvements in `result.txt`.
 
 > **Implementation Notes**: Pattern A fired on `countdown()`: `DCR A; CPI 0; JNZ`
-> → `DCR A; JNZ`. Savings: 4cc+1B per iteration. v6llvmc loop 36cc/iter vs c8080 80cc/iter.
+> → `DCR A; JNZ`. Savings: 4cc+1B per iteration. v6clang loop 36cc/iter vs c8080 80cc/iter.
 
 ### Step 3.6 — Sync mirror [x]
 
@@ -288,7 +288,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
   DCR/INR is followed by sign/parity tests.
 
 > **Not pursued — SUI 1 (April 2026):** Empirical testing across all compiled
-> assembly output shows the V6C backend **never emits `SUI`**. LLVM always
+> assembly output shows the V6CLANG backend **never emits `SUI`**. LLVM always
 > lowers `sub i8 %x, 1` directly to `DCR A` via ISel patterns. Zero
 > occurrences of `SUI` in any compiler-generated `.asm` file. Dead pattern.
 
@@ -309,7 +309,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O18 Design](design\future_plans\O18_loop_counter_peephole.md)

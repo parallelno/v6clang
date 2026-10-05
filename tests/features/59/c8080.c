@@ -1,10 +1,10 @@
-// c8080 reference for O77 — V6C_STORE8_P per-shape redesign.
+// c8080 reference for O77 — V6CLANG_STORE8_P per-shape redesign.
 //
 // c8080 cannot pin specific physical registers, so this is a plain
 // baseline: each test stores a byte through a pointer alongside a
 // live carrier value, forcing the compiler to keep both alive
 // across the store. The cycle/byte cost from c8080 is the
-// comparison anchor for v6llvmc's old vs new shapes.
+// comparison anchor for v6clang's old vs new shapes.
 
 typedef unsigned char u8;
 typedef unsigned short u16;

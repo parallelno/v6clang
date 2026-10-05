@@ -28,8 +28,8 @@ load16_stack_arg:                       ; @load16_stack_arg
 	.globl	store8_local                    ; -- Begin function store8_local
 store8_local:                           ; @store8_local
 ; %bb.0:
-	STA	__v6c_a.store8_local
-	LDA	__v6c_a.store8_local
+	STA	__v6clang_a.store8_local
+	LDA	__v6clang_a.store8_local
 	RET
                                         ; -- End function
 	.section	.text.store16_local,"ax",@progbits
@@ -83,21 +83,21 @@ g8:
 g16:
 	DW	0                               ; 0x0
 
-	.local	__v6c_a.store8_local            ; @__v6c_a.store8_local
-	.comm	__v6c_a.store8_local,1,1
-	.local	__v6c_a.store16_local           ; @__v6c_a.store16_local
-	.comm	__v6c_a.store16_local,2,1
+	.local	__v6clang_a.store8_local            ; @__v6clang_a.store8_local
+	.comm	__v6clang_a.store8_local,1,1
+	.local	__v6clang_a.store16_local           ; @__v6clang_a.store16_local
+	.comm	__v6clang_a.store16_local,2,1
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3
@@ -105,5 +105,5 @@ g16:
 	.addrsig_sym __ashrhi3
 	.addrsig_sym g8
 	.addrsig_sym g16
-	.addrsig_sym __v6c_a.store8_local
-	.addrsig_sym __v6c_a.store16_local
+	.addrsig_sym __v6clang_a.store8_local
+	.addrsig_sym __v6clang_a.store16_local

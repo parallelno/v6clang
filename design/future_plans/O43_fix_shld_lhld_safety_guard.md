@@ -16,18 +16,18 @@ the SHLD's writeback to the static slot.
 
 ```asm
 .LBB0_2:                          ; loop header
-        LHLD    __v6c_ss+0        ; (B) reads src2 ptr from static slot
+        LHLD    __v6clang_ss+0        ; (B) reads src2 ptr from static slot
         ...
         INX     HL                ; advance src2 ptr
-        SHLD    __v6c_ss+0        ; (C) write back updated ptr → O43 folds to PUSH HL
-        LHLD    __v6c_ss+0        ; (D) reload (RA artifact) → O43 folds to POP HL
+        SHLD    __v6clang_ss+0        ; (C) write back updated ptr → O43 folds to PUSH HL
+        LHLD    __v6clang_ss+0        ; (D) reload (RA artifact) → O43 folds to POP HL
         ...
         JNZ     .LBB0_2           ; loop
 ```
 
 O43 sees (C)→(D) as an adjacent pair within the same BB, SP delta == 0,
 and folds them to `PUSH HL; POP HL`. But this removes the writeback to
-`__v6c_ss+0` — on the next iteration, (B) reads the stale original pointer.
+`__v6clang_ss+0` — on the next iteration, (B) reads the stale original pointer.
 The loop processes `src2[0]` every iteration instead of `src2[i]`.
 
 ### Root cause
@@ -51,7 +51,7 @@ pair for a value that is also loaded at the top of the loop.
 
 Without O16: the PUSH/POP pair from the fold is harmless because the POP
 restores HL to the same value, and the INX that follows advances the
-in-register copy. The stale `__v6c_ss+0` is masked if HL happens to be
+in-register copy. The stale `__v6clang_ss+0` is masked if HL happens to be
 re-stored by another path. In the specific `interleaved_add` case, the
 bug has been present but the incorrect output wasn't verified against
 expected values.

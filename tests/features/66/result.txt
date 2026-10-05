@@ -90,7 +90,7 @@ int main(void) {
 ;   true  path (b&4!=0): 272 - 4 + (8+12) = 288cc
 ;   body size: 50B
 
-== v6llvmc_old — fillscreen inner loop (BEFORE O81) =============================
+== v6clang_old — fillscreen inner loop (BEFORE O81) =============================
 ; Outer counter y: STA/LDA at outer latch ─ occupies A across inner loop.
 ; Select result materialised in C (B = inner counter).
 
@@ -111,12 +111,12 @@ int main(void) {
         DCR     B                        ;  8cc  1B  inner counter--
         JNZ     .LBB15_2                 ; 12cc  3B  back-edge
 
-; v6llvmc_old inner loop per iteration:
+; v6clang_old inner loop per iteration:
 ;   false path (b&4==0, JNZ not-taken): 8+8+12+8+12+8+8+8+8+12 = 92cc
 ;   true  path (b&4!=0, JNZ taken):     8+8+12+8+8+8+8+8+12    = 80cc
 ;   body size: 20B  (MVI C,0 + JMP + MVI C,0x4F = 7B for select)
 
-== v6llvmc_new01 — fillscreen inner loop (AFTER O81) ============================
+== v6clang_new01 — fillscreen inner loop (AFTER O81) ============================
 ; O81: both MVIr arms are single-use and A is dead at the SELECT_CC site.
 ; O81 emits 4-block through-A diamond; O55 converts MVI A, 0 → XRA A.
 ; Select result now in A (C freed → used as inner counter instead of B).
@@ -138,7 +138,7 @@ int main(void) {
         DCR     C                        ;  8cc  1B  inner counter-- (C freed by O81)
         JNZ     .LBB15_2                 ; 12cc  3B  back-edge
 
-; v6llvmc_new01 inner loop per iteration:
+; v6clang_new01 inner loop per iteration:
 ;   false path (b&4==0, JZ taken):      8+8+12+4+8+8+8+8+12 = 76cc
 ;   true  path (b&4!=0, JZ not-taken):  8+8+12+8+12+8+8+8+12 = 84cc
 ;   Wait: true path: 8+8+12+8+12+8+8+8+12 = 84cc
@@ -151,7 +151,7 @@ int main(void) {
 ;       the false arm itself is only 1B/4cc (vs. OLD false arm: 2B/8cc + 3B/12cc=20cc).
 ;       Net: false path -16cc (-17%), true path +4cc (+5%).
 
-== v6llvmc_new01 — fillscreen_nonzero inner loop (AFTER O81) ====================
+== v6clang_new01 — fillscreen_nonzero inner loop (AFTER O81) ====================
 ; Both arms non-zero → no XRA A optimization, but result still routes through A.
 ; MBP similarly places 0xFE arm as JZ fallthrough, 0x01 arm as JZ branch target.
 
@@ -181,8 +181,8 @@ Per inner-loop iteration:
   Compiler          | false path | true path | body size | Notes
   ------------------|------------|-----------|-----------|---------------------------
   c8080             |    272 cc  |   288 cc  |    50 B   | all vars in LHLD/SHLD
-  v6llvmc pre-O81   |     92 cc  |    80 cc  |    20 B   | MVI C,0 + JMP (false arm)
-  v6llvmc O81       |     76 cc  |    92 cc  |    19 B   | XRA A (false arm, no JMP)
+  v6clang pre-O81   |     92 cc  |    80 cc  |    20 B   | MVI C,0 + JMP (false arm)
+  v6clang O81       |     76 cc  |    92 cc  |    19 B   | XRA A (false arm, no JMP)
 
 O81 savings on the false path (b&4==0, background pixel — dominant in screen fill):
   Select materialisation: MVI C,0 (8cc,2B) + JMP (12cc,3B) → XRA A (4cc,1B)
@@ -195,7 +195,7 @@ Over 1600 inner iterations, assuming 75 % false-path (background) pixels:
 
   At 2 MHz: -7.2 ms per fillscreen() call.
 
-v6llvmc full inner loop body (fillscreen):
+v6clang full inner loop body (fillscreen):
   pre-O81: 20 instructions, 20 B  (B = inner counter, C = select result)
   post-O81: 20 instructions, 19 B  (C = inner counter, A = select result)
   Freed register: C (inner counter) and B (completely free in inner loop body)

@@ -59,43 +59,43 @@ main:                                   ; @main
 	LXI	H, 0x1234
 	CALL	p1_lo_byte_after_xor16
 	MVI	A, 0xff
-	STA	__v6c_a.main
+	STA	__v6clang_a.main
 	LXI	H, 0x5678
 	CALL	p2_hi_byte_after_xor16
 	MVI	A, 0xb4
-	STA	__v6c_a.main+1
+	STA	__v6clang_a.main+1
 	MVI	A, 0x34
-	STA	__v6c_a.main+2
+	STA	__v6clang_a.main+2
 	MVI	A, 0x12
-	STA	__v6c_a.main+3
+	STA	__v6clang_a.main+3
 	LXI	H, 0xabcd
 	CALL	p5_both_bytes_used
 	LXI	H, 0xb4ff
-	SHLD	__v6c_a.main+4
+	SHLD	__v6clang_a.main+4
 	INR	L
-	LDA	__v6c_a.main
+	LDA	__v6clang_a.main
 	MOV	D, L
 	MOV	E, A
-	LDA	__v6c_a.main+1
+	LDA	__v6clang_a.main+1
 	MOV	B, L
 	MOV	C, A
 	XCHG
 	DAD	B
 	XCHG
-	LDA	__v6c_a.main+2
+	LDA	__v6clang_a.main+2
 	MOV	B, L
 	MOV	C, A
 	XCHG
 	DAD	B
 	XCHG
-	LDA	__v6c_a.main+3
+	LDA	__v6clang_a.main+3
 	MOV	H, L
 	MOV	L, A
 	DAD	D
 	LXI	D, 0xff
-	LDA	__v6c_a.main+4
+	LDA	__v6clang_a.main+4
 	MOV	C, A
-	LDA	__v6c_a.main+5
+	LDA	__v6clang_a.main+5
 	MOV	B, A
 	MOV	A, C
 	ANA	E
@@ -116,5 +116,5 @@ g_sink16:
 g_sink8:
 	DB	0                               ; 0x0
 
-	.local	__v6c_a.main                    ; @__v6c_a.main
-	.comm	__v6c_a.main,6,1
+	.local	__v6clang_a.main                    ; @__v6clang_a.main
+	.comm	__v6clang_a.main,6,1

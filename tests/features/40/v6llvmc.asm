@@ -2,29 +2,29 @@
 	.globl	three_i8                        ; -- Begin function three_i8
 three_i8:                               ; @three_i8
 ; %bb.0:
-	LXI	HL, __v6c_ss.three_i8+2
+	LXI	HL, __v6clang_ss.three_i8+2
 	MOV	M, C
-	LXI	HL, __v6c_ss.three_i8+1
+	LXI	HL, __v6clang_ss.three_i8+1
 	MOV	M, E
 	CALL	op1
 	STA	.LLo61_0+1
-	LDA	__v6c_ss.three_i8+1
+	LDA	__v6clang_ss.three_i8+1
 	CALL	op2
-	STA	__v6c_ss.three_i8+1
-	LDA	__v6c_ss.three_i8+2
+	STA	__v6clang_ss.three_i8+1
+	LDA	__v6clang_ss.three_i8+2
 	CALL	op1
 	MOV	C, A
-	LXI	HL, __v6c_ss.three_i8+2
+	LXI	HL, __v6clang_ss.three_i8+2
 	MOV	M, C
 	LDA	.LLo61_0+1
-	LXI	HL, __v6c_ss.three_i8+1
+	LXI	HL, __v6clang_ss.three_i8+1
 	MOV	E, M
 	CALL	use3
 .LLo61_0:
 	MVI	L, 0
-	LDA	__v6c_ss.three_i8+1
+	LDA	__v6clang_ss.three_i8+1
 	ADD	L
-	LXI	HL, __v6c_ss.three_i8+2
+	LXI	HL, __v6clang_ss.three_i8+2
 	MOV	L, M
 	ADD	L
 	RET
@@ -35,18 +35,18 @@ four_i8:                                ; @four_i8
 	LXI	HL, 0xffff
 	DAD	SP
 	SPHL
-	LXI	HL, __v6c_ss.four_i8+2
+	LXI	HL, __v6clang_ss.four_i8+2
 	MOV	M, C
-	LXI	HL, __v6c_ss.four_i8+1
+	LXI	HL, __v6clang_ss.four_i8+1
 	MOV	M, E
 	CALL	op1
 	STA	.LLo61_1+1
-	LDA	__v6c_ss.four_i8+1
+	LDA	__v6clang_ss.four_i8+1
 	CALL	op2
-	STA	__v6c_ss.four_i8+1
-	LDA	__v6c_ss.four_i8+2
+	STA	__v6clang_ss.four_i8+1
+	LDA	__v6clang_ss.four_i8+2
 	CALL	op1
-	STA	__v6c_ss.four_i8+2
+	STA	__v6clang_ss.four_i8+2
 	LXI	HL, 1
 	DAD	SP
 	XCHG
@@ -57,16 +57,16 @@ four_i8:                                ; @four_i8
 	DAD	SP
 	MOV	M, A
 	LDA	.LLo61_1+1
-	LXI	HL, __v6c_ss.four_i8+1
+	LXI	HL, __v6clang_ss.four_i8+1
 	MOV	E, M
-	LXI	HL, __v6c_ss.four_i8+2
+	LXI	HL, __v6clang_ss.four_i8+2
 	MOV	C, M
 	CALL	use4
 .LLo61_1:
 	MVI	L, 0
-	LDA	__v6c_ss.four_i8+1
+	LDA	__v6clang_ss.four_i8+1
 	ADD	L
-	LXI	HL, __v6c_ss.four_i8+2
+	LXI	HL, __v6clang_ss.four_i8+2
 	MOV	L, M
 	ADD	L
 .LLo61_2:
@@ -92,7 +92,7 @@ main:                                   ; @main
 	MVI	A, 0x33
 	CALL	op1
 	MOV	C, A
-	LXI	HL, __v6c_ss.main+5
+	LXI	HL, __v6clang_ss.main+5
 	MOV	M, C
 	LDA	.LLo61_3+1
 .LLo61_8:
@@ -123,7 +123,7 @@ main:                                   ; @main
 .LLo61_3:
 	MVI	L, 0
 	ADD	L
-	LXI	HL, __v6c_ss.main+5
+	LXI	HL, __v6clang_ss.main+5
 	MOV	L, M
 	ADD	L
 	MOV	L, A
@@ -144,10 +144,10 @@ main:                                   ; @main
 	XCHG
 	RET
                                         ; -- End function
-	.local	__v6c_ss.three_i8               ; @__v6c_ss.three_i8
-	.comm	__v6c_ss.three_i8,3,1
-	.local	__v6c_ss.four_i8                ; @__v6c_ss.four_i8
-	.comm	__v6c_ss.four_i8,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,7,1
+	.local	__v6clang_ss.three_i8               ; @__v6clang_ss.three_i8
+	.comm	__v6clang_ss.three_i8,3,1
+	.local	__v6clang_ss.four_i8                ; @__v6clang_ss.four_i8
+	.comm	__v6clang_ss.four_i8,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,7,1
 	.addrsig

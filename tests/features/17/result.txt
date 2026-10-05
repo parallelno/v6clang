@@ -74,7 +74,7 @@ c8080 stats:
   test_simple_zero_check:  16B, 68cc
   test_nz_branch:          19B, 96cc
 
-=== v6llvmc ASM (before O38 — baseline) ===
+=== v6clang ASM (before O38 — baseline) ===
 
 test_two_cond_tailcall:         ; 20B, 60cc
     ORA  A                      ; 4cc, 1B — test x (A=x on entry)
@@ -109,12 +109,12 @@ test_nz_branch:                 ; 7B, 44cc (unchanged by O38)
     MOV  A, E                   ; 8cc, 1B
     RET                         ; 12cc, 1B
 
-v6llvmc stats (before O38):
+v6clang stats (before O38):
   test_two_cond_tailcall:  20B, 60cc
   test_simple_zero_check:  14B, 68cc
   test_nz_branch:          7B, 44cc
 
-=== v6llvmc ASM (after O38) ===
+=== v6clang ASM (after O38) ===
 
 test_two_cond_tailcall:         ; 13B, 44cc
     ORA  A                      ; 4cc, 1B — test x (A=x on entry)
@@ -129,7 +129,7 @@ test_two_cond_tailcall:         ; 13B, 44cc
 test_simple_zero_check:         ; 14B, 68cc (unchanged)
 test_nz_branch:                 ; 7B, 44cc (unchanged)
 
-v6llvmc stats (after O38):
+v6clang stats (after O38):
   test_two_cond_tailcall:  13B, 44cc
   test_simple_zero_check:  14B, 68cc (unchanged)
   test_nz_branch:          7B, 44cc (unchanged)
@@ -143,10 +143,10 @@ Primary pattern (test_two_cond_tailcall):
   Gained: XRA A (4cc,1B), CMP E (4cc,1B)
 
 vs c8080:
-  test_two_cond_tailcall:  v6llvmc 13B vs c8080 30B (17B smaller)
-  test_nz_branch:          v6llvmc 7B vs c8080 19B (12B smaller)
+  test_two_cond_tailcall:  v6clang 13B vs c8080 30B (17B smaller)
+  test_nz_branch:          v6clang 7B vs c8080 19B (12B smaller)
 
 Transformation chain:
-  1. V6CPeephole: MOV A,E; ORA A; JZ → XRA A; CMP E; JZ
-  2. V6CBranchOpt: JZ + RET → RZ (conditional return folding)
-  3. V6CLoadImmCombine: XRA A seeds A=0 → MVI A,0 eliminated on both paths
+  1. V6ClangPeephole: MOV A,E; ORA A; JZ → XRA A; CMP E; JZ
+  2. V6ClangBranchOpt: JZ + RET → RZ (conditional return folding)
+  3. V6ClangLoadImmCombine: XRA A seeds A=0 → MVI A,0 eliminated on both paths

@@ -10,8 +10,8 @@
 
 ## Problem
 
-In static stack mode, every `V6C_SPILL16 $hl` expands to `SHLD addr` and
-every `V6C_RELOAD16 $hl` expands to `LHLD addr`. These are absolute-address
+In static stack mode, every `V6CLANG_SPILL16 $hl` expands to `SHLD addr` and
+every `V6CLANG_RELOAD16 $hl` expands to `LHLD addr`. These are absolute-address
 memory operations — correct but expensive.
 
 When a spill and its matching reload are nearby with no SP-affecting
@@ -30,13 +30,13 @@ across a few pointer-dereferencing instructions, then immediately reloads it.
 
 ```asm
 ; Current:
-SHLD  __v6c_ss.sumarray    ; 20cc 3B — spill sum (HL)
+SHLD  __v6clang_ss.sumarray    ; 20cc 3B — spill sum (HL)
 MOV   H, B                 ; \
 MOV   L, C                 ;  | load arr2[i]
 MOV   E, M                 ;  | no SP changes
 INX   HL                   ;  |
 MOV   D, M                 ; /
-LHLD  __v6c_ss.sumarray    ; 20cc 3B — reload sum (HL)
+LHLD  __v6clang_ss.sumarray    ; 20cc 3B — reload sum (HL)
                             ; total: 40cc 6B for spill+reload
 
 ; Optimized:
@@ -52,7 +52,7 @@ POP   HL                    ; 12cc 1B — reload sum (HL)
 
 ## Approach
 
-Post-expansion peephole in `V6CPeepholePass` (runs in `addPreEmitPass`).
+Post-expansion peephole in `V6ClangPeepholePass` (runs in `addPreEmitPass`).
 Pattern-match on the final instruction stream after all pseudos have been
 expanded.
 
@@ -102,7 +102,7 @@ All must hold:
 
 ### Location
 
-`V6CPeepholePass::runOnMachineFunction` in `V6CPeephole.cpp`.
+`V6ClangPeepholePass::runOnMachineFunction` in `V6ClangPeephole.cpp`.
 Add a new scan after existing peephole patterns.
 
 ### Algorithm
@@ -117,7 +117,7 @@ for each MBB:
         if sp_delta == 0 → MATCH
         else → abort
       if instruction is SHLD with same addr → abort (re-spill)
-      if MI.modifiesRegister(V6C::SP, TRI):
+      if MI.modifiesRegister(V6CLANG::SP, TRI):
         if opcode is PUSH   → sp_delta -= 2
         if opcode is POP    → sp_delta += 2; if sp_delta > 0 → abort
         if MI.isCall()      → skip (CALL/Ccc/RST are net-zero)
@@ -128,7 +128,7 @@ for each MBB:
       replace LHLD with POP HL
 ```
 
-Use `MI.modifiesRegister(V6C::SP, TRI)` as the primary filter for
+Use `MI.modifiesRegister(V6CLANG::SP, TRI)` as the primary filter for
 SP-affecting instructions. This catches all instructions with
 `Defs = [SP]` in the .td file (PUSH, POP, CALL, Ccc, RST, SPHL,
 RET/Rcc, and INX/DCX/LXI with SP operand). The `else → abort`
@@ -142,7 +142,7 @@ are caught by the end-of-BB check.
 
 ### Estimated size
 
-~50 lines in `V6CPeephole.cpp`.
+~50 lines in `V6ClangPeephole.cpp`.
 
 ## Cost analysis
 

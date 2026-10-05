@@ -1,6 +1,6 @@
 /* O54: Optimal stack adjustment via PUSH/POP for small frames.
  * c8080 reference compile target. c8080 does not support recursion;
- * the v6llvmc test relies on an opaque extern call to force a
+ * the v6clang test relies on an opaque extern call to force a
  * hardware stack frame, the same pattern is used here. */
 
 extern unsigned char ext_fn(unsigned char x, unsigned char y);

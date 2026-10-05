@@ -3,8 +3,8 @@ O49 — Direct Memory ALU/Store ISel — feature test 41
 
 Folds a byte load directly into the 8080 M-operand form of the seven ALU
 ops (ADD/ADC/SUB/SBB/ANA/ORA/XRA/CMP M), plus MVI M, INR M and DCR M.
-Eleven new TableGen pseudos (V6C_{ADD,ADC,SUB,SBB,ANA,ORA,XRA,CMP}_M_P,
-V6C_STORE8_IMM_P, V6C_{INR,DCR}_M_P) match the DAG patterns
+Eleven new TableGen pseudos (V6CLANG_{ADD,ADC,SUB,SBB,ANA,ORA,XRA,CMP}_M_P,
+V6CLANG_STORE8_IMM_P, V6CLANG_{INR,DCR}_M_P) match the DAG patterns
 `set Acc, (op Acc, (load addr))`, `store imm, addr`, and the INR/DCR
 RMW. Post-RA expansion shares `expandMemOpM<>()` which emits the real
 M-form when the address is already in HL, wraps with XCHG for DE, or
@@ -12,7 +12,7 @@ uses the MOV L,C / MOV H,B staging with optional PUSH/POP HL for BC
 (skipping PUSH/POP via `isRegDeadAtMI(HL,...)` reusing the O42 idiom).
 
 
-## C source (v6llvmc.c — c8080.c is the same shape, only main's
+## C source (v6clang.c — c8080.c is the same shape, only main's
 ##           signature differs: c8080 requires `int main(int, char**)`).
 
     unsigned char add_m(unsigned char a, const unsigned char *p) { return a + *p; }
@@ -194,7 +194,7 @@ uses the MOV L,C / MOV H,B staging with optional PUSH/POP HL for BC
 ##   main        — 474 cc / 73 B     (ten call sites through BSS)
 
 
-## v6llvmc assembly (v6llvmc_new01.asm — O49 enabled)
+## v6clang assembly (v6clang_new01.asm — O49 enabled)
 ## ==================================================
 
     add_m:
@@ -209,7 +209,7 @@ uses the MOV L,C / MOV H,B staging with optional PUSH/POP HL for BC
     xor_m:  XCHG ; XRA M ; XCHG ; RET
 
     cmp_m:                          ; == is consumed as i32, so the
-        MOV  H, A                   ;   DAG never reaches V6Ccmp;
+        MOV  H, A                   ;   DAG never reaches V6Clangcmp;
         LDAX DE                     ;   CMP M fires only in branch
         MVI  L, 0                   ;   context (see lit cmp_m_br).
         CMP  H
@@ -267,22 +267,22 @@ uses the MOV L,C / MOV H,B staging with optional PUSH/POP HL for BC
         RET
 
 
-## v6llvmc stats (worst-path cycles / body bytes, per function)
+## v6clang stats (worst-path cycles / body bytes, per function)
 ##   add_m       — 25 cc /  4 B   (XCHG+ADD M+XCHG+RET)
 ##   sub_m       — 25 cc /  4 B   (was 52 cc / 8 B — PUSH/POP/MOV M)
 ##   and_m       — 25 cc /  4 B
 ##   or_m        — 25 cc /  4 B
 ##   xor_m       — 25 cc /  4 B
-##   cmp_m       — unchanged (V6Ccmp not reachable through i32 result)
+##   cmp_m       — unchanged (V6Clangcmp not reachable through i32 result)
 ##   store_imm   — 20 cc /  3 B   (was 24 cc / 4 B — MVI A+MOV M,A)
 ##   inc_m       — 20 cc /  2 B   (was 29 cc / 5 B — load/INR/store)
 ##   dec_m       — 20 cc /  2 B   (was 29 cc / 5 B)
 ##   sum_bytes   — 10 + 46·n cc / 22 B  (inner ≈ 46 cc/iter; was
-##                                       50 cc/iter in v6llvmc.asm)
+##                                       50 cc/iter in v6clang.asm)
 ##   main        — heavily inlined + constant-folded; ~15 insns total.
 
 
-## Δ vs v6llvmc_old.asm (pre-O49 baseline)
+## Δ vs v6clang_old.asm (pre-O49 baseline)
 ## ---------------------------------------
 ## sub_m:     −27 cc / −4 B  (collapsed PUSH/POP+MOV M sequence)
 ## add/and/or/xor_m: −1 cc / −0 B  (the old path already used LDAX DE
@@ -300,14 +300,14 @@ uses the MOV L,C / MOV H,B staging with optional PUSH/POP HL for BC
 ## ------------------
 ## 1. The trailing XCHG emitted after ADD/SUB/ANA/ORA/XRA M when the
 ##    address came in via DE is a dead instruction at function return
-##    (DE is caller-save on V6C). expandMemOpM emits XCHG both before
-##    and after by symmetry with V6C_LOAD16_P; eliminating the dead
+##    (DE is caller-save on V6CLANG). expandMemOpM emits XCHG both before
+##    and after by symmetry with V6CLANG_LOAD16_P; eliminating the dead
 ##    tail belongs in a peephole (XchgOpt already cancels back-to-back
 ##    XCHG; catching the return-reaching trail wants liveness).
 ## 2. `cmp_m` that returns an i32 (`return a == *p`) does not reach
-##    the V6Ccmp SDNode — it goes through select_cc which materialises
+##    the V6Clangcmp SDNode — it goes through select_cc which materialises
 ##    0/1 into a reg first. CMP M fires whenever the comparison is
-##    consumed by a branch or a V6Ccmp-emitting select. The lit test
+##    consumed by a branch or a V6Clangcmp-emitting select. The lit test
 ##    `cmp_m_br` exercises this path.
 ## 3. For BC-held addresses (not exercised in this feature test but
 ##    covered by expandMemOpM), the helper emits:

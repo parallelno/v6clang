@@ -4,7 +4,7 @@
 Full pipeline: LLVM IR -> llc (asm) -> combine with runtime -> v6asm -> v6emul -> verify.
 
 Tests cover:
-  - hello_v6c: I/O port write
+  - hello_v6clang: I/O port write
   - fibonacci: Compute fib(N), verify results
   - sort_bubble: Bubble sort an 8-element i8 array
   - struct_pass: Pass and return structs
@@ -40,7 +40,7 @@ ROOT = find_project_root()
 DEFAULT_LLC = ROOT / "llvm-build" / "bin" / "llc.exe"
 DEFAULT_V6ASM = os.environ.get("V6ASM")
 DEFAULT_V6EMUL = os.environ.get("V6EMUL")
-RUNTIME_DIR = ROOT / "compiler-rt" / "lib" / "builtins" / "v6c"
+RUNTIME_DIR = ROOT / "compiler-rt" / "lib" / "builtins" / "v6clang"
 
 
 # ============================================================
@@ -54,7 +54,7 @@ def compile_ir_to_asm(llc, ir_text, extra_flags=None):
         f.flush()
         ir_path = f.name
     try:
-        cmd = [str(llc), "-mtriple=i8080-unknown-v6c", "-O2",
+        cmd = [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2",
                ir_path, "-o", "-"]
         if extra_flags:
             cmd.extend(extra_flags)
@@ -179,7 +179,7 @@ def assemble_and_run(v6asm, v6emul, asm_text, load_addr=0):
 
 IR_HEADER = (
     'target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"\n'
-    'target triple = "i8080-unknown-v6c"\n\n'
+    'target triple = "i8080-unknown-v6clang"\n\n'
 )
 
 
@@ -204,17 +204,17 @@ def test(name, ir_text, startup_asm, runtime_files, expected_outputs,
     })
 
 
-# ------ Test 1: hello_v6c — I/O port write ------
+# ------ Test 1: hello_v6clang — I/O port write ------
 test(
-    "hello_v6c",
+    "hello_v6clang",
     IR_HEADER + """\
 ; Outputs bytes 'H', 'i', '!' to port 0xED
-declare void @llvm.v6c.out(i8, i8)
+declare void @llvm.v6clang.out(i8, i8)
 
 define void @hello() {
-  call void @llvm.v6c.out(i8 237, i8 72)   ; 'H' = 72
-  call void @llvm.v6c.out(i8 237, i8 105)  ; 'i' = 105
-  call void @llvm.v6c.out(i8 237, i8 33)   ; '!' = 33
+  call void @llvm.v6clang.out(i8 237, i8 72)   ; 'H' = 72
+  call void @llvm.v6clang.out(i8 237, i8 105)  ; 'i' = 105
+  call void @llvm.v6clang.out(i8 237, i8 33)   ; '!' = 33
   ret void
 }
 """,
@@ -609,17 +609,17 @@ _point:
 
 
 # ------ Test 9: ISR convention ------
-# The "interrupt" attribute is not yet implemented in the V6C backend.
+# The "interrupt" attribute is not yet implemented in the V6CLANG backend.
 # We test that a regular function with manual save/restore compiles correctly,
 # and note the ISR convention as a known limitation.
 
 ISR_IR = IR_HEADER + """\
 ; Test that a simple void function generates valid code.
 ; ISR convention (auto-save all regs + EI + RET) is a future enhancement.
-declare void @llvm.v6c.out(i8, i8)
+declare void @llvm.v6clang.out(i8, i8)
 
 define void @my_handler() {
-  call void @llvm.v6c.out(i8 237, i8 99)
+  call void @llvm.v6clang.out(i8 237, i8 99)
   ret void
 }
 """
@@ -736,10 +736,10 @@ start_addr_test("start_0x4000", 0x4000, [42])
 
 ISR_IR = IR_HEADER + """\
 define void @my_isr() #0 {
-  call void @llvm.v6c.out(i8 237, i8 99)
+  call void @llvm.v6clang.out(i8 237, i8 99)
   ret void
 }
-declare void @llvm.v6c.out(i8, i8)
+declare void @llvm.v6clang.out(i8, i8)
 attributes #0 = { "interrupt" }
 """
 
@@ -897,7 +897,7 @@ def run_isr_test(llc, verbose=False):
 
 def run_verify_machineinstrs(llc, verbose=False):
     """Run all lit-test IR files through llc with -verify-machineinstrs."""
-    lit_dir = ROOT / "tests" / "lit" / "CodeGen" / "V6C"
+    lit_dir = ROOT / "tests" / "lit" / "CodeGen" / "V6CLANG"
     if not lit_dir.exists():
         print("  SKIP: CodeGen lit test directory not found")
         return 0, 0, []
@@ -914,7 +914,7 @@ def run_verify_machineinstrs(llc, verbose=False):
         name = ll_file.stem
         try:
             result = subprocess.run(
-                [str(llc), "-mtriple=i8080-unknown-v6c", "-O2",
+                [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2",
                  "-verify-machineinstrs", str(ll_file), "-o", os.devnull],
                 capture_output=True, text=True, timeout=30,
             )

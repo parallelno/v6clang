@@ -16,7 +16,7 @@ for the revised ~200-LOC effort estimate.
 ### 1.1 Current behavior — `rotl i16 x, 1`
 
 `ISD::ROTL` is currently `Expand` for `i16` in
-[V6CISelLowering.cpp line 153](../llvm/lib/Target/V6C/V6CISelLowering.cpp#L153):
+[V6ClangISelLowering.cpp line 153](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L153):
 
 ```cpp
 setOperationAction(ISD::ROTL,  MVT::i16, Expand);
@@ -26,13 +26,13 @@ setOperationAction(ISD::ROTR,  MVT::i16, Expand);
 The default LLVM `Expand` of `rotl x, 1` is `(x << 1) | (x >> 15)`,
 which lowers to:
 
-* `V6C_SHL16` with `ShAmt == 1` — at `-O2` this funnels through
-  `LowerSHL_i16` ([V6CISelLowering.cpp lines 778-810](../llvm/lib/Target/V6C/V6CISelLowering.cpp#L778))
-  as `add x, x`, then through O40's `V6C_ADD16 → DAD rp` fast path.
+* `V6CLANG_SHL16` with `ShAmt == 1` — at `-O2` this funnels through
+  `LowerSHL_i16` ([V6ClangISelLowering.cpp lines 778-810](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L778))
+  as `add x, x`, then through O40's `V6CLANG_ADD16 → DAD rp` fast path.
   **Result: 1 B / 12 cc.**
-* `V6C_SRL16` with `ShAmt == 15` — falls into O62's byte-lane fast
+* `V6CLANG_SRL16` with `ShAmt == 15` — falls into O62's byte-lane fast
   path: `MOV DstLo, SrcHi; MVI DstHi, 0; MOV A, DstLo; ORA A; RAR; MOV DstLo, A` × 7 (after the byte move, 7 more single-bit RARs). **Result: ~10 B / ~70 cc.**
-* `V6C_OR16` joining the two halves through `A`. **Result: ~6 B / ~24 cc.**
+* `V6CLANG_OR16` joining the two halves through `A`. **Result: ~6 B / ~24 cc.**
 
 Total today: **~14–17 B / ~100 cc** for a one-bit rotate, dominated
 by the `SRL by 15` cost. `A` is clobbered.
@@ -56,16 +56,16 @@ dbl_u16:
 This is because:
 
 1. `LowerSHL_i16` rewrites `shl x, 1` as `add x, x` (i16 `ISD::ADD`),
-   not as a `V6C_SHL16` pseudo with `ShAmt == 1`.
-2. `add x, x` becomes `V6C_ADD16 dst, src, src`.
-3. The `V6C_ADD16` post-RA expander has the
+   not as a `V6CLANG_SHL16` pseudo with `ShAmt == 1`.
+2. `add x, x` becomes `V6CLANG_ADD16 dst, src, src`.
+3. The `V6CLANG_ADD16` post-RA expander has the
    `DstReg == HL && (Lhs == HL || Rhs == HL) → DAD rp` fast path
-   ([V6CInstrInfo.cpp ≈ line 670](../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L670)),
+   ([V6ClangInstrInfo.cpp ≈ line 670](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L670)),
    matched on the `Rhs == HL` arm with `LhsReg == HL`.
 4. RA already prefers HL for shifted/added i16 values (per O40), so
    the predominant post-RA shape is `DstReg == LhsReg == RhsReg == HL`.
 
-The unrolled ADD-self chain inside `V6C_SHL16` for `ShAmt < 8` is
+The unrolled ADD-self chain inside `V6CLANG_SHL16` for `ShAmt < 8` is
 therefore **unreachable code at `-O2`**. No Phase 1 patch is needed,
 and adding one would be redundant with the existing infrastructure.
 
@@ -107,7 +107,7 @@ The parent feature doc describes two equivalent lowerings:
 * **Branchful** (`JNC .done; INR L; .done:`): 24–32 cc / 5 B,
   preserves `A`. Needs an `MCSymbol` and either MBB split (CFG
   mutation, can't live in `expandPostRAPseudo`) or a new
-  `V6C_LABEL` pseudo (no precedent in the V6C backend).
+  `V6CLANG_LABEL` pseudo (no precedent in the V6CLANG backend).
 
 Phase 2 ships the **branchless** form because:
 
@@ -115,7 +115,7 @@ Phase 2 ships the **branchless** form because:
    everything through `A`), so there is no liveness regression.
 2. Straight-line expansion fits the existing `expandPostRAPseudo`
    pattern used by every other 16-bit pseudo in the backend
-   (`V6C_ADD16`, `V6C_SHL16`, `V6C_SRL16`, …). No new infrastructure.
+   (`V6CLANG_ADD16`, `V6CLANG_SHL16`, `V6CLANG_SRL16`, …). No new infrastructure.
 3. The 36 cc / 5 B figure is still a **−9 B / −64 cc** win vs.
    today (~17 B / ~100 cc).
 
@@ -138,27 +138,27 @@ data shows `A` is frequently live across an `i16` rotate.
 
 Three coordinated edits:
 
-1. **`V6CISelLowering.{h,cpp}`** — flip `ISD::ROTL i16` from
+1. **`V6ClangISelLowering.{h,cpp}`** — flip `ISD::ROTL i16` from
    `Expand` to `Custom`; extend `LowerROTL` to handle `i16` with
-   constant amount `1` by emitting a new `V6CISD::ROTL16_1`
+   constant amount `1` by emitting a new `V6ClangISD::ROTL16_1`
    single-result SDNode. Other amounts (and non-constant amounts)
    return `SDValue()` so LLVM falls back to the existing default
    Expand path.
-2. **`V6CInstrInfo.td`** — declare the matching SDNode profile,
-   the `V6C_ROTL16_1` pseudo (HL-constrained via `GR16Ptr`), and
+2. **`V6ClangInstrInfo.td`** — declare the matching SDNode profile,
+   the `V6CLANG_ROTL16_1` pseudo (HL-constrained via `GR16Ptr`), and
    one `Pat<>` entry tying SDNode → pseudo.
-3. **`V6CInstrInfo.cpp`** — add a `case V6C::V6C_ROTL16_1` arm in
+3. **`V6ClangInstrInfo.cpp`** — add a `case V6CLANG::V6CLANG_ROTL16_1` arm in
    `expandPostRAPseudo` that emits the 4-instruction sequence.
 
 ### 2.2 Why HL-constrained
 
 `DAD H` requires `HL`. We force the pseudo's source and destination
 to `HL` via `GR16Ptr` (the existing HL-only register class used by
-`V6C_DAD`), so RA proves the constraint at allocation time. This:
+`V6CLANG_DAD`), so RA proves the constraint at allocation time. This:
 
 * Eliminates all post-RA framing logic (no XCHG / MOV-pair fallback).
-* Matches the precedent set by `V6C_DAD`
-  ([V6CInstrInfo.td ≈ line 774](../llvm/lib/Target/V6C/V6CInstrInfo.td#L774)).
+* Matches the precedent set by `V6CLANG_DAD`
+  ([V6ClangInstrInfo.td ≈ line 774](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L774)).
 * Keeps the expansion to a literal 4-instruction emit — minimal
   surface, no cost-model branching, no liveness reasoning.
 
@@ -172,13 +172,13 @@ which already prefer HL via O40), this is acceptable.
 
 | Step | What                                                      | Where                                                  |
 |------|-----------------------------------------------------------|--------------------------------------------------------|
-| 3.1  | Add `ROTL16_1` to `V6CISD::NodeType` enum                  | `V6CISelLowering.h`                                    |
-| 3.2  | `getTargetNodeName` case for `ROTL16_1`                    | `V6CISelLowering.cpp`                                  |
-| 3.3  | Flip `ROTL i16` to `Custom`; extend `LowerROTL` for i16    | `V6CISelLowering.cpp`                                  |
-| 3.4  | SDNode profile + `V6C_ROTL16_1` pseudo + Pat<>             | `V6CInstrInfo.td`                                      |
-| 3.5  | `expandPostRAPseudo` case for `V6C_ROTL16_1`               | `V6CInstrInfo.cpp`                                     |
+| 3.1  | Add `ROTL16_1` to `V6ClangISD::NodeType` enum                  | `V6ClangISelLowering.h`                                    |
+| 3.2  | `getTargetNodeName` case for `ROTL16_1`                    | `V6ClangISelLowering.cpp`                                  |
+| 3.3  | Flip `ROTL i16` to `Custom`; extend `LowerROTL` for i16    | `V6ClangISelLowering.cpp`                                  |
+| 3.4  | SDNode profile + `V6CLANG_ROTL16_1` pseudo + Pat<>             | `V6ClangInstrInfo.td`                                      |
+| 3.5  | `expandPostRAPseudo` case for `V6CLANG_ROTL16_1`               | `V6ClangInstrInfo.cpp`                                     |
 | 3.6  | Build clang + llc                                          | —                                                      |
-| 3.7  | Lit test `rotl-i16-dad-h.ll`                               | `llvm-project/llvm/test/CodeGen/V6C/`                  |
+| 3.7  | Lit test `rotl-i16-dad-h.ll`                               | `llvm-project/llvm/test/CodeGen/V6CLANG/`                  |
 | 3.8  | Verification feature folder `tests/features/45/`           | `tests/features/45/`                                   |
 | 3.9  | Run lit + golden + benchmarks                              | —                                                      |
 | 3.10 | Sync mirror                                                | —                                                      |
@@ -186,9 +186,9 @@ which already prefer HL via O40), this is acceptable.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `ROTL16_1` to the V6CISD NodeType enum [x]
+### Step 3.1 — Add `ROTL16_1` to the V6ClangISD NodeType enum [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.h`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
 (immediately after `ROTR8`, before the closing `};` of the enum).
 
 ```cpp
@@ -197,23 +197,23 @@ ROTR8,      // 1-bit accumulator rotate right (RRC).
 ROTL16_1,   // i16 rotate-left by 1, lowered via DAD H + ACI 0 carry-fold.
 ```
 
-> **Implementation Notes**: Added at line 49 of `V6CISelLowering.h` (immediately after `ROTR8`). No other enum reorder.
+> **Implementation Notes**: Added at line 49 of `V6ClangISelLowering.h` (immediately after `ROTR8`). No other enum reorder.
 
 ### Step 3.2 — `getTargetNodeName` case for `ROTL16_1` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 (in `getTargetNodeName`, alongside the existing `ROTL8` / `ROTR8`
 cases).
 
 ```cpp
-case V6CISD::ROTL16_1: return "V6CISD::ROTL16_1";
+case V6ClangISD::ROTL16_1: return "V6ClangISD::ROTL16_1";
 ```
 
-> **Implementation Notes**: One-line addition adjacent to the existing `ROTR8` case. Verified via `llc -print-after-all` showing `V6CISD::ROTL16_1` rather than `Constant:i16<0>` in the post-ISel DAG dump.
+> **Implementation Notes**: One-line addition adjacent to the existing `ROTR8` case. Verified via `llc -print-after-all` showing `V6ClangISD::ROTL16_1` rather than `Constant:i16<0>` in the post-ISel DAG dump.
 
 ### Step 3.3 — `ROTL i16` Custom; extend `LowerROTL` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 (a) Around line 153 (the `setOperationAction` block for i16):
 
@@ -230,7 +230,7 @@ landing is intentionally deferred.)
 match an i16 amount-1 rotate:
 
 ```cpp
-SDValue V6CTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
+SDValue V6ClangTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
   SDLoc DL(Op);
   SDValue Val = Op.getOperand(0);
@@ -239,7 +239,7 @@ SDValue V6CTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
   if (VT == MVT::i16) {
     auto *CA = dyn_cast<ConstantSDNode>(Amt);
     if (CA && (CA->getZExtValue() & 15) == 1)
-      return DAG.getNode(V6CISD::ROTL16_1, DL, MVT::i16, Val);
+      return DAG.getNode(V6ClangISD::ROTL16_1, DL, MVT::i16, Val);
     // Other amounts / variable amount → fall back to default Expand.
     return SDValue();
   }
@@ -257,49 +257,49 @@ behaviour.
 
 > **Implementation Notes**: Implemented exactly as proposed. Mask is `& 15` (not `& 16`) to also catch `rotl x, 17`, `33`, … (any amount ≡ 1 mod 16). `ISD::ROTR i16` left at `Expand` per scope. Verified `rotl x, 2` falls back to default Expand and produces the same code as before via probe `temp/rotl_probe2.c`.
 
-### Step 3.4 — SDNode profile + `V6C_ROTL16_1` pseudo + Pat<> [x]
+### Step 3.4 — SDNode profile + `V6CLANG_ROTL16_1` pseudo + Pat<> [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-(a) Add the SDNode profile near the other V6CISD node defs (search
-for `def V6Cdad` or `SDTRotL`):
+(a) Add the SDNode profile near the other V6ClangISD node defs (search
+for `def V6Clangdad` or `SDTRotL`):
 
 ```td
-def SDT_V6CRotL16_1 : SDTypeProfile<1, 1, [SDTCisVT<0, i16>, SDTCisSameAs<0, 1>]>;
-def V6Crotl16_1     : SDNode<"V6CISD::ROTL16_1", SDT_V6CRotL16_1>;
+def SDT_V6ClangRotL16_1 : SDTypeProfile<1, 1, [SDTCisVT<0, i16>, SDTCisSameAs<0, 1>]>;
+def V6Clangrotl16_1     : SDNode<"V6ClangISD::ROTL16_1", SDT_V6ClangRotL16_1>;
 ```
 
 (b) Add the pseudo near the existing 16-bit ALU pseudos (around line
-817, after `V6C_SRA16`):
+817, after `V6CLANG_SRA16`):
 
 ```td
-// V6C_ROTL16_1: HL = rotl(HL, 1).
+// V6CLANG_ROTL16_1: HL = rotl(HL, 1).
 // HL-constrained via GR16Ptr: post-RA expansion is the literal
 // DAD H; MOV A,L; ACI 0; MOV L,A sequence (4 instr / 5 B / 36 cc).
 let Defs = [A, FLAGS], Constraints = "$dst = $src" in
-def V6C_ROTL16_1 : V6CPseudo<(outs GR16Ptr:$dst), (ins GR16Ptr:$src),
+def V6CLANG_ROTL16_1 : V6ClangPseudo<(outs GR16Ptr:$dst), (ins GR16Ptr:$src),
     "# ROTL16_1 $dst, $src",
-    [(set i16:$dst, (V6Crotl16_1 i16:$src))]>;
+    [(set i16:$dst, (V6Clangrotl16_1 i16:$src))]>;
 ```
 
-> **Implementation Notes**: SDTypeProfile uses `SDTCisVT<0, i16>, SDTCisVT<1, i16>` (explicit pair, not `SDTCisSameAs`); both forms work. Pseudo placed immediately after `V6C_SRA16`. `Constraints = "$dst = $src"` mirrors the `V6C_DAD` precedent.
+> **Implementation Notes**: SDTypeProfile uses `SDTCisVT<0, i16>, SDTCisVT<1, i16>` (explicit pair, not `SDTCisSameAs`); both forms work. Pseudo placed immediately after `V6CLANG_SRA16`. `Constraints = "$dst = $src"` mirrors the `V6CLANG_DAD` precedent.
 
 ### Step 3.5 — Post-RA expansion case [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Add a new case in `expandPostRAPseudo`, sitting alongside
-`V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16`:
+`V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16`:
 
 ```cpp
-case V6C::V6C_ROTL16_1: {
+case V6CLANG::V6CLANG_ROTL16_1: {
   // Phase 2 of O68: rotl i16 x, 1 = DAD H; MOV A,L; ACI 0; MOV L,A.
   // GR16Ptr constraint guarantees Dst == Src == HL post-RA, so no
   // framing is needed.
-  BuildMI(MBB, MI, DL, get(V6C::DAD)).addReg(V6C::HL);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(V6C::L);
-  BuildMI(MBB, MI, DL, get(V6C::ACI), V6C::A).addReg(V6C::A).addImm(0);
-  BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::L).addReg(V6C::A);
+  BuildMI(MBB, MI, DL, get(V6CLANG::DAD)).addReg(V6CLANG::HL);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(V6CLANG::L);
+  BuildMI(MBB, MI, DL, get(V6CLANG::ACI), V6CLANG::A).addReg(V6CLANG::A).addImm(0);
+  BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::A);
   MI.eraseFromParent();
   return true;
 }
@@ -308,14 +308,14 @@ case V6C::V6C_ROTL16_1: {
 Notes:
 
 * `DAD` takes a single source operand (the rp to add to HL); `DAD H`
-  is encoded as `DAD V6C::HL`.
+  is encoded as `DAD V6CLANG::HL`.
 * `ACI` has the constraint `$dst = $lhs` (see
-  [V6CInstrInfo.td line 329](../llvm/lib/Target/V6C/V6CInstrInfo.td#L329)),
+  [V6ClangInstrInfo.td line 329](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td#L329)),
   so the BuildMI form is `(ACI, A).addReg(A).addImm(0)`.
 * `Defs = [A, FLAGS]` on the pseudo matches the actual clobber set:
   `DAD` writes `CY`, `MOV/ACI` write `A`, `ACI` writes all flags.
 
-> **Implementation Notes**: Implemented verbatim. Case is placed between `V6C_SRA16` and `V6C_LOAD8_P` in `expandPostRAPseudo`. Comment block above the BuildMI calls captures cycle / byte budget (5 B / 36 cc) and the GR16Ptr HL guarantee.
+> **Implementation Notes**: Implemented verbatim. Case is placed between `V6CLANG_SRA16` and `V6CLANG_LOAD8_P` in `expandPostRAPseudo`. Comment block above the BuildMI calls captures cycle / byte budget (5 B / 36 cc) and the GR16Ptr HL guarantee.
 
 ### Step 3.6 — Build [x]
 
@@ -323,11 +323,11 @@ Notes:
 cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"" -arch=amd64 >nul 2>&1 && ninja -C llvm-build clang llc 2>&1"
 ```
 
-> **Implementation Notes**: Built clean. Only pre-existing C4062 switch warnings on `COND_PE/COND_PO` in `V6CISelLowering.cpp` (unrelated to this patch). `clang.exe` and `llc.exe` produced.
+> **Implementation Notes**: Built clean. Only pre-existing C4062 switch warnings on `COND_PE/COND_PO` in `V6ClangISelLowering.cpp` (unrelated to this patch). `clang.exe` and `llc.exe` produced.
 
 ### Step 3.7 — Lit test `rotl-i16-dad-h.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/rotl-i16-dad-h.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/rotl-i16-dad-h.ll`
 
 Cases:
 
@@ -339,7 +339,7 @@ Cases:
    crash / no libcall regression).
 3. `i32 @use(i16 %x) { %r = call i16 @llvm.fshl.i16(i16 %x, i16 %x, i16 1); ret … }` → mirrors a CRC-style funnel-shift idiom; confirms the new path triggers through `fshl` after legalization.
 
-> **Implementation Notes**: Created `llvm-project/llvm/test/CodeGen/V6C/rotl-i16-dad-h.ll` with the three cases. All assertions pass on the new build; `fshl_u16_1` correctly lowers via the new path (DAGCombine canonicalises `fshl(x, x, 1)` → `rotl(x, 1)`). Lit run shows `PASS: V6C :: rotl-i16-dad-h.ll`.
+> **Implementation Notes**: Created `llvm-project/llvm/test/CodeGen/V6CLANG/rotl-i16-dad-h.ll` with the three cases. All assertions pass on the new build; `fshl_u16_1` correctly lowers via the new path (DAGCombine canonicalises `fshl(x, x, 1)` → `rotl(x, 1)`). Lit run shows `PASS: V6CLANG :: rotl-i16-dad-h.ll`.
 
 ### Step 3.8 — Verification feature folder `tests/features/45/` [x]
 
@@ -348,15 +348,15 @@ it for Phase 2.
 
 Per [tests/features/README.md](../tests/features/README.md):
 
-* `v6llvmc.c`: drivers — a single `rotl_u16_1` scalar (clean diff)
+* `v6clang.c`: drivers — a single `rotl_u16_1` scalar (clean diff)
   and a small CRC-16-like inner loop (compounded win).
 * `c8080.c`: identical signatures, `__c8080__` body that uses the
   reference C-compiled-by-`tools/c8080/c8080.exe` baseline.
 * `c8080.asm`: produced via `tools/c8080/c8080.exe`.
-* `v6llvmc_old.asm`: regenerate **before** Step 3.3 lands (or use
+* `v6clang_old.asm`: regenerate **before** Step 3.3 lands (or use
   the already-captured one from earlier Phase-1 work, if the rotate
   pattern is present).
-* `v6llvmc_new02.asm`: post-O68-Phase-2 output (use suffix `02` to
+* `v6clang_new02.asm`: post-O68-Phase-2 output (use suffix `02` to
   preserve `_new01` for any future Phase-1 evidence; if `_new01`
   doesn't exist, use `_new01`).
 * `result.txt` with cycle / byte deltas.
@@ -367,7 +367,7 @@ Expected:
 * CRC-16 8-bit-step inner loop containing one rotate per bit:
   **−12 B / −64 cc per bit**, ~−96 B / ~−512 cc per byte processed.
 
-> **Implementation Notes**: Folder repurposed (old Phase-1 drivers removed). New drivers: `rotl_u16_1`, `crc16_step`, `rotl_u16_2`, `fshl_u16_1`. Baseline `v6llvmc_old.asm` regenerated by temporarily flipping ROTL i16 back to Expand, rebuilding clang, then reverting. New asm `v6llvmc_new01.asm`. **Per-function body lines**: `rotl_u16_1` 39→6, `fshl_u16_1` 39→6, `rotl_u16_2` unchanged (Expand fall-back, intended), `crc16_step` unchanged. Total file: 6526 B → 5452 B. CRC inner loop turned out **not** to benefit — InstCombine never recognises `crc <<= 1` paired with an independent `crc & 0x8000` as a rotate, so the SHL goes through the existing O40 DAD H fast path (already optimal). The doc in `result.txt` calls this out honestly. Headline customer is `__builtin_rotateleft16` and hand-written `(x<<1)|(x>>15)`.
+> **Implementation Notes**: Folder repurposed (old Phase-1 drivers removed). New drivers: `rotl_u16_1`, `crc16_step`, `rotl_u16_2`, `fshl_u16_1`. Baseline `v6clang_old.asm` regenerated by temporarily flipping ROTL i16 back to Expand, rebuilding clang, then reverting. New asm `v6clang_new01.asm`. **Per-function body lines**: `rotl_u16_1` 39→6, `fshl_u16_1` 39→6, `rotl_u16_2` unchanged (Expand fall-back, intended), `crc16_step` unchanged. Total file: 6526 B → 5452 B. CRC inner loop turned out **not** to benefit — InstCombine never recognises `crc <<= 1` paired with an independent `crc & 0x8000` as a rotate, so the SHL goes through the existing O40 DAD H fast path (already optimal). The doc in `result.txt` calls this out honestly. Headline customer is `__builtin_rotateleft16` and hand-written `(x<<1)|(x>>15)`.
 
 ### Step 3.9 — Regression tests [x]
 
@@ -385,7 +385,7 @@ Required: full lit + 16/16 golden + 3/3 benchmark checksums OK.
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-> **Implementation Notes**: Mirror sync clean. Affected mirrored files: `llvm/lib/Target/V6C/V6CISelLowering.{h,cpp}`, `llvm/lib/Target/V6C/V6CInstrInfo.{td,cpp}`, `llvm/test/CodeGen/V6C/rotl-i16-dad-h.ll` (via `tests/lit/CodeGen/V6C/`).
+> **Implementation Notes**: Mirror sync clean. Affected mirrored files: `llvm/lib/Target/V6CLANG/V6ClangISelLowering.{h,cpp}`, `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.{td,cpp}`, `llvm/test/CodeGen/V6CLANG/rotl-i16-dad-h.ll` (via `tests/lit/CodeGen/V6CLANG/`).
 
 ### Step 3.11 — Mark plan + future_plans/README.md complete [x]
 
@@ -471,8 +471,8 @@ processed byte**, which on a CRC-16 over a 1 KiB buffer is a
 |---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Custom` for `ROTL i16` returns `SDValue()` for non-1 amounts → unexpected legalization behaviour  | LLVM contract: returning `SDValue()` from `LowerOperation` for a `Custom`-marked op falls back to the legalizer's Expand path. Verified by O40 / SHL `Custom` returning `SDValue()` for variable amounts on i8 already.                                                                                                                                              |
 | ACI 0 doesn't actually OR CY into bit 0 (semantics drift)                                          | `DAD H` leaves `bit 0(L) = 0` and `CY = old bit 15(HL)`. `ACI 0` computes `A = L + 0 + CY`. Since `bit 0(L) = 0`, the addition cannot carry into bit 0, so the result is exactly `L | CY` in bit 0 with all other bits unchanged. This is a textbook 8080 idiom (cf. Z80 manual §rotate-with-carry-fold).                                                                  |
-| `V6CRedundantFlagElim` removes the CY produced by `DAD H` before `ACI 0` consumes it               | The four expansion instructions are emitted as a contiguous block at post-RA expansion time, immediately consecutive. `V6CRedundantFlagElim` runs **before** `expandPostRAPseudo` (it walks pseudo MIs, not the expanded MOV/ACI/DAD); the pseudo as a single unit declares `Defs = [A, FLAGS]`, so flag-elim sees no opportunity to drop. Verified by reading the pass scaffolding. |
-| RA cannot place the rotate input in HL                                                            | `GR16Ptr` register class forces it. RA *can* fail to allocate (spill), but for an i16 SDAG node with a single use of `V6CISD::ROTL16_1` and HL not otherwise tied down, RA is provably feasible. Worst case: a copy in/out of HL — same overhead as today, no regression.                                                                                              |
+| `V6ClangRedundantFlagElim` removes the CY produced by `DAD H` before `ACI 0` consumes it               | The four expansion instructions are emitted as a contiguous block at post-RA expansion time, immediately consecutive. `V6ClangRedundantFlagElim` runs **before** `expandPostRAPseudo` (it walks pseudo MIs, not the expanded MOV/ACI/DAD); the pseudo as a single unit declares `Defs = [A, FLAGS]`, so flag-elim sees no opportunity to drop. Verified by reading the pass scaffolding. |
+| RA cannot place the rotate input in HL                                                            | `GR16Ptr` register class forces it. RA *can* fail to allocate (spill), but for an i16 SDAG node with a single use of `V6ClangISD::ROTL16_1` and HL not otherwise tied down, RA is provably feasible. Worst case: a copy in/out of HL — same overhead as today, no regression.                                                                                              |
 | `rotl x, 16` (= identity) accidentally matches the Custom path                                    | `(CA->getZExtValue() & 15) == 1` masks to 0..15. `rotl x, 16` masks to 0, returns `SDValue()` → falls to Expand, which constant-folds to `x`. No issue.                                                                                                                                                                                                                |
 | Plan understates Phase 1 / 3 work                                                                  | Plan §1.2 explicitly notes Phase 1 is already covered; future_plans/O68 §"Estimated Effort" carries the revised Phase-3 ~200-LOC estimate.                                                                                                                                                                                                                          |
 
@@ -480,8 +480,8 @@ processed byte**, which on a CRC-16 over a 1 KiB buffer is a
 
 * [O40 — ADD16 DAD-Based Expansion](future_plans/O40_add16_dad_expansion.md) ✅ —
   Phase 1 of O68 is *already* delivered through O40 (see §1.2). Phase 2
-  composes with O40: the `DAD H` inside `V6C_ROTL16_1` is not routed
-  through `V6C_ADD16` (it's a direct `DAD` emit), but the surrounding
+  composes with O40: the `DAD H` inside `V6CLANG_ROTL16_1` is not routed
+  through `V6CLANG_ADD16` (it's a direct `DAD` emit), but the surrounding
   i16 ALU still uses O40's path.
 * [O62 — Efficient i16 Shift Expansion](plan_efficient_shift_expansion.md) ✅ —
   the `SRL by 15` byte-lane fast path is the dominant cost in today's
@@ -508,8 +508,8 @@ processed byte**, which on a CRC-16 over a 1 KiB buffer is a
 
 ## 8. References
 
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
-* [V6C Instruction Timings](../docs/V6CInstructionTimings.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
+* [V6CLANG Instruction Timings](../docs/V6ClangInstructionTimings.md)
 * [Future Optimizations](future_plans/README.md)
 * [O68 — Wide Shift-Left / Rotate by 1 via DAD H (full description)](future_plans/O68_wide_shl_rotate_dad_h.md)
 * [Pipeline Feature Doc](pipeline_feature.md)

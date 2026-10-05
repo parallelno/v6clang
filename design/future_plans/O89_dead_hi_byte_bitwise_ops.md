@@ -1,4 +1,4 @@
-# O89 — Dead High-Byte Elision in V6C_AND16 / V6C_OR16 / V6C_XOR16
+# O89 — Dead High-Byte Elision in V6CLANG_AND16 / V6CLANG_OR16 / V6CLANG_XOR16
 
 **Source:** `temp/test_i16_i8_narrow.c`; confirmed in `tests/benchmarks_c/src/lfsr16.c`
 **Savings:** 20cc, 3B per i16 bitwise op whose result is truncated to i8
@@ -12,13 +12,13 @@
 
 ## Problem
 
-`V6C_AND16` / `V6C_OR16` / `V6C_XOR16` always expand to the full 6-instruction
+`V6CLANG_AND16` / `V6CLANG_OR16` / `V6CLANG_XOR16` always expand to the full 6-instruction
 pair-wise sequence, even when only the low byte of the result is consumed.
 
 ### Current expansion (xor example, `xor16_to_i8(u16 a, u16 b) → u8`)
 
 ```asm
-;--- V6C_XOR16 ---
+;--- V6CLANG_XOR16 ---
 MOV  A, E          ; load LhsLo          8cc  1B
 XRA  L             ; lo result → A       4cc  1B
 MOV  L, A          ; DstLo = L           8cc  1B
@@ -34,12 +34,12 @@ RET
 they clobber A, however, a `MOV A, DstLo` reload is required at the end —
 adding a third wasted instruction.
 
-### Root cause — `V6CInstrInfo.cpp` (expandPostRAPseudo)
+### Root cause — `V6ClangInstrInfo.cpp` (expandPostRAPseudo)
 
 ```cpp
-case V6C::V6C_AND16:
-case V6C::V6C_OR16:
-case V6C::V6C_XOR16: {
+case V6CLANG::V6CLANG_AND16:
+case V6CLANG::V6CLANG_OR16:
+case V6CLANG::V6CLANG_XOR16: {
     // lo byte
     BuildMI(…, MOVrr, A).addReg(LhsLo);
     BuildMI(…, OpOpc, A).addReg(A).addReg(RhsLo);
@@ -60,33 +60,33 @@ case V6C::V6C_XOR16: {
 | `(u8)(a \| b)` | `MOV A,E; ORA L; RET` | same issue |
 | `(u8)(a & b)` | `MOV A,E; ANA L; RET` | same issue |
 | `(u8)a ^ (u8)(a>>8)` (bench_finish checksum) | `MOV A,H; XRA L; RET` | 6 insn + reload |
-| `(u8)(a^b)==0` before `V6C_CMP8_ZERO` | lo XRA + ORA A | full 16-bit + XRA A + CMP |
-| `(u8)(a&b)==0` before `V6C_CMP8_ZERO` | lo ANA + ORA A | full 16-bit + XRA A + CMP |
-| `(u8)(a\|b)==0` before `V6C_CMP8_ZERO` | lo ORA (flags already set!) | full 16-bit + XRA A + CMP |
+| `(u8)(a^b)==0` before `V6CLANG_CMP8_ZERO` | lo XRA + ORA A | full 16-bit + XRA A + CMP |
+| `(u8)(a&b)==0` before `V6CLANG_CMP8_ZERO` | lo ANA + ORA A | full 16-bit + XRA A + CMP |
+| `(u8)(a\|b)==0` before `V6CLANG_CMP8_ZERO` | lo ORA (flags already set!) | full 16-bit + XRA A + CMP |
 
 Note: `(u8)(lfsr & 1)` is already optimal — DAGCombiner narrows to an i8 AND
-before ISel, so `V6C_AND16` is never generated; the result is `ANI 1`.
+before ISel, so `V6CLANG_AND16` is never generated; the result is `ANI 1`.
 
 ---
 
 ## Fix
 
-In `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`,
-`expandPostRAPseudo` case `V6C_AND16` / `V6C_OR16` / `V6C_XOR16`:
+In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`,
+`expandPostRAPseudo` case `V6CLANG_AND16` / `V6CLANG_OR16` / `V6CLANG_XOR16`:
 
 ```cpp
 bool HiDead = isRegDeadAfter(MBB, MI.getIterator(), DstHi, &RI);
 
 // lo byte (always needed)
-BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsLo);
-BuildMI(MBB, MI, DL, get(OpOpc), V6C::A).addReg(V6C::A).addReg(RhsLo);
-BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstLo).addReg(V6C::A);
+BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
+BuildMI(MBB, MI, DL, get(OpOpc), V6CLANG::A).addReg(V6CLANG::A).addReg(RhsLo);
+BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstLo).addReg(V6CLANG::A);
 
 // hi byte — skip entirely when DstHi is dead
 if (!HiDead) {
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsHi);
-    BuildMI(MBB, MI, DL, get(OpOpc), V6C::A).addReg(V6C::A).addReg(RhsHi);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr), DstHi).addReg(V6C::A);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
+    BuildMI(MBB, MI, DL, get(OpOpc), V6CLANG::A).addReg(V6CLANG::A).addReg(RhsHi);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), DstHi).addReg(V6CLANG::A);
 }
 ```
 
@@ -112,9 +112,9 @@ RET
 
 ### OR16 special case — flags already set
 
-For `V6C_OR16` with `HiDead=true`, the lo-byte `ORA RhsLo` already sets the
+For `V6CLANG_OR16` with `HiDead=true`, the lo-byte `ORA RhsLo` already sets the
 Z flag correctly for the truncated result.  If the immediate consumer is
-`V6C_CMP8_ZERO` (which needs ORA A / XRA A+CMP to re-establish the flag),
+`V6CLANG_CMP8_ZERO` (which needs ORA A / XRA A+CMP to re-establish the flag),
 that CMP8_ZERO becomes redundant.  This is a secondary optimisation for a
 follow-on patch — the simple `HiDead` guard alone eliminates the bulk of
 the waste.
@@ -130,7 +130,7 @@ the waste.
 | bench_finish checksum `xor_bytes` | 6 insn, 36cc | 2 insn, 12cc | **24cc, 4B** |
 | `(u8)(a^b)==0` branch | 7 insn (incl. XRA A+CMP) | 4 insn | **~16cc, 3B** |
 
-*Cycle counts use V6C costs: MOVrr=8cc, ALU reg=4cc.*
+*Cycle counts use V6CLANG costs: MOVrr=8cc, ALU reg=4cc.*
 
 ---
 
@@ -145,9 +145,9 @@ the waste.
 
 ## Implementation checklist
 
-- [ ] Edit `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp` — add
-      `HiDead` guard in the `V6C_AND16`/`V6C_OR16`/`V6C_XOR16` case.
-- [ ] Add lit test `llvm-project/llvm/test/CodeGen/V6C/bitwise16-dead-hi.ll`
+- [ ] Edit `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` — add
+      `HiDead` guard in the `V6CLANG_AND16`/`V6CLANG_OR16`/`V6CLANG_XOR16` case.
+- [ ] Add lit test `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-dead-hi.ll`
       covering XOR/OR/AND with i8-truncated result, with and without dead-hi.
 - [ ] Run `tests/run_all.py` — all golden + lit must pass.
 - [ ] Sync mirror: `pwsh scripts/sync_llvm_mirror.ps1`.

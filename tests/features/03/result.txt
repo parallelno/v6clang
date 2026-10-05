@@ -72,7 +72,7 @@ c8080 stats:
   countdown loop body: ~80cc/iter, function: ~20B
   countup loop body: ~80cc/iter, function: ~24B
 
-== v6llvmc assembly (before O17, with peephole+O17 disabled) ==
+== v6clang assembly (before O17, with peephole+O17 disabled) ==
 
 countdown:
     ORA  A              ;   4cc
@@ -87,7 +87,7 @@ countdown:
 ; Loop body per iteration: 40cc (STA 16 + DCR 8 + ORA 4 + JNZ 12)
 ; Function: 12B
 
-== v6llvmc assembly (after O17 optimization) ==
+== v6clang assembly (after O17 optimization) ==
 
 countdown:
     ORA  A              ;   4cc
@@ -101,10 +101,10 @@ countdown:
 ; Loop body per iteration: 36cc (STA 16 + DCR 8 + JNZ 12)
 ; Function: 11B
 
-v6llvmc stats (before O17):
+v6clang stats (before O17):
   countdown loop body: 40cc/iter, function: 12B
 
-v6llvmc stats (after O17):
+v6clang stats (after O17):
   countdown loop body: 36cc/iter, function: 11B
 
 == Improvement ==
@@ -113,10 +113,10 @@ v6llvmc stats (after O17):
   Pattern: DCR A; ORA A; JNZ → DCR A; JNZ
   Applies to any ALU-writes-A instruction followed by ORA A / ANA A.
 
-  v6llvmc countdown loop vs c8080:
-    v6llvmc: 36cc/iter (after O17)
+  v6clang countdown loop vs c8080:
+    v6clang: 36cc/iter (after O17)
     c8080:   80cc/iter (static stack stores on every iteration)
-    v6llvmc is 2.2× faster per iteration
+    v6clang is 2.2× faster per iteration
 
   Note: O17 generalizes beyond the DCR+ORA A pattern handled by O18's
   foldCounterBranch. Any ALU instruction writing A (ADD, SUB, ANA, ORA,

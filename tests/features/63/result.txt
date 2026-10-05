@@ -1,7 +1,7 @@
 O82 — MOV chain collapse and dead high-byte elimination
 ========================================================
 
-Implementation: V6CPeephole.cpp
+Implementation: V6ClangPeephole.cpp
   - eliminateDeadMVI  (Pattern A)
   - collapseMovChain  (Pattern B)
   - isRegDeadAfter    (fixed: implicit-killed super-register artifact)
@@ -28,7 +28,7 @@ Bug fixes required during implementation:
      intermediate reads of X (loop invariant) and X dead after the consumer
      (first check), the producer is provably a dead write.
 
-Instruction savings (test file: tests/features/63/v6llvmc.c, -O2):
+Instruction savings (test file: tests/features/63/v6clang.c, -O2):
   Old total instructions: 23
   New total instructions: 15
   Saved: 8 instructions (−35%)

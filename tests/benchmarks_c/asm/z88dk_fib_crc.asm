@@ -6,25 +6,25 @@
 ;	Module compile time: Tue Jun 02 18:56:56 2026
 
 
-	C_LINE	0,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c"
+	C_LINE	0,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c"
 
-	MODULE	C__Work_Programming_v6llvmc_tests_benchmarks_c_src_fib_crc_c
+	MODULE	C__Work_Programming_v6clang_tests_benchmarks_c_src_fib_crc_c
 
 
 	INCLUDE "z80_crt0.hdr"
 
 
 	EXTERN	saved_hl
-	C_LINE	0,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\bench.h"
-	C_LINE	26,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\bench.h"
-	C_LINE	27,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\bench.h"
-	C_LINE	55,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\bench.h"
+	C_LINE	0,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\bench.h"
+	C_LINE	26,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\bench.h"
+	C_LINE	27,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\bench.h"
+	C_LINE	55,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\bench.h"
 	SECTION	code_compiler
 
-; Function bench_finish flags 0x00000200 __smallc 
+; Function bench_finish flags 0x00000200 __smallc
 ; void bench_finish(unsigned char checksum)
 ; parameter 'unsigned char checksum' at sp+2 size(1)
-	C_LINE	55,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\bench.h::bench_finish::0::0"
+	C_LINE	55,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\bench.h::bench_finish::0::0"
 ._bench_finish
     pop  bc          ; ret addr -> BC
     pop  hl          ; checksum lo in L
@@ -34,14 +34,14 @@
 	ret
 
 
-	C_LINE	4,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c::bench_finish::0::1"
-	C_LINE	8,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c::bench_finish::0::1"
+	C_LINE	4,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c::bench_finish::0::1"
+	C_LINE	8,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c::bench_finish::0::1"
 
-; Function crc_byte flags 0x00000200 __smallc 
+; Function crc_byte flags 0x00000200 __smallc
 ; unsigned int u16crc_byte(unsigned int crc, unsigned char b)
 ; parameter 'unsigned char b' at sp+2 size(1)
 ; parameter 'unsigned int crc' at sp+4 size(2)
-	C_LINE	8,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c::crc_byte::0::1"
+	C_LINE	8,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c::crc_byte::0::1"
 ._crc_byte
 	push	bc
 	ld	hl,6	;const
@@ -114,13 +114,13 @@
 	ret
 
 
-	C_LINE	18,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c::crc_byte::0::3"
+	C_LINE	18,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c::crc_byte::0::3"
 
-; Function main flags 0x00000000 __stdc 
+; Function main flags 0x00000000 __stdc
 ; int main(int argc, char * * argv)
 ; parameter 'int argc' at 2 size(2)
 ; parameter 'char * * argv' at 4 size(2)
-	C_LINE	18,"C:\Work\Programming\v6llvmc\tests\benchmarks_c\src\fib_crc.c::main::0::4"
+	C_LINE	18,"C:\Work\Programming\v6clang\tests\benchmarks_c\src\fib_crc.c::main::0::4"
 ._main
 	pop	bc
 	pop	hl

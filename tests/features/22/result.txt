@@ -75,7 +75,7 @@ main: ; 60cc, 9B
 Note: c8080 uses static memory for all locals (SHLD/LHLD). It recomputes `a+b`
 for the return value since it doesn't keep values in registers across the call.
 
-## v6llvmc assembly (OLD — before O40, byte-chain expansion)
+## v6clang assembly (OLD — before O40, byte-chain expansion)
 
 ```asm
 use_val: ; 32cc, 4B
@@ -111,7 +111,7 @@ nested_add: ; 196cc, 22B
     RET                             ; 12cc, 1B
 ```
 
-## v6llvmc assembly (NEW — with O40, DAD-based expansion)
+## v6clang assembly (NEW — with O40, DAD-based expansion)
 
 ```asm
 use_val: ; 32cc, 4B
@@ -140,7 +140,7 @@ nested_add: ; 152cc, 14B
     RET                             ; 12cc, 1B
 ```
 
-## v6llvmc stats
+## v6clang stats
 
 | Function      | OLD Cycles | OLD Bytes | NEW Cycles | NEW Bytes |
 |---------------|------------|-----------|------------|-----------|
@@ -187,12 +187,12 @@ Path: A1-DE (DstReg=DE, one operand is HL, HL dead after → DAD DE; XCHG)
 
 ## Comparison with c8080
 
-| Metric          | c8080 nested_add | v6llvmc OLD | v6llvmc NEW |
+| Metric          | c8080 nested_add | v6clang OLD | v6clang NEW |
 |-----------------|------------------|-------------|-------------|
 | Cycles          |              312 |         196 |         152 |
 | Bytes           |               44 |          22 |          14 |
 
-- v6llvmc keeps values live in registers (no SHLD/LHLD round-trips)
+- v6clang keeps values live in registers (no SHLD/LHLD round-trips)
 - c8080 recomputes a+b for return (two DAD+XCHG sequences vs register hold)
 - O40 improves on already-superior register allocation with shorter ADD16 sequences
 
@@ -220,9 +220,9 @@ Path: A1-DE (DstReg=DE, one operand is HL, HL dead after → DAD DE; XCHG)
 ## Files changed
 
 ### New files:
-- tests/features/22/ (v6llvmc.c, c8080.c, c8080.asm, v6llvmc_old.asm, v6llvmc_new01.asm, result.txt)
-- tests/lit/CodeGen/V6C/add16-dad-expansion.ll
+- tests/features/22/ (v6clang.c, c8080.c, c8080.asm, v6clang_old.asm, v6clang_new01.asm, result.txt)
+- tests/lit/CodeGen/V6CLANG/add16-dad-expansion.ll
 - design/plan_add16_dad_expansion.md
 
 ### Modified files:
-- llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp (V6C_ADD16 expansion in expandPostRAPseudo)
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp (V6CLANG_ADD16 expansion in expandPostRAPseudo)

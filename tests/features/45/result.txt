@@ -2,7 +2,7 @@ O68 Phase 2 -- rotl i16 by 1 via DAD H + ACI 0 -- feature test 45
 ==================================================================
 
 Switches `ISD::ROTL` for `i16` from `Expand` to `Custom` and adds a
-new target ISD node `V6CISD::ROTL16_1` that lowers, post-RA, to a
+new target ISD node `V6ClangISD::ROTL16_1` that lowers, post-RA, to a
 4-instruction carry-fold sequence in HL:
 
     DAD  H            ; HL = HL+HL, CY = old MSB
@@ -19,8 +19,8 @@ goes through the same path.
 
 Phase 1 of the parent feature spec (`design/future_plans/O68...md`)
 turned out to be already de-facto implemented: `LowerSHL_i16` rewrites
-shift-by-1 to `add x, x` (V6CISelLowering.cpp:778-810), which pairs
-with the O40 DAD fast path in V6C_ADD16 expansion (V6CInstrInfo.cpp:670)
+shift-by-1 to `add x, x` (V6ClangISelLowering.cpp:778-810), which pairs
+with the O40 DAD fast path in V6CLANG_ADD16 expansion (V6ClangInstrInfo.cpp:670)
 to produce the same single `DAD H` instruction we would otherwise
 emit by hand. Phase 3 (i32 rotl/shl by 1) is deferred -- a deeper
 investigation showed it requires ~150-200 LOC of net-new infrastructure
@@ -32,16 +32,16 @@ currently calls `__builtin_rotateleft16(x, 1)` or hand-writes
 `(x<<1)|(x>>15)` shrinks by ~12 B and ~64 cc per occurrence.
 
 Implementation:
-  V6CISelLowering.h      -- enum entry V6CISD::ROTL16_1.
-  V6CISelLowering.cpp    -- ISD::ROTL i16 -> Custom; LowerROTL i16
+  V6ClangISelLowering.h      -- enum entry V6ClangISD::ROTL16_1.
+  V6ClangISelLowering.cpp    -- ISD::ROTL i16 -> Custom; LowerROTL i16
                             recognises `(i16, 1)` and returns
-                            V6CISD::ROTL16_1; getTargetNodeName case;
+                            V6ClangISD::ROTL16_1; getTargetNodeName case;
                             other amounts return SDValue() and fall
                             back to the default Expand path.
-  V6CInstrInfo.td        -- SDT_V6CRotL16_1 profile; V6Crotl16_1 SDNode;
-                            V6C_ROTL16_1 pseudo (GR16Ptr-tied dst=src,
+  V6ClangInstrInfo.td        -- SDT_V6ClangRotL16_1 profile; V6Clangrotl16_1 SDNode;
+                            V6CLANG_ROTL16_1 pseudo (GR16Ptr-tied dst=src,
                             Defs=[A,FLAGS]) with Pat<>.
-  V6CInstrInfo.cpp       -- expandPostRAPseudo case V6C_ROTL16_1
+  V6ClangInstrInfo.cpp       -- expandPostRAPseudo case V6CLANG_ROTL16_1
                             emits the 4-instruction sequence.
 
 The pseudo is constrained to `GR16Ptr` (HL only), so register
@@ -51,7 +51,7 @@ copy-in/copy-out wrapper is required. Direction-flip
 the new path automatically catches `rotr i16 x, 15` too).
 
 
-## C source (tests/features/45/v6llvmc.c -- c8080.c is the same shape)
+## C source (tests/features/45/v6clang.c -- c8080.c is the same shape)
 
     typedef unsigned short u16;
     typedef unsigned char  u8;
@@ -74,14 +74,14 @@ the new path automatically catches `rotr i16 x, 15` too).
 
 ## Assembly outputs
 
-  v6llvmc_old.asm      6526 B  -- baseline (ROTL i16 = Expand)
-  v6llvmc_new01.asm    5452 B  -- O68 Phase 2 (ROTL i16, 1 = Custom)
+  v6clang_old.asm      6526 B  -- baseline (ROTL i16 = Expand)
+  v6clang_new01.asm    5452 B  -- O68 Phase 2 (ROTL i16, 1 = Custom)
   c8080.asm            5923 B  -- reference (helper-call shape)
 
 
 ## Per-function body length (lines, including label and trailing RET)
 
-  Function       v6llvmc OLD    v6llvmc NEW    Delta
+  Function       v6clang OLD    v6clang NEW    Delta
   ------------   ------------   ------------   ----------
   rotl_u16_1     39             6              -33  (-85%)
   fshl_u16_1     39             6              -33  (-85%)
@@ -89,7 +89,7 @@ the new path automatically catches `rotr i16 x, 15` too).
   crc16_step     154            154            0    (no rotate -- see note below)
 
 
-## v6llvmc -O2 + O68 Phase 2 (v6llvmc_new01.asm, post-lowering)
+## v6clang -O2 + O68 Phase 2 (v6clang_new01.asm, post-lowering)
 
     rotl_u16_1:
         DAD     H           ; 1 B / 10 cc
@@ -110,8 +110,8 @@ the new path automatically catches `rotr i16 x, 15` too).
 
   Path         Bytes   Cycles
   ----------   -----   ------
-  v6llvmc OLD  ~17     ~100
-  v6llvmc NEW    5       27   (DAD 10 + MOV 5 + ACI 7 + MOV 5)
+  v6clang OLD  ~17     ~100
+  v6clang NEW    5       27   (DAD 10 + MOV 5 + ACI 7 + MOV 5)
   ----------   -----   ------
   Savings      -12B    -73cc  per `rotl i16, 1`
 
@@ -136,7 +136,7 @@ intrinsics) rather than CRC-style bit-banged loops.
 
 ## Verification
 
-- New lit test: `llvm-project/llvm/test/CodeGen/V6C/rotl-i16-dad-h.ll`
+- New lit test: `llvm-project/llvm/test/CodeGen/V6CLANG/rotl-i16-dad-h.ll`
   -- 3 cases (rotl_u16_1 exact-sequence assert, rotl_u16_2 Expand
   fall-back assert, fshl_u16_1 funnel-shift recognition assert).
 - Full lit suite: 119/119 PASS.
@@ -148,12 +148,12 @@ intrinsics) rather than CRC-style bit-banged loops.
 ## Notes
 
 - We chose the branchless ACI 0 form over the branchful JNC/INR L
-  variant because the V6C backend has no precedent for emitting
+  variant because the V6CLANG backend has no precedent for emitting
   named labels inside `expandPostRAPseudo`, and the ACI form clobbers
   exactly what today's Expand path already clobbers (A) -- no
   liveness regression for callers.
 - `GR16Ptr` (HL-only register class) is reused from the existing
-  `V6C_DAD` pseudo. Tied `$dst = $src` constraint mirrors that
+  `V6CLANG_DAD` pseudo. Tied `$dst = $src` constraint mirrors that
   precedent verbatim.
 - `ISD::ROTR i16` stays at `Expand`. DAGCombine canonicalises
   rotates with constant amount through `ROTL`, so the pattern is

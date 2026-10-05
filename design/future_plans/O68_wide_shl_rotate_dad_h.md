@@ -35,7 +35,7 @@ exact case: **`DAD H`** (`HL = HL + HL`, **12cc, 1B**) — equivalent to
 in `CY`, which makes it a near-perfect primitive both for wider
 shifts (chain `RAL`s above the low 16 bits) and for rotates (fold
 `CY` into bit 0 of the low byte). All cycle counts in this plan use
-[Vector-06c timings](../../docs/V6CInstructionTimings.md): `DAD`=12,
+[Vector-06c timings](../../docs/V6ClangInstructionTimings.md): `DAD`=12,
 `MOV r,r`=8, `INR r`=8, `RAL`/`RLC`=4, `XCHG`=4, `ACI`=8, `JNC`=12
 (fixed, regardless of taken/not-taken).
 
@@ -118,7 +118,7 @@ INR  L            ; safe: bit0(L) = 0 here             ( 8cc, 1B)
 ```
 
 **3 instr + label, 5B, 24–32cc**. Both win heavily over today’s
-shift-or-pair expansion (a `V6C_SHL16` + `V6C_SRL16,15` + `OR` chain
+shift-or-pair expansion (a `V6CLANG_SHL16` + `V6CLANG_SRL16,15` + `OR` chain
 of ~12B / ~80cc).
 
 The **branchful form has a real secondary advantage**: it does **not
@@ -163,18 +163,18 @@ the bottom 16 bits.
 
 ## Implementation
 
-Two coordinated edits, both confined to the V6C target.
+Two coordinated edits, both confined to the V6CLANG target.
 
-### 1. `expandPostRAPseudo` in [V6CInstrInfo.cpp](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp)
+### 1. `expandPostRAPseudo` in [V6ClangInstrInfo.cpp](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp)
 
-For `V6C_SHL16` with constant amount `1`, replace the existing
+For `V6CLANG_SHL16` with constant amount `1`, replace the existing
 `MOV A,L; RAL; MOV L,A; MOV A,H; RAL; MOV H,A` sequence with:
 
 ```cpp
-case V6C::V6C_SHL16:
+case V6CLANG::V6CLANG_SHL16:
   if (Amt == 1 && DstReg == SrcReg) {       // common after coalescing
-    BuildMI(MBB, MI, DL, get(V6C::DADrp), V6C::HL)
-        .addReg(V6C::HL).addReg(V6C::HL);
+    BuildMI(MBB, MI, DL, get(V6CLANG::DADrp), V6CLANG::HL)
+        .addReg(V6CLANG::HL).addReg(V6CLANG::HL);
     MI.eraseFromParent();
     return true;
   }
@@ -186,12 +186,12 @@ Same site handles the `DstReg ≠ SrcReg` case after a 16-bit copy
 (`MOV DstHi,SrcHi; MOV DstLo,SrcLo`) — not worth a special case unless
 benchmarks demand it.
 
-### 2. `LowerROTL` for i16 (and optionally i24) in `V6CISelLowering.cpp`
+### 2. `LowerROTL` for i16 (and optionally i24) in `V6ClangISelLowering.cpp`
 
 Mirror the `LowerROTL` path introduced by [O67](O67_i8_rotate_isel_via_rlc_rrc.md):
 
 ```cpp
-SDValue V6CTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
+SDValue V6ClangTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
   SDValue X   = Op.getOperand(0);
   ConstantSDNode *NCst = dyn_cast<ConstantSDNode>(Op.getOperand(1));
@@ -200,11 +200,11 @@ SDValue V6CTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
   if (N != 1) return SDValue();         // only ±1 lowered today
 
   if (VT == MVT::i16) {
-    // Custom node V6CISD::SHL16_1_CARRY — defs (i16, glue), lowered to DAD H.
+    // Custom node V6ClangISD::SHL16_1_CARRY — defs (i16, glue), lowered to DAD H.
     // Then carry-fold via JNC/INR L pseudo, or via ACI 0 + MOV L,A.
     …
   }
-  // i24: emit V6CISD::SHL_WIDE_1 with multi-result + glue. i32 rotate stays Expand.
+  // i24: emit V6ClangISD::SHL_WIDE_1 with multi-result + glue. i32 rotate stays Expand.
   return SDValue();
 }
 ```
@@ -212,7 +212,7 @@ SDValue V6CTargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
 The carry fold itself is best implemented as a small post-RA pseudo
 expansion (it needs a fresh local label) rather than at SDAG level.
 
-### 3. `V6CInstrInfo.td` — Pat<> entries
+### 3. `V6ClangInstrInfo.td` — Pat<> entries
 
 ```
 def : Pat<(shl GR16:$x, (i8 1)),
@@ -232,7 +232,7 @@ described above and so lives in C++ rather than TableGen.
   flag side effects match `RAL`-chain output for the bits the chain
   defined; CY is already considered clobbered by either lowering).
   Low-Med for the rotate path: needs careful interaction with
-  `V6CRedundantFlagElim` so the carry consumed by the fold is not
+  `V6ClangRedundantFlagElim` so the carry consumed by the fold is not
   optimised away.
 - **Dependencies:** None hard. Composes naturally with:
   - **[O40 — ADD16 DAD-Based Expansion](O40_add16_dad_expansion.md)** (✅): same
@@ -248,7 +248,7 @@ described above and so lives in C++ rather than TableGen.
 
 ## Expected Savings
 
-All cycle counts use the canonical [V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md)
+All cycle counts use the canonical [V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md)
 values (`DAD`=12, `MOV r,r`=8, `INR r`=8, `RAL`=4, `JNC`=12, `XCHG`=4, `ACI`=8).
 
 | Pattern               | Before (B / cc) | After (B / cc)        | Δ              |
@@ -307,7 +307,7 @@ rotate/wide cases ride on the same primitive at incremental cost.
 ## Comparison With Other Backends
 
 - **AVR.** `add Rd, Rd; adc Rd+1, Rd+1` is the exact analogue of
-  `DAD H` and is already used by AVR's expander. V6C is closing a
+  `DAD H` and is already used by AVR's expander. V6CLANG is closing a
   parity gap.
 - **Z80 (llvm-z80).** Uses `add hl, hl` (same opcode as 8080's
   `DAD H`) for `i16 << 1`. The llvm-z80 backend has it; we don't.
@@ -319,21 +319,21 @@ rotate/wide cases ride on the same primitive at incremental cost.
 
 - **Phase 1** — `i16 x << 1`: **already de-facto implemented** at
   `-O2` and not worth a dedicated patch. The chain `LowerSHL_i16`
-  ([V6CISelLowering.cpp lines 778-810](../../llvm/lib/Target/V6C/V6CISelLowering.cpp#L778))
+  ([V6ClangISelLowering.cpp lines 778-810](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L778))
   rewrites `shl x, 1` as `add x, x` (an i16 SDAG `ADD`), which is
-  legal; the post-RA `V6C_ADD16` expander already contains the
+  legal; the post-RA `V6CLANG_ADD16` expander already contains the
   `DstReg == HL && (Lhs == HL || Rhs == HL) → DAD rp` fast path
-  ([V6CInstrInfo.cpp ≈ line 670](../../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L670))
+  ([V6ClangInstrInfo.cpp ≈ line 670](../../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L670))
   introduced by [O40](O40_add16_dad_expansion.md). RA already prefers
   HL for shifted/added i16 values, so the predominant shape is
   `add hl, hl` → `DAD H` (1B / 12cc). Verified end-to-end on a
   driver where `unsigned short dbl(unsigned short x){return x<<1;}`
   emits exactly `DAD H; RET`. The unrolled ADD-self chain inside
-  `V6C_SHL16` for `ShAmt < 8` is therefore **unreachable code** at
+  `V6CLANG_SHL16` for `ShAmt < 8` is therefore **unreachable code** at
   `-O2`. No Phase 1 patch is needed.
 
 - **Phase 2** — `i16 rotl x, 1` with carry-fold: ~30–50 LOC
-  spread across `V6CInstrInfo.{cpp,td}` and `V6CISelLowering.{h,cpp}`.
+  spread across `V6ClangInstrInfo.{cpp,td}` and `V6ClangISelLowering.{h,cpp}`.
   The branchless `DAD H; MOV A,L; ACI 0; MOV L,A` (4 instr / 5 B /
   36 cc, clobbers A like today's expand) is the recommended landing:
   no labels, no MBB split, single `expandPostRAPseudo` arm. The
@@ -344,33 +344,33 @@ rotate/wide cases ride on the same primitive at incremental cost.
 
 - **Phase 3** — i24/i32 shift + i24 rotate: revised estimate
   **~150–200 LOC**, not the original ~80. Deeper investigation of
-  the V6C target ([V6CISelLowering.cpp:53](../../llvm/lib/Target/V6C/V6CISelLowering.cpp#L53))
+  the V6CLANG target ([V6ClangISelLowering.cpp:53](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L53))
   shows there is **no existing i32 ALU customisation at all**: no
   `setOperationAction` for any i32 op, no `ReplaceNodeResults` hook,
   no `ADDC`/`ADDE`/`UADDO`/`SHL_PARTS` handling, no `SHL_I32`/`SRL_I32`
   RTLIB names registered. The default integer type-legalizer splits
-  `i32 << 1` into `(lo<<1, srl(lo,15)|hi<<1)` — i.e. a **`V6C_SRL16`
+  `i32 << 1` into `(lo<<1, srl(lo,15)|hi<<1)` — i.e. a **`V6CLANG_SRL16`
   by 15** (byte-lane move + 7×RAR) plus an **i16 OR** — yielding
   the ~12B/80cc baseline cited above. Replacing it with the target
   `DAD H; XCHG; DAD H; JNC; INX D` sequence requires:
-  1. a new `V6CISD::SHL32_1` SDNode with `SDTypeProfile<2, 2, ...>`
+  1. a new `V6ClangISD::SHL32_1` SDNode with `SDTypeProfile<2, 2, ...>`
      and `SDNPOutGlue` to thread CY across two `DAD H`s;
   2. a `ReplaceNodeResults` override (currently absent) intercepting
      the type-legalizer before it produces the SRL+OR sequence;
   3. a new post-RA pseudo whose expansion creates a fresh `MCSymbol`
      and either splits the MBB (CFG mutation — cannot live in
      `expandPostRAPseudo`, needs a dedicated post-RA pass like
-     `V6CSPTrickOpt`) or invents a `V6C_LABEL` pseudo (no precedent
-     in the V6C backend);
+     `V6ClangSPTrickOpt`) or invents a `V6CLANG_LABEL` pseudo (no precedent
+     in the V6CLANG backend);
   4. cost-model gating to handle suboptimal RA placement (low-half
      in BC adds `MOV` framing that erodes the win, mirroring the
-     `V6C_ADD16` non-HL framing logic);
+     `V6CLANG_ADD16` non-HL framing logic);
   5. fixing or working around the pre-existing i32 sub-register
      livein verifier issue flagged in `add-i32.ll`.
 
   In addition, **i24 has no IR shape today** — C has no `_BitInt(24)`
   shape that survives type promotion to i32, no `MVT::i24` references
-  in the V6C tests, and no benchmark exercises a 24-bit integer.
+  in the V6CLANG tests, and no benchmark exercises a 24-bit integer.
   The plan's i24 cases would be unreachable in practice; recommend
   dropping them from Phase 3 scope. `rotl i32, 1` remains out of
   scope (CY cannot survive the second `DAD H`).
@@ -386,7 +386,7 @@ emission idiom for a code shape that isn't currently exercised.
 `DAD H` is the missing primitive for wide left shift / rotate by 1 on
 the 8080. **Phase 1** (i16 `shl` by 1) turns out to be already covered
 at `-O2` by the chain of `LowerSHL_i16` (rewrites to `add x, x`) +
-O40's `V6C_ADD16 → DAD rp` fast path — no patch is needed.
+O40's `V6CLANG_ADD16 → DAD rp` fast path — no patch is needed.
 **Phase 2** (`rotl i16 x, 1` carry-fold) is the actual headline
 landing: ~30–50 LOC for a **7–9B / 50cc** win on every CRC/hash
 rotate. **Phase 3** (i24/i32 wide shift) is much larger than the

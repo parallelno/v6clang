@@ -24,7 +24,7 @@ to document that the fold does not regress the trivial cases.
 
 
 ================================================================
-1. C test case (tests/features/61/v6llvmc.c)
+1. C test case (tests/features/61/v6clang.c)
 ================================================================
 
   typedef unsigned char u8;
@@ -141,7 +141,7 @@ fold_spill:              ; static-stack accumulator across __a_*
 3. c8080 stats — body bytes / cycles per function (incl. RET)
 ================================================================
 
-Timings (docs/V6CInstructionTimings.md):
+Timings (docs/V6ClangInstructionTimings.md):
   STA/LDA = 3B/16cc, LXI = 3B/10cc, MVI A,imm = 2B/7cc,
   ADI/SUI/ANI/ORI/XRI/CPI = 2B/7cc, ADD r/SUB r/ANA r/ORA r/XRA r = 1B/4cc,
   XRA M = 1B/8cc, MOV M,A = 1B/7cc, JNZ = 3B/10cc, RET = 1B/12cc, CALL = 3B/24cc.
@@ -157,7 +157,7 @@ Timings (docs/V6CInstructionTimings.md):
 
 
 ================================================================
-4. v6llvmc OLD ASM (tests/features/61/v6llvmc_old.asm)
+4. v6clang OLD ASM (tests/features/61/v6clang_old.asm)
 ================================================================
 
 fold_add:    ADI  0xF       ; RET
@@ -202,7 +202,7 @@ fold_spill:                 ; OLD: O61 reload is `MVI L,0; XRA L`
 
 
 ================================================================
-5. v6llvmc NEW ASM (tests/features/61/v6llvmc_new01.asm)
+5. v6clang NEW ASM (tests/features/61/v6clang_new01.asm)
 ================================================================
 
 fold_add..fold_chain : unchanged (already ALU-imm by ISel).
@@ -235,7 +235,7 @@ MVI r,imm = 2B/7cc; MOV r,r = 1B/4cc; STA/LDA = 3B/16cc; LXI = 3B/10cc;
 DAD = 1B/10cc; XRA M = 1B/8cc; PUSH/POP PSW = 1B/12cc; JNZ = 3B/10cc;
 INR r = 1B/4cc; RET = 1B/12cc.
 
-  Function       c8080 (B/cc)   v6llvmc OLD (B/cc)   v6llvmc NEW (B/cc)   Δ vs OLD
+  Function       c8080 (B/cc)   v6clang OLD (B/cc)   v6clang NEW (B/cc)   Δ vs OLD
   ------------   ------------   ------------------   ------------------   --------
   fold_add          6 /  35          3 /  19              3 /  19          0 /  0
   fold_sub          6 /  35          3 /  19              3 /  19          0 /  0

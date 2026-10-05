@@ -39,7 +39,7 @@ def run_suite(name, cmd, cwd, timeout=300):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run all V6C test suites")
+    parser = argparse.ArgumentParser(description="Run all V6CLANG test suites")
     parser.add_argument("--golden-only", action="store_true", help="Run only golden tests")
     parser.add_argument("--no-benchmarks", action="store_true",
                         help="Skip benchmark suite (fast mode; benchmarks can take 20+ min)")
@@ -94,7 +94,7 @@ def main():
         bench_script = root / "tests" / "benchmarks_c" / "run_benchmarks.py"
         if bench_script.exists() and not args.no_benchmarks:
             ok = run_suite(
-                "Benchmark Correctness (v6llvmc + others)",
+                "Benchmark Correctness (v6clang + others)",
                 [sys.executable, str(bench_script)],
                 root,
                 timeout=1800,  # 30 min — worst case: all programs hit MAX_CYCLES

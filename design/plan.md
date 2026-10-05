@@ -17,7 +17,7 @@ This document translates the approved design into an ordered, test-driven implem
 | `v6emul` | `tools/v6emul` | CLI Vector 06c emulator — executes flat binaries, inspects registers/memory, counts cycles |
 | `v6asm` | `tools/v6asm` | CLI 8080 assembler — reference assembly syntax, ASM→ROM conversion, intermediate output comparison |
 | LLVM source | `llvm-project/` | Full LLVM monorepo (cloned at pinned `llvmorg-18.1.0`, **gitignored** — build reads from here) |
-| LLVM mirror | `llvm/` | Git-tracked mirror of all V6C-related changes (V6C target dir + modified upstream files) |
+| LLVM mirror | `llvm/` | Git-tracked mirror of all V6CLANG-related changes (V6CLANG target dir + modified upstream files) |
 | Mirror sync | `scripts/sync_llvm_mirror.ps1` | Copies changes from `llvm-project/` → `llvm/` after each build |
 | CMake ≥ 3.20 | System | Build system |
 | Ninja | `.venv/Scripts/ninja.exe` | Build executor (provisioned by `scripts/setup_venv.ps1`) |
@@ -25,7 +25,7 @@ This document translates the approved design into an ordered, test-driven implem
 
 ### 1.2.1 Source Mirror Workflow
 
-`llvm-project/` is gitignored because it is a large upstream clone. All V6C-related source is git-tracked under `llvm/`, which acts as a mirror.
+`llvm-project/` is gitignored because it is a large upstream clone. All V6CLANG-related source is git-tracked under `llvm/`, which acts as a mirror.
 
 **After every successful build**, run:
 ```powershell
@@ -33,7 +33,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
 The script syncs:
-- `llvm-project/llvm/lib/Target/V6C/` → `llvm/lib/Target/V6C/` (full directory mirror)
+- `llvm-project/llvm/lib/Target/V6CLANG/` → `llvm/lib/Target/V6CLANG/` (full directory mirror)
 - Individual modified upstream files (e.g. `Triple.h`, `Triple.cpp`) → corresponding paths under `llvm/`
 
 When a milestone modifies new upstream files, add `xcopy` lines to `scripts\sync_llvm_mirror.ps1`.
@@ -87,7 +87,7 @@ This section catalogues foreseeable implementation difficulties — distinct fro
 **Strategy**:
 - Model A as an implicit def/use on every ALU instruction in TableGen from the start. Do not attempt to hide this from the allocator.
 - Implement and test `i8` ALU operations first (M4), focusing exclusively on correct register allocation with the A constraint, before adding `i16` expansion.
-- Defer the `V6CAccumulatorPlanning` optimization pass (M8) until the basic pipeline is fully correct. Correctness first, then performance.
+- Defer the `V6ClangAccumulatorPlanning` optimization pass (M8) until the basic pipeline is fully correct. Correctness first, then performance.
 - Use the AVR backend's handling of dedicated registers (e.g., `R0`/`R1` for multiply results) as a pattern.
 
 ### 2.4 16-bit Operation Synthesis
@@ -98,7 +98,7 @@ This section catalogues foreseeable implementation difficulties — distinct fro
 - Implement `i16` as `Legal` in type legalization (use register pairs), but expand most `i16` operations to 8-bit sequences in custom lowering. This avoids LLVM's generic expansion which does not understand register pairs.
 - `DAD` is the only natively legal 16-bit operation — handle it as a special case via a custom DAG combine (design §5.4).
 - Test every `i16` operation in isolation: `add`, `sub`, `and`, `or`, `xor`, `shift`, `compare`. Each gets a dedicated lit test *and* an emulator round-trip test via `v6emul`.
-- Implement pseudo-instructions (`V6C_ADD16`, `V6C_SUB16`, etc.) that expand post-RA, so the register allocator sees clean pair operands.
+- Implement pseudo-instructions (`V6CLANG_ADD16`, `V6CLANG_SUB16`, etc.) that expand post-RA, so the register allocator sees clean pair operands.
 
 ### 2.5 Stack Frame Access Cost
 
@@ -137,11 +137,11 @@ This section catalogues foreseeable implementation difficulties — distinct fro
 - Defer Clang integration to M9, after the backend is fully functional via `llc` (LLVM IR → assembly/binary).
 - Use the AVR Clang integration as a template — it covers the same freestanding/bare-metal pattern.
 - Validate with a minimal C program: `int main() { return 42; }`. Must compile to correct binary, run in `v6emul`, and halt with 42 in register A.
-- Add intrinsics (`__builtin_v6c_in`, etc.) one at a time, each with a C test that compiles and runs.
+- Add intrinsics (`__builtin_v6clang_in`, etc.) one at a time, each with a C test that compiles and runs.
 
 ### 2.9 Runtime Library Bootstrap
 
-**Difficulty**: The runtime library (`crt0.s`, math, shift, memory) must be written in 8080 assembly and must conform to `V6C_CConv`. If the calling convention implementation has bugs, every runtime call will silently corrupt state.
+**Difficulty**: The runtime library (`crt0.s`, math, shift, memory) must be written in 8080 assembly and must conform to `V6CLANG_CConv`. If the calling convention implementation has bugs, every runtime call will silently corrupt state.
 
 **Strategy**:
 - Write and test runtime functions *before* the compiler emits calls to them. Assemble with `v6asm`, test with `v6emul` in isolation.
@@ -154,7 +154,7 @@ This section catalogues foreseeable implementation difficulties — distinct fro
 **Difficulty**: Custom passes (AccumulatorPlanning, XchgOpt, ZeroTestOpt, SPTrickOpt, etc.) interact with each other and with LLVM's built-in passes. Phase ordering bugs cause one pass to undo another's work, or worse, create invalid MachineFunction state.
 
 **Strategy**:
-- Implement all custom passes as individually toggleable (`-v6c-disable-<pass-name>`), defaulting to ON.
+- Implement all custom passes as individually toggleable (`-v6clang-disable-<pass-name>`), defaulting to ON.
 - Each pass gets its own milestone (M8) with isolated before/after FileCheck tests confirming the pass transforms what it should and nothing else.
 - Run the full lit test suite with each pass individually disabled to catch ordering dependencies.
 - Use LLVM's `-verify-machineinstrs` flag in all test runs to catch MachineFunction invariant violations immediately.
@@ -229,7 +229,7 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 | 2 | Build stock LLVM (host target only) to confirm toolchain works: `cmake`, `ninja`, `llvm-tblgen`, `llc`, `llvm-mc`, `FileCheck`, `lit`. | `[x]` |
 | 3 | Build or obtain `tools/v6emul`. Verify it runs a hand-written NOP+HLT program and reports halt state. | `[x]` |
 | 4 | Build or obtain `tools/v6asm`. Assemble a trivial program (`NOP; HLT`), produce `.bin`, run in `v6emul`, confirm halt. | `[x]` |
-| 5 | Create project directory structure per design §12. Stub `CMakeLists.txt` for `V6C` target (does not build yet, but is parseable). | `[x]` |
+| 5 | Create project directory structure per design §12. Stub `CMakeLists.txt` for `V6CLANG` target (does not build yet, but is parseable). | `[x]` |
 | 6 | Create the emulator golden test suite: 10–15 hand-written `.asm` programs with known outcomes. Assemble via `v6asm`, run via `v6emul`, verify results. Store in `tests/golden/`. | `[x]` |
 | 7 | Set up CI configuration (or local Makefile target) that runs `v6asm` + `v6emul` golden tests. | `[x]` |
 
@@ -250,7 +250,7 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 
 #### M0.4 Documentation
 
-- `[x]` `docs/V6CBackendOverview.md` — initial version: project goals, tool dependencies, build instructions.
+- `[x]` `docs/V6ClangBackendOverview.md` — initial version: project goals, tool dependencies, build instructions.
 - `[x]` `tests/golden/README.md` — describes each golden test and its expected outcome.
 
 ---
@@ -258,35 +258,35 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 ### M1 — Target Registration & Skeleton
 `[x]` **Status: Complete**
 
-**Goal**: Register `V6C` as an LLVM experimental target. After this milestone, `llc -march=v6c -version` prints the target name and `llvm-tblgen` processes an empty target description.
+**Goal**: Register `V6CLANG` as an LLVM experimental target. After this milestone, `llc -march=v6clang -version` prints the target name and `llvm-tblgen` processes an empty target description.
 
 #### M1.1 Steps
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `V6CTargetInfo.h/.cpp` in `TargetInfo/`. Register the target triple `i8080-unknown-v6c` via `RegisterTarget`. | `[x]` |
-| 2 | Create `V6CTargetMachine.h/.cpp`. Implement a minimal `V6CTargetMachine` subclass returning the data layout string from design §2.2. | `[x]` |
-| 3 | Create `V6CSubtarget.h/.cpp`. Stub all accessors (`getInstrInfo()`, etc.) to return `nullptr` or assert. | `[x]` |
-| 4 | Create top-level `V6C.td` with an empty target definition. Verify `llvm-tblgen` parses it. | `[x]` |
-| 5 | Create `CMakeLists.txt` for the V6C target. Wire into LLVM's build via `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD`. | `[x]` |
-| 6 | Build LLVM with V6C enabled. Verify `llc -march=v6c -version` lists the target. | `[x]` |
+| 1 | Create `V6ClangTargetInfo.h/.cpp` in `TargetInfo/`. Register the target triple `i8080-unknown-v6clang` via `RegisterTarget`. | `[x]` |
+| 2 | Create `V6ClangTargetMachine.h/.cpp`. Implement a minimal `V6ClangTargetMachine` subclass returning the data layout string from design §2.2. | `[x]` |
+| 3 | Create `V6ClangSubtarget.h/.cpp`. Stub all accessors (`getInstrInfo()`, etc.) to return `nullptr` or assert. | `[x]` |
+| 4 | Create top-level `V6CLANG.td` with an empty target definition. Verify `llvm-tblgen` parses it. | `[x]` |
+| 5 | Create `CMakeLists.txt` for the V6CLANG target. Wire into LLVM's build via `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD`. | `[x]` |
+| 6 | Build LLVM with V6CLANG enabled. Verify `llc -march=v6clang -version` lists the target. | `[x]` |
 
 #### M1.2 Tests
 
 | Test | Tool | Validates |
 |------|------|-----------|
-| `llc -march=v6c -version` exits 0 and prints target name | `llc` | Target registration |
-| `llvm-tblgen V6C.td` exits 0 | `llvm-tblgen` | TableGen skeleton valid |
-| CMake configure with `-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6C` succeeds | `cmake` | Build integration |
+| `llc -march=v6clang -version` exits 0 and prints target name | `llc` | Target registration |
+| `llvm-tblgen V6CLANG.td` exits 0 | `llvm-tblgen` | TableGen skeleton valid |
+| CMake configure with `-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG` succeeds | `cmake` | Build integration |
 
 #### M1.3 Verification
 
-- `llc --version` output includes `v6c` in the registered targets list.
+- `llc --version` output includes `v6clang` in the registered targets list.
 - Data layout string matches design §2.2 exactly.
 
 #### M1.4 Documentation
 
-- `[x]` `docs/V6CBackendOverview.md` — update with build instructions for V6C target.
+- `[x]` `docs/V6ClangBackendOverview.md` — update with build instructions for V6CLANG target.
 
 ---
 
@@ -299,29 +299,29 @@ M11 (runtime library) can proceed in parallel with M7–M8 once M5 (calling conv
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `V6CRegisterInfo.td`. Define all physical registers (A, B, C, D, E, H, L, SP, FLAGS, PC), register pairs (BC, DE, HL, PSW), sub-register indices (`sub_hi`, `sub_lo`), and all register classes from design §3.2. | `[x]` |
-| 2 | Create `V6CRegisterInfo.h/.cpp`. Implement `V6CRegisterInfo` subclass: reserved registers (SP, PC), allocation order, callee-saved list (empty per design §6.1). | `[x]` |
-| 3 | Run `llvm-tblgen -gen-register-info` → `V6CGenRegisterInfo.inc`. Verify generated register enum, classes, and sub-register tables. | `[x]` |
-| 4 | Create `V6CInstrFormats.td`. Define encoding formats: `Implied`, `Reg`, `Imm8`, `Imm16`, `Direct`, `RST`, `IO` per design §4.3. | `[x]` |
-| 5 | Create `V6CInstrInfo.td`. Define **all** 8080 instructions organized by category (design §4.2). Start with data-move (MOV, MVI, LDA, STA, LDAX, STAX, LXI, LHLD, SHLD), then ALU (ADD, SUB, ADC, SBB, ANA, ORA, XRA, CMP + immediate variants), then increment/decrement, rotate, branch, stack, misc, and I/O. Include `let Defs = [FLAGS]` / `let Uses = [A]` as appropriate. | `[x]` |
-| 6 | Create `V6CSchedule.td`. Define `SchedMachineModel` and `SchedWriteRes` entries for every instruction class with Vector 06c cycle costs. | `[x]` |
-| 7 | Create `V6CInstrInfo.h/.cpp`. Implement `V6CInstrInfo` subclass with `copyPhysReg()`, `storeRegToStackSlot()`, `loadRegFromStackSlot()` stubs. | `[x]` |
-| 8 | Run `llvm-tblgen -gen-instr-info` → `V6CGenInstrInfo.inc`. Verify all instruction enums exist. | `[x]` |
+| 1 | Create `V6ClangRegisterInfo.td`. Define all physical registers (A, B, C, D, E, H, L, SP, FLAGS, PC), register pairs (BC, DE, HL, PSW), sub-register indices (`sub_hi`, `sub_lo`), and all register classes from design §3.2. | `[x]` |
+| 2 | Create `V6ClangRegisterInfo.h/.cpp`. Implement `V6ClangRegisterInfo` subclass: reserved registers (SP, PC), allocation order, callee-saved list (empty per design §6.1). | `[x]` |
+| 3 | Run `llvm-tblgen -gen-register-info` → `V6ClangGenRegisterInfo.inc`. Verify generated register enum, classes, and sub-register tables. | `[x]` |
+| 4 | Create `V6ClangInstrFormats.td`. Define encoding formats: `Implied`, `Reg`, `Imm8`, `Imm16`, `Direct`, `RST`, `IO` per design §4.3. | `[x]` |
+| 5 | Create `V6ClangInstrInfo.td`. Define **all** 8080 instructions organized by category (design §4.2). Start with data-move (MOV, MVI, LDA, STA, LDAX, STAX, LXI, LHLD, SHLD), then ALU (ADD, SUB, ADC, SBB, ANA, ORA, XRA, CMP + immediate variants), then increment/decrement, rotate, branch, stack, misc, and I/O. Include `let Defs = [FLAGS]` / `let Uses = [A]` as appropriate. | `[x]` |
+| 6 | Create `V6ClangSchedule.td`. Define `SchedMachineModel` and `SchedWriteRes` entries for every instruction class with Vector 06c cycle costs. | `[x]` |
+| 7 | Create `V6ClangInstrInfo.h/.cpp`. Implement `V6ClangInstrInfo` subclass with `copyPhysReg()`, `storeRegToStackSlot()`, `loadRegFromStackSlot()` stubs. | `[x]` |
+| 8 | Run `llvm-tblgen -gen-instr-info` → `V6ClangGenInstrInfo.inc`. Verify all instruction enums exist. | `[x]` |
 | 9 | For every instruction, compare its encoding (opcode byte + operand structure) against the byte produced by `v6asm` for the same mnenomic. Document discrepancies and fix. | `[x]` |
 
 #### M2.2 Tests
 
 | Test | Tool | Validates |
 |------|------|-----------|
-| `llvm-tblgen -gen-register-info V6C.td` exits 0 | `llvm-tblgen` | Register descriptions parse |
-| `llvm-tblgen -gen-instr-info V6C.td` exits 0 | `llvm-tblgen` | Instruction descriptions parse |
-| `llvm-tblgen -gen-subtarget V6C.td` exits 0 | `llvm-tblgen` | Scheduling model parses |
+| `llvm-tblgen -gen-register-info V6CLANG.td` exits 0 | `llvm-tblgen` | Register descriptions parse |
+| `llvm-tblgen -gen-instr-info V6CLANG.td` exits 0 | `llvm-tblgen` | Instruction descriptions parse |
+| `llvm-tblgen -gen-subtarget V6CLANG.td` exits 0 | `llvm-tblgen` | Scheduling model parses |
 | `llvm-tblgen --print-records` shows expected register classes and members | `llvm-tblgen` | Register class correctness |
 | Encoding reference test: compile list of all opcodes, diff against `v6asm`-produced bytes | `v6asm` + script | Opcode encoding correctness |
 
 #### M2.3 Tests — FileCheck (lit)
 
-Create `tests/lit/MC/V6C/encoding.s`:
+Create `tests/lit/MC/V6CLANG/encoding.s`:
 - One `CHECK` directive per instruction mnemonic verifying the encoded byte(s).
 - Covers all 256 possible opcodes (valid ones check encoding; undefined ones check for error).
 
@@ -333,7 +333,7 @@ Create `tests/lit/MC/V6C/encoding.s`:
 
 #### M2.5 Documentation
 
-- `[x]` `docs/V6CInstructionTimings.md` — instruction timing table, cross-referenced with TableGen `SchedWriteRes` names.
+- `[x]` `docs/V6ClangInstructionTimings.md` — instruction timing table, cross-referenced with TableGen `SchedWriteRes` names.
 
 ---
 
@@ -346,23 +346,23 @@ Create `tests/lit/MC/V6C/encoding.s`:
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `MCTargetDesc/V6CMCAsmInfo.h/.cpp`. Set comment string, directive syntax, label conventions compatible with `v6asm` syntax. | `[x]` |
-| 2 | Create `MCTargetDesc/V6CMCTargetDesc.h/.cpp`. Register `MCAsmInfo`, `MCInstrInfo`, `MCRegisterInfo`, `MCSubtargetInfo` factory functions. | `[x]` |
-| 3 | Create `V6CAsmPrinter.h/.cpp`. Implement `AsmPrinter` subclass: `emitInstruction()` delegates to `V6CMCInstLower`. | `[x]` |
-| 4 | Create `V6CMCInstLower.h/.cpp`. Lower `MachineInstr` → `MCInst` — translate virtual register operands to physical register names. | `[x]` |
-| 5 | Create `V6CTargetObjectFile.h/.cpp`. Define section layout (`.text`, `.data`, `.rodata`, `.bss`). | `[x]` |
-| 6 | Wire `V6CPassConfig::addInstSelector()` to minimal V6CISelDAGToDAG with RET pattern. | `[x]` |
-| 7 | Test: hand-craft `MachineFunction` with a few instructions, run through `V6CAsmPrinter`, validate output matches `v6asm` syntax expectations. | `[x]` |
-| 8 | Test: write a trivial `.ll` file (empty function with `ret void`), run `llc -march=v6c`, verify assembly output is syntactically valid. | `[x]` |
+| 1 | Create `MCTargetDesc/V6ClangMCAsmInfo.h/.cpp`. Set comment string, directive syntax, label conventions compatible with `v6asm` syntax. | `[x]` |
+| 2 | Create `MCTargetDesc/V6ClangMCTargetDesc.h/.cpp`. Register `MCAsmInfo`, `MCInstrInfo`, `MCRegisterInfo`, `MCSubtargetInfo` factory functions. | `[x]` |
+| 3 | Create `V6ClangAsmPrinter.h/.cpp`. Implement `AsmPrinter` subclass: `emitInstruction()` delegates to `V6ClangMCInstLower`. | `[x]` |
+| 4 | Create `V6ClangMCInstLower.h/.cpp`. Lower `MachineInstr` → `MCInst` — translate virtual register operands to physical register names. | `[x]` |
+| 5 | Create `V6ClangTargetObjectFile.h/.cpp`. Define section layout (`.text`, `.data`, `.rodata`, `.bss`). | `[x]` |
+| 6 | Wire `V6ClangPassConfig::addInstSelector()` to minimal V6ClangISelDAGToDAG with RET pattern. | `[x]` |
+| 7 | Test: hand-craft `MachineFunction` with a few instructions, run through `V6ClangAsmPrinter`, validate output matches `v6asm` syntax expectations. | `[x]` |
+| 8 | Test: write a trivial `.ll` file (empty function with `ret void`), run `llc -march=v6clang`, verify assembly output is syntactically valid. | `[x]` |
 
 #### M3.2 Tests
 
 | Test | Tool | Validates |
 |------|------|-----------|
-| `llc -march=v6c trivial.ll` produces `.s` file | `llc` | Assembly printer works |
+| `llc -march=v6clang trivial.ll` produces `.s` file | `llc` | Assembly printer works |
 | Assemble `llc` output with `v6asm` — no syntax errors | `v6asm` | Output is valid assembly |
 | Assembly output contains `ORG` directive matching default start address | `FileCheck` | Start address config |
-| lit tests: `tests/lit/CodeGen/V6C/trivial.ll` — verify `RET` instruction appears | `llc` + `FileCheck` | Basic emission |
+| lit tests: `tests/lit/CodeGen/V6CLANG/trivial.ll` — verify `RET` instruction appears | `llc` + `FileCheck` | Basic emission |
 
 #### M3.3 Verification
 
@@ -372,7 +372,7 @@ Create `tests/lit/MC/V6C/encoding.s`:
 
 #### M3.4 Documentation
 
-- `[x]` `docs/V6CBuildGuide.md` — update with `llc` usage examples.
+- `[x]` `docs/V6ClangBuildGuide.md` — update with `llc` usage examples.
 
 ---
 
@@ -385,11 +385,11 @@ Create `tests/lit/MC/V6C/encoding.s`:
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `V6CISelLowering.h/.cpp`. Register type legalization: `i1` promote to `i8`, `i8` legal, everything else expand/custom. Set operation actions for `i8` operations per design §5.3. | `[x]` |
-| 2 | Create `V6CISelDAGToDAG.h/.cpp`. Implement `V6CDAGToDAGISel::Select()`. Start with TableGen patterns for: `ADD r`, `SUB r`, `ANA r`, `ORA r`, `XRA r`, `ADI d8`, `SUI d8`, `ANI d8`, `ORI d8`, `XRI d8`. | `[x]` |
+| 1 | Create `V6ClangISelLowering.h/.cpp`. Register type legalization: `i1` promote to `i8`, `i8` legal, everything else expand/custom. Set operation actions for `i8` operations per design §5.3. | `[x]` |
+| 2 | Create `V6ClangISelDAGToDAG.h/.cpp`. Implement `V6ClangDAGToDAGISel::Select()`. Start with TableGen patterns for: `ADD r`, `SUB r`, `ANA r`, `ORA r`, `XRA r`, `ADI d8`, `SUI d8`, `ANI d8`, `ORI d8`, `XRI d8`. | `[x]` |
 | 3 | Add ISel patterns for `MVI r, d8` (constant materialization). | `[x]` |
 | 4 | Add ISel patterns for `INR r`, `DCR r`. | `[x]` |
-| 5 | Add ISel patterns for `MOV r, r` (register copy). Implement `copyPhysReg()` in `V6CInstrInfo`. | `[x]` |
+| 5 | Add ISel patterns for `MOV r, r` (register copy). Implement `copyPhysReg()` in `V6ClangInstrInfo`. | `[x]` |
 | 6 | Add custom lowering for `load i8` (via HL-indirect or LDA) and `store i8` (via HL-indirect or STA). | `[x]` |
 | 7 | Add ISel patterns for `CMP r`, `CPI d8`. Implement custom lowering for `icmp` + `br` → `CMP` + `Jcc`. | `[x]` |
 | 8 | Add ISel patterns for `RLC`, `RRC`, `RAL`, `RAR` for shift-by-1 on accumulator. Custom lowering for `shl i8`, `lshr i8`, `ashr i8`. | `[x]` |
@@ -399,7 +399,7 @@ Create `tests/lit/MC/V6C/encoding.s`:
 
 #### M4.2 Tests — lit (FileCheck)
 
-One test per operation, in `tests/lit/CodeGen/V6C/`:
+One test per operation, in `tests/lit/CodeGen/V6CLANG/`:
 
 | Test File | Verifies |
 |-----------|----------|
@@ -432,9 +432,9 @@ Create `tests/unit/codegen/`:
 
 #### M4.5 Documentation
 
-- `[x]` `docs/V6CArchitecture.md` — update with supported operations.
+- `[x]` `docs/V6ClangArchitecture.md` — update with supported operations.
 
-**Implementation notes**: M4 also required implementing minimal frame lowering (V6CFrameLowering.cpp with prologue/epilogue via LXI+DAD+SPHL), spill/reload pseudos (V6C_SPILL8/V6C_RELOAD8), and eliminateFrameIndex — these are M5 tasks pulled forward to unblock the register allocator for SELECT_CC. Emulator round-trip tests (M4.3) deferred until v6asm integration is available. SRL/SRA lowering returns SDValue() for now (expand/libcall in M11).
+**Implementation notes**: M4 also required implementing minimal frame lowering (V6ClangFrameLowering.cpp with prologue/epilogue via LXI+DAD+SPHL), spill/reload pseudos (V6CLANG_SPILL8/V6CLANG_RELOAD8), and eliminateFrameIndex — these are M5 tasks pulled forward to unblock the register allocator for SELECT_CC. Emulator round-trip tests (M4.3) deferred until v6asm integration is available. SRL/SRA lowering returns SDValue() for now (expand/libcall in M11).
 
 ---
 
@@ -447,17 +447,17 @@ Create `tests/unit/codegen/`:
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `V6CFrameLowering.h/.cpp`. Implement prologue emission: `LXI H, -N; DAD SP; SPHL` per design §7.3. | `[x]` |
+| 1 | Create `V6ClangFrameLowering.h/.cpp`. Implement prologue emission: `LXI H, -N; DAD SP; SPHL` per design §7.3. | `[x]` |
 | 2 | Implement epilogue emission: `LXI H, N; DAD SP; SPHL; RET`. | `[x]` |
 | 3 | Implement shrink-wrapping: omit prologue/epilogue for leaf functions with no locals. | `[x]` |
 | 4 | Implement `eliminateFrameIndex()`: replace `frame_index` operands with `LXI H, offset; DAD SP` materialization per design §7.1. | `[x]` |
-| 5 | Create `V6CCallingConv.td`. Define `V6C_CConv`: argument registers (A, HL, DE, BC → stack), return values (A, HL, DE:HL) per design §6.1. | `[x]` |
-| 6 | Implement `LowerFormalArguments()` in `V6CISelLowering`: copy arguments from physical registers / stack to virtual registers. | `[x]` |
+| 5 | Create `V6ClangCallingConv.td`. Define `V6CLANG_CConv`: argument registers (A, HL, DE, BC → stack), return values (A, HL, DE:HL) per design §6.1. | `[x]` |
+| 6 | Implement `LowerFormalArguments()` in `V6ClangISelLowering`: copy arguments from physical registers / stack to virtual registers. | `[x]` |
 | 7 | Implement `LowerReturn()`: copy return value to physical register. | `[x]` |
 | 8 | Implement `LowerCall()`: argument placement, CALL emission, result copy. Handle stack-passed arguments. | `[x]` |
-| 9 | Implement `storeRegToStackSlot()` and `loadRegFromStackSlot()` in `V6CInstrInfo` for spill/reload. | `[x]` |
+| 9 | Implement `storeRegToStackSlot()` and `loadRegFromStackSlot()` in `V6ClangInstrInfo` for spill/reload. | `[x]` |
 | 10 | Implement frame pointer mode: reserve BC when `-fno-omit-frame-pointer` or `alloca` is used, per design §7.2. | `[x]` |
-| 11 | Inflate spill weights in V6C register allocator hooks to reflect 32cc+ stack access cost. MVIr/LXI marked as `isReMaterializable=1, isAsCheapAsAMove=1` to prefer rematerialization (8-10cc) over spill round-trips (64cc+). | `[x]` |
+| 11 | Inflate spill weights in V6CLANG register allocator hooks to reflect 32cc+ stack access cost. MVIr/LXI marked as `isReMaterializable=1, isAsCheapAsAMove=1` to prefer rematerialization (8-10cc) over spill round-trips (64cc+). | `[x]` |
 
 #### M5.2 Tests — lit (FileCheck)
 
@@ -495,18 +495,18 @@ Create `tests/unit/codegen/`:
 
 #### M5.6 Documentation
 
-- `[x]` `docs/V6CCallingConvention.md` — full description with examples.
-- `[x]` `docs/V6CArchitecture.md` — update with calling convention summary.
+- `[x]` `docs/V6ClangCallingConvention.md` — full description with examples.
+- `[x]` `docs/V6ClangArchitecture.md` — update with calling convention summary.
 
 **Implementation notes**: M5 completion included:
-- `V6CCallingConv.td`: RetCC_V6C for return value assignment (i8→A, i16→HL, i32→HL+DE). Argument passing implemented in C++ due to position-based complexity.
+- `V6ClangCallingConv.td`: RetCC_V6Clang for return value assignment (i8→A, i16→HL, i32→HL+DE). Argument passing implemented in C++ due to position-based complexity.
 - Full i8+i16 calling convention in `LowerFormalArguments`, `LowerReturn`, `LowerCall` with register args (Arg1→A/HL, Arg2→E/DE, Arg3→C/BC) and stack args (4th+, R-to-L, caller cleans).
-- `V6C_LEA_FI` pseudo for FrameIndex materialization (LXI+DAD SP), selected in `V6CISelDAGToDAG::Select()`.
-- `V6C_LOAD8_P`/`V6C_STORE8_P` pseudos for general pointer load/store.
+- `V6CLANG_LEA_FI` pseudo for FrameIndex materialization (LXI+DAD SP), selected in `V6ClangISelDAGToDAG::Select()`.
+- `V6CLANG_LOAD8_P`/`V6CLANG_STORE8_P` pseudos for general pointer load/store.
 - `CALLSEQ_START`/`CALLSEQ_END` handled in C++ ISel (ADJCALLSTACKDOWN/UP).
 - Frame pointer mode: BC reserved when `hasFP()`, prologue saves BC and sets BC=SP, epilogue restores.
-- 16-bit spill/reload: `V6C_SPILL16`/`V6C_RELOAD16` with LXI+DAD+MOV+INX+MOV expansion.
-- Immediate printing fix: mask to 16 bits in `V6CInstPrinter::printOperand()` to avoid 64-bit sign-extension.
+- 16-bit spill/reload: `V6CLANG_SPILL16`/`V6CLANG_RELOAD16` with LXI+DAD+MOV+INX+MOV expansion.
+- Immediate printing fix: mask to 16 bits in `V6ClangInstPrinter::printOperand()` to avoid 64-bit sign-extension.
 - Rematerialization: MVIr and LXI marked `isReMaterializable=1, isAsCheapAsAMove=1`.
 - All 17 lit tests pass (including 7 new M5 tests: frame-lowering, frame-leaf, call-conv, call-conv-ret, call-simple, spill-reload, plus M4 regressions).
 
@@ -521,10 +521,10 @@ Create `tests/unit/codegen/`:
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Create `MCTargetDesc/V6CMCCodeEmitter.h/.cpp`. Implement `encodeInstruction()` for every encoding format (design §4.3). | `[x]` |
-| 2 | Create `MCTargetDesc/V6CAsmBackend.h/.cpp`. Implement fixup kinds for 8-bit immediate, 16-bit absolute address. Implement `applyFixup()`. | `[x]` |
+| 1 | Create `MCTargetDesc/V6ClangMCCodeEmitter.h/.cpp`. Implement `encodeInstruction()` for every encoding format (design §4.3). | `[x]` |
+| 2 | Create `MCTargetDesc/V6ClangAsmBackend.h/.cpp`. Implement fixup kinds for 8-bit immediate, 16-bit absolute address. Implement `applyFixup()`. | `[x]` |
 | 3 | Implement flat binary object writer: single section, no headers, raw bytes starting at configured origin. | `[x]` |
-| 4 | Implement `-mv6c-start-address=<addr>` command-line option (design §9.3). Wire into `ORG` directive and relocation base. | `[x]` |
+| 4 | Implement `-mv6clang-start-address=<addr>` command-line option (design §9.3). Wire into `ORG` directive and relocation base. | `[x]` |
 | 5 | Implement Intel HEX output format as an alternative. | `[x]` |
 | 6 | Validate: compile a known program via `llc` → `.bin`, and independently via `llc` → `.s` → `v6asm` → `.bin`. Byte-compare the two. | `[x]` |
 
@@ -542,7 +542,7 @@ Create `tests/unit/codegen/`:
 
 | Test | Purpose | Status |
 |------|---------|--------|
-| `tests/lit/MC/V6C/encoding-*.ll` (6 tests) | Every encoding format produces correct bytes | `[x]` |
+| `tests/lit/MC/V6CLANG/encoding-*.ll` (6 tests) | Every encoding format produces correct bytes | `[x]` |
 | Binary size = sum of instruction sizes (no padding, no headers) | Flat binary format compliance | `[x]` |
 | All 16 existing CodeGen lit tests pass with `-filetype=obj` | No regressions | `[x]` |
 
@@ -554,7 +554,7 @@ Create `tests/unit/codegen/`:
 
 #### M6.5 Documentation
 
-- `[x]` `docs/V6CBuildGuide.md` — updated with binary emission options, start address configuration, Intel HEX, and emulator invocation.
+- `[x]` `docs/V6ClangBuildGuide.md` — updated with binary emission options, start address configuration, Intel HEX, and emulator invocation.
 
 ---
 
@@ -568,7 +568,7 @@ Create `tests/unit/codegen/`:
 | # | Step | Status |
 |---|------|--------|
 | 1 | Implement `i16` type legalization: `Legal` for loads, stores, register moves; `Custom` for arithmetic. | `[x]` |
-| 2 | Implement pseudo-instructions: `V6C_MOV16rr`, `V6C_LOAD16`, `V6C_STORE16`, `V6C_ADD16`, `V6C_SUB16`, `V6C_CMP16`, `V6C_SHIFT_L`, `V6C_SHIFT_R` per design §5.5. | `[x]` |
+| 2 | Implement pseudo-instructions: `V6CLANG_MOV16rr`, `V6CLANG_LOAD16`, `V6CLANG_STORE16`, `V6CLANG_ADD16`, `V6CLANG_SUB16`, `V6CLANG_CMP16`, `V6CLANG_SHIFT_L`, `V6CLANG_SHIFT_R` per design §5.5. | `[x]` |
 | 3 | Implement pseudo-instruction expansion in `expandPostRAPseudo()` — expand each pseudo into the concrete 8080 sequences from design §5.5. | `[x]` |
 | 4 | Implement custom DAG combine for `(add HL, rp)` → `DAD rp` (design §5.4). | `[x]` |
 | 5 | Implement `i16` comparison: custom lowering to 8-bit compare chain with correct flag handling. | `[x]` |
@@ -626,7 +626,7 @@ Create `tests/unit/codegen/`:
 
 #### M7.5 Documentation
 
-- `[x]` `docs/V6CArchitecture.md` — update with supported type widths and limitations.
+- `[x]` `docs/V6ClangArchitecture.md` — update with supported type widths and limitations.
 
 ---
 
@@ -639,31 +639,31 @@ Create `tests/unit/codegen/`:
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Implement `V6CZeroTestOpt`: replace `CPI 0` with `ORA A`. Add `-v6c-disable-zero-test-opt` flag. | `[x]` |
-| 2 | Implement `V6CXchgOpt`: detect DE↔HL MOV pairs replaceable by XCHG. Add `-v6c-disable-xchg-opt` flag. | `[x]` |
-| 3 | Implement `V6CPeephole`: pattern-based local optimizations (redundant MOV elimination, strength reduction `ADD A,A` for `shl 1`). Add `-v6c-disable-peephole` flag. | `[x]` |
-| 4 | Implement `V6CAccumulatorPlanning`: basic block data-flow reordering to minimize A save/restore traffic. Add `-v6c-disable-acc-planning` flag. | `[x]` |
-| 5 | Implement `V6CLoadStoreOpt`: merge adjacent loads/stores to the same base address. Add `-v6c-disable-loadstore-opt` flag. | `[x]` |
-| 6 | Implement `V6CBranchOpt`: branch relaxation, unreachable block elimination, tail call conversion. Add `-v6c-disable-branch-opt` flag. | `[x]` |
-| 7 | Implement `V6CSPTrickOpt`: replace expanded memcpy/memset with SP-trick sequences (design §8.2.3). Add `-v6c-disable-sp-trick` flag. Wrap in DI/EI. Reject if inside ISR. | `[x]` |
-| 8 | Implement `V6CTypeNarrowing` (IR pass): narrow provably-bounded `i16` to `i8`. Add `-v6c-disable-type-narrowing` flag. | `[x]` |
-| 9 | Register all passes in `V6CPassConfig` at the positions from design §14.3. | `[x]` |
-| 10 | Run full lit test suite with `-verify-machineinstrs` to catch invariant violations. Fixed pre-existing INX operand bug in `V6CRegisterInfo.cpp`. | `[x]` |
+| 1 | Implement `V6ClangZeroTestOpt`: replace `CPI 0` with `ORA A`. Add `-v6clang-disable-zero-test-opt` flag. | `[x]` |
+| 2 | Implement `V6ClangXchgOpt`: detect DE↔HL MOV pairs replaceable by XCHG. Add `-v6clang-disable-xchg-opt` flag. | `[x]` |
+| 3 | Implement `V6ClangPeephole`: pattern-based local optimizations (redundant MOV elimination, strength reduction `ADD A,A` for `shl 1`). Add `-v6clang-disable-peephole` flag. | `[x]` |
+| 4 | Implement `V6ClangAccumulatorPlanning`: basic block data-flow reordering to minimize A save/restore traffic. Add `-v6clang-disable-acc-planning` flag. | `[x]` |
+| 5 | Implement `V6ClangLoadStoreOpt`: merge adjacent loads/stores to the same base address. Add `-v6clang-disable-loadstore-opt` flag. | `[x]` |
+| 6 | Implement `V6ClangBranchOpt`: branch relaxation, unreachable block elimination, tail call conversion. Add `-v6clang-disable-branch-opt` flag. | `[x]` |
+| 7 | Implement `V6ClangSPTrickOpt`: replace expanded memcpy/memset with SP-trick sequences (design §8.2.3). Add `-v6clang-disable-sp-trick` flag. Wrap in DI/EI. Reject if inside ISR. | `[x]` |
+| 8 | Implement `V6ClangTypeNarrowing` (IR pass): narrow provably-bounded `i16` to `i8`. Add `-v6clang-disable-type-narrowing` flag. | `[x]` |
+| 9 | Register all passes in `V6ClangPassConfig` at the positions from design §14.3. | `[x]` |
+| 10 | Run full lit test suite with `-verify-machineinstrs` to catch invariant violations. Fixed pre-existing INX operand bug in `V6ClangRegisterInfo.cpp`. | `[x]` |
 | 11 | Run full lit test suite with each pass individually disabled to detect ordering dependencies. All 8 passes pass isolation (26/26 non-pass-specific tests each). | `[x]` |
 
 #### M8.2 Tests — lit (FileCheck), per pass
 
 | Test File | Pass | Verifies |
 |-----------|------|----------|
-| `peephole-ora.ll` | V6CZeroTestOpt | `CPI 0` → `ORA A` |
-| `xchg-opt.ll` | V6CXchgOpt | MOV D,H; MOV E,L → XCHG |
-| `peephole-shl1.ll` | V6CPeephole | `shl i8 1` → `ADD A,A` |
-| `peephole-dbl16.ll` | V6CPeephole | `shl i16 1` → `DAD HL` |
-| `acc-planning.ll` | V6CAccumulatorPlanning | Reduced MOV A,r / MOV r,A count |
-| `loadstore-merge.ll` | V6CLoadStoreOpt | Adjacent loads merged |
-| `branch-opt.ll` | V6CBranchOpt | Unreachable blocks removed; tail call emitted |
-| `sp-trick.ll` | V6CSPTrickOpt | memcpy ≥6B uses SP-trick with DI/EI |
-| `type-narrow.ll` | V6CTypeNarrowing | Loop counter narrowed from i16 to i8 |
+| `peephole-ora.ll` | V6ClangZeroTestOpt | `CPI 0` → `ORA A` |
+| `xchg-opt.ll` | V6ClangXchgOpt | MOV D,H; MOV E,L → XCHG |
+| `peephole-shl1.ll` | V6ClangPeephole | `shl i8 1` → `ADD A,A` |
+| `peephole-dbl16.ll` | V6ClangPeephole | `shl i16 1` → `DAD HL` |
+| `acc-planning.ll` | V6ClangAccumulatorPlanning | Reduced MOV A,r / MOV r,A count |
+| `loadstore-merge.ll` | V6ClangLoadStoreOpt | Adjacent loads merged |
+| `branch-opt.ll` | V6ClangBranchOpt | Unreachable blocks removed; tail call emitted |
+| `sp-trick.ll` | V6ClangSPTrickOpt | memcpy ≥6B uses SP-trick with DI/EI |
+| `type-narrow.ll` | V6ClangTypeNarrowing | Loop counter narrowed from i16 to i8 |
 
 #### M8.3 Tests — Standalone Unit (C files)
 
@@ -699,14 +699,14 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 #### M8.6 Documentation
 
-- `[x]` `docs/V6COptimization.md` — each pass described: purpose, patterns, toggle flag, measured impact.
+- `[x]` `docs/V6ClangOptimization.md` — each pass described: purpose, patterns, toggle flag, measured impact.
 
 ---
 
 ### M9 — Clang Frontend Integration
 `[x]` **Status: Complete**
 
-**Goal**: `clang -target i8080-unknown-v6c` compiles C source to 8080 assembly or binary. Built-in macros and intrinsics from design §10 are available.
+**Goal**: `clang -target i8080-unknown-v6clang` compiles C source to 8080 assembly or binary. Built-in macros and intrinsics from design §10 are available.
 
 #### M9.1 Steps
 
@@ -714,10 +714,10 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 |---|------|--------|
 | 1 | Create `clang/lib/Basic/Targets/I8080.h/.cpp`. Implement `I8080TargetInfo`: type sizes from design §2.3, unsigned `char`, pointer width 16. | `[x]` |
 | 2 | Register the `i8080` architecture in Clang's triple parsing (`llvm::Triple`). | `[x]` |
-| 3 | Define built-in macros: `__V6C__`, `__I8080__`, `__CHAR_UNSIGNED__` (design §10.1). | `[x]` |
-| 4 | Implement `TargetCodeGenInfo` for V6C: ABI lowering that matches `V6C_CConv` (design §6.1). | `[x]` |
+| 3 | Define built-in macros: `__V6CLANG__`, `__I8080__`, `__CHAR_UNSIGNED__` (design §10.1). | `[x]` |
+| 4 | Implement `TargetCodeGenInfo` for V6CLANG: ABI lowering that matches `V6CLANG_CConv` (design §6.1). | `[x]` |
 | 5 | Add language restriction diagnostics: warn on `long long`, warn on `float`/`double` (design §10.2). | `[x]` |
-| 6 | Implement `__builtin_v6c_in`, `__builtin_v6c_out`, `__builtin_v6c_di`, `__builtin_v6c_ei`, `__builtin_v6c_hlt`, `__builtin_v6c_nop` intrinsics (design §10.3). | `[x]` |
+| 6 | Implement `__builtin_v6clang_in`, `__builtin_v6clang_out`, `__builtin_v6clang_di`, `__builtin_v6clang_ei`, `__builtin_v6clang_hlt`, `__builtin_v6clang_nop` intrinsics (design §10.3). | `[x]` |
 | 7 | Implement inline assembly support for 8080 syntax via `asm()` (IR-level constraint handling; no MC asm parser). | `[x]` |
 | 8 | Wire Clang driver to produce flat binary output when `-o file.bin` is specified. | `[x]` |
 
@@ -725,34 +725,34 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 | Test | Validates |
 |------|-----------|
-| `clang -target i8080-unknown-v6c -E -dM empty.c` contains `__V6C__`, `__I8080__`, `__CHAR_UNSIGNED__` | Built-in macros |
-| `clang -target i8080-unknown-v6c -c -S return42.c` produces valid assembly | Basic compilation |
+| `clang -target i8080-unknown-v6clang -E -dM empty.c` contains `__V6CLANG__`, `__I8080__`, `__CHAR_UNSIGNED__` | Built-in macros |
+| `clang -target i8080-unknown-v6clang -c -S return42.c` produces valid assembly | Basic compilation |
 | `return42.c` → binary → `v6emul`: halts with 42 in A | End-to-end correctness |
 | `long long x;` produces warning/error | Language restriction |
 | `float f;` produces warning | Soft-float diagnostic |
-| `__builtin_v6c_in(0x03)` emits `IN 03H` | Intrinsic mapping |
-| `__builtin_v6c_out(0x02, val)` emits `OUT 02H` | Intrinsic mapping |
-| `__builtin_v6c_di()` emits `DI` | Intrinsic mapping |
-| `__builtin_v6c_hlt()` emits `HLT` | Intrinsic mapping |
+| `__builtin_v6clang_in(0x03)` emits `IN 03H` | Intrinsic mapping |
+| `__builtin_v6clang_out(0x02, val)` emits `OUT 02H` | Intrinsic mapping |
+| `__builtin_v6clang_di()` emits `DI` | Intrinsic mapping |
+| `__builtin_v6clang_hlt()` emits `HLT` | Intrinsic mapping |
 | `sizeof(int) == 2`, `sizeof(long) == 4`, `sizeof(void*) == 2` in compiled code | Type sizes |
 
 #### M9.3 Tests — Integration
 
 | Test File | Description |
 |-----------|-------------|
-| `tests/integration/hello_v6c.c` | Writes a value to an I/O port. Compile via Clang, run in `v6emul`, verify port output. |
+| `tests/integration/hello_v6clang.c` | Writes a value to an I/O port. Compile via Clang, run in `v6emul`, verify port output. |
 | `tests/integration/fibonacci.c` | Computes fib(N). Full C → binary → `v6emul` round-trip. |
 
 #### M9.4 Verification
 
-- `clang -target i8080-unknown-v6c` accepts standard freestanding C.
+- `clang -target i8080-unknown-v6clang` accepts standard freestanding C.
 - Type sizes match design §2.3.
 - All 6 intrinsics produce the correct single-instruction output.
 - Compiled programs execute correctly in `v6emul`.
 
 #### M9.5 Documentation
 
-- `[x]` `docs/V6CBuildGuide.md` — update with Clang usage, intrinsics, language restrictions.
+- `[x]` `docs/V6ClangBuildGuide.md` — update with Clang usage, intrinsics, language restrictions.
 
 ---
 
@@ -761,19 +761,19 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 **Goal**: Multiple `.c` / `.ll` files compile and link into a single flat binary. Symbol resolution across translation units works correctly.
 
-**Implementation notes**: Used ELF32 LE object format (via MC layer with `-filetype=obj`) instead of a custom format. Linker implemented as Python tool `scripts/v6c_link.py` instead of C++ in `lld/V6C/`. Custom ELF relocation types `R_V6C_8` (1) and `R_V6C_16` (2) defined in `V6CFixupKinds.h`. Clang driver updated to invoke the Python linker.
+**Implementation notes**: Used ELF32 LE object format (via MC layer with `-filetype=obj`) instead of a custom format. Linker implemented as Python tool `scripts/v6clang_link.py` instead of C++ in `lld/V6CLANG/`. Custom ELF relocation types `R_V6CLANG_8` (1) and `R_V6CLANG_16` (2) defined in `V6ClangFixupKinds.h`. Clang driver updated to invoke the Python linker.
 
 #### M10.1 Steps
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | ELF relocation types: added `R_V6C_8`, `R_V6C_16` to `V6CFixupKinds.h`; updated `V6CAsmBackend.cpp` to emit them. MC layer produces standard ELF32 `.o` files. | `[x]` |
-| 2 | Created `scripts/v6c_link.py`: reads ELF `.o` files, resolves symbols (global/weak/local), lays out sections, applies relocations, emits flat binary. | `[x]` |
+| 1 | ELF relocation types: added `R_V6CLANG_8`, `R_V6CLANG_16` to `V6ClangFixupKinds.h`; updated `V6ClangAsmBackend.cpp` to emit them. MC layer produces standard ELF32 `.o` files. | `[x]` |
+| 2 | Created `scripts/v6clang_link.py`: reads ELF `.o` files, resolves symbols (global/weak/local), lays out sections, applies relocations, emits flat binary. | `[x]` |
 | 3 | Section ordering in linker: `.text` → `.rodata` → `.data` → `.bss` per design §9.4 memory layout. | `[x]` |
 | 4 | Address relocation: absolute addresses adjusted to configured base address (`--base` flag). | `[x]` |
 | 5 | Size validation: total size ≤ 65536, linker error on overflow. | `[x]` |
 | 6 | Memory map file output (`--map` flag): lists sections, symbols, and sizes. | `[x]` |
-| 7 | Clang driver (`V6C.cpp`) updated to invoke `python v6c_link.py` with proper args for `-Wl,` and `-Xlinker` options. | `[x]` |
+| 7 | Clang driver (`V6Clang.cpp`) updated to invoke `python v6clang_link.py` with proper args for `-Wl,` and `-Xlinker` options. | `[x]` |
 
 #### M10.2 Tests
 
@@ -802,7 +802,7 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 #### M10.5 Documentation
 
-- `[x]` `docs/V6CBuildGuide.md` — linker usage documented via test examples and `--help` in v6c_link.py.
+- `[x]` `docs/V6ClangBuildGuide.md` — linker usage documented via test examples and `--help` in v6clang_link.py.
 
 ---
 
@@ -815,14 +815,14 @@ Record baseline and optimized cycle counts in `tests/benchmarks/results.md`. Fai
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Write `compiler-rt/lib/builtins/v6c/crt0.s`: set SP to 0xFFFF, zero `.bss`, call `_main`, `HLT`. Assemble with `v6asm`, test with `v6emul`. | `[x]` |
+| 1 | Write `compiler-rt/lib/builtins/v6clang/crt0.s`: set SP to 0xFFFF, zero `.bss`, call `_main`, `HLT`. Assemble with `v6asm`, test with `v6emul`. | `[x]` |
 | 2 | Write `mulhi3.s`: 16×16→16 unsigned multiply. Test standalone with `v6emul`. | `[x]` |
 | 3 | Write `mulsi3.s`: 16×16→32 multiply. Test standalone. | `[x]` |
 | 4 | Write `divhi3.s` + `modhi3.s`: signed 16÷16→16 division and remainder. Test standalone. | `[x]` |
 | 5 | Write `udivhi3.s` + `umodhi3.s`: unsigned variants. Test standalone. | `[x]` |
 | 6 | Write `shift.s`: `__ashlhi3`, `__ashrhi3`, `__lshrhi3` for variable-count 16-bit shifts. Test standalone. | `[x]` |
 | 7 | Write `memory.s`: `memcpy`, `memset`, `memmove`. Test standalone. | `[x]` |
-| 8 | Wire all functions into `V6CISelLowering` libcall table: `RTLIB::MUL_I16` → `__mulhi3`, etc. i8 ops Promote to i16. | `[x]` |
+| 8 | Wire all functions into `V6ClangISelLowering` libcall table: `RTLIB::MUL_I16` → `__mulhi3`, etc. i8 ops Promote to i16. | `[x]` |
 | 9 | Write lit tests verifying correct libcall emission for `*`, `/`, `%` and variable shifts (i8 and i16). | `[x]` |
 
 #### M11.2 Tests — Standalone (per function)
@@ -864,21 +864,21 @@ Each runtime function gets a standalone test assembled with `v6asm` and executed
 
 #### M11.5 Verification
 
-- All runtime functions conform to `V6C_CConv`: arguments in correct registers, results in correct registers, no callee-saved registers assumed.
+- All runtime functions conform to `V6CLANG_CConv`: arguments in correct registers, results in correct registers, no callee-saved registers assumed.
 - All standalone tests pass in `v6emul`.
 - Compiler-emitted calls to runtime functions produce correct results.
 - `memcpy` uses SP-trick for copies ≥6 bytes (verify via disassembly).
 
 #### M11.6 Documentation
 
-- `[x]` `docs/V6CArchitecture.md` — runtime library section: functions, ABI compliance, performance notes.
+- `[x]` `docs/V6ClangArchitecture.md` — runtime library section: functions, ABI compliance, performance notes.
 
 ---
 
 ### M12 — End-to-End Validation & Performance
 `[x]` **Status: Complete**
 
-**Goal**: Full pipeline validated: C source → Clang → LLVM IR → V6C backend → flat binary → `v6emul`. Performance benchmarks baselined. All documentation complete.
+**Goal**: Full pipeline validated: C source → Clang → LLVM IR → V6CLANG backend → flat binary → `v6emul`. Performance benchmarks baselined. All documentation complete.
 
 #### M12.1 Steps
 
@@ -899,7 +899,7 @@ Each runtime function gets a standalone test assembled with `v6asm` and executed
 
 | Test File | Description |
 |-----------|-------------|
-| `hello_v6c.c` | I/O port write. Verify port output in `v6emul`. |
+| `hello_v6clang.c` | I/O port write. Verify port output in `v6emul`. |
 | `fibonacci.c` | Compute fib(N) for N=1..20. Verify results. |
 | `memcpy_benchmark.c` | Copy blocks of various sizes. Verify correctness and measure cycles. |
 | `sort_bubble.c` | Bubble sort an 8-element i8 array. Verify sorted order. |
@@ -912,7 +912,7 @@ Each runtime function gets a standalone test assembled with `v6asm` and executed
 
 | Program | Cycle Count | Notes |
 |---------|-------------|-------|
-| `hello_v6c` | 116cc | I/O port writes |
+| `hello_v6clang` | 116cc | I/O port writes |
 | `fibonacci(20)` | 14,376cc | 3-phi iterative loop |
 | `array_sum(8)` | 7,188cc | Ptr arithmetic + byte loads |
 | `global_init` | 404cc | 16-bit read/write via ptr |
@@ -938,9 +938,9 @@ The following must hold for the milestone to be considered complete:
 #### M12.5 Documentation — Final
 
 - `[x]` `docs/README.md` — finalize: architecture, usage, limitations, examples.
-- `[x]` `docs/V6CCallingConvention.md` — finalize with tested examples.
-- `[x]` `docs/V6COptimization.md` — finalize with measured performance data.
-- `[x]` `docs/V6CInstructionTimings.md` — finalize, cross-reference with benchmark results.
+- `[x]` `docs/V6ClangCallingConvention.md` — finalize with tested examples.
+- `[x]` `docs/V6ClangOptimization.md` — finalize with measured performance data.
+- `[x]` `docs/V6ClangInstructionTimings.md` — finalize, cross-reference with benchmark results.
 - `[x]` `README.md` — project root: quick start, build instructions, test instructions, supported C subset.
 
 ---
@@ -952,12 +952,12 @@ The following must hold for the milestone to be considered complete:
 | Category | Location | Tool Chain | When Run |
 |----------|----------|------------|----------|
 | Golden (emulator trust) | `tests/golden/` | `v6asm` → `v6emul` | M0, then every milestone |
-| TableGen validation | `tests/lit/MC/V6C/` | `llvm-tblgen` | M2+ |
-| Instruction encoding | `tests/lit/MC/V6C/encoding.s` | `llvm-mc` + `FileCheck` | M2+ |
-| ISel (FileCheck) | `tests/lit/CodeGen/V6C/` | `llc` + `FileCheck` | M4+ |
-| Calling convention | `tests/lit/CodeGen/V6C/call-conv*.ll` | `llc` + `FileCheck` | M5+ |
-| Binary encoding | `tests/lit/MC/V6C/relocations.s` | `llc` + byte-diff vs `v6asm` | M6+ |
-| Optimization passes | `tests/lit/CodeGen/V6C/<pass>.ll` | `llc` + `FileCheck` | M8+ |
+| TableGen validation | `tests/lit/MC/V6CLANG/` | `llvm-tblgen` | M2+ |
+| Instruction encoding | `tests/lit/MC/V6CLANG/encoding.s` | `llvm-mc` + `FileCheck` | M2+ |
+| ISel (FileCheck) | `tests/lit/CodeGen/V6CLANG/` | `llc` + `FileCheck` | M4+ |
+| Calling convention | `tests/lit/CodeGen/V6CLANG/call-conv*.ll` | `llc` + `FileCheck` | M5+ |
+| Binary encoding | `tests/lit/MC/V6CLANG/relocations.s` | `llc` + byte-diff vs `v6asm` | M6+ |
+| Optimization passes | `tests/lit/CodeGen/V6CLANG/<pass>.ll` | `llc` + `FileCheck` | M8+ |
 | Unit tests (C) | `tests/unit/` | `clang` → `v6asm` → `v6emul` | M4+ |
 | Runtime standalone | `tests/runtime/` | `v6asm` → `v6emul` | M11 |
 | Integration tests | `tests/integration/` | `clang` → `v6emul` | M9+ |
@@ -972,7 +972,7 @@ All tests are runnable via a single command:
 python tests/run_all.py
 
 # Lit tests only
-lit tests/lit/ --v6c-llc=<path-to-llc>
+lit tests/lit/ --v6clang-llc=<path-to-llc>
 
 # Emulator tests only
 python tests/run_emulator_tests.py --v6emul=tools/v6emul --v6asm=tools/v6asm
@@ -1018,12 +1018,12 @@ python tests/run_emulator_tests.py --v6emul=tools/v6emul --v6asm=tools/v6asm
 | Document | Created | Updated | Finalized |
 |----------|---------|---------|-----------|
 | `docs/README.md` | M0 | M1, M3, M4, M5, M6, M7, M9, M10, M11 | M12 |
-| `docs/V6CArchitecture.md` | M0 | M4, M5, M9 | M12 |
-| `docs/V6CBuildGuide.md` | M0 | M1, M3, M6, M7 | M12 |
-| `docs/V6CProjectStructure.md` | M0 | M6, M7, M9 | M12 |
-| `docs/V6CInstructionTimings.md` | M2 | M8 | M12 |
-| `docs/V6CCallingConvention.md` | M5 | M9 | M12 |
-| `docs/V6COptimization.md` | M8 | M11 | M12 |
+| `docs/V6ClangArchitecture.md` | M0 | M4, M5, M9 | M12 |
+| `docs/V6ClangBuildGuide.md` | M0 | M1, M3, M6, M7 | M12 |
+| `docs/V6ClangProjectStructure.md` | M0 | M6, M7, M9 | M12 |
+| `docs/V6ClangInstructionTimings.md` | M2 | M8 | M12 |
+| `docs/V6ClangCallingConvention.md` | M5 | M9 | M12 |
+| `docs/V6ClangOptimization.md` | M8 | M11 | M12 |
 | `tests/golden/README.md` | M0 | — | — |
 | `tests/benchmarks/results.md` | M8 | M11, M12 | M12 |
 | `README.md` (project root) | — | — | M12 |

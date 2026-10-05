@@ -1,13 +1,13 @@
-O70 — Header-only V6C Math Runtime
+O70 — Header-only V6CLANG Math Runtime
 ====================================
 
 Goal
 ----
-Replace the libgcc-style `compiler-rt/lib/builtins/v6c/*.s` runtime with
-a header-only one (`v6c_arith.h`), auto-included by the V6C driver. Each
+Replace the libgcc-style `compiler-rt/lib/builtins/v6clang/*.s` runtime with
+a header-only one (`v6clang_arith.h`), auto-included by the V6CLANG driver. Each
 routine becomes per-TU `static noinline used` so:
   * IPRA recovers the actual clobber set per call site
-    (V6C's `getCallPreservedMask` is empty — no callee-saves)
+    (V6CLANG's `getCallPreservedMask` is empty — no callee-saves)
   * `--gc-sections` (now passed by the driver) prunes unused builtins
   * No multi-definition link errors across multi-TU programs
   * No external `.a` to ship — single header, end-user-friendly
@@ -23,7 +23,7 @@ they fuse to a single CALL.
 
 Test sources
 ------------
-v6llvmc.c (and equivalent c8080.c):
+v6clang.c (and equivalent c8080.c):
 
     #include <stdint.h>
 
@@ -71,9 +71,9 @@ main                 : ~30 instrs, all i16 args spilled to per-callee static slo
 Cycle profile dominated by static-stack spill traffic (LD (mem), HL).
 
 
-v6llvmc — BASELINE (pre-O70: i8 MUL = Promote, no header)
+v6clang — BASELINE (pre-O70: i8 MUL = Promote, no header)
 ---------------------------------------------------------
-v6llvmc_old.asm — `mul_u8`:
+v6clang_old.asm — `mul_u8`:
 
     mul_u8:
             MOV  H, A      ; widen via Promote (broken — duplicates op)
@@ -93,9 +93,9 @@ mul_u16/div_u16/mod_u16/shl_u16: thin shims (3-6 instrs) + JMP libcall.
 main: 19 instrs (loads + 5 libcall sites + spills).
 
 
-v6llvmc — O70 (auto-include header, MUL_I8 = LibCall to __mulqi3)
+v6clang — O70 (auto-include header, MUL_I8 = LibCall to __mulqi3)
 -----------------------------------------------------------------
-v6llvmc_new02.asm — `mul_u8`:
+v6clang_new02.asm — `mul_u8`:
 
     mul_u8:
             MOV  L, A
@@ -122,45 +122,45 @@ shl_u16  : __ashlhi3 ~150 cy   (5 shifts, n=4)
 
 Static size (ROM, after `--gc-sections`)
 ----------------------------------------
-v6llvmc.rom = 235 bytes (typical hello-style program with all 5 ops).
+v6clang.rom = 235 bytes (typical hello-style program with all 5 ops).
 Without --gc-sections it would be 421 bytes (every routine in the header
 gets emitted, then GC'd).
 
 
 What changed (compiler/driver)
 ------------------------------
-1. `compiler-rt/lib/builtins/v6c/include/v6c_arith.h` (new):
+1. `compiler-rt/lib/builtins/v6clang/include/v6clang_arith.h` (new):
    - 11 routines as `static __attribute__((noinline, used, naked))`.
    - Bodies ported from the existing .s files.
-   - Internal helpers `__v6c_udivmod16_body`, `__v6c_neg_hl_body`, etc.
+   - Internal helpers `__v6clang_udivmod16_body`, `__v6clang_neg_hl_body`, etc.
    - New: `__udivmodhi4`, `__divmodhi4` for fused divmod.
 
-2. `llvm/lib/Target/V6C/V6CISelLowering.cpp`:
+2. `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`:
    - `MUL i8` : Promote → LibCall.
    - `setLibcallName(RTLIB::MUL_I8,   "__mulqi3")`.
    - `SDIVREM/UDIVREM i16` : Expand → LibCall.
    - `setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4")` (+SDIVREM).
 
-3. `clang/lib/Driver/ToolChains/V6C.cpp`:
-   - `findV6CHeader()` helper alongside `findV6CRuntimeFile()`.
-   - `addClangTargetOptions` now emits `-include v6c_arith.h`.
+3. `clang/lib/Driver/ToolChains/V6Clang.cpp`:
+   - `findV6ClangHeader()` helper alongside `findV6ClangRuntimeFile()`.
+   - `addClangTargetOptions` now emits `-include v6clang_arith.h`.
    - `Linker::ConstructJob` now passes `--gc-sections` to ld.lld
      (works with the existing `-ffunction-sections`).
 
 4. `clang/include/clang/Driver/Options.td`:
-   - `-fno-v6c-auto-include` to suppress auto-inclusion (advanced users
+   - `-fno-v6clang-auto-include` to suppress auto-inclusion (advanced users
      who supply their own runtime).
 
 5. ISel + libcall test coverage:
-   - `llvm/test/CodeGen/V6C/i8_mul_libcall.ll`     — i8 MUL → __mulqi3.
-   - `llvm/test/CodeGen/V6C/divmod-fusion.ll`      — udiv+urem fuse.
-   - `llvm/test/CodeGen/V6C/mul-shift-i8.ll`       — updated (CHECK __mulqi3).
-   - `clang/test/Driver/v6c-auto-include.c`        — driver flag check.
-   - `tests/v6c_lib/linkage_smoke.c`               — links cleanly with
+   - `llvm/test/CodeGen/V6CLANG/i8_mul_libcall.ll`     — i8 MUL → __mulqi3.
+   - `llvm/test/CodeGen/V6CLANG/divmod-fusion.ll`      — udiv+urem fuse.
+   - `llvm/test/CodeGen/V6CLANG/mul-shift-i8.ll`       — updated (CHECK __mulqi3).
+   - `clang/test/Driver/v6clang-auto-include.c`        — driver flag check.
+   - `tests/v6clang_lib/linkage_smoke.c`               — links cleanly with
        all 5 operators present (518 bytes; 235 with --gc-sections).
-   - `tests/v6c_lib/divmod_combined.c`             — runtime divmod check.
-   - `tests/v6c_lib/optout.c`                      — confirms
-       `-fno-v6c-auto-include` produces ld.lld undefined-symbol errors.
+   - `tests/v6clang_lib/divmod_combined.c`             — runtime divmod check.
+   - `tests/v6clang_lib/optout.c`                      — confirms
+       `-fno-v6clang-auto-include` produces ld.lld undefined-symbol errors.
 
 
 Why this works (linkage discipline)

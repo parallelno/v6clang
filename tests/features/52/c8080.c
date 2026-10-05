@@ -1,9 +1,9 @@
 /* tests/features/52/c8080.c
  *
- * c8080 reference. Same shape as v6llvmc.c. c8080 has its own
+ * c8080 reference. Same shape as v6clang.c. c8080 has its own
  * builtin runtime so the same operators just work; we read the
  * generated asm to compare body length / CPU cycles against the
- * v6llvmc output.
+ * v6clang output.
  */
 
 typedef unsigned char  uint8_t;

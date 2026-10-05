@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-V6C models ordinary `CALL` as clobbering every general-purpose register and
+V6CLANG models ordinary `CALL` as clobbering every general-purpose register and
 `FLAGS`. During register allocation, any value live across a call must be
 spilled even when the callee only touches a small subset of registers.
 
@@ -25,7 +25,7 @@ traffic around the call sites.
 
 ### Desired behavior
 
-Enable LLVM's IPRA flow for V6C so direct calls can preserve registers that
+Enable LLVM's IPRA flow for V6CLANG so direct calls can preserve registers that
 the callee does not actually touch. For tiny leaf callees such as:
 
 ```c
@@ -41,13 +41,13 @@ such as `DE` to survive across the call without stack spills.
 ### Root cause
 
 The backend already attaches a call-preserved register mask in
-`V6CTargetLowering::LowerCall`, but the `CALL` instruction definition in
-`V6CInstrInfo.td` still carries explicit implicit-defs for `A, B, C, D, E, H,
+`V6ClangTargetLowering::LowerCall`, but the `CALL` instruction definition in
+`V6ClangInstrInfo.td` still carries explicit implicit-defs for `A, B, C, D, E, H,
 L, FLAGS`. Those hard clobbers are baked into every `MachineInstr`, so IPRA's
 register-mask narrowing has no effect.
 
-The second missing piece is that `V6CTargetMachine` does not override
-`useIPRA()`, so V6C never opts into IPRA by default.
+The second missing piece is that `V6ClangTargetMachine` does not override
+`useIPRA()`, so V6CLANG never opts into IPRA by default.
 
 ## 2. Strategy
 
@@ -55,17 +55,17 @@ The second missing piece is that `V6CTargetMachine` does not override
 
 Implement the feature in three backend steps:
 
-1. Change `CALL` in `V6CInstrInfo.td` to define only `SP`.
-2. Override `V6CTargetMachine::useIPRA()` to return `true`.
-3. Audit all V6C call creation paths to ensure they carry a register mask and
+1. Change `CALL` in `V6ClangInstrInfo.td` to define only `SP`.
+2. Override `V6ClangTargetMachine::useIPRA()` to return `true`.
+3. Audit all V6CLANG call creation paths to ensure they carry a register mask and
    add a regression test that proves spill removal on direct calls while
    preserving conservative behavior for unknown callees.
 
 ### Why this works
 
 - `LowerCall` already attaches `TRI->getCallPreservedMask(...)`, so ordinary
-  V6C calls already have the mechanism IPRA expects.
-- `V6CRegisterInfo::getCallPreservedMask()` returning all-zero remains the
+  V6CLANG calls already have the mechanism IPRA expects.
+- `V6ClangRegisterInfo::getCallPreservedMask()` returning all-zero remains the
   correct conservative default for external calls or any call without IPRA
   data.
 - Once `CALL` stops advertising hard register defs, register allocation can use
@@ -75,11 +75,11 @@ Implement the feature in three backend steps:
 
 | Step | What | Where |
 |------|------|-------|
-| 3.1 | Remove hard GPR/FLAGS defs from `CALL` | `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td` |
-| 3.2 | Enable IPRA by default | `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.h` |
-| 3.3 | Audit call builders and document mask assumptions | `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`, `llvm-project/llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`, `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp` |
+| 3.1 | Remove hard GPR/FLAGS defs from `CALL` | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` |
+| 3.2 | Enable IPRA by default | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h` |
+| 3.3 | Audit call builders and document mask assumptions | `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`, `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`, `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` |
 | 3.4 | Build | — |
-| 3.5 | Lit test | `tests/lit/CodeGen/V6C/ipra-call-preservation.ll` |
+| 3.5 | Lit test | `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll` |
 | 3.6 | Run regression tests | — |
 | 3.7 | Verification assembly | `tests/features/19/` |
 | 3.8 | Create `result.txt` | `tests/features/19/result.txt` |
@@ -89,7 +89,7 @@ Implement the feature in three backend steps:
 
 ### Step 3.1 — Remove hard non-SP defs from `CALL` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
 Change the ordinary `CALL` definition from:
 
@@ -108,13 +108,13 @@ Leave conditional calls as-is; they already only define `SP`.
 > **Design Notes**: The backend currently has no `CALL_INDIRECT` definition, so
 > the only direct change needed in TableGen is `CALL`.
 
-> **Implementation Notes**: Updated `CALL` in `V6CInstrInfo.td` to define only
+> **Implementation Notes**: Updated `CALL` in `V6ClangInstrInfo.td` to define only
 > `SP`. Conditional calls already matched the desired model and were left
 > unchanged.
 
 ### Step 3.2 — Enable IPRA in the target machine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.h`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h`
 
 Add:
 
@@ -122,41 +122,41 @@ Add:
 bool useIPRA() const override { return true; }
 ```
 
-This makes IPRA active for normal optimized V6C builds without requiring users
+This makes IPRA active for normal optimized V6CLANG builds without requiring users
 to pass `-mllvm -enable-ipra` manually.
 
 > **Design Notes**: The LLVM command-line flag should still override the target
 > default, so users can disable IPRA explicitly when debugging.
 
 > **Implementation Notes**: Added `useIPRA() const override { return true; }`
-> in `V6CTargetMachine.h`. This enables IPRA by default while still allowing
+> in `V6ClangTargetMachine.h`. This enables IPRA by default while still allowing
 > `-enable-ipra=false` to force conservative behavior.
 
-### Step 3.3 — Audit V6C call creation and mask propagation [x]
+### Step 3.3 — Audit V6CLANG call creation and mask propagation [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
-- `llvm-project/llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`
-- `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Verify and document the concrete call creation paths:
 
 1. `LowerCall` appends `DAG.getRegisterMask(...)` to every ordinary call node.
-2. `V6CISD::CALL` selection forwards that register mask to the `CALL`
+2. `V6ClangISD::CALL` selection forwards that register mask to the `CALL`
    `MachineInstr` unchanged.
-3. No other V6C path builds a raw `CALL` `MachineInstr` without a mask.
+3. No other V6CLANG path builds a raw `CALL` `MachineInstr` without a mask.
 
 If an uncovered path exists, patch it so every ordinary call stays conservative
 without IPRA data and can be narrowed by IPRA when data exists.
 
-> **Design Notes**: The nearby `BuildMI(... V6C_TAILJMP ...)` tail-call peephole
+> **Design Notes**: The nearby `BuildMI(... V6CLANG_TAILJMP ...)` tail-call peephole
 > does not create a `CALL`, so it is outside the IPRA risk surface.
 
-> **Implementation Notes**: Audited the V6C backend call paths. `LowerCall`
-> appends `DAG.getRegisterMask(...)`, and `V6CISD::CALL` selection forwards that
-> operand unchanged to the machine `CALL`. No raw `BuildMI(... V6C::CALL ...)`
-> sites were found in the V6C backend. The nearby tail-call peephole emits
-> `V6C_TAILJMP`, not `CALL`, so no additional code change was needed.
+> **Implementation Notes**: Audited the V6CLANG backend call paths. `LowerCall`
+> appends `DAG.getRegisterMask(...)`, and `V6ClangISD::CALL` selection forwards that
+> operand unchanged to the machine `CALL`. No raw `BuildMI(... V6CLANG::CALL ...)`
+> sites were found in the V6CLANG backend. The nearby tail-call peephole emits
+> `V6CLANG_TAILJMP`, not `CALL`, so no additional code change was needed.
 
 ### Step 3.4 — Build [x]
 
@@ -169,7 +169,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: direct-call IPRA spill removal [x]
 
-**File**: `tests/lit/CodeGen/V6C/ipra-call-preservation.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll`
 
 Add focused coverage for:
 
@@ -183,7 +183,7 @@ Add focused coverage for:
 Use `CHECK` lines to verify the direct-call case loses stack-frame spill code
 around `CALL` while the conservative case still retains it.
 
-> **Implementation Notes**: Added `tests/lit/CodeGen/V6C/ipra-call-preservation.ll`.
+> **Implementation Notes**: Added `tests/lit/CodeGen/V6CLANG/ipra-call-preservation.ll`.
 > The test covers three cases in one file: direct internal call with IPRA,
 > conservative external call with IPRA, and direct-call fallback with
 > `-enable-ipra=false`. Verified with a focused `llvm-lit.py` run.
@@ -200,7 +200,7 @@ python tests\run_all.py
 ### Step 3.7 — Verification assembly steps from `tests\features\README.md` [x]
 
 Compile the feature case under `tests/features/19/` and compare
-`v6llvmc_old.asm` vs `v6llvmc_new01.asm`.
+`v6clang_old.asm` vs `v6clang_new01.asm`.
 
 Validation target:
 
@@ -210,7 +210,7 @@ Validation target:
   surviving across the direct calls.
 
 > **Implementation Notes**: Recompiled the feature case to
-> `tests/features/19/v6llvmc_new01.asm`. Both `test_ne_same_bytes` and
+> `tests/features/19/v6clang_new01.asm`. Both `test_ne_same_bytes` and
 > `test_eq_same_bytes` dropped the stack frame and all spill/reload traffic
 > around the direct calls. The resulting body is `MOV D,H; MOV E,L;` compare,
 > two `CALL`s, `XCHG`, `RET`.
@@ -221,12 +221,12 @@ Follow `tests\features\README.md` and include:
 
 - The C test source.
 - Relevant `c8080` assembly.
-- Relevant `v6llvmc` before/after assembly.
+- Relevant `v6clang` before/after assembly.
 - Cycle and byte counts for the affected functions.
 
 > **Implementation Notes**: Created `tests/features/19/result.txt` with the C
 > source, relevant `c8080` assembly converted to i8080 syntax, before/after
-> `v6llvmc` assembly, and byte/cycle deltas for the two improved functions.
+> `v6clang` assembly, and byte/cycle deltas for the two improved functions.
 
 ### Step 3.9 — Sync mirror [x]
 
@@ -262,7 +262,7 @@ features even need to act.
 
 | Risk | Mitigation |
 |------|------------|
-| A call path emits `CALL` without a register mask | Audit all V6C call builders before enabling the feature broadly |
+| A call path emits `CALL` without a register mask | Audit all V6CLANG call builders before enabling the feature broadly |
 | Removing hard defs hides a real clobber | Keep the default call-preserved mask fully conservative; only IPRA narrows it |
 | IPRA does not propagate for recursive / external cases | Accept conservative behavior there and cover it in tests |
 | Tail-call or pseudo expansion accidentally bypasses the mask path later | Add a regression test and keep the audit notes in the plan / implementation comments |
@@ -281,11 +281,11 @@ features even need to act.
 ## 7. Future Enhancements
 
 - ~~Add targeted MIR or llc coverage for recursive SCC cases once IPRA is working.~~
-  Done — `tests/lit/CodeGen/V6C/ipra-recursive-scc.ll` covers mutual-recursion
+  Done — `tests/lit/CodeGen/V6CLANG/ipra-recursive-scc.ll` covers mutual-recursion
   SCC conservative behavior and contrasts it with leaf-call IPRA narrowing.
-- ~~Consider adding a debug-only verifier check that V6C `CALL` instructions carry
+- ~~Consider adding a debug-only verifier check that V6CLANG `CALL` instructions carry
   a register mask after instruction selection.~~
-  Done — `V6CCallRegMaskVerifier` in `V6CTargetMachine.cpp` runs pre-RA under
+  Done — `V6ClangCallRegMaskVerifier` in `V6ClangTargetMachine.cpp` runs pre-RA under
   `#ifndef NDEBUG`, asserting every `isCall()` instruction has a `RegMask`
   operand.  Activates with `-DLLVM_ENABLE_ASSERTIONS=ON`; compiled out in
   release builds.
@@ -296,7 +296,7 @@ features even need to act.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O39 Design](design\future_plans\O39_ipra_integration.md)

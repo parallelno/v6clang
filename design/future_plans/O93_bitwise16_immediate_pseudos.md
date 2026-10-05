@@ -1,7 +1,7 @@
-# Plan: O93 — V6C_AND16_IMM / V6C_OR16_IMM / V6C_XOR16_IMM (Immediate Bitwise 16)
+# Plan: O93 — V6CLANG_AND16_IMM / V6CLANG_OR16_IMM / V6CLANG_XOR16_IMM (Immediate Bitwise 16)
 
-> **Status: ✅ COMPLETE.** Implemented in `V6CInstrInfo.td` (3 pseudos +
-> patterns) and `V6CInstrInfo.cpp` (`expandPostRAPseudo` constant-in-A
+> **Status: ✅ COMPLETE.** Implemented in `V6ClangInstrInfo.td` (3 pseudos +
+> patterns) and `V6ClangInstrInfo.cpp` (`expandPostRAPseudo` constant-in-A
 > expansion with per-byte identity folding + dead-hi guard). Lit:
 > `bitwise16-imm.ll`. Feature test: `tests/features/77/`. lfsr16 benchmark:
 > 121 B → 90 B (−25.6%), 1,344,784 cc → 730,452 cc (−45.7%). All regression
@@ -12,15 +12,15 @@
 ### Current behavior
 
 A 16-bit bitwise op against a **compile-time constant** is lowered as a
-register/register `V6C_AND16` / `V6C_OR16` / `V6C_XOR16`. ISel must first
+register/register `V6CLANG_AND16` / `V6CLANG_OR16` / `V6CLANG_XOR16`. ISel must first
 materialise the constant into a scratch register **pair** with `LXI`, then run
 the 6-instruction pair-wise sequence.
 
-Example — `lfsr ^= 0xb400` from `tests/benchmarks_c/asm/v6llvmc_lfsr16_O2.s`:
+Example — `lfsr ^= 0xb400` from `tests/benchmarks_c/asm/v6clang_lfsr16_O2.s`:
 
 ```asm
 LXI   B, 0xb400        ; 12cc  3B   materialise constant into BC
-;--- V6C_XOR16 ---
+;--- V6CLANG_XOR16 ---
 MOV   A, L             ;  8cc  1B
 XRA   C                ;  4cc  1B
 MOV   C, A             ;  8cc  1B   (writes lo)
@@ -36,12 +36,12 @@ The `LXI` does two bad things:
 2. **Burns a whole register pair** (BC here) for the duration. On a machine
    with only HL / BC / DE this is the difference between fitting in registers
    and spilling. In the `lfsr16` hot loop this constant pair is exactly what
-   forces the surrounding `V6C_SPILL16` / `V6C_RELOAD16` pair.
+   forces the surrounding `V6CLANG_SPILL16` / `V6CLANG_RELOAD16` pair.
 
 ### Desired behavior
 
 ```asm
-;--- V6C_XOR16_IMM  (dst = src ^ 0xb400) ---
+;--- V6CLANG_XOR16_IMM  (dst = src ^ 0xb400) ---
 MVI   A, 0x00          ;  8cc  2B   lo byte of constant   (← see §2 folding)
 XRA   L                ;  4cc  1B   A = lo(src) ^ 0x00
 MOV   L, A             ;  8cc  1B
@@ -88,14 +88,14 @@ using the 4cc register form instead of the 8cc immediate form.
 
 ### Approach
 
-1. Add three new pseudos `V6C_AND16_IMM` / `V6C_OR16_IMM` / `V6C_XOR16_IMM`,
+1. Add three new pseudos `V6CLANG_AND16_IMM` / `V6CLANG_OR16_IMM` / `V6CLANG_XOR16_IMM`,
    each `(outs GR16:$dst), (ins GR16:$src, i16imm:$imm)`, `Defs = [A, FLAGS]`,
    `Constraints = "$dst = $src"`.
 2. ISel patterns match `(and/or/xor GR16:$src, imm:$imm)`. DAGCombine already
    canonicalises the constant to the RHS of commutative nodes, so a single
    RHS-immediate pattern per op suffices.
 3. Expand in `expandPostRAPseudo` (sibling to the existing
-   `V6C_AND16/OR16/XOR16` case) using the **constant-in-A** shape above, with
+   `V6CLANG_AND16/OR16/XOR16` case) using the **constant-in-A** shape above, with
    per-byte specialisation:
 
    | Op  | Byte == 0x00            | Byte == 0xFF            | else                         |
@@ -128,7 +128,7 @@ Code size per use is up to `MVI A,lo`(2B)+`MVI A,hi`(2B) = 4B vs reg/reg's
 one `LXI` via LICM and reusing a resident pair is smaller and equal-cc.
 
 Recommended bias: **default to `_IMM`** (register pressure almost always
-dominates on V6C), and only keep the reg/reg form when the constant pair is
+dominates on V6CLANG), and only keep the reg/reg form when the constant pair is
 loop-hoistable and there is provable free register pressure. For the first cut,
 emit `_IMM` unconditionally for constant RHS; revisit a cost heuristic only if a
 benchmark regresses on size.
@@ -137,9 +137,9 @@ benchmark regresses on size.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
-| `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
-| `llvm-project/llvm/test/CodeGen/V6C/bitwise16-imm.ll` | New lit test: all 3 ops × {generic, 0x00 byte, 0xFF byte, dead-hi} |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` | 3 new `_IMM` pseudos + ISel patterns |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` | New `expandPostRAPseudo` case: constant-in-A expansion + per-byte folding + dead-hi guard |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/bitwise16-imm.ll` | New lit test: all 3 ops × {generic, 0x00 byte, 0xFF byte, dead-hi} |
 | `tests/features/NN/` | Feature test: C source, baseline, new asm, result.txt |
 | `design/future_plans/O93_bitwise16_immediate_pseudos.md` | This plan; mark complete when done |
 | `design/future_plans/README.md` | Add ✅ O93 entry |
@@ -148,23 +148,23 @@ benchmark regresses on size.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add the three `_IMM` pseudos + patterns in V6CInstrInfo.td [ ]
+### Step 3.1 — Add the three `_IMM` pseudos + patterns in V6ClangInstrInfo.td [ ]
 
-In the `let Defs = [A, FLAGS]` block that holds `V6C_AND16/OR16/XOR16`, add
+In the `let Defs = [A, FLAGS]` block that holds `V6CLANG_AND16/OR16/XOR16`, add
 their immediate siblings:
 
 ```tablegen
-def V6C_AND16_IMM : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
+def V6CLANG_AND16_IMM : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
     "# AND16_IMM $dst, $src, $imm",
     [(set i16:$dst, (and i16:$src, imm:$imm))]> {
   let Constraints = "$dst = $src";
 }
-def V6C_OR16_IMM : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
+def V6CLANG_OR16_IMM : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
     "# OR16_IMM $dst, $src, $imm",
     [(set i16:$dst, (or i16:$src, imm:$imm))]> {
   let Constraints = "$dst = $src";
 }
-def V6C_XOR16_IMM : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
+def V6CLANG_XOR16_IMM : V6ClangPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
     "# XOR16_IMM $dst, $src, $imm",
     [(set i16:$dst, (xor i16:$src, imm:$imm))]> {
   let Constraints = "$dst = $src";
@@ -172,16 +172,16 @@ def V6C_XOR16_IMM : V6CPseudo<(outs GR16:$dst), (ins GR16:$src, i16imm:$imm),
 ```
 
 > **Design Notes**: Give the `_IMM` pattern a higher `AddedComplexity` than the
-> reg/reg `V6C_AND16` etc. so a constant RHS prefers `_IMM`. Confirm the reg/reg
+> reg/reg `V6CLANG_AND16` etc. so a constant RHS prefers `_IMM`. Confirm the reg/reg
 > patterns still match when RHS is a non-constant register. Check that no
 > existing pattern (e.g. an i8-narrowing fast path from O90) already captures
 > the small-constant case before it reaches here — O90 handles `C ≤ 0xFF`
 > zero-test-only narrowing; this plan targets full-width constants and
 > register-persistent results that O90 deliberately leaves at i16.
 
-### Step 3.2 — Expansion in V6CInstrInfo.cpp [ ]
+### Step 3.2 — Expansion in V6ClangInstrInfo.cpp [ ]
 
-Add a case next to `V6C_AND16/OR16/XOR16`. Reuse `DstLo/DstHi/SrcLo/SrcHi`
+Add a case next to `V6CLANG_AND16/OR16/XOR16`. Reuse `DstLo/DstHi/SrcLo/SrcHi`
 sub-register extraction. Pull the constant via `MI.getOperand(2).getImm()`,
 split into `Lo = Imm & 0xFF`, `Hi = (Imm >> 8) & 0xFF`. Pick `OpOpc`
 (`ANAr`/`ORAr`/`XRAr`). For each byte, apply the §2 folding table; emit the

@@ -2,7 +2,7 @@
 
 == C test case ==
 
-int bar(int x) { return x + 1; }  // extern in v6llvmc, concrete in c8080
+int bar(int x) { return x + 1; }  // extern in v6clang, concrete in c8080
 
 int test_ne_zero(int x) {
     if (x)
@@ -80,7 +80,7 @@ c8080 stats:
   test_const_42:        22B, 86-94cc  (uses __o_xor_16 helper: adds ~60cc)
   test_different_const: 22B, 86-94cc  (uses __o_xor_16 helper: adds ~60cc)
 
-== v6llvmc assembly ==
+== v6clang assembly ==
 
 test_ne_zero:                          ; if (x) return bar(x); return 0;
     MOV  A, H                   ; 1B   8cc
@@ -131,7 +131,7 @@ test_different_const:                  ; if (x == 1) return 0; return bar(x);
     RET                         ; 1B  12cc
                                 ; Total: 23B, ~76cc (no optimization, different consts)
 
-v6llvmc stats:
+v6clang stats:
   test_ne_zero:         9B,  36cc
   test_eq_zero:         9B,  36cc
   test_const_42:        16B, 36-48cc
@@ -139,7 +139,7 @@ v6llvmc stats:
 
 == Comparison (positive test functions only) ==
 
-| Function       | c8080     | v6llvmc (before) | v6llvmc (after) | Savings vs before |
+| Function       | c8080     | v6clang (before) | v6clang (after) | Savings vs before |
 |----------------|-----------|------------------|-----------------|-------------------|
 | test_ne_zero   | 12B, 68cc | 16B, ~72cc       | 9B, 36cc        | -7B, -36cc        |
 | test_eq_zero   | 15B, 68cc | 16B, ~72cc       | 9B, 36cc        | -7B, -36cc        |

@@ -1,4 +1,4 @@
-/* O89: Dead high-byte elision in V6C_AND16 / V6C_OR16 / V6C_XOR16
+/* O89: Dead high-byte elision in V6CLANG_AND16 / V6CLANG_OR16 / V6CLANG_XOR16
  *
  * Tests every pattern where a 16-bit bitwise op result is immediately
  * truncated to u8, so the high byte of the result is never used.

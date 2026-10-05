@@ -1,6 +1,6 @@
 # O83 — POP/PUSH Pair Elimination for Dead Register Pairs
 
-**Source:** V6C — observed in `tests/benchmarks_c/asm/v6llvmc_sieve_O2.s`
+**Source:** V6CLANG — observed in `tests/benchmarks_c/asm/v6clang_sieve_O2.s`
 **Savings:** 2 instructions, ~6B, 22cc per eliminated pair (POP = 10cc/1B, PUSH = 12cc/1B + 2B stack traffic)
 **Frequency:** Moderate — arises naturally when spill/reload pseudo lowering wraps a basic block operation that does not need the saved register pair
 **Complexity:** Low — single-pass forward scan within a basic block, liveness query
@@ -33,13 +33,13 @@ original value).  Since `rp` is dead after the `PUSH`, the register value
 itself is also irrelevant.  Both instructions are therefore dead and can be
 eliminated.
 
-### Concrete instances (`tests/benchmarks_c/asm/v6llvmc_sieve_O2.s`)
+### Concrete instances (`tests/benchmarks_c/asm/v6clang_sieve_O2.s`)
 
 **Case 1 — trivially adjacent POP/PUSH (lines 149–154)**
 
 ```asm
         POP  H               ; restore HL (lines 149–151: nothing between)
-;--- V6C_SPILL16 ---
+;--- V6CLANG_SPILL16 ---
         PUSH H               ; immediately save HL back — HL dead after
         MOV  L, C            ; HL is overwritten ⇒ HL dead at PUSH
         MOV  H, B
@@ -54,10 +54,10 @@ Both instructions can be removed.
 
 ```asm
         POP  H               ; restore HL
-;--- V6C_INX16 ---
+;--- V6CLANG_INX16 ---
         INX  H               ; ← reads AND writes HL  ✗
         INX  H               ; ← reads AND writes HL  ✗
-;--- V6C_RELOAD16 ---
+;--- V6CLANG_RELOAD16 ---
         PUSH H               ; save (modified) HL
 ```
 
@@ -69,9 +69,9 @@ the stack slot.
 
 ```asm
         POP  H               ; restore HL
-;--- V6C_INX16 ---
+;--- V6CLANG_INX16 ---
         INX  B               ; modifies BC, not HL  ✓
-;--- V6C_SPILL16 ---
+;--- V6CLANG_SPILL16 ---
         PUSH H               ; save HL back — HL dead after
         MOV  L, C
         MOV  H, B
@@ -115,7 +115,7 @@ All of the following must hold for the pair to be eliminated:
 
 ## Algorithm
 
-Implement inside the existing `V6CPeephole` pass (post-RA, single basic block
+Implement inside the existing `V6ClangPeephole` pass (post-RA, single basic block
 traversal).
 
 ```
@@ -177,7 +177,7 @@ moderate register pressure.
 
 ## Implementation Notes
 
-- Pair the scan with the existing `V6CPeephole` forward iterator so no
+- Pair the scan with the existing `V6ClangPeephole` forward iterator so no
   additional pass infrastructure is needed.
 - The "rp not used" scan can reuse the `LivePhysRegs::contains()` interface
   already used in O64 and O82.

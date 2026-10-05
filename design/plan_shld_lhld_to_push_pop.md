@@ -4,20 +4,20 @@
 
 ### Current behavior
 
-In static stack mode, `V6C_SPILL16 $hl` expands to `SHLD addr` (20cc, 3B)
-and `V6C_RELOAD16 $hl` expands to `LHLD addr` (20cc, 3B). When a spill
+In static stack mode, `V6CLANG_SPILL16 $hl` expands to `SHLD addr` (20cc, 3B)
+and `V6CLANG_RELOAD16 $hl` expands to `LHLD addr` (20cc, 3B). When a spill
 and its matching reload are nearby with no SP-affecting instructions between
 them, this costs 40cc and 6B for a round-trip save/restore.
 
 ```asm
 ; sumarray inner loop with --enable-deferred-spilling:
-SHLD  __v6c_ss.sumarray    ; 20cc 3B — spill sum (HL)
+SHLD  __v6clang_ss.sumarray    ; 20cc 3B — spill sum (HL)
 MOV   H, B
 MOV   L, C
 MOV   E, M
 INX   HL
 MOV   D, M
-LHLD  __v6c_ss.sumarray    ; 20cc 3B — reload sum (HL)
+LHLD  __v6clang_ss.sumarray    ; 20cc 3B — reload sum (HL)
                             ; total: 40cc, 6B
 ```
 
@@ -44,10 +44,10 @@ them with cheaper PUSH/POP.
 
 ## 2. Strategy
 
-### Approach: Post-expansion peephole in V6CPeepholePass
+### Approach: Post-expansion peephole in V6ClangPeepholePass
 
 Add a new method `foldShldLhldToPushPop(MachineBasicBlock &MBB)` to
-`V6CPeephole.cpp`. Single linear scan over each MBB: for each SHLD,
+`V6ClangPeephole.cpp`. Single linear scan over each MBB: for each SHLD,
 scan forward tracking SP delta. If a matching LHLD (same address) is
 found with SP delta == 0, replace both.
 
@@ -57,7 +57,7 @@ found with SP delta == 0, replace both.
   Semantically identical to SHLD/LHLD when SP returns to the same
   position and no one reads the static stack slot between them.
 - SP delta tracking handles intervening balanced PUSH/POP pairs.
-- `MI.modifiesRegister(V6C::SP, TRI)` catches all SP-affecting
+- `MI.modifiesRegister(V6CLANG::SP, TRI)` catches all SP-affecting
   instructions; the `else → abort` fallthrough is conservative.
 - CALL/Ccc/RST are net-zero (callee restores SP via RET).
 - DAD SP does not define SP, so `modifiesRegister` returns false.
@@ -66,15 +66,15 @@ found with SP delta == 0, replace both.
 
 | File | Change |
 |------|--------|
-| V6CPeephole.cpp | Add `foldShldLhldToPushPop()` method, call after `cancelAdjacentXchg` |
+| V6ClangPeephole.cpp | Add `foldShldLhldToPushPop()` method, call after `cancelAdjacentXchg` |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `foldShldLhldToPushPop()` to V6CPeephole.cpp [x]
+### Step 3.1 — Add `foldShldLhldToPushPop()` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a helper to compare SHLD/LHLD address operands, then the main method:
 
@@ -93,14 +93,14 @@ static bool isSameAddress(const MachineOperand &A, const MachineOperand &B) {
 
 /// Replace SHLD addr / LHLD addr pairs with PUSH HL / POP HL when
 /// the pair is in the same basic block with SP delta == 0 at the LHLD.
-bool V6CPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
   bool Changed = false;
   const TargetRegisterInfo *TRI =
       MBB.getParent()->getSubtarget().getRegisterInfo();
   const TargetInstrInfo &TII = *MBB.getParent()->getSubtarget().getInstrInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() != V6C::SHLD)
+    if (I->getOpcode() != V6CLANG::SHLD)
       continue;
 
     const MachineOperand &ShldAddr = I->getOperand(1);
@@ -114,7 +114,7 @@ bool V6CPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
         continue;
 
       // Check for matching LHLD.
-      if (J->getOpcode() == V6C::LHLD &&
+      if (J->getOpcode() == V6CLANG::LHLD &&
           isSameAddress(ShldAddr, J->getOperand(1))) {
         if (SPDelta == 0) {
           MatchIt = J;
@@ -126,18 +126,18 @@ bool V6CPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
       }
 
       // Abort on re-spill to same address.
-      if (J->getOpcode() == V6C::SHLD &&
+      if (J->getOpcode() == V6CLANG::SHLD &&
           isSameAddress(ShldAddr, J->getOperand(1))) {
         Abort = true;
         break;
       }
 
       // SP delta tracking.
-      if (J->modifiesRegister(V6C::SP, TRI)) {
+      if (J->modifiesRegister(V6CLANG::SP, TRI)) {
         unsigned Opc = J->getOpcode();
-        if (Opc == V6C::PUSH) {
+        if (Opc == V6CLANG::PUSH) {
           SPDelta -= 2;
-        } else if (Opc == V6C::POP) {
+        } else if (Opc == V6CLANG::POP) {
           SPDelta += 2;
           if (SPDelta > 0) { Abort = true; break; }
         } else if (J->isCall()) {
@@ -154,10 +154,10 @@ bool V6CPeephole::foldShldLhldToPushPop(MachineBasicBlock &MBB) {
       continue;
 
     // Replace SHLD with PUSH HL.
-    BuildMI(MBB, *I, I->getDebugLoc(), TII.get(V6C::PUSH))
-        .addReg(V6C::HL);
+    BuildMI(MBB, *I, I->getDebugLoc(), TII.get(V6CLANG::PUSH))
+        .addReg(V6CLANG::HL);
     // Replace LHLD with POP HL.
-    BuildMI(MBB, *MatchIt, MatchIt->getDebugLoc(), TII.get(V6C::POP), V6C::HL);
+    BuildMI(MBB, *MatchIt, MatchIt->getDebugLoc(), TII.get(V6CLANG::POP), V6CLANG::HL);
 
     MatchIt->eraseFromParent();
     I = MBB.erase(I);
@@ -190,7 +190,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `shld-lhld-push-pop-peephole.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/shld-lhld-push-pop-peephole.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/shld-lhld-push-pop-peephole.ll`
 
 Positive test: function with short-lived HL spill between non-SP instructions.
 Verify SHLD/LHLD are replaced with PUSH HL/POP HL.
@@ -278,7 +278,7 @@ None identified.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O43 Design](design\future_plans\O43_shld_lhld_to_push_pop.md)

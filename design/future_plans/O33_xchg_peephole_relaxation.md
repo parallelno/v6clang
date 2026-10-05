@@ -1,11 +1,11 @@
 # O33. XCHG Peephole Relaxation (Drop isRegLiveBefore Guard)
 
 *Identified from investigation of missed XCHG in test_null_guard (O30 feature test).*
-*The existing V6CXchgOpt pass is overly conservative.*
+*The existing V6ClangXchgOpt pass is overly conservative.*
 
 ## Problem
 
-The existing V6CXchgOpt post-RA peephole detects `MOV D,H; MOV E,L` (and
+The existing V6ClangXchgOpt post-RA peephole detects `MOV D,H; MOV E,L` (and
 reverse) patterns and replaces them with `XCHG`. However, it requires **two**
 conditions to both hold:
 
@@ -21,7 +21,7 @@ destination is harmless.
 
 ### Example: `test_null_guard` bb.2
 
-MIR before V6CXchgOpt:
+MIR before V6ClangXchgOpt:
 ```
 bb.2:
   liveins: $de            ; ← HL is NOT a livein
@@ -30,7 +30,7 @@ bb.2:
   RET implicit $hl        ; ← only HL is read, DE is dead
 ```
 
-V6CXchgOpt checks:
+V6ClangXchgOpt checks:
 - `isRegLiveBefore(HL)` → **false** (HL not in liveins, not defined before) → **BAIL**
 - `isRegDeadAfter(DE)` → true (RET only reads HL)
 
@@ -43,7 +43,7 @@ O32 (XCHG in copyPhysReg) handles RA-inserted copies where `KillSrc=true`.
 O33 catches remaining cases:
 
 - **MOV pairs from `expandPostRAPseudos()`**: Pseudo-instruction expansion
-  (e.g., `V6C_LOAD16_P`, `V6C_STORE16_P`) emits MOV pairs to copy addresses
+  (e.g., `V6CLANG_LOAD16_P`, `V6CLANG_STORE16_P`) emits MOV pairs to copy addresses
   to/from HL. These bypass `copyPhysReg` entirely.
 - **Late-dead sources**: RA copies where `KillSrc=false` at allocation time,
   but later post-RA passes remove the last use of the source, making it dead.
@@ -59,7 +59,7 @@ from pseudo-expansion and late-dead scenarios. Estimated: 0-1 per function.
 
 ### Location
 
-`V6CXchgOpt::tryXchg()` in `V6CXchgOpt.cpp` (lines 113-182).
+`V6ClangXchgOpt::tryXchg()` in `V6ClangXchgOpt.cpp` (lines 113-182).
 
 ### Change
 
@@ -67,9 +67,9 @@ For each of the 4 patterns, change the logic from:
 
 ```cpp
 // Current: require BOTH conditions
-if (!isRegLiveBefore(MBB, I, V6C::DE, TRI))
+if (!isRegLiveBefore(MBB, I, V6CLANG::DE, TRI))
   return false;
-if (!isRegDeadAfter(MBB, Next, V6C::HL, TRI))
+if (!isRegDeadAfter(MBB, Next, V6CLANG::HL, TRI))
   return false;
 ```
 
@@ -79,7 +79,7 @@ To:
 // Relaxed: only require the "other" pair to be dead after.
 // If it's dead after, the swap side-effect is harmless regardless of
 // whether the source was defined.
-if (!isRegDeadAfter(MBB, Next, V6C::HL, TRI))
+if (!isRegDeadAfter(MBB, Next, V6CLANG::HL, TRI))
   return false;
 ```
 
@@ -97,7 +97,7 @@ other code references it.
 - Compile `test_null_guard` without O32 and verify XCHG appears
 - With both O32 and O33 enabled, verify no regressions
 - Run full lit + golden regression suite
-- Verify V6CXchgOpt still does NOT apply XCHG when the "other" pair is
+- Verify V6ClangXchgOpt still does NOT apply XCHG when the "other" pair is
   live after (negative test case)
 
 ### Risks

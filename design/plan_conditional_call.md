@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-The V6C backend emits a branch-over-call sequence for `if (c) foo();`:
+The V6CLANG backend emits a branch-over-call sequence for `if (c) foo();`:
 
 ```asm
 ; if (c) foo();
@@ -17,8 +17,8 @@ The V6C backend emits a branch-over-call sequence for `if (c) foo();`:
 
 The 8080 has dedicated conditional CALL opcodes (`CNZ`/`CZ`/`CC`/`CNC`/
 `CP`/`CM`/`CPE`/`CPO`) that fuse the test and call in one instruction.
-They are defined in `V6CInstrInfo.td` (lines 470-481) but **no pass ever
-emits them** — confirmed by grep for `V6C::CNZ`/`V6C::CZ` etc.
+They are defined in `V6ClangInstrInfo.td` (lines 470-481) but **no pass ever
+emits them** — confirmed by grep for `V6CLANG::CNZ`/`V6CLANG::CZ` etc.
 
 ### Desired behavior
 
@@ -38,16 +38,16 @@ Saves **3 bytes** unconditionally and **12cc** when the call is taken
 
 No pass scans for the `Jcc skip / CALL fn / skip:` pattern. Sister
 patterns are landed (`foldConditionalReturns`, `invertConditionalOverRET`,
-`eliminateTailCall` cross-block in `V6CPeephole`); only conditional
+`eliminateTailCall` cross-block in `V6ClangPeephole`); only conditional
 CALL is missing.
 
 ---
 
 ## 2. Strategy
 
-### Approach: New `foldConditionalCalls` in `V6CBranchOpt`
+### Approach: New `foldConditionalCalls` in `V6ClangBranchOpt`
 
-Add a post-RA fold to `V6CBranchOpt.cpp`, alongside
+Add a post-RA fold to `V6ClangBranchOpt.cpp`, alongside
 `foldConditionalReturns` and `invertConditionalOverRET`. The pattern:
 
 ```
@@ -101,10 +101,10 @@ removed.
 
 | Step | What | Where |
 |------|------|-------|
-| `getConditionalCall` | Map Jcc opcode → Cxx (inverted) opcode | V6CBranchOpt.cpp |
-| `foldConditionalCalls` | Detect & rewrite Jcc-over-CALL pattern | V6CBranchOpt.cpp |
-| Wire into runOnMachineFunction | Order: after threadJMPOnlyBlocks | V6CBranchOpt.cpp |
-| Lit test | `conditional-call.ll` | tests/lit/CodeGen/V6C/ |
+| `getConditionalCall` | Map Jcc opcode → Cxx (inverted) opcode | V6ClangBranchOpt.cpp |
+| `foldConditionalCalls` | Detect & rewrite Jcc-over-CALL pattern | V6ClangBranchOpt.cpp |
+| Wire into runOnMachineFunction | Order: after threadJMPOnlyBlocks | V6ClangBranchOpt.cpp |
+| Lit test | `conditional-call.ll` | tests/lit/CodeGen/V6CLANG/ |
 | Feature test | `tests/features/49/` | tests/features/ |
 | Update README | Mark O15 ✅ | design/future_plans/README.md |
 
@@ -114,7 +114,7 @@ removed.
 
 ### Step 3.1 — Add `getConditionalCall` mapping helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
 
 Static helper next to `getConditionalReturn`:
 
@@ -125,14 +125,14 @@ Static helper next to `getConditionalReturn`:
 /// the inverse predicate.
 static unsigned getConditionalCall(unsigned JccOpc) {
   switch (JccOpc) {
-  case V6C::JZ:  return V6C::CNZ;
-  case V6C::JNZ: return V6C::CZ;
-  case V6C::JC:  return V6C::CNC;
-  case V6C::JNC: return V6C::CC;
-  case V6C::JPE: return V6C::CPO;
-  case V6C::JPO: return V6C::CPE;
-  case V6C::JP:  return V6C::CM;
-  case V6C::JM:  return V6C::CP;
+  case V6CLANG::JZ:  return V6CLANG::CNZ;
+  case V6CLANG::JNZ: return V6CLANG::CZ;
+  case V6CLANG::JC:  return V6CLANG::CNC;
+  case V6CLANG::JNC: return V6CLANG::CC;
+  case V6CLANG::JPE: return V6CLANG::CPO;
+  case V6CLANG::JPO: return V6CLANG::CPE;
+  case V6CLANG::JP:  return V6CLANG::CM;
+  case V6CLANG::JM:  return V6CLANG::CP;
   default: return 0;
   }
 }
@@ -142,7 +142,7 @@ static unsigned getConditionalCall(unsigned JccOpc) {
 
 ### Step 3.2 — Implement `foldConditionalCalls` [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
 
 Algorithm (mirrors `invertConditionalOverRET`, simplified):
 
@@ -155,7 +155,7 @@ For each `MachineBasicBlock` MBB:
    successor (which must equal `target`).
 4. `bb.call` must contain **exactly one** non-debug instruction, and
    that instruction must satisfy `MI.isCall()` and not be a tail call
-   (i.e. opcode == `V6C::CALL`, not `V6C_TAILJMP`).
+   (i.e. opcode == `V6CLANG::CALL`, not `V6CLANG_TAILJMP`).
 5. Look up `Cxx_inv = getConditionalCall(Jcc.opcode)`; bail if 0.
 
 Rewrite:
@@ -193,7 +193,7 @@ successor edges).
 
 ### Step 3.3 — Wire `foldConditionalCalls` into the pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
 
 In `runOnMachineFunction`, add a call to the new helper. Place it
 **after** `invertConditionalBranch` (which simplifies `Jcc;JMP` →
@@ -225,7 +225,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: conditional-call.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/conditional-call.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/conditional-call.ll`
 
 Cases:
 
@@ -253,7 +253,7 @@ python tests\run_all.py
 
 ### Step 3.7 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests\features\49\v6llvmc.c` to `v6llvmc_new01.asm`, confirm
+Compile `tests\features\49\v6clang.c` to `v6clang_new01.asm`, confirm
 that conditional `if (c) foo();` patterns lower to single `Cxx foo`
 opcodes and that there is no `Jcc; CALL foo;` sequence in the output.
 
@@ -314,10 +314,10 @@ instruction. Output unchanged.
 
 | Risk | Mitigation |
 |------|------------|
-| Lost IPRA RegMask after fold | Forward all operands of original `CALL` onto new `Cxx` (preserves RegMask + implicit reg uses/defs). Verified by `V6CCallRegMaskVerifier` in debug builds (already present, would assert if a CALL-class instr lacked a mask). |
+| Lost IPRA RegMask after fold | Forward all operands of original `CALL` onto new `Cxx` (preserves RegMask + implicit reg uses/defs). Verified by `V6ClangCallRegMaskVerifier` in debug builds (already present, would assert if a CALL-class instr lacked a mask). |
 | Folding when result is used | Only fold when `bb.call` contains exactly one non-debug, non-terminator instruction. A result COPY would disqualify the block. |
 | Folding when call block has multiple predecessors | Require `pred_size() == 1` so deleting the block is safe. |
-| Folding tail call (`V6C_TAILJMP`) by mistake | Match `V6C::CALL` opcode specifically; tail calls have a different opcode. |
+| Folding tail call (`V6CLANG_TAILJMP`) by mistake | Match `V6CLANG::CALL` opcode specifically; tail calls have a different opcode. |
 | Branch-target operand types other than MBB | Reject when `Jcc.getOperand(0).isMBB()` is false; threading already redirected those. |
 | Stale CFG edges left after delete | Remove edge MBB→bb.call before deleting; bb.call's outgoing edge (to skip) is detached during dead-block cleanup. |
 
@@ -332,7 +332,7 @@ instruction. Output unchanged.
 - **O39** (IPRA): O15 must preserve the RegMask operand or it
   silently regresses IPRA spill behavior at the rewritten call
   site. Forwarded explicitly in step 3.2.
-- **`V6CBranchOpt`** order: runs after `invertConditionalBranch`
+- **`V6ClangBranchOpt`** order: runs after `invertConditionalBranch`
   so that `Jcc; JMP` patterns are normalized first, ensuring our
   fold sees the canonical `Jcc skip; (CALL block)` shape.
 
@@ -346,11 +346,11 @@ instruction. Output unchanged.
   `__builtin_expect`), the not-taken cost reduction (Cxx 12cc vs
   Jcc+nothing 12cc) is neutral; the byte savings still help. No
   gating needed today, but worth revisiting once `MBFI` is wired
-  into `V6CBranchOpt`.
+  into `V6ClangBranchOpt`.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O15 Feature Description](design\future_plans\O15_conditional_call_optimization.md)

@@ -1,12 +1,12 @@
 O61 Stage 4 — Spill Into the Reload's Immediate Operand (i8 path)
-  A-source V6C_SPILL8 -> STA <Lo61_N+1>
-  reload   V6C_RELOAD8 -> <Lo61_N:> MVI <r>, 0   (imm byte patched at runtime)
+  A-source V6CLANG_SPILL8 -> STA <Lo61_N+1>
+  reload   V6CLANG_RELOAD8 -> <Lo61_N:> MVI <r>, 0   (imm byte patched at runtime)
   K <= 2 single-source; K <= 1 multi-source.
   2nd-patch chooser skips A (Delta = -8cc) and H/L (alias HL used in
   unpatched-reload routing path).
 
 ========================================================================
-C test case (tests\features\37\v6llvmc.c)
+C test case (tests\features\37\v6clang.c)
 ========================================================================
 __attribute__((leaf)) extern unsigned char op1(unsigned char x);
 __attribute__((leaf)) extern unsigned char op2(unsigned char x);
@@ -217,16 +217,16 @@ c8080 stats (worst-case body bytes / cycles, excluding called funcs)
 
 
 ========================================================================
-v6llvmc asm — Stage 4 (tests\features\37\v6llvmc.asm)
-  flags: -O2 -mllvm -mv6c-spill-patched-reload -mllvm -v6c-disable-shld-lhld-fold
+v6clang asm — Stage 4 (tests\features\37\v6clang.asm)
+  flags: -O2 -mllvm -mv6clang-spill-patched-reload -mllvm -v6clang-disable-shld-lhld-fold
 ========================================================================
 a_spill_r8_reload:
-    LXI     HL, __v6c_ss.a_spill_r8_reload   ; spill y (MOV M, E)
+    LXI     HL, __v6clang_ss.a_spill_r8_reload   ; spill y (MOV M, E)
     MOV     M, E
     CALL    op1
     STA     .LLo61_0+1                       ; Stage 4: A spill targets
                                              ; the reload's MVI imm byte
-    LDA     __v6c_ss.a_spill_r8_reload       ; reload y
+    LDA     __v6clang_ss.a_spill_r8_reload       ; reload y
     CALL    op2
 .LLo61_0:
     MVI     L, 0                             ; patched: imm = runtime value of a
@@ -234,13 +234,13 @@ a_spill_r8_reload:
     RET
 
 k2_i8:                                       ; K=2 single-source i8
-    LXI     HL, __v6c_ss.k2_i8
+    LXI     HL, __v6clang_ss.k2_i8
     MOV     M, C                             ; spill y
-    LXI     HL, __v6c_ss.k2_i8+2
+    LXI     HL, __v6clang_ss.k2_i8+2
     MOV     M, E                             ; spill z
     CALL    op1
     STA     .LLo61_1+1                       ; spill A (single source)
-    LDA     __v6c_ss.k2_i8+2                 ; reload z
+    LDA     __v6clang_ss.k2_i8+2                 ; reload z
     CALL    op2
     MOV     H, A
 .LLo61_1:
@@ -250,7 +250,7 @@ k2_i8:                                       ; K=2 single-source i8
     MOV     A, H
     ADD     L
     STA     .LLo61_1+1                       ; respill for 2nd use
-    LDA     __v6c_ss.k2_i8                   ; reload y
+    LDA     __v6clang_ss.k2_i8                   ; reload y
     CALL    op2
     MOV     L, A
     LDA     .LLo61_1+1                       ; 2nd pick: A forbidden on
@@ -261,7 +261,7 @@ k2_i8:                                       ; K=2 single-source i8
     RET
 
 multi_src_i8:                                ; K=1 multi-source i8
-    LXI     HL, __v6c_ss.multi_src_i8
+    LXI     HL, __v6clang_ss.multi_src_i8
     MOV     M, E
     MOV     L, A
     XRA     A
@@ -275,7 +275,7 @@ multi_src_i8:                                ; K=1 multi-source i8
     CALL    op2
 .LBB2_3:
     STA     .LLo61_2+1                       ; merged spill site (both arms)
-    LDA     __v6c_ss.multi_src_i8
+    LDA     __v6clang_ss.multi_src_i8
     CALL    op2
 .LLo61_2:
     MVI     L, 0                             ; single patched reload
@@ -284,7 +284,7 @@ multi_src_i8:                                ; K=1 multi-source i8
 
 mixed_widths:                                ; i8 + i16 slots in one fn
     PUSH    HL
-    LXI     HL, __v6c_ss.mixed_widths
+    LXI     HL, __v6clang_ss.mixed_widths
     MOV     M, E                             ; spill x8 (i8 slot)
     POP     HL
     SHLD    .LLo61_3+1                       ; Stage 3: i16 spill of x16
@@ -297,7 +297,7 @@ mixed_widths:                                ; i8 + i16 slots in one fn
     LXI     DE, 0                            ; patched i16 reload (x16)
     DAD     DE
     SHLD    .LLo61_4+1                       ; spill a16
-    LDA     __v6c_ss.mixed_widths            ; reload x8
+    LDA     __v6clang_ss.mixed_widths            ; reload x8
     CALL    op2
     STA     .LLo61_5+1                       ; Stage 4: i8 spill of a8
     LHLD    .LLo61_3+1                       ; unpatched LHLD of x16
@@ -310,7 +310,7 @@ mixed_widths:                                ; i8 + i16 slots in one fn
     LXI     DE, 0                            ; patched i16 reload (a16)
     DAD     DE
     SHLD    .LLo61_3+1
-    LDA     __v6c_ss.mixed_widths
+    LDA     __v6clang_ss.mixed_widths
     CALL    op1
     LHLD    .LLo61_3+1
     SHLD    g_u16
@@ -353,12 +353,12 @@ main:                                        ; driver; 4 patched i8 sites
     LDA     .LLo61_7+1
     CALL    use2
     ; ... (multi_src_i8 + mixed_widths invocations follow;
-    ;  see v6llvmc.asm for the full body)
+    ;  see v6clang.asm for the full body)
     RET
 
 
 ========================================================================
-v6llvmc stats (worst-case body bytes / cycles, excluding called funcs)
+v6clang stats (worst-case body bytes / cycles, excluding called funcs)
 ========================================================================
   Function                  Bytes    Cycles  (+CALLs counted separately)
   ----------------------------------------------------------------------
@@ -387,7 +387,7 @@ With HL live in the "before" path (PUSH/POP HL wraps added):
 Artifacts in this folder:
   c8080.c           - reference C (inline op1/op2/use2 bodies)
   c8080.asm         - c8080 output (sjasmplus/Z80 syntax)
-  v6llvmc.c         - v6llvmc driver (extern op1/op2/use2)
-  v6llvmc_old.asm   - Stage 3 baseline (no -mv6c-spill-patched-reload)
-  v6llvmc_new01.asm - first Stage 4 iteration (kept for history)
-  v6llvmc.asm       - canonical Stage 4 output (same content as _new01)
+  v6clang.c         - v6clang driver (extern op1/op2/use2)
+  v6clang_old.asm   - Stage 3 baseline (no -mv6clang-spill-patched-reload)
+  v6clang_new01.asm - first Stage 4 iteration (kept for history)
+  v6clang.asm       - canonical Stage 4 output (same content as _new01)

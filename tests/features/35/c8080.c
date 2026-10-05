@@ -1,7 +1,7 @@
 // Test case for O61 Stage 2 — c8080 reference version.
 //
 // c8080 does not implement the static stack allocation / patched-reload
-// optimizations that v6llvmc does. This file exists for the standard
+// optimizations that v6clang does. This file exists for the standard
 // tests/features comparison.
 
 unsigned int op_acc;

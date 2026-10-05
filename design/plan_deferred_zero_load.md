@@ -57,7 +57,7 @@ cannot undo register pressure damage already baked in.
 
 ### Approach: Pre-RA Constant Sinking Pass
 
-A custom `V6CConstantSinking` pass that runs **before RA** in
+A custom `V6ClangConstantSinking` pass that runs **before RA** in
 `addPreRegAlloc()`. For each constant materialization (`LXI rp, imm`
 or `MVI r, imm`) in a block ending with a conditional branch:
 
@@ -84,20 +84,20 @@ or `MVI r, imm`) in a block ending with a conditional branch:
 
 | Step | What | Where |
 |------|------|-------|
-| New pass file | V6CConstantSinking.cpp | llvm-project/llvm/lib/Target/V6C/ |
-| Declare factory | createV6CConstantSinkingPass() | V6C.h |
-| Register in pipeline | addPreRegAlloc() before DeadPhiConst | V6CTargetMachine.cpp |
-| Add to build | CMakeLists.txt | llvm-project/llvm/lib/Target/V6C/ |
-| Lit test | constant-sinking.ll | tests/lit/CodeGen/V6C/ |
-| Pass toggle | -v6c-disable-constant-sinking | CLI option |
+| New pass file | V6ClangConstantSinking.cpp | llvm-project/llvm/lib/Target/V6CLANG/ |
+| Declare factory | createV6ClangConstantSinkingPass() | V6Clang.h |
+| Register in pipeline | addPreRegAlloc() before DeadPhiConst | V6ClangTargetMachine.cpp |
+| Add to build | CMakeLists.txt | llvm-project/llvm/lib/Target/V6CLANG/ |
+| Lit test | constant-sinking.ll | tests/lit/CodeGen/V6CLANG/ |
+| Pass toggle | -v6clang-disable-constant-sinking | CLI option |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CConstantSinking.cpp [x]
+### Step 3.1 — Create V6ClangConstantSinking.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CConstantSinking.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangConstantSinking.cpp`
 
 Create the pre-RA constant sinking pass. Key logic:
 
@@ -116,7 +116,7 @@ For each MBB in RPO:
 
 Pass structure:
 - Inherit `MachineFunctionPass`
-- CLI toggle: `-v6c-disable-constant-sinking`
+- CLI toggle: `-v6clang-disable-constant-sinking`
 - RPO iteration via `ReversePostOrderTraversal<MachineFunction*>`
 - ~60-80 lines
 
@@ -130,12 +130,12 @@ Pass structure:
 ### Step 3.2 — Register pass in pipeline and build system [x]
 
 **Files**:
-- `llvm-project/llvm/lib/Target/V6C/V6C.h` — add declaration
-- `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp` — add to `addPreRegAlloc()`
-- `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt` — add source file
+- `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h` — add declaration
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` — add to `addPreRegAlloc()`
+- `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add source file
 
-Add `createV6CConstantSinkingPass()` to `addPreRegAlloc()` **after**
-`createV6CDeadPhiConstPass()` — DeadPhiConst must run first to
+Add `createV6ClangConstantSinkingPass()` to `addPreRegAlloc()` **after**
+`createV6ClangDeadPhiConstPass()` — DeadPhiConst must run first to
 eliminate branch-proven constants before sinking moves them.
 
 > **Implementation Notes**: Order reversed during implementation.
@@ -153,7 +153,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: constant-sinking.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/constant-sinking.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/constant-sinking.ll`
 
 Test cases:
 1. **LXI sinking (both paths use zero)** — `if (x==0) call(0); return 0;`
@@ -161,7 +161,7 @@ Test cases:
 2. **MVI sinking** — similar with 8-bit constant.
 3. **Negative: local use** — constant used between def and branch → not sunk.
 4. **Negative: single successor** — no conditional branch → not sunk.
-5. **Disabled pass** — `-v6c-disable-constant-sinking` preserves original.
+5. **Disabled pass** — `-v6clang-disable-constant-sinking` preserves original.
 
 > **Implementation Notes**: (empty)
 
@@ -251,7 +251,7 @@ avoided eviction prevents 2-3 spills (50-150cc, 6-18B savings).
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O37 Design](design\future_plans\O37_deferred_zero_load.md)

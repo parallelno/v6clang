@@ -2,11 +2,11 @@
 //
 // Each function holds a 16-bit value live across one or more calls to a
 // leaf extern that the register allocator treats as clobbering HL. The
-// allocator therefore spills the live value via SHLD __v6c_ss.f+N and
-// reloads via LHLD __v6c_ss.f+N. Both source and destination of the
+// allocator therefore spills the live value via SHLD __v6clang_ss.f+N and
+// reloads via LHLD __v6clang_ss.f+N. Both source and destination of the
 // spill/reload pair are HL — exactly the Stage 1 candidate shape.
 //
-// After Stage 1 (with -mllvm -mv6c-spill-patched-reload), the LHLD
+// After Stage 1 (with -mllvm -mv6clang-spill-patched-reload), the LHLD
 // becomes a patched LXI HL, 0 with a pre-instr label .Lo61_X, and the
 // SHLD writes to .Lo61_X+1 (the LXI's imm bytes).
 

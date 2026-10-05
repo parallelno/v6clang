@@ -40,14 +40,14 @@ def symbols(elf: Path) -> dict[str, int]:
 def main() -> int:
     if not V6EMUL or not Path(V6EMUL).is_file():
         raise RuntimeError("Set V6EMUL to the separately installed v6emul executable.")
-    with tempfile.TemporaryDirectory(prefix="v6c-packed-bss-") as temp:
+    with tempfile.TemporaryDirectory(prefix="v6clang-packed-bss-") as temp:
         output_dir = Path(temp)
         rom = output_dir / "packed.rom"
         elf = output_dir / "packed.elf"
         common = [
             CLANG,
             "-target",
-            "i8080-unknown-v6c",
+            "i8080-unknown-v6clang",
             "-O2",
             HERE / "main.c",
             HERE / "blocks.s",

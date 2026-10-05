@@ -5,7 +5,7 @@
 ### Current behavior
 
 When comparing a 16-bit value against zero (`if (x)`, `if (!ptr)`,
-`while (n)`), the V6C backend routes through `V6C_BR_CC16_IMM` with
+`while (n)`), the V6CLANG backend routes through `V6CLANG_BR_CC16_IMM` with
 RHS=0, producing a full two-byte CMP expansion with MBB splitting:
 
 ```asm
@@ -32,7 +32,7 @@ RHS=0, producing a full two-byte CMP expansion with MBB splitting:
 
 ### Root cause
 
-The `V6C_BR_CC16_IMM` expansion treats all immediate values uniformly,
+The `V6CLANG_BR_CC16_IMM` expansion treats all immediate values uniformly,
 using the general-purpose MVI+CMP MBB-splitting pattern. The special case
 of comparing against zero — which can be expressed as `MOV A, Hi; ORA Lo`
 (a well-known 8080 idiom) — is not recognized.
@@ -41,9 +41,9 @@ of comparing against zero — which can be expressed as `MOV A, Hi; ORA Lo`
 
 ## 2. Strategy
 
-### Approach: Special case in V6C_BR_CC16_IMM expansion
+### Approach: Special case in V6CLANG_BR_CC16_IMM expansion
 
-In `V6CInstrInfo.cpp`, `expandPostRAPseudo()` case `V6C::V6C_BR_CC16_IMM`:
+In `V6ClangInstrInfo.cpp`, `expandPostRAPseudo()` case `V6CLANG::V6CLANG_BR_CC16_IMM`:
 add a check for `RhsOp.isImm() && RhsOp.getImm() == 0` before the existing
 MBB-splitting code. When triggered, emit `MOV A, LhsHi` + `ORA LhsLo` +
 `Jcc Target`, erase the pseudo, and return — no MBB split needed.
@@ -64,9 +64,9 @@ Since this is a single-block, three-instruction replacement:
 
 | Step | What | Where |
 |------|------|-------|
-| 3.1 | Add zero-test fast path | `V6CInstrInfo.cpp` (expandPostRAPseudo) |
+| 3.1 | Add zero-test fast path | `V6ClangInstrInfo.cpp` (expandPostRAPseudo) |
 | 3.2 | Build | ninja |
-| 3.3 | Lit test | `tests/lit/CodeGen/V6C/br-cc16-zero.ll` |
+| 3.3 | Lit test | `tests/lit/CodeGen/V6CLANG/br-cc16-zero.ll` |
 | 3.4 | Run regression tests | `python tests/run_all.py` |
 | 3.5 | Verification assembly | `tests/features/README.md` steps |
 | 3.6 | Create result.txt | `tests/features/README.md` |
@@ -76,20 +76,20 @@ Since this is a single-block, three-instruction replacement:
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add zero-test fast path in V6C_BR_CC16_IMM expansion [x]
+### Step 3.1 — Add zero-test fast path in V6CLANG_BR_CC16_IMM expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-In the `case V6C::V6C_BR_CC16_IMM:` block, after extracting operands and
+In the `case V6CLANG::V6CLANG_BR_CC16_IMM:` block, after extracting operands and
 sub-registers, add a check before the existing MBB-splitting code:
 
 ```cpp
     // --- O27: Fast zero-test path ---
     if (RhsOp.isImm() && RhsOp.getImm() == 0) {
-      unsigned JccOpc = (CC == V6CCC::COND_Z) ? V6C::JZ : V6C::JNZ;
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsHi);
-      BuildMI(MBB, MI, DL, get(V6C::ORAr), V6C::A)
-          .addReg(V6C::A).addReg(LhsLo);
+      unsigned JccOpc = (CC == V6ClangCC::COND_Z) ? V6CLANG::JZ : V6CLANG::JNZ;
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsHi);
+      BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
+          .addReg(V6CLANG::A).addReg(LhsLo);
       BuildMI(MBB, MI, DL, get(JccOpc)).addMBB(Target);
       MI.eraseFromParent();
       return true;
@@ -115,7 +115,7 @@ Expected: clean build. Change is confined to one case in expandPostRAPseudo.
 
 ### Step 3.3 — Lit test: br-cc16-zero.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/br-cc16-zero.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/br-cc16-zero.ll`
 
 Test cases:
 - `@ne_zero`: `icmp ne i16 %x, 0` → expect `MOV A,` + `ORA` + `JNZ`
@@ -236,7 +236,7 @@ Because O27 preserves HL and avoids the MBB split:
 
 ## 7. Future Enhancements
 
-- **V6C_BR_CC16 (register-register)**: Could detect when RHS register is
+- **V6CLANG_BR_CC16 (register-register)**: Could detect when RHS register is
   known to be zero (via O13 value tracking), but this is rare enough to defer.
 - **SELECT_CC with 0**: Similar optimization for `x ? a : b` when x is i16.
   The SELECT_CC16 expansion could use the same ORA pattern.
@@ -245,7 +245,7 @@ Because O27 preserves HL and avoids the MBB split:
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O27 Feature Description](design\future_plans\O27_i16_zero_test.md)

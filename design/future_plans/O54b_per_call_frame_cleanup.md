@@ -7,8 +7,8 @@
 ## Problem
 
 When a callee receives stack-passed arguments, the caller must release that
-space after the CALL returns. Today V6C runs in **reserved-call-frame** mode:
-[`V6CFrameLowering::eliminateCallFramePseudoInstr`](../../llvm-project/llvm/lib/Target/V6C/V6CFrameLowering.cpp#L268-L275)
+space after the CALL returns. Today V6CLANG runs in **reserved-call-frame** mode:
+[`V6ClangFrameLowering::eliminateCallFramePseudoInstr`](../../llvm-project/llvm/lib/Target/V6CLANG/V6ClangFrameLowering.cpp#L268-L275)
 simply erases the `ADJCALLSTACKDOWN`/`UP` pseudos because the prologue already
 reserved `MFI.getMaxCallFrameSize()` for the entire function.
 
@@ -42,7 +42,7 @@ is always SP-increment / deallocate):
   flag-safe.
 - **A**: live iff the call returns i8. Otherwise dead.
 - **HL**: live iff the call returns i16 / pointer. Otherwise dead.
-- **BC, DE**: never return registers under V6C ABI; both halves are
+- **BC, DE**: never return registers under V6CLANG ABI; both halves are
   call-clobbered → always dead after CALL → `POP B` and `POP D` are
   unconditionally safe.
 
@@ -60,12 +60,12 @@ post-call `CopyFromReg` chain if the analysis is done before
 
 ## Implementation sketch
 
-`V6CFrameLowering::eliminateCallFramePseudoInstr` is rewritten to actually
+`V6ClangFrameLowering::eliminateCallFramePseudoInstr` is rewritten to actually
 emit cleanup when the pseudo is `ADJCALLSTACKUP` and the amount is non-zero:
 
 ```cpp
 MachineBasicBlock::iterator
-V6CFrameLowering::eliminateCallFramePseudoInstr(
+V6ClangFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator I) const {
   if (hasReservedCallFrame(MF))
@@ -75,10 +75,10 @@ V6CFrameLowering::eliminateCallFramePseudoInstr(
   int64_t Amount = I->getOperand(0).getImm();
   DebugLoc DL = I->getDebugLoc();
 
-  if (Opc == V6C::ADJCALLSTACKUP && Amount > 0) {
+  if (Opc == V6CLANG::ADJCALLSTACKUP && Amount > 0) {
     Register DeadPair = pickDeadPairAfterCall(MBB, I);   // see below
     emitSPAdjustment(MBB, I, +Amount, DL,
-                     V6CCost::getOptMode(MF), DeadPair);
+                     V6ClangCost::getOptMode(MF), DeadPair);
   }
   // ADJCALLSTACKDOWN: stack args have already been pushed via O54c, so the
   // marker is consumed by them. Erase here.

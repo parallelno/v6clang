@@ -8,7 +8,7 @@ After the O83 POP/PUSH pair elimination, a 6-instruction sequence is exposed
 in the sieve benchmark that computes `SHLD addr` with `HL = HL ± 1`:
 
 ```asm
-; From tests/features/64/v6llvmc_new01.asm after O83 — block .LLo61_12:
+; From tests/features/64/v6clang_new01.asm after O83 — block .LLo61_12:
 LHLD  .LLo61_12+1        ; load HL from spill slot
 MOV   C, L               ; save HL into BC
 MOV   B, H               ;   (spill round-trip preamble)
@@ -43,9 +43,9 @@ The 6-instruction sequence originates from three consecutive pseudos that are
 lowered separately and whose interaction the peephole never inspected:
 
 ```
-V6C_RELOAD16  rp, slot   → LHLD slot    (or MOV B,H / MOV C,L)
-V6C_INX16 / V6C_DCX16    → (INX|DCX) rp
-V6C_SPILL16   hl, slot   → MOV rl,L / MOV rh,H / (INX|DCX) rp /
+V6CLANG_RELOAD16  rp, slot   → LHLD slot    (or MOV B,H / MOV C,L)
+V6CLANG_INX16 / V6CLANG_DCX16    → (INX|DCX) rp
+V6CLANG_SPILL16   hl, slot   → MOV rl,L / MOV rh,H / (INX|DCX) rp /
                              MOV L,rl / MOV H,rh / SHLD slot
 ```
 
@@ -57,9 +57,9 @@ visible.
 
 ## 2. Strategy
 
-### Approach: New `foldInxDcxSpillRoundTrip()` method in `V6CPeephole`
+### Approach: New `foldInxDcxSpillRoundTrip()` method in `V6ClangPeephole`
 
-Add a forward-scan method to `V6CPeephole`.  The scan is O(n) per MBB and
+Add a forward-scan method to `V6ClangPeephole`.  The scan is O(n) per MBB and
 operates directly on the 6- (or 5-) instruction sequence already in the MBB.
 
 **Pattern A — INX/DCX round-trip (6 instructions)**:
@@ -118,8 +118,8 @@ Replace:
 
 | File | Change |
 |------|--------|
-| `V6CPeephole.cpp` | Add `DisableInxDcxSpillFold` flag, `foldInxDcxSpillRoundTrip()` method, call site after `eliminateDeadPopPush()` |
-| `tests/lit/CodeGen/V6C/peephole-inx-dcx-spill-fold.ll` | New lit test covering Pattern A (INX, DCX, BC pair, DE pair), Pattern B, disabled-flag case |
+| `V6ClangPeephole.cpp` | Add `DisableInxDcxSpillFold` flag, `foldInxDcxSpillRoundTrip()` method, call site after `eliminateDeadPopPush()` |
+| `tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll` | New lit test covering Pattern A (INX, DCX, BC pair, DE pair), Pattern B, disabled-flag case |
 
 ---
 
@@ -127,24 +127,24 @@ Replace:
 
 ### Step 3.1 — Create test folder and baseline assembly [ ]
 
-Create `tests/features/65/` with `v6llvmc.c`, `c8080.c`, and baseline
+Create `tests/features/65/` with `v6clang.c`, `c8080.c`, and baseline
 assembly.  The sieve C source is copied from `tests/features/64/` (same
 kernel, same test).
 
 ### Step 3.2 — Add `DisableInxDcxSpillFold` cl::opt [ ]
 
-In `V6CPeephole.cpp`, after `DisablePopPushElim`:
+In `V6ClangPeephole.cpp`, after `DisablePopPushElim`:
 
 ```cpp
 static cl::opt<bool> DisableInxDcxSpillFold(
-    "v6c-disable-inx-dcx-spill-fold",
+    "v6clang-disable-inx-dcx-spill-fold",
     cl::desc("Disable INX/DCX-through-spill round-trip fold (O84)"),
     cl::init(false), cl::Hidden);
 ```
 
 ### Step 3.3 — Declare method in class [ ]
 
-Add to the `V6CPeephole` private section:
+Add to the `V6ClangPeephole` private section:
 
 ```cpp
 bool foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB);
@@ -152,7 +152,7 @@ bool foldInxDcxSpillRoundTrip(MachineBasicBlock &MBB);
 
 ### Step 3.4 — Implement `foldInxDcxSpillRoundTrip()` [ ]
 
-Implement at the bottom of `V6CPeephole.cpp`, before
+Implement at the bottom of `V6ClangPeephole.cpp`, before
 `runOnMachineFunction()`.  The method uses `isRegDeadAfter()` and
 `BuildMI` to insert `INX H` / `DCX H`.  Full pseudocode:
 
@@ -220,7 +220,7 @@ Changed |= foldInxDcxSpillRoundTrip(MBB);  // O84: must follow O83
 cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"" -arch=amd64 >nul 2>&1 && ninja -C llvm-build clang llc 2>&1"
 ```
 
-### Step 3.7 — Create lit test `tests/lit/CodeGen/V6C/peephole-inx-dcx-spill-fold.ll` [ ]
+### Step 3.7 — Create lit test `tests/lit/CodeGen/V6CLANG/peephole-inx-dcx-spill-fold.ll` [ ]
 
 Cases to cover:
 - Pattern A (INX): BC pair, `SHLD addr` — verify 4 MOVs gone, `INX H` present.
@@ -228,12 +228,12 @@ Cases to cover:
 - Pattern A with DE pair.
 - Pattern B: round-trip copy — verify 4 MOVs gone, SHLD preserved.
 - Negative: rp not dead after SHLD — verify pattern not applied.
-- Disabled flag (`-v6c-disable-inx-dcx-spill-fold`) — verify pattern not applied.
+- Disabled flag (`-v6clang-disable-inx-dcx-spill-fold`) — verify pattern not applied.
 
 ### Step 3.8 — Run regression tests [ ]
 
 ```
-cd llvm-build && ctest -R V6C --output-on-failure
+cd llvm-build && ctest -R V6CLANG --output-on-failure
 ```
 
 ### Step 3.9 — Compile new ASM and create result.txt [ ]

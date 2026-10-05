@@ -1,6 +1,6 @@
 # O82 — MOV Chain Collapse and Dead High-Byte Elimination
 
-**Source:** V6C — observed in `samples/03_demo/main.s` (SRL16 + call-argument setup)
+**Source:** V6CLANG — observed in `samples/03_demo/main.s` (SRL16 + call-argument setup)
 **Savings:** 2 instructions, 2B, 16cc per occurrence
 **Frequency:** Every `lshr i16, 8` result whose high byte is unused at the call site (common after `rand() & 0x7f` / `rand() >> 8` patterns)
 **Complexity:** Low — two independent peephole patterns, each ~20 lines
@@ -12,7 +12,7 @@
 
 ## Problem
 
-After O62, the `V6C_SRL16`-by-8 expansion emits the minimal 2-instruction
+After O62, the `V6CLANG_SRL16`-by-8 expansion emits the minimal 2-instruction
 sequence:
 
 ```asm
@@ -41,7 +41,7 @@ directly.  After the chain is collapsed `MOV E, H` also becomes dead.
 
 ```asm
 ; Current (O62 already applied, 4 instructions before call):
-;--- V6C_SRL16 ---
+;--- V6CLANG_SRL16 ---
     MOV  E, H        ; 8cc, 1B  — SRL16 DstLo
     MVI  D, 0        ; 8cc, 2B  — SRL16 DstHi (D never read)  [Pattern A]
     MOV  A, L        ; 8cc, 1B  — x1 = rand_lo
@@ -67,13 +67,13 @@ instruction to the next definition of `r` (or function exit) does not read `r`.
 
 ### Peephole rule
 
-In `V6CPeephole`, scan each `MVI r, imm` (opcode `V6C::MVIr` or `V6C::MVI_A`).
+In `V6ClangPeephole`, scan each `MVI r, imm` (opcode `V6CLANG::MVIr` or `V6CLANG::MVI_A`).
 Query liveness of `r` immediately after the instruction.  If `r` is dead, erase
 the instruction.
 
 ```cpp
-// In V6CPeephole::runOnMachineFunction (or a new helper):
-if (MI.getOpcode() == V6C::MVIr || MI.getOpcode() == V6C::MVI_A) {
+// In V6ClangPeephole::runOnMachineFunction (or a new helper):
+if (MI.getOpcode() == V6CLANG::MVIr || MI.getOpcode() == V6CLANG::MVI_A) {
   Register Dst = MI.getOperand(0).getReg();
   if (isRegDeadAfterMI(Dst, MI, MBB, TRI)) {
     MI.eraseFromParent();
@@ -83,8 +83,8 @@ if (MI.getOpcode() == V6C::MVIr || MI.getOpcode() == V6C::MVI_A) {
 }
 ```
 
-`isRegDeadAfterMI` is already used extensively in `V6CSpillExpand.cpp` and
-`V6CRegisterInfo.cpp`.
+`isRegDeadAfterMI` is already used extensively in `V6ClangSpillExpand.cpp` and
+`V6ClangRegisterInfo.cpp`.
 
 ### Safety
 
@@ -112,12 +112,12 @@ other intervening read), erase I1 as well.
 
 ### Peephole rule
 
-Extend `V6CPeephole::eliminateRedundantMov()`:
+Extend `V6ClangPeephole::eliminateRedundantMov()`:
 
 ```cpp
 // After the existing duplicate-MOV check:
 // Pattern B: MOV X, Y; ...; MOV Z, X  where X dead after second MOV.
-if (MI.getOpcode() == V6C::MOVrr) {
+if (MI.getOpcode() == V6CLANG::MOVrr) {
   Register X = MI.getOperand(0).getReg();
   Register Y = MI.getOperand(1).getReg();
 
@@ -126,9 +126,9 @@ if (MI.getOpcode() == V6C::MOVrr) {
     MachineInstr &JMI = *J;
     if (clobbersReg(JMI, X) || clobbersReg(JMI, Y))
       break; // X or Y overwritten before consumer — can't forward
-    if (readsReg(JMI, X) && JMI.getOpcode() != V6C::MOVrr)
+    if (readsReg(JMI, X) && JMI.getOpcode() != V6CLANG::MOVrr)
       break; // X used for something other than a copy — don't touch
-    if (JMI.getOpcode() == V6C::MOVrr &&
+    if (JMI.getOpcode() == V6CLANG::MOVrr &&
         JMI.getOperand(1).getReg() == X &&
         isRegDeadAfterMI(X, JMI, MBB, TRI)) {
       // X is a dead intermediate: forward Y directly into Z.
@@ -188,7 +188,7 @@ cost; the deleted I1 `MOV X, Y` saves 8cc, 1B).
 ## Implementation location
 
 Both patterns live in
-[`V6CPeephole.cpp`](../../llvm/lib/Target/V6C/V6CPeephole.cpp):
+[`V6ClangPeephole.cpp`](../../llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp):
 
 - Pattern A: new helper `eliminateDeadMVI()`, called from `runOnMachineFunction`.
 - Pattern B: extension of the existing `eliminateRedundantMov()`.
@@ -199,7 +199,7 @@ No TableGen changes.  No new pseudo instructions.  No ISel changes.
 
 ## Test
 
-Add a lit test (`tests/features/NN/v6llvmc.ll` or `.c`) that compiles:
+Add a lit test (`tests/features/NN/v6clang.ll` or `.c`) that compiles:
 
 ```c
 void draw_line2(char x1, char y1);

@@ -1,4 +1,4 @@
-// O78 — V6C_STORE8_IMM_P per-shape redesign feature test.
+// O78 — V6CLANG_STORE8_IMM_P per-shape redesign feature test.
 //
 // Exercises the seven shapes of the new dispatch table:
 //   row 1: addr=HL                                   → MVI M, imm

@@ -1,4 +1,4 @@
-/* tests/features/52/v6llvmc.c
+/* tests/features/52/v6clang.c
  *
  * O70 — header-only math runtime. The headline win this feature
  * test isolates is i8 multiply: today `MUL i8` is `Promote`d to i16

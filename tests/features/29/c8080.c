@@ -4,7 +4,7 @@
 // c8080 uses static allocation natively — no stack spills.
 
 void use8(unsigned char x) {
-    /* extern in v6llvmc version; stub here for c8080 */
+    /* extern in v6clang version; stub here for c8080 */
 }
 
 void interleaved_add(unsigned char *dst, const unsigned char *src1,

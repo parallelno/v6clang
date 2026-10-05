@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build + run + aggregate the C-compiler benchmark matrix.
 
-Compilers tested: v6llvmc (this repo, baseline), c8080, z88dk/sccz80.
+Compilers tested: v6clang (this repo, baseline), c8080, z88dk/sccz80.
 Programs: bsort, sieve, fib_crc.
 
 Each program ends with bench_finish(checksum) which writes the byte to
@@ -18,7 +18,7 @@ Environment variables:
             bin/zcc.exe and lib/config). Enables the z88dk/sccz80
             comparator column; skipped if unset.
 
-The v6llvmc baseline uses this repo's own clang (llvm-build/bin/clang.exe)
+The v6clang baseline uses this repo's own clang (llvm-build/bin/clang.exe)
 and needs no environment variable.
 
 Run:    python tests/benchmarks_c/run_benchmarks.py
@@ -39,7 +39,7 @@ BUILD = REPO / "tests" / "benchmarks_c" / "build"
 ASM = REPO / "tests" / "benchmarks_c" / "asm"
 DOCS = REPO / "docs" / "benchmarks.md"
 
-V6C_CLANG = REPO / "llvm-build" / "bin" / "clang.exe"
+V6CLANG_CLANG = REPO / "llvm-build" / "bin" / "clang.exe"
 C8080 = os.environ.get("C8080")
 V6EMUL = os.environ.get("V6EMUL")
 Z88DK = Path(os.environ["Z88DK"]) if os.environ.get("Z88DK") else None
@@ -154,27 +154,27 @@ def skipped_result(compiler: str, prog: str, flags: str, reason: str) -> Result:
 
 # ---------------------------------------------------------------------------
 
-def build_v6llvmc(prog: str, opt: str) -> Result:
-    rom = BUILD / f"v6llvmc_{prog}_{opt}.rom"
+def build_v6clang(prog: str, opt: str) -> Result:
+    rom = BUILD / f"v6clang_{prog}_{opt}.rom"
     rom.unlink(missing_ok=True)
-    cmd = [str(V6C_CLANG), "-target", "i8080-unknown-v6c",
+    cmd = [str(V6CLANG_CLANG), "-target", "i8080-unknown-v6clang",
            f"-{opt}",
            str(SRC / f"{prog}.c"), "-o", str(rom)]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0 or not rom.exists():
-        return Result("v6llvmc", prog, 0, None, None, opt,
+        return Result("v6clang", prog, 0, None, None, opt,
                       error=p.stderr.strip()[:200] or "build failed")
     # Also emit .asm next to the source for analysis.
-    asm = ASM / f"v6llvmc_{prog}_{opt}.s"
+    asm = ASM / f"v6clang_{prog}_{opt}.s"
     subprocess.run(
-        [str(V6C_CLANG), "-target", "i8080-unknown-v6c",
+        [str(V6CLANG_CLANG), "-target", "i8080-unknown-v6clang",
          f"-{opt}",
-         "-S", "-mllvm", "-mv6c-annotate-pseudos",
+         "-S", "-mllvm", "-mv6clang-annotate-pseudos",
          str(SRC / f"{prog}.c"), "-o", str(asm)],
         capture_output=True, text=True,
     )
     cyc, chk = run_emul(rom, 0x0100)
-    return Result("v6llvmc", prog, rom.stat().st_size, cyc, chk, opt)
+    return Result("v6clang", prog, rom.stat().st_size, cyc, chk, opt)
 
 
 def build_c8080(prog: str) -> Result:
@@ -275,12 +275,12 @@ def main() -> int:
 
     results: dict[tuple[str, str], Result] = {}
 
-    # v6llvmc baseline = -O2.  Also run -O1, -Os for context.
+    # v6clang baseline = -O2.  Also run -O1, -Os for context.
     for prog in PROGRAMS:
         for opt in ("O1", "O2", "Os"):
-            r = build_v6llvmc(prog, opt)
-            results[(f"v6llvmc-{opt}", prog)] = r
-            print(f"  v6llvmc -{opt:3} {prog:8} -> {fmt_row(r, None)}")
+            r = build_v6clang(prog, opt)
+            results[(f"v6clang-{opt}", prog)] = r
+            print(f"  v6clang -{opt:3} {prog:8} -> {fmt_row(r, None)}")
 
     c8080_issue = probe_c8080()
     if c8080_issue is None:
@@ -328,14 +328,14 @@ def main() -> int:
             fail = fail or (chk != EXPECTED[prog])
 
     # Build markdown table.
-    baseline_key = "v6llvmc-O2"
-    cols = [baseline_key, "v6llvmc-O1", "v6llvmc-Os", "c8080", "z88dk"]
+    baseline_key = "v6clang-O2"
+    cols = [baseline_key, "v6clang-O1", "v6clang-Os", "c8080", "z88dk"]
     lines = []
     lines.append("# C-compiler benchmark results")
     lines.append("")
     lines.append("Cycle counts and ROM sizes for three pure-C benchmarks compiled "
                  "with each i8080-capable compiler and run on `v6emul`. The number "
-                 "in parentheses is the cycle ratio relative to v6llvmc -O2.")
+                 "in parentheses is the cycle ratio relative to v6clang -O2.")
     lines.append("")
     lines.append("| Program | " + " | ".join(cols) + " |")
     lines.append("|---|" + "|".join(["---"] * len(cols)) + "|")
@@ -381,7 +381,7 @@ def main() -> int:
     lines.append("")
     lines.append("## Compiler invocations")
     lines.append("")
-    lines.append("- **v6llvmc**: `clang -target i8080-unknown-v6c -O2 prog.c -o prog.rom`")
+    lines.append("- **v6clang**: `clang -target i8080-unknown-v6clang -O2 prog.c -o prog.rom`")
     lines.append("- **c8080**: `c8080 -Ocpm prog.c -o prog.com -a prog.asm` (CP/M `.COM`, ORG=0x0100)")
     lines.append("- **z88dk**: `zcc +cpm -clib=8080 -m8080 -compiler=sccz80 -SO3 -O3 -create-app prog.c`")
     lines.append("  with the BDOS region (0x0000-0x00FF) stubbed out by the runner so the CP/M crt0 returns from `BDOS` calls harmlessly.")

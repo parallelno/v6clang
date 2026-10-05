@@ -5,7 +5,7 @@
 
 ## Problem
 
-V6C optimization decisions (peephole replacements, pseudo expansion choices,
+V6CLANG optimization decisions (peephole replacements, pseudo expansion choices,
 copy elimination) are currently ad-hoc — each pass uses hardcoded heuristics.
 There is no unified way to express "prefer speed" vs "prefer size" vs
 "balanced". This leads to inconsistent decisions and makes it hard to add
@@ -22,12 +22,12 @@ The `value()` method composes them based on optimization mode:
 Used in `copyCost()` for register-to-register copy decisions, and throughout
 the backend wherever optimization tradeoffs exist.
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
-Create `V6CInstrCost` with identical interface. Populate from the existing
-instruction timing tables in [V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md).
+Create `V6ClangInstrCost` with identical interface. Populate from the existing
+instruction timing tables in [V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md).
 Use in:
-- `V6CPeephole` decisions (is INX cheaper than LXI in this context?)
+- `V6ClangPeephole` decisions (is INX cheaper than LXI in this context?)
 - `expandPostRAPseudo` choices (shorter ADD16 sequence selection)
 - Future copy optimization pass (O12)
 - Any new optimization pass

@@ -43,8 +43,8 @@ The `trunc` is eliminated and the comparison is widened to i16:
 ```
 
 This is **correct on every target** (the math is identical).  But on the 8080
-it is catastrophic: the i16 `and` expands to `V6C_AND16` (6 instructions, 36cc),
-the i16 compare expands to `V6C_CMP16_ZERO` (2 instructions, 8cc), and a spill
+it is catastrophic: the i16 `and` expands to `V6CLANG_AND16` (6 instructions, 36cc),
+the i16 compare expands to `V6CLANG_CMP16_ZERO` (2 instructions, 8cc), and a spill
 is needed to hold the AND result across the SRL.  The total per-iteration cost
 for this single C expression is ~44cc + spill overhead.
 
@@ -103,9 +103,9 @@ widened bitwise operations whose constant operand fits in i8, restoring the
 %cmp = icmp eq i8 %r8, 0
 ```
 
-The `trunc i16 to i8` is free on V6C — it is the lo sub-register of a pair.
+The `trunc i16 to i8` is free on V6CLANG — it is the lo sub-register of a pair.
 ISel sees a pure i8 `and` with a constant and emits `ANI K` directly (no
-`V6C_AND16`, no `LXI rp, K`, no spill).
+`V6CLANG_AND16`, no `LXI rp, K`, no spill).
 
 ### Scope
 
@@ -123,18 +123,18 @@ Guarded by:
 
 ### lfsr16 before / after
 
-**Before (V6C_AND16 + V6C_CMP16_ZERO path, per loop iteration)**:
+**Before (V6CLANG_AND16 + V6CLANG_CMP16_ZERO path, per loop iteration)**:
 
 ```asm
 LXI   B, 1              ; 12cc, 3B — materialise constant 1
-; --- V6C_AND16 (6 insn) ---
+; --- V6CLANG_AND16 (6 insn) ---
 MOV   A, L              ;  8cc, 1B
 ANA   C                 ;  4cc, 1B
 MOV   C, A              ;  8cc, 1B
 MOV   A, H              ;  8cc, 1B  ← wasted (result = 0)
 ANA   B                 ;  4cc, 1B  ← wasted (AND with 0)
 ; spill hi/lo to memory  ~20cc, 6B
-; --- V6C_CMP16_ZERO ---
+; --- V6CLANG_CMP16_ZERO ---
 MOV   A, H              ;  8cc, 1B  ← wasted (H = 0 always)
 ORA   L                 ;  4cc, 1B
 JNZ   ...               ; 12cc, 3B
@@ -158,9 +158,9 @@ Savings: **~60cc per loop iteration × 4096 = ~245,760cc** on the lfsr16 benchma
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp` | Register new pass in `addPreISel()` |
-| `llvm-project/llvm/lib/Target/V6C/V6CNarrowBitwisePass.cpp` (new) | Pass implementation |
-| `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt` | Add new source file |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp` | Register new pass in `addPreISel()` |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangNarrowBitwisePass.cpp` (new) | Pass implementation |
+| `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` | Add new source file |
 
 The pass is a `FunctionPass` using the standard `runOnFunction` / `InstVisitor`
 or explicit `IRBuilder` pattern.  It iterates over all `BinaryOperator`
@@ -174,7 +174,7 @@ checks that all users are narrowable, replaces the instruction with
 
 | Expression | Before | After |
 |------------|--------|-------|
-| `(u8)(x & 1)` used as branch | V6C_AND16 + CMP16_ZERO + spill (~88cc) | `ANI 1` + `JNZ` (28cc) |
-| `(u8)(x & 0xFF)` | V6C_AND16 6 insn (36cc) | `MOV A,L` + `ANI 0xFF` (16cc) |
-| `(u8)(x \| 0x80)` used as i8 | V6C_OR16 6 insn (36cc) | `MOV A,L` + `ORI 0x80` (16cc) |
-| `(u8)(x ^ 0x55)` used as i8 | V6C_XOR16 6 insn (36cc) | `MOV A,L` + `XRI 0x55` (16cc) |
+| `(u8)(x & 1)` used as branch | V6CLANG_AND16 + CMP16_ZERO + spill (~88cc) | `ANI 1` + `JNZ` (28cc) |
+| `(u8)(x & 0xFF)` | V6CLANG_AND16 6 insn (36cc) | `MOV A,L` + `ANI 0xFF` (16cc) |
+| `(u8)(x \| 0x80)` used as i8 | V6CLANG_OR16 6 insn (36cc) | `MOV A,L` + `ORI 0x80` (16cc) |
+| `(u8)(x ^ 0x55)` used as i8 | V6CLANG_XOR16 6 insn (36cc) | `MOV A,L` + `XRI 0x55` (16cc) |

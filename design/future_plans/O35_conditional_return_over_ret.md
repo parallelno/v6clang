@@ -1,7 +1,7 @@
 # O35. Conditional Return Over RET (Jcc-over-RET → Rcc)
 
 *Identified from analysis of temp/test_o28.asm `test_cond_zero_tailcall`.*
-*Extends V6CBranchOpt — complements O30 (Jcc→RET block → Rcc).*
+*Extends V6ClangBranchOpt — complements O30 (Jcc→RET block → Rcc).*
 
 ## Problem
 
@@ -62,7 +62,7 @@ After O27 (zero-test) + O28 (branch threading), the compiler generates the
 1. LLVM's block layout places the RET fallthrough *between* the conditional
    branch and the tail-call block.
 2. `invertConditionalBranch` doesn't fire because the second instruction
-   is `RET`, not `JMP`/`V6C_TAILJMP`.
+   is `RET`, not `JMP`/`V6CLANG_TAILJMP`.
 3. `foldConditionalReturns` doesn't fire because the Jcc **target** is
    the tail-call block, not the RET block.
 
@@ -76,7 +76,7 @@ After O27 (zero-test) + O28 (branch threading), the compiler generates the
 
 ## Implementation
 
-### Approach: Add `invertConditionalOverRET()` to V6CBranchOpt
+### Approach: Add `invertConditionalOverRET()` to V6ClangBranchOpt
 
 Add a new method that detects `Jcc .Lskip / RET / .Lskip:` and replaces
 with the inverted conditional return.
@@ -87,7 +87,7 @@ with the inverted conditional return.
 /// Look for: Jcc .Lskip / RET / .Lskip: (layout successor)
 /// Transform to: Rcc_inv  (inverted conditional return)
 /// Then the code falls through to .Lskip's instructions.
-bool V6CBranchOpt::invertConditionalOverRET(MachineFunction &MF) {
+bool V6ClangBranchOpt::invertConditionalOverRET(MachineFunction &MF) {
   bool Changed = false;
 
   for (MachineBasicBlock &MBB : MF) {
@@ -97,7 +97,7 @@ bool V6CBranchOpt::invertConditionalOverRET(MachineFunction &MF) {
     auto LastI = MBB.end();
     --LastI;
     MachineInstr &Last = *LastI;   // RET
-    if (Last.getOpcode() != V6C::RET)
+    if (Last.getOpcode() != V6CLANG::RET)
       continue;
 
     --LastI;
@@ -146,13 +146,13 @@ Changed |= removeDeadBlocks(MF);
 
 ### Existing toggle
 
-Uses the same `-v6c-disable-branch-opt` flag (part of V6CBranchOpt).
+Uses the same `-v6clang-disable-branch-opt` flag (part of V6ClangBranchOpt).
 
 ### Affected tests
 
 - `test_cond_zero_tailcall` in `tests/features/13/` — should now emit `RNZ`
   instead of `JZ` + `RET`.
-- May need to update `tests/lit/CodeGen/V6C/branch-threading.ll` and
+- May need to update `tests/lit/CodeGen/V6CLANG/branch-threading.ll` and
   `conditional-tail-call.ll` CHECK patterns.
 
 ## Complexity & Risk

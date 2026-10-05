@@ -24,7 +24,7 @@ sieve_count:                            ; @sieve_count
 	DCX	D
 	DCX	D
 	XCHG
-	SHLD	__v6c_ss.sieve_count
+	SHLD	__v6clang_ss.sieve_count
 	XCHG
 	MVI	A, 4
 	SUB	L
@@ -35,40 +35,40 @@ sieve_count:                            ; @sieve_count
 	LXI	B, 2
 	LXI	D, 4
 	XCHG
-	SHLD	__v6c_ss.sieve_count+8
+	SHLD	__v6clang_ss.sieve_count+8
 	XCHG
 	LXI	D, 5
 	XCHG
-	SHLD	__v6c_ss.sieve_count+12
+	SHLD	__v6clang_ss.sieve_count+12
 	XCHG
 	LXI	D, flags+4
 	XCHG
-	SHLD	__v6c_ss.sieve_count+10
+	SHLD	__v6clang_ss.sieve_count+10
 	XCHG
-	SHLD	__v6c_ss.sieve_count+6
+	SHLD	__v6clang_ss.sieve_count+6
 .LBB15_5:                               ; =>This Loop Header: Depth=1
                                         ;     Child Loop BB15_7 Depth 2
 	MOV	L, C
 	MOV	H, B
-	SHLD	__v6c_ss.sieve_count+2
+	SHLD	__v6clang_ss.sieve_count+2
 	LXI	H, flags
 	DAD	B
 	MOV	A, M
 	ORA	A
-	LHLD	__v6c_ss.sieve_count
-	SHLD	__v6c_ss.sieve_count
+	LHLD	__v6clang_ss.sieve_count
+	SHLD	__v6clang_ss.sieve_count
 	JNZ	.LBB15_10
 ; %bb.6:                                ; %.preheader
                                         ;   in Loop: Header=BB15_5 Depth=1
-	LHLD	__v6c_ss.sieve_count+10
+	LHLD	__v6clang_ss.sieve_count+10
 	XCHG
-	LHLD	__v6c_ss.sieve_count+8
-	SHLD	__v6c_ss.sieve_count+4
+	LHLD	__v6clang_ss.sieve_count+8
+	SHLD	__v6clang_ss.sieve_count+4
 	XCHG
 .LBB15_7:                               ;   Parent Loop BB15_5 Depth=1
                                         ; =>  This Inner Loop Header: Depth=2
 	PUSH	H
-	LXI	H, __v6c_ss.sieve_count
+	LXI	H, __v6clang_ss.sieve_count
 	MOV	C, M
 	INX	H
 	MOV	B, M
@@ -90,26 +90,26 @@ sieve_count:                            ; @sieve_count
 	SBB	D
 	MOV	B, A
 	PUSH	H
-	LXI	H, __v6c_ss.sieve_count
+	LXI	H, __v6clang_ss.sieve_count
 	MOV	M, C
 	INX	H
 	MOV	M, B
 	POP	H
 	MVI	M, 1
 	PUSH	H
-	LXI	H, __v6c_ss.sieve_count+2
+	LXI	H, __v6clang_ss.sieve_count+2
 	MOV	C, M
 	INX	H
 	MOV	B, M
 	POP	H
 	DAD	B
 	XCHG
-	LHLD	__v6c_ss.sieve_count+4
+	LHLD	__v6clang_ss.sieve_count+4
 	DAD	B
-	SHLD	__v6c_ss.sieve_count+4
+	SHLD	__v6clang_ss.sieve_count+4
 	XCHG
 	PUSH	H
-	LXI	H, __v6c_ss.sieve_count+6
+	LXI	H, __v6clang_ss.sieve_count+6
 	MOV	C, M
 	INX	H
 	MOV	B, M
@@ -120,34 +120,34 @@ sieve_count:                            ; @sieve_count
 	SBB	B
 	JC	.LBB15_7
 .LBB15_10:                              ;   in Loop: Header=BB15_5 Depth=1
-	LHLD	__v6c_ss.sieve_count
-	SHLD	__v6c_ss.sieve_count
-	LHLD	__v6c_ss.sieve_count+2
+	LHLD	__v6clang_ss.sieve_count
+	SHLD	__v6clang_ss.sieve_count
+	LHLD	__v6clang_ss.sieve_count+2
 	MOV	C, L
 	MOV	B, H
 	MOV	H, B
 	MOV	L, C
 	DAD	B
 	XCHG
-	LHLD	__v6c_ss.sieve_count+8
+	LHLD	__v6clang_ss.sieve_count+8
 	DAD	D
 	PUSH	H
-	LHLD	__v6c_ss.sieve_count+12
+	LHLD	__v6clang_ss.sieve_count+12
 	XCHG
-	LHLD	__v6c_ss.sieve_count+10
+	LHLD	__v6clang_ss.sieve_count+10
 	DAD	D
-	SHLD	__v6c_ss.sieve_count+10
+	SHLD	__v6clang_ss.sieve_count+10
 	XCHG
 	INX	H
 	INX	H
-	SHLD	__v6c_ss.sieve_count+12
+	SHLD	__v6clang_ss.sieve_count+12
 	INX	B
 	POP	H
 	XCHG
 	INX	D
-	LHLD	__v6c_ss.sieve_count+6
+	LHLD	__v6clang_ss.sieve_count+6
 	XCHG
-	SHLD	__v6c_ss.sieve_count+8
+	SHLD	__v6clang_ss.sieve_count+8
 	XCHG
 	MOV	A, E
 	SUB	L
@@ -155,7 +155,7 @@ sieve_count:                            ; @sieve_count
 	SBB	H
 	JC	.LBB15_5
 .LBB15_12:
-	LHLD	__v6c_ss.sieve_count
+	LHLD	__v6clang_ss.sieve_count
 	RET
 .LBB15_11:
 	LXI	H, 0xfffe
@@ -181,22 +181,22 @@ main:                                   ; @main
 	LXI	H, 2
 	LXI	D, 0xc6
 	XCHG
-	SHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main
 	XCHG
 	LXI	D, 4
 	XCHG
-	SHLD	__v6c_ss.main+6
+	SHLD	__v6clang_ss.main+6
 	XCHG
 	LXI	B, 5
 	LXI	D, flags+4
 	XCHG
-	SHLD	__v6c_ss.main+8
+	SHLD	__v6clang_ss.main+8
 	XCHG
 .LBB16_3:                               ; =>This Loop Header: Depth=1
                                         ;     Child Loop BB16_5 Depth 2
-	SHLD	__v6c_ss.main+4
+	SHLD	__v6clang_ss.main+4
 	PUSH	H
-	LXI	H, __v6c_ss.main+10
+	LXI	H, __v6clang_ss.main+10
 	MOV	M, C
 	INX	H
 	MOV	M, B
@@ -209,13 +209,13 @@ main:                                   ; @main
 	JNZ	.LBB16_8
 ; %bb.4:                                ; %.preheader
                                         ;   in Loop: Header=BB16_3 Depth=1
-	LHLD	__v6c_ss.main+8
+	LHLD	__v6clang_ss.main+8
 	MOV	C, L
 	MOV	B, H
-	LHLD	__v6c_ss.main+6
+	LHLD	__v6clang_ss.main+6
 .LBB16_5:                               ;   Parent Loop BB16_3 Depth=1
                                         ; =>  This Inner Loop Header: Depth=2
-	SHLD	__v6c_ss.main+2
+	SHLD	__v6clang_ss.main+2
 	LDAX	B
 	ORA	A
 	MVI	L, 0
@@ -227,7 +227,7 @@ main:                                   ; @main
 	MOV	H, L
 	MOV	L, A
 	XCHG
-	LHLD	__v6c_ss.main
+	LHLD	__v6clang_ss.main
 	XCHG
 	MOV	A, E
 	SUB	L
@@ -236,17 +236,17 @@ main:                                   ; @main
 	SBB	H
 	MOV	D, A
 	XCHG
-	SHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main
 	MVI	A, 1
 	STAX	B
-	LHLD	__v6c_ss.main+4
+	LHLD	__v6clang_ss.main+4
 	PUSH	H
 	DAD	B
 	MOV	B, H
 	MOV	C, L
 	POP	H
 	XCHG
-	LHLD	__v6c_ss.main+2
+	LHLD	__v6clang_ss.main+2
 	DAD	D
 	MVI	A, 0xc7
 	SUB	L
@@ -254,30 +254,30 @@ main:                                   ; @main
 	SBB	H
 	JNC	.LBB16_5
 .LBB16_8:                               ;   in Loop: Header=BB16_3 Depth=1
-	LHLD	__v6c_ss.main+4
+	LHLD	__v6clang_ss.main+4
 	DAD	H
 	XCHG
-	LHLD	__v6c_ss.main+6
+	LHLD	__v6clang_ss.main+6
 	DAD	D
 	PUSH	H
-	LHLD	__v6c_ss.main+4
+	LHLD	__v6clang_ss.main+4
 	PUSH	H
-	LXI	H, __v6c_ss.main+10
+	LXI	H, __v6clang_ss.main+10
 	MOV	C, M
 	INX	H
 	MOV	B, M
 	POP	H
 	XCHG
-	LHLD	__v6c_ss.main+8
+	LHLD	__v6clang_ss.main+8
 	DAD	B
-	SHLD	__v6c_ss.main+8
+	SHLD	__v6clang_ss.main+8
 	INX	B
 	INX	B
 	POP	H
 	XCHG
 	INX	D
 	XCHG
-	SHLD	__v6c_ss.main+6
+	SHLD	__v6clang_ss.main+6
 	XCHG
 	INX	H
 	MVI	A, 0xf
@@ -290,7 +290,7 @@ main:                                   ; @main
 ; %bb.9:
 	LXI	H, 0xff
 	XCHG
-	LHLD	__v6c_ss.main
+	LHLD	__v6clang_ss.main
 	XCHG
 	MOV	A, E
 	ANA	L
@@ -310,7 +310,7 @@ main:                                   ; @main
                                         ; -- End function
 	.local	flags                           ; @flags
 	.comm	flags,200,1
-	.local	__v6c_ss.sieve_count            ; @__v6c_ss.sieve_count
-	.comm	__v6c_ss.sieve_count,14,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,12,1
+	.local	__v6clang_ss.sieve_count            ; @__v6clang_ss.sieve_count
+	.comm	__v6clang_ss.sieve_count,14,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,12,1

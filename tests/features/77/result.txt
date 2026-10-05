@@ -1,4 +1,4 @@
-Feature 77 — O93 16-bit Bitwise-Immediate Pseudos (V6C_AND16_IMM / OR16_IMM / XOR16_IMM)
+Feature 77 — O93 16-bit Bitwise-Immediate Pseudos (V6CLANG_AND16_IMM / OR16_IMM / XOR16_IMM)
 =========================================================================================
 
 Status
@@ -8,7 +8,7 @@ O93 is implemented and validated.
 
 A 16-bit bitwise op against a compile-time constant (`x & C`, `x | C`, `x ^ C`)
 previously materialised the constant into a scratch register pair
-(`LXI D, C`) and then ran the 6-instruction reg/reg `V6C_*16` expansion.
+(`LXI D, C`) and then ran the 6-instruction reg/reg `V6CLANG_*16` expansion.
 That ties up one of only three register pairs (HL/BC/DE) for the duration of
 the op — in a hot loop it forces a spill/reload of the loop state.
 
@@ -33,7 +33,7 @@ CMP16 is intentionally excluded — subtraction is not commutative
 C Test Case Code
 ----------------
 
-`v6llvmc.c` / `c8080.c`
+`v6clang.c` / `c8080.c`
 
 ```c
 typedef unsigned char  u8;
@@ -89,15 +89,15 @@ xor16_const:
 
 Each call therefore costs an LD-spill, two PUSHes, an LXI, a CALL (24cc) into a
 multi-byte 32-bit helper, plus the RET — well over 100cc and ~15B per site,
-dwarfing both v6llvmc variants.  The lfsr_run loop calls the helper every
+dwarfing both v6clang variants.  The lfsr_run loop calls the helper every
 iteration.  Precise helper cycle counts are omitted (helper body is shared and
 32-bit-wide); the whole-program benchmark below captures the real gap.
 
 
-v6llvmc OLD ASM (before O93)
+v6clang OLD ASM (before O93)
 ----------------------------
 
-`v6llvmc_old.asm`:
+`v6clang_old.asm`:
 
 ```asm
 xor16_const:                 ; both bytes non-trivial
@@ -130,10 +130,10 @@ lfsr_run (tap-taken path .LBB21_3):
 ```
 
 
-v6llvmc NEW ASM (after O93)
+v6clang NEW ASM (after O93)
 ---------------------------
 
-`v6llvmc_new01.asm`:
+`v6clang_new01.asm`:
 
 ```asm
 xor16_const:                 ; no LXI, no scratch pair
@@ -175,27 +175,27 @@ lfsr_run (tap-taken path %bb.3):
 ```
 
 
-Comparison Table (per-function, v6llvmc)
+Comparison Table (per-function, v6clang)
 ----------------------------------------
 
-| Function          | Compiler      | Bytes | Worst cc | vs v6llvmc old |
+| Function          | Compiler      | Bytes | Worst cc | vs v6clang old |
 |-------------------|---------------|------:|---------:|----------------|
-| `xor16_const`     | v6llvmc (old) |    10 |       64 | baseline       |
-| `xor16_const`     | v6llvmc (new) |     9 |       52 | **−1B, −12cc** |
-| `xor16_hi_only`   | v6llvmc (old) |    10 |       64 | baseline       |
-| `xor16_hi_only`   | v6llvmc (new) |     5 |       32 | **−5B, −32cc** |
-| `or16_lo_only`    | v6llvmc (old) |    10 |       64 | baseline       |
-| `or16_lo_only`    | v6llvmc (new) |     5 |       32 | **−5B, −32cc** |
-| `and16_clear_lo`  | v6llvmc (old) |    10 |       64 | baseline       |
-| `and16_clear_lo`  | v6llvmc (new) |     3 |       20 | **−7B, −44cc** |
-| `and16_mask`      | v6llvmc (old) |    10 |       64 | baseline       |
-| `and16_mask`      | v6llvmc (new) |     9 |       52 | **−1B, −12cc** |
-| `or16_set_all`    | v6llvmc (old) |     4 |       24 | baseline       |
-| `or16_set_all`    | v6llvmc (new) |     4 |       24 | no change ✓    |
+| `xor16_const`     | v6clang (old) |    10 |       64 | baseline       |
+| `xor16_const`     | v6clang (new) |     9 |       52 | **−1B, −12cc** |
+| `xor16_hi_only`   | v6clang (old) |    10 |       64 | baseline       |
+| `xor16_hi_only`   | v6clang (new) |     5 |       32 | **−5B, −32cc** |
+| `or16_lo_only`    | v6clang (old) |    10 |       64 | baseline       |
+| `or16_lo_only`    | v6clang (new) |     5 |       32 | **−5B, −32cc** |
+| `and16_clear_lo`  | v6clang (old) |    10 |       64 | baseline       |
+| `and16_clear_lo`  | v6clang (new) |     3 |       20 | **−7B, −44cc** |
+| `and16_mask`      | v6clang (old) |    10 |       64 | baseline       |
+| `and16_mask`      | v6clang (new) |     9 |       52 | **−1B, −12cc** |
+| `or16_set_all`    | v6clang (old) |     4 |       24 | baseline       |
+| `or16_set_all`    | v6clang (new) |     4 |       24 | no change ✓    |
 
 c8080 routes every one of these through a 32-bit helper call (LD-spill + 2×PUSH
 + LXI + CALL into a shared multi-byte helper + RET), so each costs >100cc and
-~15B — both v6llvmc variants are several times smaller and faster.
+~15B — both v6clang variants are several times smaller and faster.
 
 
 Whole-Program Benchmark (lfsr16)
@@ -209,10 +209,10 @@ state no longer spills, and the BC shadow-register shuffles vanish.
 |-----------------|------:|--------------:|------------------|
 | c8080           |   176 |     2,623,212 | 1.00x            |
 | z88dk           |  1019 |     4,473,860 | 0.59x            |
-| v6llvmc (old)   |   121 |     1,344,784 | 1.95x            |
-| v6llvmc (new)   |    90 |       730,452 | **3.59x**        |
+| v6clang (old)   |   121 |     1,344,784 | 1.95x            |
+| v6clang (new)   |    90 |       730,452 | **3.59x**        |
 
-v6llvmc lfsr16: **121 B → 90 B (−25.6%)**, **1,344,784 cc → 730,452 cc (−45.7%)**.
+v6clang lfsr16: **121 B → 90 B (−25.6%)**, **1,344,784 cc → 730,452 cc (−45.7%)**.
 Speedup vs c8080 jumps 1.95x → 3.59x; vs z88dk 3.33x → 6.12x.
 
 

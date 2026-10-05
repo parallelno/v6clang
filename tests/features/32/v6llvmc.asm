@@ -3,7 +3,7 @@
 u16_shl8:                               ; @u16_shl8
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_shl8
+	LXI	HL, __v6clang_ss.u16_shl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -19,7 +19,7 @@ u16_shl8:                               ; @u16_shl8
 	MOV	H, C
 	MOV	L, A
 	XCHG
-	LHLD	__v6c_ss.u16_shl8
+	LHLD	__v6clang_ss.u16_shl8
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -32,7 +32,7 @@ u16_shl8:                               ; @u16_shl8
 u16_shl10:                              ; @u16_shl10
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_shl10
+	LXI	HL, __v6clang_ss.u16_shl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -50,7 +50,7 @@ u16_shl10:                              ; @u16_shl10
 	MVI	L, 0
 	MOV	H, A
 	XCHG
-	LHLD	__v6c_ss.u16_shl10
+	LHLD	__v6clang_ss.u16_shl10
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -63,7 +63,7 @@ u16_shl10:                              ; @u16_shl10
 u16_srl8:                               ; @u16_srl8
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_srl8
+	LXI	HL, __v6clang_ss.u16_srl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -78,7 +78,7 @@ u16_srl8:                               ; @u16_srl8
 	MOV	L, B
 	MVI	H, 0
 	XCHG
-	LHLD	__v6c_ss.u16_srl8
+	LHLD	__v6clang_ss.u16_srl8
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -91,7 +91,7 @@ u16_srl8:                               ; @u16_srl8
 u16_srl10:                              ; @u16_srl10
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_srl10
+	LXI	HL, __v6clang_ss.u16_srl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -114,7 +114,7 @@ u16_srl10:                              ; @u16_srl10
 	RAR
 	MOV	L, A
 	XCHG
-	LHLD	__v6c_ss.u16_srl10
+	LHLD	__v6clang_ss.u16_srl10
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -127,7 +127,7 @@ u16_srl10:                              ; @u16_srl10
 i16_shl8:                               ; @i16_shl8
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_shl8
+	LXI	HL, __v6clang_ss.i16_shl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -143,7 +143,7 @@ i16_shl8:                               ; @i16_shl8
 	MOV	H, C
 	MOV	L, A
 	XCHG
-	LHLD	__v6c_ss.i16_shl8
+	LHLD	__v6clang_ss.i16_shl8
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -156,7 +156,7 @@ i16_shl8:                               ; @i16_shl8
 i16_shl10:                              ; @i16_shl10
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_shl10
+	LXI	HL, __v6clang_ss.i16_shl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -174,7 +174,7 @@ i16_shl10:                              ; @i16_shl10
 	MVI	L, 0
 	MOV	H, A
 	XCHG
-	LHLD	__v6c_ss.i16_shl10
+	LHLD	__v6clang_ss.i16_shl10
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -187,7 +187,7 @@ i16_shl10:                              ; @i16_shl10
 i16_sra8:                               ; @i16_sra8
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_sra8
+	LXI	HL, __v6clang_ss.i16_sra8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -205,7 +205,7 @@ i16_sra8:                               ; @i16_sra8
 	SBB	A
 	MOV	H, A
 	XCHG
-	LHLD	__v6c_ss.i16_sra8
+	LHLD	__v6clang_ss.i16_sra8
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -218,7 +218,7 @@ i16_sra8:                               ; @i16_sra8
 i16_sra10:                              ; @i16_sra10
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_sra10
+	LXI	HL, __v6clang_ss.i16_sra10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -246,7 +246,7 @@ i16_sra10:                              ; @i16_sra10
 	RAR
 	MOV	L, A
 	XCHG
-	LHLD	__v6c_ss.i16_sra10
+	LHLD	__v6clang_ss.i16_sra10
 	XCHG
 	MOV	A, L
 	STAX	DE
@@ -328,20 +328,20 @@ i8_p:
 i8_q:
 	DB	0                               ; 0x0
 
-	.local	__v6c_ss.u16_shl8               ; @__v6c_ss.u16_shl8
-	.comm	__v6c_ss.u16_shl8,2,1
-	.local	__v6c_ss.u16_shl10              ; @__v6c_ss.u16_shl10
-	.comm	__v6c_ss.u16_shl10,2,1
-	.local	__v6c_ss.u16_srl8               ; @__v6c_ss.u16_srl8
-	.comm	__v6c_ss.u16_srl8,2,1
-	.local	__v6c_ss.u16_srl10              ; @__v6c_ss.u16_srl10
-	.comm	__v6c_ss.u16_srl10,2,1
-	.local	__v6c_ss.i16_shl8               ; @__v6c_ss.i16_shl8
-	.comm	__v6c_ss.i16_shl8,2,1
-	.local	__v6c_ss.i16_shl10              ; @__v6c_ss.i16_shl10
-	.comm	__v6c_ss.i16_shl10,2,1
-	.local	__v6c_ss.i16_sra8               ; @__v6c_ss.i16_sra8
-	.comm	__v6c_ss.i16_sra8,2,1
-	.local	__v6c_ss.i16_sra10              ; @__v6c_ss.i16_sra10
-	.comm	__v6c_ss.i16_sra10,2,1
+	.local	__v6clang_ss.u16_shl8               ; @__v6clang_ss.u16_shl8
+	.comm	__v6clang_ss.u16_shl8,2,1
+	.local	__v6clang_ss.u16_shl10              ; @__v6clang_ss.u16_shl10
+	.comm	__v6clang_ss.u16_shl10,2,1
+	.local	__v6clang_ss.u16_srl8               ; @__v6clang_ss.u16_srl8
+	.comm	__v6clang_ss.u16_srl8,2,1
+	.local	__v6clang_ss.u16_srl10              ; @__v6clang_ss.u16_srl10
+	.comm	__v6clang_ss.u16_srl10,2,1
+	.local	__v6clang_ss.i16_shl8               ; @__v6clang_ss.i16_shl8
+	.comm	__v6clang_ss.i16_shl8,2,1
+	.local	__v6clang_ss.i16_shl10              ; @__v6clang_ss.i16_shl10
+	.comm	__v6clang_ss.i16_shl10,2,1
+	.local	__v6clang_ss.i16_sra8               ; @__v6clang_ss.i16_sra8
+	.comm	__v6clang_ss.i16_sra8,2,1
+	.local	__v6clang_ss.i16_sra10              ; @__v6clang_ss.i16_sra10
+	.comm	__v6clang_ss.i16_sra10,2,1
 	.addrsig

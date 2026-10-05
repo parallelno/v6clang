@@ -33,7 +33,7 @@ most efficient positions.
 5. **Handle SCCs**: Functions in the same SCC (mutual recursion) must have
    disjoint allocations
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
 The i8080 has no zero page, but the same algorithm applies to **global
 static stack slot allocation** (O10's bss region):

@@ -128,7 +128,7 @@ main: ; 276 cc, 43 bytes
 | main          |    276 |    43 |
 | **Total**     |**1128**|**159**|
 
-## v6llvmc assembly (with -mv6c-static-stack)
+## v6clang assembly (with -mv6clang-static-stack)
 
 ```asm
 use_val: ; 32 cc, 4 bytes
@@ -142,9 +142,9 @@ get_val: ; 32 cc, 4 bytes
 heavy_spill: ; 364 cc, 49 bytes
     MOV     B, D
     MOV     C, E
-    SHLD    __v6c_ss.heavy_spill+2
+    SHLD    __v6clang_ss.heavy_spill+2
     INX     HL
-    SHLD    __v6c_ss.heavy_spill
+    SHLD    __v6clang_ss.heavy_spill
     CALL    use_val
     LXI     HL, 2
     MOV     A, C
@@ -156,11 +156,11 @@ heavy_spill: ; 364 cc, 49 bytes
     MOV     H, D
     MOV     L, E
     CALL    use_val
-    LHLD    __v6c_ss.heavy_spill+2
+    LHLD    __v6clang_ss.heavy_spill+2
     DAD     BC
     CALL    use_val
     PUSH    HL
-    LXI     HL, __v6c_ss.heavy_spill
+    LXI     HL, __v6clang_ss.heavy_spill
     MOV     C, M
     INX     HL
     MOV     B, M
@@ -224,7 +224,7 @@ main:
     JMP     use_val
 ```
 
-## v6llvmc stats (with -mv6c-static-stack)
+## v6clang stats (with -mv6clang-static-stack)
 
 | Function      | Cycles | Bytes |
 |---------------|--------|-------|
@@ -235,7 +235,7 @@ main:
 | main          |    326 |    49 |
 | **Total**     | **950**|**134**|
 
-## v6llvmc baseline stats (without -mv6c-static-stack)
+## v6clang baseline stats (without -mv6clang-static-stack)
 
 | Function      | Cycles | Bytes |
 |---------------|--------|-------|
@@ -250,7 +250,7 @@ main:
 
 ### heavy_spill (the spill-heavy function where O10 applies)
 
-| Metric              | c8080 (static) | v6llvmc baseline (SP) | v6llvmc O10 (static) |
+| Metric              | c8080 (static) | v6clang baseline (SP) | v6clang O10 (static) |
 |---------------------|----------------|-----------------------|----------------------|
 | Cycles              |            436 |                   768 |                  364 |
 | Bytes               |             62 |                   102 |                   49 |
@@ -267,8 +267,8 @@ main:
 | Compiler         | Cycles | Bytes |
 |------------------|--------|-------|
 | c8080 (static)   |   1128 |   159 |
-| v6llvmc baseline |   1354 |   187 |
-| v6llvmc + O10    |    950 |   134 |
+| v6clang baseline |   1354 |   187 |
+| v6clang + O10    |    950 |   134 |
 
 - O10 vs baseline: **-404cc (−30%)**, **-53B (−28%)**
 - O10 vs c8080:    **-178cc (−16%)**, **-25B (−16%)**
@@ -279,17 +279,17 @@ main:
 - nested_calls and main have no spills — register allocation alone is sufficient.
 - main inlines heavy_spill and nested_calls at -O2, constant-folding the results.
 - c8080 uses a shared static stack for all functions (all variables in BSS, 18B).
-- v6llvmc O10 allocates per-function: __v6c_ss.heavy_spill (4B in BSS).
+- v6clang O10 allocates per-function: __v6clang_ss.heavy_spill (4B in BSS).
 
 ## Files Changed
 
 ### New files:
-- llvm-project/llvm/lib/Target/V6C/V6CMachineFunctionInfo.h
-- llvm-project/llvm/lib/Target/V6C/V6CStaticStackAlloc.cpp
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangMachineFunctionInfo.h
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangStaticStackAlloc.cpp
 
 ### Modified files:
-- llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.h
-- llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp
-- llvm-project/llvm/lib/Target/V6C/V6CRegisterInfo.cpp
-- llvm-project/llvm/lib/Target/V6C/V6C.h
-- llvm-project/llvm/lib/Target/V6C/CMakeLists.txt
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp
+- llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp
+- llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h
+- llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt

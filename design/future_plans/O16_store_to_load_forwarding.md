@@ -5,7 +5,7 @@
 
 ## Problem
 
-After register allocation, V6C inserts spill/reload sequences for stack access
+After register allocation, V6CLANG inserts spill/reload sequences for stack access
 costing ~52cc each (see [O08](O08_spill_optimization.md)). Often, the register being reloaded still holds
 the same value that was spilled — the register was not clobbered between the
 spill and reload. In these cases, the reload is completely redundant.
@@ -26,9 +26,9 @@ On register clobber: invalidate affected entries. On call: clear all.
 - Detects and eliminates redundant stores (same value already in slot)
 - Manages SP delta tracking through PUSH/POP/ADD SP,e
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
-V6C's stack access uses the pattern:
+V6CLANG's stack access uses the pattern:
 ```asm
 PUSH HL; LXI HL, offset; DAD SP; MOV M, r; POP HL   ; spill
 PUSH HL; LXI HL, offset; DAD SP; MOV r, M; POP HL   ; reload

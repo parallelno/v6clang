@@ -1,4 +1,4 @@
-.\tests\features\78\v6llvmc.elf:	file format elf32-v6c
+.\tests\features\78\v6clang.elf:	file format elf32-v6clang
 
 .debug_info contents:
 0x00000000: Compile Unit: length = 0x0000017e, format = DWARF32, version = 0x0005, unit_type = DW_UT_compile, abbr_offset = 0x0000, addr_size = 0x02 (next unit at 0x00000182)
@@ -6,10 +6,10 @@
 0x0000000c: DW_TAG_compile_unit
               DW_AT_producer	("clang version 18.1.0rc (https://github.com/llvm/llvm-project.git 461274b81d8641eab64d494accddc81d7db8a09e)")
               DW_AT_language	(DW_LANG_C11)
-              DW_AT_name	("tests\\features\\78\\v6llvmc.c")
+              DW_AT_name	("tests\\features\\78\\v6clang.c")
               DW_AT_str_offsets_base	(0x00000008)
               DW_AT_stmt_list	(0x00000000)
-              DW_AT_comp_dir	("C:\\Work\\Programming\\v6llvmc")
+              DW_AT_comp_dir	("C:\\Work\\Programming\\v6clang")
               DW_AT_low_pc	(0x0000)
               DW_AT_ranges	(indexed (0x0) rangelist = 0x00000010
                  [0x011f, 0x0124)
@@ -23,7 +23,7 @@
                 DW_AT_name	("byte_sink")
                 DW_AT_type	(0x00000034 "volatile unsigned char")
                 DW_AT_external	(true)
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                 DW_AT_decl_line	(1)
                 DW_AT_location	(DW_OP_addrx 0x0)
 
@@ -39,7 +39,7 @@
                 DW_AT_name	("word_sink")
                 DW_AT_type	(0x00000048 "volatile unsigned int")
                 DW_AT_external	(true)
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                 DW_AT_decl_line	(2)
                 DW_AT_location	(DW_OP_addrx 0x1)
 
@@ -57,7 +57,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__mulqi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(68)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "unsigned char")
@@ -67,8 +67,8 @@
                 DW_AT_high_pc	(0x00000013)
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_mulqihi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_mulqihi3")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(98)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -79,7 +79,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__mulhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(127)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -89,8 +89,8 @@
                 DW_AT_high_pc	(0x0000002f)
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_udivmod16_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_udivmod16_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(168)
                 DW_AT_prototyped	(true)
 
@@ -100,7 +100,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__udivhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(218)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -111,7 +111,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__umodhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(231)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -122,7 +122,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__udivmodhi4")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(252)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -133,7 +133,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__divmodhi4")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(275)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000017d "int")
@@ -143,8 +143,8 @@
                 DW_AT_high_pc	(0x00000008)
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_neg_hl_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_neg_hl_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(327)
                 DW_AT_prototyped	(true)
 
@@ -153,8 +153,8 @@
                 DW_AT_high_pc	(0x00000008)
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_neg_de_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_neg_de_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(344)
                 DW_AT_prototyped	(true)
 
@@ -164,7 +164,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__divhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(362)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000017d "int")
@@ -175,7 +175,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__modhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(394)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000017d "int")
@@ -186,7 +186,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__ashlhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(426)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -197,7 +197,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__lshrhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(452)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000004d "unsigned int")
@@ -208,7 +208,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__ashrhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(484)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000017d "int")
@@ -219,24 +219,24 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("leaf")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                 DW_AT_decl_line	(4)
                 DW_AT_prototyped	(true)
                 DW_AT_external	(true)
 
 0x00000139:     DW_TAG_formal_parameter
-                  DW_AT_location	(indexed (0x0) loclist = 0x00000018: 
+                  DW_AT_location	(indexed (0x0) loclist = 0x00000018:
                      [0x011f, 0x0120): DW_OP_reg9 HL)
                   DW_AT_name	("value")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                   DW_AT_decl_line	(4)
                   DW_AT_type	(0x0000004d "unsigned int")
 
 0x00000142:     DW_TAG_variable
-                  DW_AT_location	(indexed (0x1) loclist = 0x0000001e: 
+                  DW_AT_location	(indexed (0x1) loclist = 0x0000001e:
                      [0x0120, 0x0124): DW_OP_reg9 HL)
                   DW_AT_name	("local")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                   DW_AT_decl_line	(5)
                   DW_AT_type	(0x0000004d "unsigned int")
 
@@ -248,17 +248,17 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("middle")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                 DW_AT_decl_line	(9)
                 DW_AT_prototyped	(true)
                 DW_AT_external	(true)
 
 0x00000157:     DW_TAG_formal_parameter
-                  DW_AT_location	(indexed (0x2) loclist = 0x00000026: 
+                  DW_AT_location	(indexed (0x2) loclist = 0x00000026:
                      [0x0124, 0x0126): DW_OP_reg9 HL
                      [0x0126, 0x012f): DW_OP_reg8 DE)
                   DW_AT_name	("value")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                   DW_AT_decl_line	(9)
                   DW_AT_type	(0x0000004d "unsigned int")
 
@@ -274,7 +274,7 @@
                 DW_AT_frame_base	(DW_OP_reg10 SP)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("main")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\.\tests\features\78\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\.\tests\features\78\v6clang.c")
                 DW_AT_decl_line	(14)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000017d "int")

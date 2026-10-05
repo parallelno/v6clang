@@ -1,7 +1,7 @@
 O02 — Sequential LXI -> INX Folding (Extended)
 ================================================
 
-C SOURCE (v6llvmc.c)
+C SOURCE (v6clang.c)
 --------------------
     extern unsigned char ext_sink(unsigned char v);
 
@@ -71,7 +71,7 @@ C8080 STATS
     sum4_array:         68cc /  8B (already INX-chained, no LXI to fold)
 
 
-V6LLVMC ASM (after O02 extension)
+V6CLANG ASM (after O02 extension)
 ---------------------------------
     sum4_global:
             LXI     H, g_s          ; 12cc / 3B
@@ -87,7 +87,7 @@ V6LLVMC ASM (after O02 extension)
     main:    (same chain shape on g_s: 1 LXI->INX fold)
              saves another 4cc + 2B
 
-V6LLVMC STATS
+V6CLANG STATS
 -------------
     sum4_global:        84cc / 14B   (was 88cc / 16B; -4cc -2B)
     main inner chain:   one fold     (-4cc -2B per LXI)

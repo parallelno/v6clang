@@ -1,14 +1,14 @@
-# llvm-mos Optimization Strategies — Applicability Report for V6C
+# llvm-mos Optimization Strategies — Applicability Report for V6CLANG
 
 Analysis of https://github.com/llvm-mos/llvm-mos (`llvm/lib/Target/MOS/`)
 targeting the MOS 6502 and its variants. Evaluated for adaptation to the
-V6C backend (Intel 8080 / Vector 06c).
+V6CLANG backend (Intel 8080 / Vector 06c).
 
 ---
 
 ## Architecture Comparison: 6502 vs 8080
 
-| Property | MOS 6502 | Intel 8080 (V6C) |
+| Property | MOS 6502 | Intel 8080 (V6CLANG) |
 |----------|----------|-------------------|
 | GPRs | A, X, Y (3 × 8-bit) | A, B, C, D, E, H, L (7 × 8-bit) |
 | Register pairs | None (A is accumulator-only) | BC, DE, HL (3 × 16-bit) |
@@ -22,7 +22,7 @@ V6C backend (Intel 8080 / Vector 06c).
 **Key insight**: The 8080 has *more* registers but *fewer* addressing modes.
 The 6502 compensates for its tiny register file with zero-page "soft registers"
 and indexed addressing. Many llvm-mos optimizations address the same
-fundamental problems V6C faces (accumulator bottleneck, expensive pointer
+fundamental problems V6CLANG faces (accumulator bottleneck, expensive pointer
 arithmetic, spilling costs), but through different mechanisms.
 
 ---
@@ -67,7 +67,7 @@ Loop Optimization (via PassBuilder callbacks):
 
 ---
 
-## Strategies Ranked by Impact × Feasibility for V6C
+## Strategies Ranked by Impact × Feasibility for V6CLANG
 
 ### S1. Static Stack Allocation for Non-Reentrant Functions
 
@@ -89,18 +89,18 @@ paths share the same static memory.
    and creates per-function aliases into it. All `TargetIndex` operands pointing
    to framework slots are rewritten to `GlobalAddress` operands.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **Directly applicable and extremely high impact.** The 8080 has the same
   problem as the 6502: no stack-relative addressing, so every stack access
   costs ~52cc (LXI+DAD SP+MOV sequence). Static allocation turns these into
   direct `LDA`/`STA` or `LHLD`/`SHLD` (16-20cc) — a **3-5× speedup** per
   spill/reload.
 - The `MOSNonReentrant` analysis is target-independent (call graph analysis).
-  Can be reused almost verbatim for V6C.
-- `MOSStaticStackAlloc` would need adaptation for V6C's frame lowering
+  Can be reused almost verbatim for V6CLANG.
+- `MOSStaticStackAlloc` would need adaptation for V6CLANG's frame lowering
   (different pseudo names, different `MachineFrameInfo` conventions), but the
   SCC-based offset assignment algorithm is directly reusable.
-- **This subsumes and improves upon the planned V6C O8 (Spill Optimization
+- **This subsumes and improves upon the planned V6CLANG O8 (Spill Optimization
   Tier 2)** — instead of per-slot global bss variables, you get a single
   optimally-packed static stack with automatic overlap analysis. The T1
   (PUSH/POP) strategy from O8 remains orthogonal and can work alongside it.
@@ -110,7 +110,7 @@ paths share the same static memory.
 | **Impact** | **Very High** — 3-5× faster spill/reload, affects every function with stack frames |
 | **Complexity** | Medium — 2 new passes, call graph analysis is target-independent |
 | **Risk** | Medium — must handle interrupts and recursion correctly |
-| **V6C prerequisites** | Linker must support global aliases; need LTO-like whole-program compilation |
+| **V6CLANG prerequisites** | Linker must support global aliases; need LTO-like whole-program compilation |
 | **Similar to** | O8 (Spill Optimization T2) — but more general and automatic |
 
 ---
@@ -131,7 +131,7 @@ IV, connected by a zero-extension.
 4. Uses `SCEVExpander` with canonical mode disabled for minimal expansion
 5. Runs at `registerLateLoopOptimizationsEPCallback`, followed by `IndVarSimplify`
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **High impact for loops with bounded iteration counts** (very common in
   embedded 8080 code: `for (i = 0; i < 100; i++) array[i] = ...`).
 - On the 8080, keeping the loop counter in 8 bits means using `DCR` (4cc)
@@ -149,7 +149,7 @@ IV, connected by a zero-extension.
 | **Impact** | **High** — 4-14cc saved per loop iteration from narrower counter |
 | **Complexity** | Low — IR-level pass, almost entirely target-independent |
 | **Risk** | Low — only rewrites when SCEV proves range fits in 8 bits |
-| **V6C prerequisites** | None (IR-level, uses SCEV) |
+| **V6CLANG prerequisites** | None (IR-level, uses SCEV) |
 | **Similar to** | Complements O7 (Loop Strength Reduction) |
 
 ---
@@ -173,18 +173,18 @@ instructions:
 that can prefer code size (`-Oz`), speed (`-O2`), or a balanced mix. Copy
 forwarding only proceeds when `copyCost(dst, newSrc) ≤ copyCost(dst, src)`.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **High impact.** Copy chains are extremely common on the 8080 because
   everything must flow through A. Example: `MOV A, L; MOV C, A` could
   become `MOV C, L` if the cost model says it's cheaper (it is: both are 8cc,
   but the chain is 16cc total vs 8cc).
 - The `findReachingDefs` / `findForwardedCopy` / `isClobbered` infrastructure
-  performs **inter-basic-block analysis** — much more powerful than V6C's
-  current single-BB peephole in `V6CPeephole.cpp`.
-- **The dual cost model (`MOSInstrCost`)** is independently valuable. V6C
+  performs **inter-basic-block analysis** — much more powerful than V6CLANG's
+  current single-BB peephole in `V6ClangPeephole.cpp`.
+- **The dual cost model (`MOSInstrCost`)** is independently valuable. V6CLANG
   currently has no formal cost model; decisions in peephole/expansion passes
   are ad-hoc. Adopting Bytes+Cycles would improve all optimization decisions.
-- **Subsumes and extends the planned V6C O1 (Redundant MOV Elimination)** —
+- **Subsumes and extends the planned V6CLANG O1 (Redundant MOV Elimination)** —
   O1 catches `MOV X, A; ... MOV A, X` within a BB; this catches it cross-BB
   and also handles immediate rematerialization.
 
@@ -193,7 +193,7 @@ forwarding only proceeds when `copyCost(dst, newSrc) ≤ copyCost(dst, src)`.
 | **Impact** | **High** — eliminates redundant copies cross-BB, rematerializes immediates |
 | **Complexity** | Medium — inter-BB reaching-def analysis, cost-model integration |
 | **Risk** | Low — only rewrites when provably cheaper and not clobbered |
-| **V6C prerequisites** | Need a V6CInstrCost model (straightforward from timing tables) |
+| **V6CLANG prerequisites** | Need a V6ClangInstrCost model (straightforward from timing tables) |
 | **Similar to** | Supersedes O1 (Redundant MOV Elimination) |
 
 ---
@@ -209,7 +209,7 @@ register already holds that value and replaces the load with a register
 transfer (e.g., `LDA #5` → `TXA` if X==5). If the value differs by ±1
 from a known register, it uses `INX`/`DEX`/`INY`/`DEY` instead.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **Directly applicable.** The 8080 has `MOV r, r'` (8cc, 1 byte) which is
   cheaper than `MVI r, imm` (8cc, 2 bytes) — same cycle count but saves 1
   byte. And `INR`/`DCR` (4cc, 1 byte) is cheaper than `MVI` for ±1 cases.
@@ -225,7 +225,7 @@ from a known register, it uses `INX`/`DEX`/`INY`/`DEY` instead.
 | **Impact** | **Medium-High** — saves 1 byte per MVI replaced; INR/DCR saves 4cc+1B |
 | **Complexity** | Low — single-BB forward scan tracking register values |
 | **Risk** | Low — stateless, forward-only, local analysis |
-| **V6C prerequisites** | None |
+| **V6CLANG prerequisites** | None |
 | **Similar to** | Extension of O1, complements O5 (zero-byte detection) |
 
 ---
@@ -242,14 +242,14 @@ flag-setter is found, it lowers the `CmpZero` pseudo to the cheapest
 available sequence (transfer to dead register, or `INC; DEC` for zero-page
 values).
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - The 8080 already sets flags on most ALU operations (ADD, SUB, INR, DCR,
-  ANA, ORA, XRA). V6C already has `V6C_ZERO_TEST` optimization. However,
+  ANA, ORA, XRA). V6CLANG already has `V6CLANG_ZERO_TEST` optimization. However,
   the llvm-mos approach is more thorough — it scans backward past
   instructions that are known *not* to clobber NZ (branches, stores, certain
-  pseudos), finding flag-setters that V6C might currently miss.
+  pseudos), finding flag-setters that V6CLANG might currently miss.
 - **The "skip past known-safe instructions" approach** is the key takeaway.
-  V6C's current zero-test optimization likely stops at the first instruction
+  V6CLANG's current zero-test optimization likely stops at the first instruction
   that might affect flags. Extending it to skip over non-flag-affecting
   instructions (MOV, LXI, PUSH, POP without PSW) could find more
   elimination opportunities.
@@ -259,8 +259,8 @@ values).
 | **Impact** | **Medium** — eliminates some redundant comparisons |
 | **Complexity** | Low — backward scan in single BB |
 | **Risk** | Low — conservative flag-liveness analysis |
-| **V6C prerequisites** | Accurate flag-liveness tracking in V6CInstrInfo |
-| **Similar to** | Enhancement of existing V6C ZERO_TEST pass |
+| **V6CLANG prerequisites** | Accurate flag-liveness tracking in V6ClangInstrInfo |
+| **Similar to** | Enhancement of existing V6CLANG ZERO_TEST pass |
 
 ---
 
@@ -278,7 +278,7 @@ intermediate result `x << 3` is shared.
 The pass uses dominance analysis to ensure the chained shift dominates all
 its uses, moving instructions up the dominator tree as necessary.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **Applicable but lower priority.** The 8080 has single-bit rotate
   instructions (RLC, RRC, RAL, RAR) that take 4cc each. Shifts by N bits
   require N rotates + masking. Chaining `x << 3` as `(x << 1) << 2` doesn't
@@ -294,8 +294,8 @@ its uses, moving instructions up the dominator tree as necessary.
 | **Impact** | **Low-Medium** — saves rotates only when multiple shifts of same value exist |
 | **Complexity** | Medium — dominance-based instruction motion |
 | **Risk** | Low — SSA-based, correctness guaranteed by dominance |
-| **V6C prerequisites** | None (operates on generic G_SHL/G_LSHR/etc.) |
-| **Similar to** | No current V6C equivalent |
+| **V6CLANG prerequisites** | None (operates on generic G_SHL/G_LSHR/etc.) |
+| **Similar to** | No current V6CLANG equivalent |
 
 ---
 
@@ -315,8 +315,8 @@ frequency analysis), then allocates zero-page bytes round-robin across entry
 points, respecting call graph constraints (non-overlapping allocations for
 functions that can be active simultaneously).
 
-**V6C adaptation**:
-- **The 8080 has no zero page**, but the *concept* maps to a V6C-specific
+**V6CLANG adaptation**:
+- **The 8080 has no zero page**, but the *concept* maps to a V6CLANG-specific
   optimization: **dedicated fast-access memory regions**. The Vector 06c
   computer has RAM at specific addresses; if some addresses are faster or
   have special properties, the same allocation framework applies.
@@ -324,7 +324,7 @@ functions that can be active simultaneously).
   allocation.** Instead of ad-hoc per-function global variables for spill
   slots, use the frequency-weighted call-graph-aware allocator to decide
   *which* spill slots get promoted to globals and ensure non-overlapping
-  allocation. This is exactly what V6C's T2 (global bss spill) strategy needs.
+  allocation. This is exactly what V6CLANG's T2 (global bss spill) strategy needs.
 - The `collectCandidates` / `buildEntryGraphs` / `assignZPs` framework can
   be adapted for any "limited fast resource" allocation problem.
 
@@ -333,7 +333,7 @@ functions that can be active simultaneously).
 | **Impact** | **Medium** — no direct 8080 zero page, but algorithm useful for spill allocation |
 | **Complexity** | High — whole-program analysis with block frequency, call graph SCCs |
 | **Risk** | Medium — complex analysis, but isolated allocation decisions |
-| **V6C prerequisites** | Whole-program compilation (LTO); identified "fast memory" regions |
+| **V6CLANG prerequisites** | Whole-program compilation (LTO); identified "fast memory" regions |
 | **Similar to** | Improves O8 (Spill Optimization T2 allocation strategy) |
 
 ---
@@ -352,12 +352,12 @@ optimization mode:
 Used throughout the backend — `MOSCopyOpt` queries `copyCost()` through this
 model; register classes can report different copy costs for different pairs.
 
-**V6C adaptation**:
-- **Easy to implement and immediately useful.** V6C has detailed instruction
-  timing data ([V6CInstructionTimings.md](../docs/V6CInstructionTimings.md)).
-  Creating a `V6CInstrCost` class with the same interface would improve
+**V6CLANG adaptation**:
+- **Easy to implement and immediately useful.** V6CLANG has detailed instruction
+  timing data ([V6ClangInstructionTimings.md](../docs/V6ClangInstructionTimings.md)).
+  Creating a `V6ClangInstrCost` class with the same interface would improve
   every optimization decision in the backend.
-- Currently, V6C peephole heuristics are ad-hoc (e.g., `findDefiningLXI`
+- Currently, V6CLANG peephole heuristics are ad-hoc (e.g., `findDefiningLXI`
   always replaces LXI with INX without considering whether it's actually
   cheaper in the specific context). A cost model prevents regressions.
 - The `-Oz` vs `-O2` distinction is particularly relevant for embedded 8080
@@ -369,8 +369,8 @@ model; register classes can report different copy costs for different pairs.
 | **Impact** | **Medium** — improves all optimization decisions, prevents regressions |
 | **Complexity** | Low — simple data structure + function attribute check |
 | **Risk** | Very Low — informational only, no code transformation |
-| **V6C prerequisites** | Timing data already documented |
-| **Similar to** | No current V6C equivalent; enables better O1-O6 decisions |
+| **V6CLANG prerequisites** | Timing data already documented |
+| **Similar to** | No current V6CLANG equivalent; enables better O1-O6 decisions |
 
 ---
 
@@ -381,10 +381,10 @@ model; register classes can report different copy costs for different pairs.
 **What it does**: Replaces `JSR target; RTS` with `JMP target` (tail call),
 saving the return address push/pop overhead.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **Directly applicable.** `CALL target; RET` → `JMP target` saves
   18cc (CALL=18cc + RET=12cc = 30cc → JMP=12cc). This is a well-known
-  optimization that V6C may or may not already implement.
+  optimization that V6CLANG may or may not already implement.
 - Trivial peephole: if the last non-debug instruction before RET is CALL,
   replace both with JMP.
 
@@ -393,8 +393,8 @@ saving the return address push/pop overhead.
 | **Impact** | **Low-Medium** — 18cc per tail call; frequency depends on coding patterns |
 | **Complexity** | Very Low — 10-line peephole |
 | **Risk** | Very Low — well-understood optimization |
-| **V6C prerequisites** | None |
-| **Similar to** | No current V6C equivalent |
+| **V6CLANG prerequisites** | None |
+| **Similar to** | No current V6CLANG equivalent |
 
 ---
 
@@ -408,12 +408,12 @@ operations. On the 6502, shifts can only operate on A or memory, so if
 coalescing placed a value in X, a copy A←X is needed. The pass ensures the
 widest possible register class is used for these operations.
 
-**V6C adaptation**:
+**V6CLANG adaptation**:
 - **Not directly applicable.** The 8080's shift situation is different —
   rotates only work on A (RLC, RRC, RAL, RAR), but this is already handled
   in ISel. There's no equivalent "widening" opportunity.
 - The general concept of undoing over-constrained coalescing could apply
-  to other V6C patterns where coalescing forces values through suboptimal
+  to other V6CLANG patterns where coalescing forces values through suboptimal
   register pairs, but this is speculative.
 
 | Metric | Value |
@@ -421,7 +421,7 @@ widest possible register class is used for these operations.
 | **Impact** | **Low** — 8080 shift patterns are simpler than 6502 |
 | **Complexity** | Medium |
 | **Risk** | Low |
-| **V6C prerequisites** | N/A — limited applicability |
+| **V6CLANG prerequisites** | N/A — limited applicability |
 
 ---
 
@@ -438,19 +438,19 @@ widest possible register class is used for these operations.
 | **7** | **S5. Compare-Zero Elimination** | Medium | Low | **Enhances existing pass** |
 | **8** | **S6. Shift/Rotate Chaining** | Low-Med | Medium | Can defer |
 | **9** | **S7. ZP Alloc (as spill allocator)** | Medium | High | Use algorithm for O8 |
-| **10** | **S10. RegClass Widening** | Low | Medium | Skip for V6C |
+| **10** | **S10. RegClass Widening** | Low | Medium | Skip for V6CLANG |
 
 ### Recommended Implementation Order
 
 **Phase 1 — Quick wins (Low complexity)**:
 1. S8 (Cost Model) — foundation for all other optimizations
 2. S9 (Tail Calls) — trivial peephole, immediate benefit
-3. S4 (LdImm Combining) — extends existing V6C peephole infrastructure
+3. S4 (LdImm Combining) — extends existing V6CLANG peephole infrastructure
 
 **Phase 2 — High-impact passes (Medium complexity)**:
 4. S2 (Index IV) — reusable IR pass, enables better loops
 5. S3 (Global Copy Opt) — supersedes planned O1, cross-BB analysis
-6. S5 (CmpZero enhancement) — improves existing V6C ZERO_TEST
+6. S5 (CmpZero enhancement) — improves existing V6CLANG ZERO_TEST
 
 **Phase 3 — Major infrastructure (Medium-High complexity)**:
 7. S1 (Static Stack Allocation) — highest total impact, needs call graph +
@@ -459,9 +459,9 @@ widest possible register class is used for these operations.
 
 ---
 
-## Mapping to Existing V6C Plans
+## Mapping to Existing V6CLANG Plans
 
-| llvm-mos Strategy | Existing V6C Plan | Relationship |
+| llvm-mos Strategy | Existing V6CLANG Plan | Relationship |
 |---|---|---|
 | S1 Static Stack | O8 Spill Optimization | **Supersedes T2**, complements T1 |
 | S2 Index IV | O7 Loop Strength Reduction | **Complements** — IV narrowing + TTI cost model |

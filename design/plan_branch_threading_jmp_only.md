@@ -38,7 +38,7 @@ wastes 3 bytes and 12cc for the intermediate JMP instruction.
 
 ### Root cause
 
-The existing `V6CBranchOpt` pass handles Jcc+JMP pairs within the
+The existing `V6ClangBranchOpt` pass handles Jcc+JMP pairs within the
 **same block** (via `invertConditionalBranch`), but does not look
 across block boundaries. When a conditional branch targets a separate
 block whose only content is a `JMP`, the indirection persists.
@@ -50,7 +50,7 @@ creates JMP-only blocks for tail calls.
 
 ## 2. Strategy
 
-### Approach: Add `threadJMPOnlyBlocks()` to V6CBranchOpt
+### Approach: Add `threadJMPOnlyBlocks()` to V6ClangBranchOpt
 
 Add a new method to scan all branches (both conditional and
 unconditional). If a branch targets a block containing exactly one
@@ -67,7 +67,7 @@ the JMP's final target and update CFG edges.
 3. **No register/flag effects**: JMP has no side effects — redirecting
    past it is always safe.
 
-### Run order within V6CBranchOpt::runOnMachineFunction
+### Run order within V6ClangBranchOpt::runOnMachineFunction
 
 ```
 threadJMPOnlyBlocks      ← NEW: redirect branches through JMP-only blocks
@@ -85,9 +85,9 @@ removal may become applicable.
 
 | Step | What | Where |
 |------|------|-------|
-| Add threadJMPOnlyBlocks | Redirect branches past JMP-only blocks | V6CBranchOpt.cpp |
-| Wire into runOnMachineFunction | Call before invertConditionalBranch | V6CBranchOpt.cpp |
-| Lit test | branch-threading.ll | tests/lit/CodeGen/V6C/ |
+| Add threadJMPOnlyBlocks | Redirect branches past JMP-only blocks | V6ClangBranchOpt.cpp |
+| Wire into runOnMachineFunction | Call before invertConditionalBranch | V6ClangBranchOpt.cpp |
+| Lit test | branch-threading.ll | tests/lit/CodeGen/V6CLANG/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/13/ | tests/features/ |
 
@@ -95,9 +95,9 @@ removal may become applicable.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `threadJMPOnlyBlocks()` to V6CBranchOpt.cpp [x]
+### Step 3.1 — Add `threadJMPOnlyBlocks()` to V6ClangBranchOpt.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CBranchOpt.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangBranchOpt.cpp`
 
 Add `threadJMPOnlyBlocks` method declaration to the class and implement it.
 Update `runOnMachineFunction` to call it before `invertConditionalBranch`.
@@ -107,13 +107,13 @@ Update the file header comment to list optimization #5.
 /// Thread conditional/unconditional branches through JMP-only successor blocks.
 /// If a branch targets a block whose only instruction is JMP target,
 /// redirect the branch to target directly.
-bool V6CBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
+bool V6ClangBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
   bool Changed = false;
 
   for (MachineBasicBlock &MBB : MF) {
     for (MachineInstr &MI : MBB.terminators()) {
       // Must be a branch to an MBB (Jcc or JMP).
-      if (MI.getOpcode() != V6C::JMP && !getInvertedJcc(MI.getOpcode()))
+      if (MI.getOpcode() != V6CLANG::JMP && !getInvertedJcc(MI.getOpcode()))
         continue;
       if (!MI.getOperand(0).isMBB())
         continue;
@@ -124,7 +124,7 @@ bool V6CBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
       MachineBasicBlock::iterator FirstNonDbg = Target->getFirstNonDebugInstr();
       if (FirstNonDbg == Target->end())
         continue;
-      if (FirstNonDbg->getOpcode() != V6C::JMP)
+      if (FirstNonDbg->getOpcode() != V6CLANG::JMP)
         continue;
       if (!FirstNonDbg->getOperand(0).isMBB())
         continue;
@@ -154,11 +154,11 @@ bool V6CBranchOpt::threadJMPOnlyBlocks(MachineFunction &MF) {
 > handles the case where FinalTarget is already a successor (merges edges).
 > The `getInvertedJcc` check identifies all 8 conditional branch opcodes.
 > **Implementation Notes**: Added `threadJMPOnlyBlocks()` method (~40 lines) that handles both
-> `V6C::JMP` (intra-function) and `V6C::V6C_TAILJMP` (tail call) in target blocks.
+> `V6CLANG::JMP` (intra-function) and `V6CLANG::V6CLANG_TAILJMP` (tail call) in target blocks.
 > For MBB targets: uses `setMBB()` + `replaceSuccessor()`. For non-MBB targets
 > (global address, external symbol): uses `ChangeToGA()`/`ChangeToES()`/`ChangeToMCSymbol()`
-> + `removeSuccessor()`. Also extended `invertConditionalBranch` to handle V6C_TAILJMP
-> (Jcc + V6C_TAILJMP in same block → inverted Jcc with tail-call target).
+> + `removeSuccessor()`. Also extended `invertConditionalBranch` to handle V6CLANG_TAILJMP
+> (Jcc + V6CLANG_TAILJMP in same block → inverted Jcc with tail-call target).
 > Added `isMBB()` guards to `removeRedundantJMP`, `invertConditionalBranch`, and
 > `foldConditionalReturns` to handle non-MBB branch operands created by threading.
 > Updated file header comment to list optimization #5 (branch threading).
@@ -174,7 +174,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: branch-threading.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/branch-threading.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/branch-threading.ll`
 
 Test cases:
 1. Conditional branch to JMP-only block → redirected to final target
@@ -182,10 +182,10 @@ Test cases:
 3. Pass disabled → no threading
 
 > **Implementation Notes**: 2 test functions: `test_thread_tailcall` (JNZ bar from
-> threading through V6C_TAILJMP-only block, with DISABLED check for JNZ .LBB),
+> threading through V6CLANG_TAILJMP-only block, with DISABLED check for JNZ .LBB),
 > `test_no_thread` (negative: non-JMP-only block not threaded).
 > Also updated 2 existing lit tests: tail-call-opt.ll (dispatch: JMP func_b → JNZ func_b
-> from V6C_TAILJMP inversion), conditional-tail-call.ll (cond_tail_b: JMP bar → JZ bar
+> from V6CLANG_TAILJMP inversion), conditional-tail-call.ll (cond_tail_b: JMP bar → JZ bar
 > from threading).
 
 ### Step 3.4 — Run regression tests [x]
@@ -198,18 +198,18 @@ python tests\run_all.py
 
 ### Step 3.5 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests\features\13\v6llvmc.c` to `v6llvmc_new01.asm` and verify
+Compile `tests\features\13\v6clang.c` to `v6clang_new01.asm` and verify
 that conditional branches through JMP-only blocks are threaded.
 
-> **Implementation Notes**: v6llvmc_new01.asm confirms: test_cond_zero_tailcall
+> **Implementation Notes**: v6clang_new01.asm confirms: test_cond_zero_tailcall
 > 15B→11B (JZ .LBB → JZ bar, eliminating JMP-only block — 3B 12cc saved).
 > test_simple_tailcall already optimal via O30+O14. test_two_cond_tailcall
 > uses CALL (not tail call) so threading doesn't apply.
 
 ### Step 3.6 — Make sure result.txt is created. `tests\features\README.md` [x]
 
-> **Implementation Notes**: result.txt created with c8080 vs v6llvmc comparison.
-> Overall: 60B (c8080) vs 36B (v6llvmc) = 40% smaller.
+> **Implementation Notes**: result.txt created with c8080 vs v6clang comparison.
+> Overall: 60B (c8080) vs 36B (v6clang) = 40% smaller.
 
 ### Step 3.7 — Sync mirror [x]
 
@@ -307,8 +307,8 @@ Savings: **3B, 12cc** when the intermediate block is eliminated.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O28 Design](design\future_plans\O28_branch_threading_jmp_only.md)
-* [V6CBranchOpt.cpp](llvm-project\llvm\lib\Target\V6C\V6CBranchOpt.cpp)
+* [V6ClangBranchOpt.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangBranchOpt.cpp)

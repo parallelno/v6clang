@@ -135,7 +135,7 @@ add_clang_library(clangCodeGen
   Targets/SystemZ.cpp
   Targets/TCE.cpp
   Targets/VE.cpp
-  Targets/V6C.cpp
+  Targets/V6Clang.cpp
   Targets/WebAssembly.cpp
   Targets/X86.cpp
   Targets/XCore.cpp

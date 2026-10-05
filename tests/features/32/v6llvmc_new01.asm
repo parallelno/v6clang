@@ -6,30 +6,30 @@ u16_shl8:                               ; @u16_shl8
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_shl8
+	LXI	HL, __v6clang_ss.u16_shl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	MVI	A, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	H, C
 	MOV	L, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.u16_shl8
+	LHLD	__v6clang_ss.u16_shl8
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -44,16 +44,16 @@ u16_shl10:                              ; @u16_shl10
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_shl10
+	LXI	HL, __v6clang_ss.u16_shl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
@@ -63,13 +63,13 @@ u16_shl10:                              ; @u16_shl10
 	ADD	A
 	ADD	A
 	MVI	L, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	H, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.u16_shl10
+	LHLD	__v6clang_ss.u16_shl10
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -84,29 +84,29 @@ u16_srl8:                               ; @u16_srl8
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_srl8
+	LXI	HL, __v6clang_ss.u16_srl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
-	;--- V6C_SRL16 ---
+	;--- V6CLANG_SRL16 ---
 	MOV	L, B
 	MVI	H, 0
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.u16_srl8
+	LHLD	__v6clang_ss.u16_srl8
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -121,22 +121,22 @@ u16_srl10:                              ; @u16_srl10
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.u16_srl10
+	LXI	HL, __v6clang_ss.u16_srl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
-	;--- V6C_SRL16 ---
+	;--- V6CLANG_SRL16 ---
 	MOV	L, B
 	MVI	H, 0
 	MOV	A, L
@@ -147,11 +147,11 @@ u16_srl10:                              ; @u16_srl10
 	ORA	A
 	RAR
 	MOV	L, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.u16_srl10
+	LHLD	__v6clang_ss.u16_srl10
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -166,30 +166,30 @@ i16_shl8:                               ; @i16_shl8
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_shl8
+	LXI	HL, __v6clang_ss.i16_shl8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	MVI	A, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	H, C
 	MOV	L, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.i16_shl8
+	LHLD	__v6clang_ss.i16_shl8
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -204,16 +204,16 @@ i16_shl10:                              ; @i16_shl10
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_shl10
+	LXI	HL, __v6clang_ss.i16_shl10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
@@ -223,13 +223,13 @@ i16_shl10:                              ; @i16_shl10
 	ADD	A
 	ADD	A
 	MVI	L, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	H, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.i16_shl10
+	LHLD	__v6clang_ss.i16_shl10
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -244,32 +244,32 @@ i16_sra8:                               ; @i16_sra8
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_sra8
+	LXI	HL, __v6clang_ss.i16_sra8
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
-	;--- V6C_SRA16 ---
+	;--- V6CLANG_SRA16 ---
 	MOV	A, B
 	MOV	L, B
 	RLC
 	SBB	A
 	MOV	H, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.i16_sra8
+	LHLD	__v6clang_ss.i16_sra8
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -284,22 +284,22 @@ i16_sra10:                              ; @i16_sra10
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	PUSH	HL
-	LXI	HL, __v6c_ss.i16_sra10
+	LXI	HL, __v6clang_ss.i16_sra10
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	MOV	B, H
 	MOV	C, L
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	H, D
 	MOV	L, E
 	MOV	M, C
 	INX	HL
 	MOV	M, B
-	;--- V6C_SRA16 ---
+	;--- V6CLANG_SRA16 ---
 	MOV	A, B
 	MOV	L, B
 	RLC
@@ -315,11 +315,11 @@ i16_sra10:                              ; @i16_sra10
 	MOV	A, L
 	RAR
 	MOV	L, A
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 	XCHG
-	LHLD	__v6c_ss.i16_sra10
+	LHLD	__v6clang_ss.i16_sra10
 	XCHG
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	A, L
 	STAX	DE
 	INX	DE
@@ -334,12 +334,12 @@ u8_shl3:                                ; @u8_shl3
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	STAX	DE
 	ADD	A
 	ADD	A
 	ADD	A
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	STAX	BC
 	RET
                                         ; -- End function
@@ -350,12 +350,12 @@ i8_shl3:                                ; @i8_shl3
 	;  arg1 = DE
 	;  arg2 = BC
 ; %bb.0:
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	STAX	DE
 	ADD	A
 	ADD	A
 	ADD	A
-	;--- V6C_STORE8_P ---
+	;--- V6CLANG_STORE8_P ---
 	STAX	BC
 	RET
                                         ; -- End function
@@ -413,20 +413,20 @@ i8_p:
 i8_q:
 	DB	0                               ; 0x0
 
-	.local	__v6c_ss.u16_shl8               ; @__v6c_ss.u16_shl8
-	.comm	__v6c_ss.u16_shl8,2,1
-	.local	__v6c_ss.u16_shl10              ; @__v6c_ss.u16_shl10
-	.comm	__v6c_ss.u16_shl10,2,1
-	.local	__v6c_ss.u16_srl8               ; @__v6c_ss.u16_srl8
-	.comm	__v6c_ss.u16_srl8,2,1
-	.local	__v6c_ss.u16_srl10              ; @__v6c_ss.u16_srl10
-	.comm	__v6c_ss.u16_srl10,2,1
-	.local	__v6c_ss.i16_shl8               ; @__v6c_ss.i16_shl8
-	.comm	__v6c_ss.i16_shl8,2,1
-	.local	__v6c_ss.i16_shl10              ; @__v6c_ss.i16_shl10
-	.comm	__v6c_ss.i16_shl10,2,1
-	.local	__v6c_ss.i16_sra8               ; @__v6c_ss.i16_sra8
-	.comm	__v6c_ss.i16_sra8,2,1
-	.local	__v6c_ss.i16_sra10              ; @__v6c_ss.i16_sra10
-	.comm	__v6c_ss.i16_sra10,2,1
+	.local	__v6clang_ss.u16_shl8               ; @__v6clang_ss.u16_shl8
+	.comm	__v6clang_ss.u16_shl8,2,1
+	.local	__v6clang_ss.u16_shl10              ; @__v6clang_ss.u16_shl10
+	.comm	__v6clang_ss.u16_shl10,2,1
+	.local	__v6clang_ss.u16_srl8               ; @__v6clang_ss.u16_srl8
+	.comm	__v6clang_ss.u16_srl8,2,1
+	.local	__v6clang_ss.u16_srl10              ; @__v6clang_ss.u16_srl10
+	.comm	__v6clang_ss.u16_srl10,2,1
+	.local	__v6clang_ss.i16_shl8               ; @__v6clang_ss.i16_shl8
+	.comm	__v6clang_ss.i16_shl8,2,1
+	.local	__v6clang_ss.i16_shl10              ; @__v6clang_ss.i16_shl10
+	.comm	__v6clang_ss.i16_shl10,2,1
+	.local	__v6clang_ss.i16_sra8               ; @__v6clang_ss.i16_sra8
+	.comm	__v6clang_ss.i16_sra8,2,1
+	.local	__v6clang_ss.i16_sra10              ; @__v6clang_ss.i16_sra10
+	.comm	__v6clang_ss.i16_sra10,2,1
 	.addrsig

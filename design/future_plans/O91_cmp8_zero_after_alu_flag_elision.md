@@ -1,33 +1,33 @@
-# O91 — Elide V6C_CMP8_ZERO After Flag-Setting ALU Op (MOV R,A bridge)
+# O91 — Elide V6CLANG_CMP8_ZERO After Flag-Setting ALU Op (MOV R,A bridge)
 
 **Source:** `temp/cmp8_zero_after_aluflag.c`; triggered by O89 dead-hi-byte sequences
 **Savings:** 16cc, 3B per `(u8)(a OP b) == 0` comparison (OP = `^`, `&`, `|`)
 **Frequency:** Every lo-byte-truncated bitwise result fed into a boolean zero-test
-**Complexity:** Low — extend `V6CRedundantFlagElim` with a one-register value set
+**Complexity:** Low — extend `V6ClangRedundantFlagElim` with a one-register value set
 **Risk:** Low — conservative: only fires when exact sequence is proven
-**Dependencies:** O89 (dead-hi-byte elision creates the pattern); O80 (V6C_CMP8_ZERO)
+**Dependencies:** O89 (dead-hi-byte elision creates the pattern); O80 (V6CLANG_CMP8_ZERO)
 **Status:** [ ] not started
 
 ---
 
 ## Problem
 
-After O89 (dead high-byte elision), `V6C_XOR16 / V6C_AND16 / V6C_OR16` with
+After O89 (dead high-byte elision), `V6CLANG_XOR16 / V6CLANG_AND16 / V6CLANG_OR16` with
 DstHi dead expand to:
 
 ```asm
-;--- V6C_XOR16 (DstHi dead, O89 active) ---
+;--- V6CLANG_XOR16 (DstHi dead, O89 active) ---
 MOV  A, E          ; A = lhs_lo              8cc  1B
 XRA  L             ; A = lo result, Z set ←  4cc  1B   ← Z ALREADY VALID
 MOV  L, A          ; DstLo = A               8cc  1B   ← flags untouched
-;--- V6C_CMP8_ZERO L (shape 2: XRA A; CMP L) ---
+;--- V6CLANG_CMP8_ZERO L (shape 2: XRA A; CMP L) ---
 XRA  A             ; ← Z already valid!      4cc  1B   ← REDUNDANT
 CMP  L             ; ← Z already valid!      4cc  1B   ← REDUNDANT
 JZ   .zero         ;                        12cc  3B
 ```
 
 `XRA L` sets Z = (lo result == 0).  `MOV L, A` writes a register without
-touching FLAGS.  The `V6C_CMP8_ZERO L` expansion (`XRA A; CMP L`) is
+touching FLAGS.  The `V6CLANG_CMP8_ZERO L` expansion (`XRA A; CMP L`) is
 therefore provably redundant: Z is already the correct answer.
 
 ### Confirmed current output (clang -O2, 2026-06-01)
@@ -65,7 +65,7 @@ xor16_cmp_zero:
 
 ## Why Existing Passes Miss This
 
-`V6CRedundantFlagElim` tracks `ZFlagValid` (true after any `isAluWritesAAndFlags`
+`V6ClangRedundantFlagElim` tracks `ZFlagValid` (true after any `isAluWritesAAndFlags`
 op) and erases `ORA A` / `ANA A` when it is true.
 
 For the pattern above:
@@ -85,7 +85,7 @@ set", so it cannot recognize that `XRA A; CMP L` restates the flag redundantly.
 
 ## Root Cause
 
-`V6C_CMP8_ZERO R` (shape 2: `XRA A; CMP R`) is emitted by `expandPostRAPseudo`
+`V6CLANG_CMP8_ZERO R` (shape 2: `XRA A; CMP R`) is emitted by `expandPostRAPseudo`
 when A is dead and src ≠ A.  After O89 the typical pre-cursor is:
 
 ```
@@ -103,7 +103,7 @@ w.r.t. flags.
 
 ## Solution
 
-### Extend `V6CRedundantFlagElim` (single additional tracker)
+### Extend `V6ClangRedundantFlagElim` (single additional tracker)
 
 Add `SmallSet<Register, 4> AValueRegs` alongside `ZFlagValid`:
 
@@ -187,7 +187,7 @@ Per `(u8)(a OP b) == 0` site with O89 active:
 
 Compile:
 ```
-clang -target i8080-unknown-v6c -O2 -S -o temp/cmp8_zero_after_aluflag.s \
+clang -target i8080-unknown-v6clang -O2 -S -o temp/cmp8_zero_after_aluflag.s \
       temp/cmp8_zero_after_aluflag.c
 ```
 
@@ -209,7 +209,7 @@ xor16_cmp_zero:
 
 ## Implementation location
 
-**File:** `llvm-project/llvm/lib/Target/V6C/V6CRedundantFlagElim.cpp`
+**File:** `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
 
 Add `AValueRegs` + `AValueSrc` alongside `ZFlagValid` in `runOnMachineFunction`.
 Extend the four state-transition branches.  Add one new elimination branch for

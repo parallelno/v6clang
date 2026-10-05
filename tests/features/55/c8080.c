@@ -1,6 +1,6 @@
 /* tests/features/55/c8080.c
  *
- * c8080 reference. Mirrors v6llvmc.c functions for asm-comparison.
+ * c8080 reference. Mirrors v6clang.c functions for asm-comparison.
  */
 
 typedef unsigned char  uint8_t;

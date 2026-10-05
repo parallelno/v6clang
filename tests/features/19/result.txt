@@ -1,6 +1,6 @@
 == O39: Interprocedural Register Allocation (IPRA) Integration ==
 
-Cycle counts below use docs/V6CInstructionTimings.md.
+Cycle counts below use docs/V6ClangInstructionTimings.md.
 
 === C Test Case ===
 
@@ -83,7 +83,7 @@ c8080 stats (local function bodies):
   test_ne_same_bytes:   19B, 136cc
   test_eq_same_bytes:   19B, 136cc
 
-=== v6llvmc ASM (before O39, baseline) ===
+=== v6clang ASM (before O39, baseline) ===
 
 ```asm
 test_ne_same_bytes:
@@ -168,13 +168,13 @@ test_eq_same_bytes:
     RET
 ```
 
-v6llvmc stats (before O39):
+v6clang stats (before O39):
   action_a:              7B, 44cc
   action_b:              7B, 44cc
   test_ne_same_bytes:   53B, 360cc
   test_eq_same_bytes:   53B, 360cc
 
-=== v6llvmc ASM (after O39) ===
+=== v6clang ASM (after O39) ===
 
 ```asm
 test_ne_same_bytes:
@@ -207,7 +207,7 @@ test_eq_same_bytes:
     RET
 ```
 
-v6llvmc stats (after O39):
+v6clang stats (after O39):
   action_a:              7B, 44cc
   action_b:              7B, 44cc
   test_ne_same_bytes:   20B, 120cc
@@ -222,7 +222,7 @@ Per affected function (test_ne_same_bytes, test_eq_same_bytes):
 
 What changed:
   1. CALL no longer advertises hard implicit defs for A/B/C/D/E/H/L/FLAGS.
-  2. V6CTargetMachine enables LLVM IPRA by default.
+  2. V6ClangTargetMachine enables LLVM IPRA by default.
   3. LowerCall's existing register mask becomes authoritative, so direct-call
      sites use callee-specific preserved-register info.
 

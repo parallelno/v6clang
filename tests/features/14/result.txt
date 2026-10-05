@@ -33,7 +33,7 @@ c8080 stats:
 - Tail-call path (x == 0): 14B executed, 76cc (SHLD+LHLD+MOV+ORA+JNZ_notaken+LHLD+JMP)
 - Total code size: 21B
 
-## v6llvmc Assembly (with O35)
+## v6clang Assembly (with O35)
 
 ```asm
 test_two_arg_tailcall:
@@ -48,12 +48,12 @@ test_two_arg_tailcall:
     JMP   bar                   ; 3B, 12cc  tail call bar(y)
 ```
 
-v6llvmc stats:
+v6clang stats:
 - Return path (x != 0):  8B executed, 52cc (MOV+MOV+LXI+MOV+ORA+RNZ_taken)
 - Tail-call path (x == 0): 12B executed, 62cc (MOV+MOV+LXI+MOV+ORA+RNZ_not+XCHG+JMP)
 - Total code size: 12B
 
-## v6llvmc Assembly (without O35, branch-opt disabled)
+## v6clang Assembly (without O35, branch-opt disabled)
 
 ```asm
 test_two_arg_tailcall:

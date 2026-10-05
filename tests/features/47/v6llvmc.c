@@ -3,13 +3,13 @@
  * Goal: produce a function with a small (2- or 4-byte) hardware
  * stack frame so the prologue/epilogue's LXI+DAD+SPHL sequence is
  * exercised. Calling an opaque `extern` (without `nocallback`)
- * keeps `worker` ineligible for V6CAllocaPromote / V6CStaticStackAlloc
+ * keeps `worker` ineligible for V6ClangAllocaPromote / V6ClangStaticStackAlloc
  * (O10), and holding multiple i8 values across the calls forces a
  * register spill.
  *
  * Compile (no extra flags needed under -O2):
- *   llvm-build\bin\clang.exe -target i8080-unknown-v6c -O2 -S \
- *       tests\features\47\v6llvmc.c -o tests\features\47\v6llvmc_new01.asm
+ *   llvm-build\bin\clang.exe -target i8080-unknown-v6clang -O2 -S \
+ *       tests\features\47\v6clang.c -o tests\features\47\v6clang_new01.asm
  */
 
 extern unsigned char ext_fn(unsigned char x, unsigned char y);

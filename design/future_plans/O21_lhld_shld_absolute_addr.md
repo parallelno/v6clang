@@ -40,14 +40,14 @@ LHLD global_var          ; 16cc, 3B (value in HL)
 
 ## Implementation
 
-ISel patterns in `V6CInstrInfo.td` matching `(load globaladdr)` for i16
+ISel patterns in `V6ClangInstrInfo.td` matching `(load globaladdr)` for i16
 when destination is HL, and `(store HL, globaladdr)` for SHLD.
 
 ```tablegen
-def : Pat<(i16 (load (V6CWrapper tglobaladdr:$addr))),
+def : Pat<(i16 (load (V6ClangWrapper tglobaladdr:$addr))),
           (LHLD tglobaladdr:$addr)>;
 
-def : Pat<(store GR16Ptr:$src, (V6CWrapper tglobaladdr:$addr)),
+def : Pat<(store GR16Ptr:$src, (V6ClangWrapper tglobaladdr:$addr)),
           (SHLD tglobaladdr:$addr)>;
 ```
 

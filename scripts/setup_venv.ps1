@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Provision the project-local Python environment (.venv) used by V6C builds.
+    Provision the project-local Python environment (.venv) used by V6CLANG builds.
 
 .DESCRIPTION
-    V6C's build and release scripts must not depend on a machine-wide Python
+    V6CLANG's build and release scripts must not depend on a machine-wide Python
     installation: system interpreters can be upgraded, relocated, or removed,
     which silently breaks Ninja discovery in CMake and leaves "python" pointing
     at a Windows Store stub. This script creates a self-contained environment

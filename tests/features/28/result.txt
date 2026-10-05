@@ -113,7 +113,7 @@ Note: c8080 unsigned uses DAD trick (ADD HL, 65536-K) instead of SUB/SBB.
 c8080 signed uses __o_sub_16 library call (52cc+7B shared overhead).
 
 
-== v6llvmc asm (old — before O24) ==
+== v6clang asm (old — before O24) ==
 
 test_ult:                          ; if (x < 1000) result = 1
     LXI     DE, 0x3e7              ;  12cc, 3B  (K-1=999 via LowerBR_CC swap)
@@ -129,7 +129,7 @@ test_ult:                          ; if (x < 1000) result = 1
 (all 6 functions: same LXI+MOV+SUB+MOV+SBB pattern)
 
 
-== v6llvmc stats (old) ==
+== v6clang stats (old) ==
 
                      worst cc    bytes
 test_ult (skip)         44cc       8B    (12+8+4+8+4+8=44)
@@ -141,7 +141,7 @@ test_slt                same
 test_sge                same
 
 
-== v6llvmc asm (new — after O24) ==
+== v6clang asm (new — after O24) ==
 
 test_ult:                          ; if (x < 1000) result = 1
     MVI     A, 0xe7                ;   8cc, 2B  (lo8(999))
@@ -204,7 +204,7 @@ test_sge:                          ; if (x >= 500) result = 6
     RET                            ;  12cc, 1B
 
 
-== v6llvmc stats (new) ==
+== v6clang stats (new) ==
 
                      worst cc    bytes
 test_ult (skip)         32cc       7B    (8+4+8+4+8=32)
@@ -231,4 +231,4 @@ conditions (ULT, UGE, UGT, ULE, SLT, SGE) and constant operand.
 Comparison vs c8080:
   c8080 unsigned: 32cc, 7B (DAD trick, cheaper but limited to unsigned)
   c8080 signed: 72cc, 10B (library CALL + SUB/SBB, much more expensive)
-  v6llvmc new: 24cc, 6B (both unsigned and signed, fastest)
+  v6clang new: 24cc, 6B (both unsigned and signed, fastest)

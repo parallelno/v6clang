@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-The V6C backend frequently emits `ORA A` (or `ANA A`) before conditional
+The V6CLANG backend frequently emits `ORA A` (or `ANA A`) before conditional
 branches to set the zero flag, even when the preceding ALU instruction
 already set the flags correctly:
 
@@ -14,7 +14,7 @@ ORA  A          ; redundant — Z already reflects A's value
 JZ   .label
 ```
 
-The existing `V6CZeroTestOpt` pass replaces `CPI 0` with `ORA A` (saving
+The existing `V6ClangZeroTestOpt` pass replaces `CPI 0` with `ORA A` (saving
 4cc), but this introduces new `ORA A` instructions that may themselves be
 redundant after a preceding ALU operation. Additionally, pseudo expansion
 and other passes can emit `ORA A` / `ANA A` for flag-setting purposes even
@@ -34,7 +34,7 @@ JZ   label   ; 12cc         JZ   label   ; 12cc
 
 ### Root cause
 
-Post-RA passes (especially `V6CZeroTestOpt` which converts `CPI 0` to
+Post-RA passes (especially `V6ClangZeroTestOpt` which converts `CPI 0` to
 `ORA A`) and pseudo expansion don't track whether the Z flag is already
 valid from a prior ALU operation. They conservatively insert `ORA A` to
 guarantee flags are set, even when they already are.
@@ -45,8 +45,8 @@ guarantee flags are set, even when they already are.
 
 ### Approach: Post-RA forward scan with Z-flag validity tracking
 
-Add a new `MachineFunctionPass` (`V6CRedundantFlagElim`) that runs after
-`V6CZeroTestOpt` in the pre-emit pipeline. It performs a simple forward
+Add a new `MachineFunctionPass` (`V6ClangRedundantFlagElim`) that runs after
+`V6ClangZeroTestOpt` in the pre-emit pipeline. It performs a simple forward
 scan through each basic block, tracking whether the Z flag is "valid for
 A" — meaning it was set by an instruction that both defines FLAGS and
 operates on A.
@@ -66,12 +66,12 @@ simple and safe.
 
 | Step | What | Where |
 |------|------|-------|
-| 3.1 | New pass file | `V6CRedundantFlagElim.cpp` |
-| 3.2 | Declare factory function | `V6C.h` |
-| 3.3 | Register in pipeline | `V6CTargetMachine.cpp` |
+| 3.1 | New pass file | `V6ClangRedundantFlagElim.cpp` |
+| 3.2 | Declare factory function | `V6Clang.h` |
+| 3.3 | Register in pipeline | `V6ClangTargetMachine.cpp` |
 | 3.4 | Add to build | `CMakeLists.txt` |
 | 3.5 | Build | `ninja -C llvm-build clang llc` |
-| 3.6 | Lit test | `tests/lit/CodeGen/V6C/redundant-flag-elim.ll` |
+| 3.6 | Lit test | `tests/lit/CodeGen/V6CLANG/redundant-flag-elim.ll` |
 | 3.7 | Run regression tests | `python tests\run_all.py` |
 | 3.8 | Verification assembly | `tests\features\README.md` steps |
 | 3.9 | Sync mirror | `scripts\sync_llvm_mirror.ps1` |
@@ -80,9 +80,9 @@ simple and safe.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CRedundantFlagElim.cpp [x]
+### Step 3.1 — Create V6ClangRedundantFlagElim.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CRedundantFlagElim.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRedundantFlagElim.cpp`
 
 Post-RA `MachineFunctionPass` with a forward scan through each basic block:
 
@@ -104,7 +104,7 @@ Post-RA `MachineFunctionPass` with a forward scan through each basic block:
    - Else if branch/call/return: set `ZFlagValid = false` (conservative).
    - Else: keep `ZFlagValid` unchanged (e.g., MOV B,C, INX, DCX, NOP).
 
-**CLI toggle**: `-v6c-disable-redundant-flag-elim`
+**CLI toggle**: `-v6clang-disable-redundant-flag-elim`
 
 > **Design Notes**:
 > - `ORA A` is an identity operation: `A = A | A = A`. It only sets flags.
@@ -131,28 +131,28 @@ Post-RA `MachineFunctionPass` with a forward scan through each basic block:
 
 > **Implementation Notes**: (empty — filled after completion)
 
-### Step 3.2 — Declare factory function in V6C.h [x]
+### Step 3.2 — Declare factory function in V6Clang.h [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6C.h`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h`
 
 Add:
 ```cpp
-FunctionPass *createV6CRedundantFlagElimPass();
+FunctionPass *createV6ClangRedundantFlagElimPass();
 ```
 
 > **Implementation Notes**: (empty)
 
 ### Step 3.3 — Register pass in pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
 
-Add the pass **after** `V6CZeroTestOpt` (which creates `ORA A` from
-`CPI 0`) and **before** `V6CSPTrickOpt`:
+Add the pass **after** `V6ClangZeroTestOpt` (which creates `ORA A` from
+`CPI 0`) and **before** `V6ClangSPTrickOpt`:
 
 ```cpp
-addPass(createV6CZeroTestOptPass());
-addPass(createV6CRedundantFlagElimPass());  // ← NEW
-addPass(createV6CSPTrickOptPass());
+addPass(createV6ClangZeroTestOptPass());
+addPass(createV6ClangRedundantFlagElimPass());  // ← NEW
+addPass(createV6ClangSPTrickOptPass());
 ```
 
 > **Design Notes**: Must run after ZeroTestOpt because that pass creates
@@ -163,9 +163,9 @@ addPass(createV6CSPTrickOptPass());
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt`
 
-Add `V6CRedundantFlagElim.cpp` to the source list.
+Add `V6ClangRedundantFlagElim.cpp` to the source list.
 
 > **Implementation Notes**: (empty)
 
@@ -179,7 +179,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: redundant-flag-elim.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/redundant-flag-elim.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/redundant-flag-elim.ll`
 
 Test cases:
 1. ALU op + ORA A → ORA A eliminated (e.g., XRA + ORA A + JZ)
@@ -262,15 +262,15 @@ JZ   label   ; 12cc         JZ   label   ; 12cc
 
 ## 6. Relationship to Other Improvements
 
-- **V6CZeroTestOpt**: That pass converts `CPI 0` → `ORA A`. This pass
+- **V6ClangZeroTestOpt**: That pass converts `CPI 0` → `ORA A`. This pass
   eliminates the resulting `ORA A` when it's redundant after a prior ALU op.
   Together they form a two-stage optimization: first replace expensive
   zero-tests, then eliminate redundant ones.
 
-- **V6CAccumulatorPlanning**: The accumulator planning pass tracks A contents
+- **V6ClangAccumulatorPlanning**: The accumulator planning pass tracks A contents
   for MOV elimination. This pass tracks FLAGS validity — orthogonal concerns.
 
-- **V6CPeephole**: The peephole pass eliminates self-MOV and duplicate MOV.
+- **V6ClangPeephole**: The peephole pass eliminates self-MOV and duplicate MOV.
   This pass eliminates redundant flag-setting — different patterns.
 
 ---
@@ -303,8 +303,8 @@ JZ   label   ; 12cc         JZ   label   ; 12cc
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [llvm-z80 Z80PostRACompareMerge](design\future_plans\llvm_z80_analysis.md) §S7
-* [V6CZeroTestOpt](llvm\lib\Target\V6C\V6CZeroTestOpt.cpp) — creates ORA A that this pass eliminates
+* [V6ClangZeroTestOpt](llvm\lib\Target\V6CLANG\V6ClangZeroTestOpt.cpp) — creates ORA A that this pass eliminates

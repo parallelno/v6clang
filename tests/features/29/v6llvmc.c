@@ -1,13 +1,13 @@
 // Test case for O43-fix: SHLD/LHLD→PUSH/POP Safety Guard
-// v6llvmc version with leaf-attributed extern functions.
+// v6clang version with leaf-attributed extern functions.
 // Interleaved 3-pointer loop with high register pressure.
 // The leaf attr enables static stack allocation (SHLD/LHLD/STA/LDA).
 //
-// Bug: Without the fix, O43 folds SHLD+LHLD (for __v6c_ss+0) into
+// Bug: Without the fix, O43 folds SHLD+LHLD (for __v6clang_ss+0) into
 // PUSH+POP, removing the writeback to the static slot. The LHLD at
 // the top of the loop reads stale data on subsequent iterations.
 //
-// Expected: After the fix, the SHLD for __v6c_ss+0 is preserved
+// Expected: After the fix, the SHLD for __v6clang_ss+0 is preserved
 // (not folded to PUSH HL) because the LHLD at the loop top is an
 // uncovered reader.
 

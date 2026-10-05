@@ -1,4 +1,4 @@
-// c8080 reference for O51 test. Same shape as v6llvmc.c.
+// c8080 reference for O51 test. Same shape as v6clang.c.
 
 #define N 8
 

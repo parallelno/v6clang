@@ -1,14 +1,14 @@
-O72 — V6C_STORE16_P redesign, post-implementation results
+O72 — V6CLANG_STORE16_P redesign, post-implementation results
 ==========================================================
 
-Plan:     design/plan_O72_V6C_STORE16_P_redesign.md
-Design:   design/future_plans/O72_V6C_STORE16_P_redesign.md
-Lit test: llvm-project/llvm/test/CodeGen/V6C/store16p-shapes.ll
-          (mirrored to tests/lit/CodeGen/V6C/store16p-shapes.ll)
+Plan:     design/plan_O72_V6CLANG_STORE16_P_redesign.md
+Design:   design/future_plans/O72_V6CLANG_STORE16_P_redesign.md
+Lit test: llvm-project/llvm/test/CodeGen/V6CLANG/store16p-shapes.ll
+          (mirrored to tests/lit/CodeGen/V6CLANG/store16p-shapes.ll)
 
 Goal
 ----
-Replace the old monolithic `V6C_STORE16_P` post-RA expander
+Replace the old monolithic `V6CLANG_STORE16_P` post-RA expander
 (blanket `Defs = [HL, A]`, A clobbered on 6 of 9 shapes) with
 a six-row dispatch keyed on (addr, val) ∈ {HL,DE,BC}². Each
 row preserves only what it must, with `DCX rp` recovery when
@@ -17,7 +17,7 @@ the address pair is live afterwards.
 
 Test sources
 ------------
-v6llvmc.c (and equivalent c8080.c) — five functions, one per
+v6clang.c (and equivalent c8080.c) — five functions, one per
 shape of interest:
 
     /* Row 3a — addr=DE, val=HL. */
@@ -44,7 +44,7 @@ shape of interest:
         *p = (uint16_t)(uintptr_t)p; return hl_keep;
     }
 
-Note on shape coverage: V6C's calling convention places the
+Note on shape coverage: V6CLANG's calling convention places the
 first 16-bit argument in HL, second in DE, third in BC, so RA
 naturally lands the address in different pairs across the
 five functions. Granular per-row pinning lives in the lit
@@ -114,9 +114,9 @@ c8080 stats (worst-case cycles / bytes, body only)
     row4_de_de              :  8 instr /  81 cy / 14 B
 
 
-v6llvmc — BASELINE (pre-O72, old monolithic expander)
+v6clang — BASELINE (pre-O72, old monolithic expander)
 -----------------------------------------------------
-v6llvmc_old.asm:
+v6clang_old.asm:
 
     row3_de_hl:                       row2_hl_reused:
             MOV  A, L                         MOV  M, E
@@ -156,9 +156,9 @@ Old stats (worst-case cycles / bytes, body only):
     row4_de_de              :  9 instr /  49 cy /  9 B   (full B/C scratch)
 
 
-v6llvmc — O72 (six-row dispatch, truthful per-shape preserve)
+v6clang — O72 (six-row dispatch, truthful per-shape preserve)
 -------------------------------------------------------------
-v6llvmc_new01.asm:
+v6clang_new01.asm:
 
     row3_de_hl:                       row2_hl_reused:
             XCHG                              MOV  M, E
@@ -200,7 +200,7 @@ New stats (worst-case cycles / bytes, body only):
 
 Side-by-side comparison (worst-case cycles, body only)
 ------------------------------------------------------
-    function                c8080      v6c old    v6c new    Δ_old→new
+    function                c8080      v6clang old    v6clang new    Δ_old→new
     --------                ----       -------    -------    ---------
     row3_de_hl              113 cy     29 cy      27 cy      −2 cy   (A preserved)
     row2_hl_reused          104 cy     23 cy      23 cy        0     (already optimal)
@@ -209,7 +209,7 @@ Side-by-side comparison (worst-case cycles, body only)
     row4_de_de               81 cy     49 cy      32 cy      −17 cy  (XCHG path, single GR8 spare)
 
                             bytes
-    function                c8080      v6c old    v6c new    Δ_old→new
+    function                c8080      v6clang old    v6clang new    Δ_old→new
     --------                ----       -------    -------    ---------
     row3_de_hl              20 B        5 B        5 B         0
     row2_hl_reused          18 B        4 B        4 B         0
@@ -256,12 +256,12 @@ Regression
 ----------
 Two pre-existing lit tests pinned the old `MOV A, L / STAX D`
 shape and had to be updated to the XCHG-wrapped body:
-    llvm-project/llvm/test/CodeGen/V6C/load-store-i16.ll          (store_ptr)
-    llvm-project/llvm/test/CodeGen/V6C/shift-i16-byte-aligned.ll  (srl8_i16)
-Mirror at tests/lit/CodeGen/V6C/ kept in sync via
+    llvm-project/llvm/test/CodeGen/V6CLANG/load-store-i16.ll          (store_ptr)
+    llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll  (srl8_i16)
+Mirror at tests/lit/CodeGen/V6CLANG/ kept in sync via
 scripts/sync_llvm_mirror.ps1 (verified: identical size + mtime).
 
 New lit test added: store16p-shapes.ll (rows 1, 4, 6a) — present
-in both llvm-project/llvm/test/CodeGen/V6C/ and tests/lit/CodeGen/V6C/.
+in both llvm-project/llvm/test/CodeGen/V6CLANG/ and tests/lit/CodeGen/V6CLANG/.
 
 Full regression suite: 130 / 130 PASS (lit + golden).

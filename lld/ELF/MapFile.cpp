@@ -211,7 +211,7 @@ static void writeMapFile(raw_fd_ostream &os) {
   }
 }
 
-static void writeV6CConstantsMap(raw_ostream &os) {
+static void writeV6ClangConstantsMap(raw_ostream &os) {
   std::vector<Defined *> constants;
   for (Symbol *sym : symtab.getSymbols())
     if (auto *defined = dyn_cast<Defined>(sym))
@@ -223,7 +223,7 @@ static void writeV6CConstantsMap(raw_ostream &os) {
     return lhs->getName() < rhs->getName();
   });
 
-  os << "# V6C final global absolute constants\n"
+  os << "# V6CLANG final global absolute constants\n"
      << "# Value     Symbol\n";
   for (Defined *defined : constants)
     os << format("%08llx", defined->value) << ' ' << defined->getName()
@@ -276,7 +276,7 @@ static void writeCref(raw_fd_ostream &os) {
 
 void elf::writeMapAndCref() {
   if (config->mapFile.empty() && !config->cref &&
-      config->v6cConstantsMap.empty())
+      config->v6clangConstantsMap.empty())
     return;
 
   llvm::TimeTraceScope timeScope("Write map file");
@@ -295,14 +295,14 @@ void elf::writeMapAndCref() {
   if (config->cref)
     writeCref(os);
 
-  if (!config->v6cConstantsMap.empty()) {
+  if (!config->v6clangConstantsMap.empty()) {
     raw_fd_ostream constants =
-        ctx.openAuxiliaryFile(config->v6cConstantsMap, ec);
+        ctx.openAuxiliaryFile(config->v6clangConstantsMap, ec);
     if (ec) {
-      error("cannot open V6C constants map " + config->v6cConstantsMap +
+      error("cannot open V6CLANG constants map " + config->v6clangConstantsMap +
             ": " + ec.message());
       return;
     }
-    writeV6CConstantsMap(constants);
+    writeV6ClangConstantsMap(constants);
   }
 }

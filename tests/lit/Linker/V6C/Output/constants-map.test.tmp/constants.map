@@ -1,6 +1,0 @@
-# V6C final global absolute constants
-# Value     Symbol
-00000000 CONTROL_CODE_NO
-00000001 CONTROL_CODE_RIGHT
-00000004 CONTROL_CODE_UP
-00000000 __stack_top

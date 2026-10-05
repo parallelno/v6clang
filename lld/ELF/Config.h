@@ -170,7 +170,7 @@ struct Config {
   llvm::StringRef ltoSampleProfile;
   llvm::StringRef mapFile;
   llvm::StringRef outputFile;
-  llvm::StringRef v6cConstantsMap;
+  llvm::StringRef v6clangConstantsMap;
   llvm::StringRef optRemarksFilename;
   std::optional<uint64_t> optRemarksHotnessThreshold = 0;
   llvm::StringRef optRemarksPasses;

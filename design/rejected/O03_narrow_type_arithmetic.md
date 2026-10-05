@@ -43,7 +43,7 @@ RET
 
 **Approach: Custom DAGCombine to sink `zext` past `add`.**
 
-In `V6CISelLowering::PerformDAGCombine`, match the pattern:
+In `V6ClangISelLowering::PerformDAGCombine`, match the pattern:
 ```
 (add (zext i8:$a), (zext i8:$b))  →  (zext (add i8:$a, i8:$b))
 ```
@@ -56,7 +56,7 @@ values).
 
 Upstream LLVM has `ReduceWidth` and `TruncInstCombine` passes but they
 operate on LLVM IR and often miss target-specific opportunities. A
-DAGCombine is more reliable for the V6C case.
+DAGCombine is more reliable for the V6CLANG case.
 
 ## Benefit
 

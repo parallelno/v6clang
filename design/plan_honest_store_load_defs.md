@@ -4,15 +4,15 @@
 
 ### Current behavior
 
-`V6C_STORE8_P` and `V6C_LOAD8_P` are defined with `Defs = [HL]`,
+`V6CLANG_STORE8_P` and `V6CLANG_LOAD8_P` are defined with `Defs = [HL]`,
 unconditionally telling the register allocator that HL is clobbered:
 
 ```tablegen
 let mayStore = 1, Defs = [HL] in
-def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
+def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
 
 let mayLoad = 1, Defs = [HL] in
-def V6C_LOAD8_P : V6CPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
+def V6CLANG_LOAD8_P : V6ClangPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
 ```
 
 The register allocator avoids HL for pointers that survive past a
@@ -80,41 +80,41 @@ Two changes:
 
 | Step | What | Where |
 |------|------|-------|
-| Remove `Defs = [HL]` | Honest pseudo definitions | V6CInstrInfo.td |
-| Rewrite STORE8_P expansion | 4-priority HL-preserving chain | V6CInstrInfo.cpp |
-| Rewrite LOAD8_P expansion | 4-priority HL-preserving chain | V6CInstrInfo.cpp |
-| Add liveness helper | `isRegDeadAt()` for A-dead check | V6CInstrInfo.cpp |
+| Remove `Defs = [HL]` | Honest pseudo definitions | V6ClangInstrInfo.td |
+| Rewrite STORE8_P expansion | 4-priority HL-preserving chain | V6ClangInstrInfo.cpp |
+| Rewrite LOAD8_P expansion | 4-priority HL-preserving chain | V6ClangInstrInfo.cpp |
+| Add liveness helper | `isRegDeadAt()` for A-dead check | V6ClangInstrInfo.cpp |
 | New lit test | Both patterns exercised | store-load-honest-defs.ll |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Remove `Defs = [HL]` from V6C_STORE8_P and V6C_LOAD8_P [x]
+### Step 3.1 — Remove `Defs = [HL]` from V6CLANG_STORE8_P and V6CLANG_LOAD8_P [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td` (lines ~584-595)
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` (lines ~584-595)
 
 Change:
 ```tablegen
 // Before:
 let mayLoad = 1, Defs = [HL] in
-def V6C_LOAD8_P : V6CPseudo<(outs GR8:$dst), (ins GR16:$addr),
+def V6CLANG_LOAD8_P : V6ClangPseudo<(outs GR8:$dst), (ins GR16:$addr),
     "# LOAD8P $dst, ($addr)",
     [(set i8:$dst, (load i16:$addr))]>;
 
 let mayStore = 1, Defs = [HL] in
-def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr),
+def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr),
     "# STORE8P $src, ($addr)",
     [(store i8:$src, i16:$addr)]>;
 
 // After:
 let mayLoad = 1 in
-def V6C_LOAD8_P : V6CPseudo<(outs GR8:$dst), (ins GR16:$addr),
+def V6CLANG_LOAD8_P : V6ClangPseudo<(outs GR8:$dst), (ins GR16:$addr),
     "# LOAD8P $dst, ($addr)",
     [(set i8:$dst, (load i16:$addr))]>;
 
 let mayStore = 1 in
-def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr),
+def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr),
     "# STORE8P $src, ($addr)",
     [(store i8:$src, i16:$addr)]>;
 ```
@@ -127,10 +127,10 @@ def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr),
 
 ### Step 3.2 — Add `isRegDeadAt()` liveness helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Add a static helper near the top of the file (before `expandPostRAPseudo`),
-modeled after `isRegDeadAfter()` in V6CXchgOpt.cpp:
+modeled after `isRegDeadAfter()` in V6ClangXchgOpt.cpp:
 
 ```cpp
 /// Check if a physical register is dead at a given instruction.
@@ -164,52 +164,52 @@ static bool isRegDeadAt(unsigned Reg, const MachineInstr &MI,
 }
 ```
 
-> **Design Notes**: Same algorithm as `isRegDeadAfter()` in V6CXchgOpt.cpp
+> **Design Notes**: Same algorithm as `isRegDeadAfter()` in V6ClangXchgOpt.cpp
 > but takes `const MachineInstr &` and `MachineBasicBlock &` instead of
 > iterators. Used by both STORE8_P and LOAD8_P expansion.
 
 > **Implementation Notes**: Added `isRegDeadAtMI()` static helper in
-> V6CInstrInfo.cpp before `expandPostRAPseudo`. Uses same algorithm as
-> `isRegDeadAfter()` in V6CXchgOpt.cpp. Checks successor liveins.
+> V6ClangInstrInfo.cpp before `expandPostRAPseudo`. Uses same algorithm as
+> `isRegDeadAfter()` in V6ClangXchgOpt.cpp. Checks successor liveins.
 
-### Step 3.3 — Rewrite V6C_STORE8_P expansion [x]
+### Step 3.3 — Rewrite V6CLANG_STORE8_P expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp` (lines ~1409-1444)
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (lines ~1409-1444)
 
-Replace the existing `case V6C::V6C_STORE8_P:` with a 4-priority chain:
+Replace the existing `case V6CLANG::V6CLANG_STORE8_P:` with a 4-priority chain:
 
 ```cpp
-case V6C::V6C_STORE8_P: {
+case V6CLANG::V6CLANG_STORE8_P: {
     Register SrcReg = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    if (AddrReg == V6C::HL) {
+    if (AddrReg == V6CLANG::HL) {
       // Priority 1: addr is HL — just store (7cc)
-      BuildMI(MBB, MI, DL, get(V6C::MOVMr)).addReg(SrcReg);
-    } else if (SrcReg == V6C::A &&
-               (AddrReg == V6C::BC || AddrReg == V6C::DE)) {
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(SrcReg);
+    } else if (SrcReg == V6CLANG::A &&
+               (AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE)) {
       // Priority 2: STAX — src already in A (7cc)
-      BuildMI(MBB, MI, DL, get(V6C::STAX))
+      BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
           .addReg(SrcReg).addReg(AddrReg);
-    } else if ((AddrReg == V6C::BC || AddrReg == V6C::DE) &&
-               isRegDeadAt(V6C::A, MI, MBB, &RI)) {
+    } else if ((AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE) &&
+               isRegDeadAt(V6CLANG::A, MI, MBB, &RI)) {
       // Priority 3: route through A for STAX — A is dead (12cc)
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(V6C::A, RegState::Define).addReg(SrcReg);
-      BuildMI(MBB, MI, DL, get(V6C::STAX))
-          .addReg(V6C::A).addReg(AddrReg);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
+      BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
+          .addReg(V6CLANG::A).addReg(AddrReg);
     } else {
       // Priority 4: fallback — save/restore HL (43cc)
-      BuildMI(MBB, MI, DL, get(V6C::PUSH)).addReg(V6C::HL);
-      MCRegister Hi = RI.getSubReg(AddrReg, V6C::sub_hi);
-      MCRegister Lo = RI.getSubReg(AddrReg, V6C::sub_lo);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(V6C::H, RegState::Define).addReg(Hi);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(V6C::L, RegState::Define).addReg(Lo);
-      BuildMI(MBB, MI, DL, get(V6C::MOVMr)).addReg(SrcReg);
-      BuildMI(MBB, MI, DL, get(V6C::POP))
-          .addDef(V6C::HL);
+      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
+      MCRegister Hi = RI.getSubReg(AddrReg, V6CLANG::sub_hi);
+      MCRegister Lo = RI.getSubReg(AddrReg, V6CLANG::sub_lo);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(V6CLANG::H, RegState::Define).addReg(Hi);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(V6CLANG::L, RegState::Define).addReg(Lo);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(SrcReg);
+      BuildMI(MBB, MI, DL, get(V6CLANG::POP))
+          .addDef(V6CLANG::HL);
     }
     MI.eraseFromParent();
     return true;
@@ -223,48 +223,48 @@ case V6C::V6C_STORE8_P: {
 > **Implementation Notes**: Done. 4-priority chain implemented as planned.
 > Priority 3 (STAX via A) handles the fill_array case where arg occupies L.
 
-### Step 3.4 — Rewrite V6C_LOAD8_P expansion [x]
+### Step 3.4 — Rewrite V6CLANG_LOAD8_P expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp` (lines ~1378-1407)
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (lines ~1378-1407)
 
-Replace the existing `case V6C::V6C_LOAD8_P:` with a 4-priority chain:
+Replace the existing `case V6CLANG::V6CLANG_LOAD8_P:` with a 4-priority chain:
 
 ```cpp
-case V6C::V6C_LOAD8_P: {
+case V6CLANG::V6CLANG_LOAD8_P: {
     Register DstReg = MI.getOperand(0).getReg();
     Register AddrReg = MI.getOperand(1).getReg();
 
-    if (AddrReg == V6C::HL) {
+    if (AddrReg == V6CLANG::HL) {
       // Priority 1: addr is HL — just load (7cc)
-      BuildMI(MBB, MI, DL, get(V6C::MOVrM))
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrM))
           .addReg(DstReg, RegState::Define);
-    } else if (DstReg == V6C::A &&
-               (AddrReg == V6C::BC || AddrReg == V6C::DE)) {
+    } else if (DstReg == V6CLANG::A &&
+               (AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE)) {
       // Priority 2: LDAX — dst is A (7cc)
-      BuildMI(MBB, MI, DL, get(V6C::LDAX))
+      BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
           .addReg(DstReg, RegState::Define)
           .addReg(AddrReg);
-    } else if ((AddrReg == V6C::BC || AddrReg == V6C::DE) &&
-               isRegDeadAt(V6C::A, MI, MBB, &RI)) {
+    } else if ((AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE) &&
+               isRegDeadAt(V6CLANG::A, MI, MBB, &RI)) {
       // Priority 3: LDAX then move — A is dead (12cc)
-      BuildMI(MBB, MI, DL, get(V6C::LDAX))
-          .addReg(V6C::A, RegState::Define)
+      BuildMI(MBB, MI, DL, get(V6CLANG::LDAX))
+          .addReg(V6CLANG::A, RegState::Define)
           .addReg(AddrReg);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(DstReg, RegState::Define).addReg(V6C::A);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(DstReg, RegState::Define).addReg(V6CLANG::A);
     } else {
       // Priority 4: fallback — save/restore HL (43cc)
-      BuildMI(MBB, MI, DL, get(V6C::PUSH)).addReg(V6C::HL);
-      MCRegister Hi = RI.getSubReg(AddrReg, V6C::sub_hi);
-      MCRegister Lo = RI.getSubReg(AddrReg, V6C::sub_lo);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(V6C::H, RegState::Define).addReg(Hi);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-          .addReg(V6C::L, RegState::Define).addReg(Lo);
-      BuildMI(MBB, MI, DL, get(V6C::MOVrM))
+      BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
+      MCRegister Hi = RI.getSubReg(AddrReg, V6CLANG::sub_hi);
+      MCRegister Lo = RI.getSubReg(AddrReg, V6CLANG::sub_lo);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(V6CLANG::H, RegState::Define).addReg(Hi);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+          .addReg(V6CLANG::L, RegState::Define).addReg(Lo);
+      BuildMI(MBB, MI, DL, get(V6CLANG::MOVrM))
           .addReg(DstReg, RegState::Define);
-      BuildMI(MBB, MI, DL, get(V6C::POP))
-          .addDef(V6C::HL);
+      BuildMI(MBB, MI, DL, get(V6CLANG::POP))
+          .addDef(V6CLANG::HL);
     }
     MI.eraseFromParent();
     return true;
@@ -283,14 +283,14 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ```
 
 > **Implementation Notes**: Build succeeded. Also fixed pre-existing missing
-> `createV6CSpillForwardingPass()` declaration in V6C.h.
+> `createV6ClangSpillForwardingPass()` declaration in V6Clang.h.
 > Extended `findDefiningLXI()` to check predecessor BBs for cross-BB INX
 > peephole (needed because O20's RA changes put LXI BC,1 in loop preheaders).
 > Added `LXI->getParent() == &MBB` guard on all 3 LXI erase sites.
 
 ### Step 3.6 — Lit test: store-load-honest-defs.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/store-load-honest-defs.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/store-load-honest-defs.ll`
 
 Test cases:
 1. **store_via_hl**: Store through pointer — expect `MOV M, r` with HL, no copy
@@ -321,11 +321,11 @@ python tests\run_all.py
 
 Compile feature test case and verify the expected improvement appears:
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\23\v6llvmc.c -o tests\features\23\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\23\v6clang.c -o tests\features\23\v6clang_new01.asm
 ```
 
 > **Implementation Notes**: Done. fill_array: 64cc→56cc/iter (−12.5%).
-> v6llvmc_new01.asm (before cross-BB INX fix) and v6llvmc_new02.asm (final).
+> v6clang_new01.asm (before cross-BB INX fix) and v6clang_new02.asm (final).
 
 ### Step 3.9 — Make sure result.txt is created. `tests\features\README.md` [x]
 
@@ -365,7 +365,7 @@ Load: `LDAX BC` (Priority 2, dst=A). Store: `MOV M, A` (Priority 1, addr=HL).
 |------|------------|
 | PUSH/POP fallback (43cc) slower than current (23cc) in rare cases | Only triggers when HL busy AND A live AND src≠A — very rare |
 | Removing `Defs = [HL]` causes RA to over-commit HL | Expansion preserves HL in ALL paths; PUSH/POP guarantees correctness |
-| Liveness check for A is wrong | Uses same proven algorithm as V6CXchgOpt::isRegDeadAfter() |
+| Liveness check for A is wrong | Uses same proven algorithm as V6ClangXchgOpt::isRegDeadAfter() |
 | Regression in other patterns | Full test suite (lit + golden) run before completion |
 
 ---
@@ -388,8 +388,8 @@ Load: `LDAX BC` (Priority 2, dst=A). Store: `MOV M, A` (Priority 1, addr=HL).
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O20 Design](design\future_plans\O20_honest_store_load_defs.md)
-* [V6CXchgOpt isRegDeadAfter](llvm\lib\Target\V6C\V6CXchgOpt.cpp) — liveness helper reference
+* [V6ClangXchgOpt isRegDeadAfter](llvm\lib\Target\V6CLANG\V6ClangXchgOpt.cpp) — liveness helper reference

@@ -1,8 +1,8 @@
 # Plan: O64 — Liveness-Aware i8 Spill/Reload Lowering (Static-Stack Shapes B & C)
 
 > **Scope.** Replace the single fixed fallback shape used by
-> `V6CRegisterInfo::eliminateFrameIndex` for static-stack
-> `V6C_SPILL8` / `V6C_RELOAD8` pseudos with a small cost-model
+> `V6ClangRegisterInfo::eliminateFrameIndex` for static-stack
+> `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` pseudos with a small cost-model
 > decision ladder driven by post-RA liveness queries already used by
 > O42. No TableGen changes, no new CLI flag, no ABI change.
 > See the feature spec:
@@ -14,8 +14,8 @@
 
 ### Current behavior
 
-`V6CRegisterInfo::eliminateFrameIndex`, static-stack branch
-([V6CRegisterInfo.cpp lines ~143–250](../llvm-project/llvm/lib/Target/V6C/V6CRegisterInfo.cpp)):
+`V6ClangRegisterInfo::eliminateFrameIndex`, static-stack branch
+([V6ClangRegisterInfo.cpp lines ~143–250](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp)):
 
 * **Shape A** (src/dst == `A`): `STA addr` / `LDA addr` — already optimal
   (16 cc, 3 B).
@@ -76,7 +76,7 @@ ordered decision list that checks preconditions via the existing
      (replaces the DE-detour fallback, strictly cheaper: 52 cc vs
      ~76 cc for the DE-PUSH/POP path.)
 
-> **Timings** use `docs/V6CInstructionTimings.md`: `MOV r,r`=8,
+> **Timings** use `docs/V6ClangInstructionTimings.md`: `MOV r,r`=8,
 > `MOV r,M`=8, `MOV M,r`=8, `LXI`=12, `STA`/`LDA`=16, `PUSH PSW`=16,
 > `POP PSW`=12.
 
@@ -97,19 +97,19 @@ through `A` or a spare `r8`.
 
 ### Approach: decision ladder per (shape, width) driven by `isRegDeadAfterMI`, factored into a shared header
 
-Both `V6CRegisterInfo::eliminateFrameIndex` (slot-address form) and
-`V6CSpillPatchedReload`'s non-winner i8 emitter (MCSymbol `Sym+1` form)
+Both `V6ClangRegisterInfo::eliminateFrameIndex` (slot-address form) and
+`V6ClangSpillPatchedReload`'s non-winner i8 emitter (MCSymbol `Sym+1` form)
 need the same decision ladder. To avoid copy-paste drift, factor the
 ladder and its helpers into a new compilation unit:
 
-* `llvm-project/llvm/lib/Target/V6C/V6CSpillExpand.h` — declarations.
-* `llvm-project/llvm/lib/Target/V6C/V6CSpillExpand.cpp` — impl.
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.h` — declarations.
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.cpp` — impl.
 
 Public API (free functions in namespace `llvm`):
 
 ```cpp
 // Liveness helper. Moved from its current duplicated static definitions
-// in V6CRegisterInfo.cpp and V6CSpillPatchedReload.cpp.
+// in V6ClangRegisterInfo.cpp and V6ClangSpillPatchedReload.cpp.
 bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
                       MachineBasicBlock &MBB,
                       const TargetRegisterInfo *TRI);
@@ -125,7 +125,7 @@ Register findDeadSpareGPR8(Register Excluded, const MachineInstr &MI,
 // static-stack FI form) or an MCSymbol+MO_PATCH_IMM (the O61 form).
 using AppendAddrFn = llvm::function_ref<void(MachineInstrBuilder &)>;
 
-// Emit O64 decision ladder for V6C_SPILL8 at `InsertBefore`. Does NOT
+// Emit O64 decision ladder for V6CLANG_SPILL8 at `InsertBefore`. Does NOT
 // erase MI — caller owns that.
 void expandSpill8Static(MachineInstr &MI, MachineBasicBlock::iterator InsertBefore,
                         Register SrcReg, bool SrcIsKill,
@@ -133,7 +133,7 @@ void expandSpill8Static(MachineInstr &MI, MachineBasicBlock::iterator InsertBefo
                         const TargetRegisterInfo *TRI,
                         AppendAddrFn AppendAddr);
 
-// Emit O64 decision ladder for V6C_RELOAD8.
+// Emit O64 decision ladder for V6CLANG_RELOAD8.
 void expandReload8Static(MachineInstr &MI, MachineBasicBlock::iterator InsertBefore,
                          Register DstReg,
                          const TargetInstrInfo &TII,
@@ -147,13 +147,13 @@ operand of an LXI/STA/LDA). A lambda keeps the core ladder free of
 kind-dispatch and keeps the call sites readable:
 
 ```cpp
-// V6CRegisterInfo.cpp call
+// V6ClangRegisterInfo.cpp call
 expandSpill8Static(MI, II, SrcReg, IsKill, TII, this,
     [&](MachineInstrBuilder &B) { B.addGlobalAddress(GV, StaticOffset); });
 
-// V6CSpillPatchedReload.cpp call
+// V6ClangSpillPatchedReload.cpp call
 expandReload8Static(*R, R, Dst, TII, TRI,
-    [&](MachineInstrBuilder &B) { B.addSym(Syms[0], V6CII::MO_PATCH_IMM); });
+    [&](MachineInstrBuilder &B) { B.addSym(Syms[0], V6ClangII::MO_PATCH_IMM); });
 ```
 
 Each helper builds the decision ladder in the order listed above and
@@ -203,15 +203,15 @@ Three reasons to keep one pseudo per width:
 
 | Step | What | Where |
 |------|------|-------|
-| New shared module | `V6CSpillExpand.h` + `V6CSpillExpand.cpp`; add to `CMakeLists.txt`. | `llvm-project/llvm/lib/Target/V6C/` |
-| Consolidate `isRegDeadAfterMI` | Move from its two duplicate static definitions into the shared module. | `V6CSpillExpand.{h,cpp}` |
-| Add helper `findDeadSpareGPR8` | Walks {B,C,D,E}\Excluded, returns first dead after MI; `Register()` on failure. | `V6CSpillExpand.{h,cpp}` |
-| Implement `expandSpill8Static` / `expandReload8Static` | Emit the decision ladder using `AppendAddrFn` for the address operand. | `V6CSpillExpand.cpp` |
-| Rewire `V6CRegisterInfo::eliminateFrameIndex` | Replace static-stack `V6C_SPILL8` / `V6C_RELOAD8` bodies with calls to the shared helpers (pass a `GV + StaticOffset` appender). Keep Shape A (`STA`/`LDA`) inline. | `V6CRegisterInfo.cpp` |
-| Rewire `V6CSpillPatchedReload` non-winner emitter | Replace the duplicated classical i8 reload emission with a call to `expandReload8Static` (pass a `Syms[0] + MO_PATCH_IMM` appender). Keep winner emission (MVI) and spill rewrite (STA Sym+1) untouched. | `V6CSpillPatchedReload.cpp` |
-| Drop H/L DE-detour spill path | Replaced by Shape C ladder (A-routed) inside the shared helper. | `V6CSpillExpand.cpp` |
-| Add H/L reload rows 2–4 | Keep current "other-half dead" fast path as row 1; add A-dead / spare-GPR / `PUSH PSW` rows. | `V6CSpillExpand.cpp` |
-| Lit test | One function per decision row with exact `CHECK` sequences. | `llvm/test/CodeGen/V6C/spill-reload-i8-static-shapes.ll` |
+| New shared module | `V6ClangSpillExpand.h` + `V6ClangSpillExpand.cpp`; add to `CMakeLists.txt`. | `llvm-project/llvm/lib/Target/V6CLANG/` |
+| Consolidate `isRegDeadAfterMI` | Move from its two duplicate static definitions into the shared module. | `V6ClangSpillExpand.{h,cpp}` |
+| Add helper `findDeadSpareGPR8` | Walks {B,C,D,E}\Excluded, returns first dead after MI; `Register()` on failure. | `V6ClangSpillExpand.{h,cpp}` |
+| Implement `expandSpill8Static` / `expandReload8Static` | Emit the decision ladder using `AppendAddrFn` for the address operand. | `V6ClangSpillExpand.cpp` |
+| Rewire `V6ClangRegisterInfo::eliminateFrameIndex` | Replace static-stack `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` bodies with calls to the shared helpers (pass a `GV + StaticOffset` appender). Keep Shape A (`STA`/`LDA`) inline. | `V6ClangRegisterInfo.cpp` |
+| Rewire `V6ClangSpillPatchedReload` non-winner emitter | Replace the duplicated classical i8 reload emission with a call to `expandReload8Static` (pass a `Syms[0] + MO_PATCH_IMM` appender). Keep winner emission (MVI) and spill rewrite (STA Sym+1) untouched. | `V6ClangSpillPatchedReload.cpp` |
+| Drop H/L DE-detour spill path | Replaced by Shape C ladder (A-routed) inside the shared helper. | `V6ClangSpillExpand.cpp` |
+| Add H/L reload rows 2–4 | Keep current "other-half dead" fast path as row 1; add A-dead / spare-GPR / `PUSH PSW` rows. | `V6ClangSpillExpand.cpp` |
+| Lit test | One function per decision row with exact `CHECK` sequences. | `llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll` |
 | Regression | All existing O42/O43/O61 lit tests pass unchanged, or with `CHECK` lines tightened to the shorter sequences. Re-verify `spill-patched-reload-i8.ll` in particular — its non-winner reload sequences will change. | existing `.ll` files |
 | Feature test | `tests/features/38/` — a function with an HL-live-but-A-dead i8 spill/reload site. | new folder |
 
@@ -219,18 +219,18 @@ Three reasons to keep one pseudo per width:
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create shared module `V6CSpillExpand.{h,cpp}` [x]
+### Step 3.1 — Create shared module `V6ClangSpillExpand.{h,cpp}` [x]
 
 **Files**:
-* `llvm-project/llvm/lib/Target/V6C/V6CSpillExpand.h`
-* `llvm-project/llvm/lib/Target/V6C/V6CSpillExpand.cpp`
-* `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt` — add
-  `V6CSpillExpand.cpp` to the `add_llvm_target(V6CCodeGen …)` list.
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.h`
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillExpand.cpp`
+* `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt` — add
+  `V6ClangSpillExpand.cpp` to the `add_llvm_target(V6ClangCodeGen …)` list.
 
 Declare the public API shown in §2 (`isRegDeadAfterMI`,
 `findDeadSpareGPR8`, `expandSpill8Static`, `expandReload8Static`,
 `AppendAddrFn`). Implement `isRegDeadAfterMI` by moving the existing
-body verbatim from `V6CRegisterInfo.cpp` (which is the canonical
+body verbatim from `V6ClangRegisterInfo.cpp` (which is the canonical
 copy).
 
 > **Design Notes**: Shared module is preferred over adding static
@@ -242,14 +242,14 @@ copy).
 
 ### Step 3.2 — Add `findDeadSpareGPR8` helper [x]
 
-**File**: `V6CSpillExpand.cpp`
+**File**: `V6ClangSpillExpand.cpp`
 
 ```cpp
 Register llvm::findDeadSpareGPR8(Register Excluded,
                                  const MachineInstr &MI,
                                  MachineBasicBlock &MBB,
                                  const TargetRegisterInfo *TRI) {
-  static const MCPhysReg Candidates[] = {V6C::B, V6C::C, V6C::D, V6C::E};
+  static const MCPhysReg Candidates[] = {V6CLANG::B, V6CLANG::C, V6CLANG::D, V6CLANG::E};
   for (MCPhysReg R : Candidates) {
     if (Excluded && TRI->regsOverlap(R, Excluded))
       continue;
@@ -272,10 +272,10 @@ Register llvm::findDeadSpareGPR8(Register Excluded,
 
 ### Step 3.3 — Implement `expandSpill8Static` with decision ladder [x]
 
-**File**: `V6CSpillExpand.cpp`
+**File**: `V6ClangSpillExpand.cpp`
 
-Implement the helper (called by both `V6CRegisterInfo` for the
-full shape set and by `V6CSpillPatchedReload` for non-winner spills
+Implement the helper (called by both `V6ClangRegisterInfo` for the
+full shape set and by `V6ClangSpillPatchedReload` for non-winner spills
 — though in practice non-winner spills don't exist, since O61's
 filter requires `SrcReg == A`, handled inline as Shape A by the
 caller). The helper body covers:
@@ -326,7 +326,7 @@ Shape B (SrcReg ∈ {B, C, D, E}):
 
 ### Step 3.4 — Implement `expandReload8Static` with decision ladder [x]
 
-**File**: `V6CSpillExpand.cpp`
+**File**: `V6ClangSpillExpand.cpp`
 
 Symmetric to 3.3:
 
@@ -375,16 +375,16 @@ Shape B (DstReg ∈ {B, C, D, E}):
 
 > **Implementation Notes**: <empty>
 
-### Step 3.5 — Wire the helpers into `V6CRegisterInfo::eliminateFrameIndex` [x]
+### Step 3.5 — Wire the helpers into `V6ClangRegisterInfo::eliminateFrameIndex` [x]
 
-**File**: `V6CRegisterInfo.cpp`
+**File**: `V6ClangRegisterInfo.cpp`
 
-Replace the inline `V6C_SPILL8` / `V6C_RELOAD8` static-stack bodies
+Replace the inline `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` static-stack bodies
 with:
 
 ```cpp
 // Shape A stays inline (STA / LDA) — no ladder needed.
-if (SrcReg == V6C::A) { /* STA GV+StaticOffset */ }
+if (SrcReg == V6CLANG::A) { /* STA GV+StaticOffset */ }
 else {
   expandSpill8Static(MI, II, SrcReg, MI.getOperand(0).isKill(),
       TII, this,
@@ -396,9 +396,9 @@ MI.eraseFromParent();
 return true;
 ```
 
-…and symmetrically for `V6C_RELOAD8`. Remove the now-static-private
+…and symmetrically for `V6CLANG_RELOAD8`. Remove the now-static-private
 `isRegDeadAfterMI` definition in this file and `#include
-"V6CSpillExpand.h"` instead.
+"V6ClangSpillExpand.h"` instead.
 
 Leave the non-static (SP-relative, dynamic-stack) paths untouched —
 O64's scope is static stack only.
@@ -409,29 +409,29 @@ O64's scope is static stack only.
 
 > **Implementation Notes**: <empty>
 
-### Step 3.6 — Wire the helpers into `V6CSpillPatchedReload` non-winner emitter [x]
+### Step 3.6 — Wire the helpers into `V6ClangSpillPatchedReload` non-winner emitter [x]
 
-**File**: `V6CSpillPatchedReload.cpp`
+**File**: `V6ClangSpillPatchedReload.cpp`
 
 In the non-winner i8 reload loop (currently
-[lines 474–534](../llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp#L474)),
+[lines 474–534](../llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp#L474)),
 replace the inline A / H|L / B..E branches with:
 
 ```cpp
-if (Dst == V6C::A) {
-  BuildMI(*MBB, R, DL, TII.get(V6C::LDA), V6C::A)
-      .addSym(Syms[0], V6CII::MO_PATCH_IMM);
+if (Dst == V6CLANG::A) {
+  BuildMI(*MBB, R, DL, TII.get(V6CLANG::LDA), V6CLANG::A)
+      .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
 } else {
   expandReload8Static(*R, R, Dst, TII, TRI,
       [&](MachineInstrBuilder &B) {
-        B.addSym(Syms[0], V6CII::MO_PATCH_IMM);
+        B.addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
       });
 }
 R->eraseFromParent();
 ```
 
 Remove the now-static-private `isRegDeadAfterMI` definition in this
-file and `#include "V6CSpillExpand.h"` instead. Keep the winner
+file and `#include "V6ClangSpillExpand.h"` instead. Keep the winner
 emitter (`MVI r, 0` + pre-instr symbol) and spill rewrite
 (`STA Sym+1` per winner) unchanged.
 
@@ -451,7 +451,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.8 — Lit test: `spill-reload-i8-static-shapes.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/spill-reload-i8-static-shapes.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/spill-reload-i8-static-shapes.ll`
 
 One small non-reentrant function per decision row, with precise
 `CHECK` sequences:
@@ -502,8 +502,8 @@ in a function that already had a deterministic classical sequence.
 
 ### Step 3.11 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests\features\38\v6llvmc.c` and produce
-`v6llvmc_new01.asm`. Expect Shape B row 2 or row 3 to fire at least
+Compile `tests\features\38\v6clang.c` and produce
+`v6clang_new01.asm`. Expect Shape B row 2 or row 3 to fire at least
 once in the body of the HL-live-A-dead function, replacing a
 `PUSH HL; LXI HL, …; MOV r, M; POP HL` sequence.
 
@@ -543,8 +543,8 @@ unsigned char f(unsigned char *p, unsigned char x) {
 }
 ```
 
-Classical reload: `PUSH HL; LXI HL, __v6c_ss.f; MOV r, M; POP HL`
-(48 cc). After O64 the reload is replaced with `LDA __v6c_ss.f;
+Classical reload: `PUSH HL; LXI HL, __v6clang_ss.f; MOV r, M; POP HL`
+(48 cc). After O64 the reload is replaced with `LDA __v6clang_ss.f;
 MOV r, A` (24 cc) — **−24 cc, −2 B** per spill/reload site in the
 hot block.
 
@@ -576,7 +576,7 @@ handles `SrcReg != A` or the unpatched reloads O61 skipped.
 | Risk | Mitigation |
 |------|------------|
 | Bad spare-GPR pick fragments a live range | Post-RA, physical regs only — no re-allocation. Greedy first-match on {B,C,D,E} is good enough; any dead candidate is equivalent in cost. |
-| Row ordering mis-matches real Vector-06c timings | Ladder is monotonic in cost. Even a mis-ordered row only produces a suboptimal but still-correct sequence. Verify with `docs/V6CInstructionTimings.md` numbers in the plan above. |
+| Row ordering mis-matches real Vector-06c timings | Ladder is monotonic in cost. Even a mis-ordered row only produces a suboptimal but still-correct sequence. Verify with `docs/V6ClangInstructionTimings.md` numbers in the plan above. |
 | `isRegDeadAfterMI` returns a stale answer after intermediate emission | Query only uses `MI`'s pre-expansion position and the original successor-livein state — unchanged by O64. Same guarantee O42 relies on. |
 | Lit tests for specific rows hard to write deterministically | Pin liveness with calls that kill/keep A or GPRs. If a row is non-deterministic we fall back to `CHECK-DAG` or drop the row's test and cover it via feature test 38. |
 | Code size regression on row 3 | Row 3 is 6 B vs fallback row 4's 6 B — identical size, strictly fewer cycles. |
@@ -592,8 +592,8 @@ handles `SrcReg != A` or the unpatched reloads O61 skipped.
   i16 and for dynamic-stack paths.
 * **O61** (patched reload). Orthogonal: O61 filters to `SrcReg == A`;
   O64 takes all other i8 sites plus O61's non-winner reloads. Both
-  `V6CRegisterInfo::eliminateFrameIndex` and
-  `V6CSpillPatchedReload`'s non-winner i8 reload emitter now call
+  `V6ClangRegisterInfo::eliminateFrameIndex` and
+  `V6ClangSpillPatchedReload`'s non-winner i8 reload emitter now call
   the shared `expandReload8Static` helper (Steps 3.5 / 3.6), so O61
   functions get the same ladder as the rest.
 * **O63** (drop false `FLAGS` def). Orthogonal. O63 touches the
@@ -612,15 +612,15 @@ handles `SrcReg != A` or the unpatched reloads O61 skipped.
   just spare GPRs — would let row 2/3 fire more often on
   register-starved functions.
 * Cost-driven row selection when two rows tie in cycles but differ
-  in bytes (add `V6COptMode` consultation — currently tied rows
+  in bytes (add `V6ClangOptMode` consultation — currently tied rows
   fall through in source order, which happens to pick the cheaper
   size).
 
 ## 8. References
 
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md)
-* [V6C Instruction Timings](../docs/V6CInstructionTimings.md)
+* [V6CLANG Instruction Timings](../docs/V6ClangInstructionTimings.md)
 * [Future Improvements](future_plans/README.md)
 * [O64 feature spec](future_plans/O64_liveness_aware_i8_spill_lowering.md)
 * [O42 prior art](future_plans/O42_liveness_aware_expansion.md)

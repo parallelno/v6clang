@@ -1,7 +1,7 @@
 import lit.formats
 import os
 
-config.name = "V6C"
+config.name = "V6CLANG"
 config.test_format = lit.formats.ShTest(False)
 config.suffixes = ['.ll', '.c', '.test']
 config.test_source_root = os.path.dirname(__file__)

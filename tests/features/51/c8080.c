@@ -1,4 +1,4 @@
-/* O22 baseline test for c8080. Same source shape as v6llvmc.c. */
+/* O22 baseline test for c8080. Same source shape as v6clang.c. */
 
 extern unsigned short ext_sink16(unsigned short v);
 

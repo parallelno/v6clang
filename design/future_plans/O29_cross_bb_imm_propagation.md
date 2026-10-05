@@ -1,13 +1,13 @@
 # O29. Cross-BB Immediate Value Propagation
 
-*Identified from analysis of temp/compare/07/v6llvmc.c output.*
+*Identified from analysis of temp/compare/07/v6clang.c output.*
 *Extension of O13 (register value tracking) across basic block boundaries.*
 
 ## Problem
 
-The existing `V6CLoadImmCombine` (O13) and `V6CAccumulatorPlanning` (M8)
+The existing `V6ClangLoadImmCombine` (O13) and `V6ClangAccumulatorPlanning` (M8)
 passes track register values within a single basic block. When
-`V6C_BR_CC16_IMM` splits an MBB into two blocks for the high-byte
+`V6CLANG_BR_CC16_IMM` splits an MBB into two blocks for the high-byte
 comparison, the second block starts with no knowledge of register values
 from the first block. This causes redundant immediate loads.
 
@@ -122,9 +122,9 @@ the individual MVI for that sub-register can still be eliminated.
 
 ## Implementation
 
-### Approach: Extend V6CLoadImmCombine with cross-BB propagation
+### Approach: Extend V6ClangLoadImmCombine with cross-BB propagation
 
-Add an optional cross-BB propagation phase to `V6CLoadImmCombine.cpp`.
+Add an optional cross-BB propagation phase to `V6ClangLoadImmCombine.cpp`.
 The existing `KnownVal[NumTracked]` array (A, B, C, D, E, H, L — 7 entries)
 is reused; we just change how it is initialized at block entry.
 
@@ -132,7 +132,7 @@ is reused; we just change how it is initialized at block entry.
 /// For blocks with a single predecessor, initialize KnownVal[] from
 /// the predecessor's exit state (if available).
 /// Covers all 7 GPRs: A, B, C, D, E, H, L.
-void V6CLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
+void V6ClangLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
   if (MBB.pred_size() != 1)
     return;  // Only single-predecessor blocks (safe, conservative)
 
@@ -157,22 +157,22 @@ void V6CLoadImmCombine::initFromPredecessor(MachineBasicBlock &MBB) {
 This leverages the full O13 tracking (MVI→set, MOV→propagate, LXI→set pair,
 INR/DCR→±1, XCHG→swap DE↔HL, POP/CALL→invalidate) without any new logic.
 
-### Alternative: Fix at the source (V6C_BR_CC16_IMM expansion)
+### Alternative: Fix at the source (V6CLANG_BR_CC16_IMM expansion)
 
 Instead of general cross-BB propagation, the expansion code in
-`V6CInstrInfo.cpp` that creates CompareHiMBB could check whether lo8 == hi8
+`V6ClangInstrInfo.cpp` that creates CompareHiMBB could check whether lo8 == hi8
 and skip the second MVI:
 
 ```cpp
-// In V6C_BR_CC16_IMM expansion, NE path:
+// In V6CLANG_BR_CC16_IMM expansion, NE path:
 {
-  auto MIB = BuildMI(CompareHiMBB, DL, get(V6C::MVIr), V6C::A);
+  auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
   addImmHi(MIB);
 }
 
 // Could become:
 if (lo8 != hi8) {
-  auto MIB = BuildMI(CompareHiMBB, DL, get(V6C::MVIr), V6C::A);
+  auto MIB = BuildMI(CompareHiMBB, DL, get(V6CLANG::MVIr), V6CLANG::A);
   addImmHi(MIB);
 }
 // When lo8 == hi8, A already holds the correct value from BB0.

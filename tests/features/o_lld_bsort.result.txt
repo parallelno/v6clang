@@ -4,27 +4,27 @@ O-LLD — Native ld.lld + linker script (end-to-end ROM)
 This test verifies the full O-LLD plan
 (`design/plan_O_LLD_native_linker.md`) end-to-end:
 
-1. clang -target i8080-unknown-v6c drives `ld.lld -m elf32v6c` and then
+1. clang -target i8080-unknown-v6clang drives `ld.lld -m elf32v6clang` and then
    `llvm-objcopy -O binary` automatically.
-2. The default `v6c.ld` linker script (from
-   `clang/lib/Driver/ToolChains/V6C/v6c.ld`) places `.text` at 0x0100.
+2. The default `v6clang.ld` linker script (from
+   `clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`) places `.text` at 0x0100.
 3. `KEEP(*(.text._start))` puts main() at the load address (0x0100).
 4. .data (the statically initialized `ARR`) is laid out after .text.
-5. R_V6C_16 relocations for cross-section pointer references resolve
+5. R_V6CLANG_16 relocations for cross-section pointer references resolve
    to the right absolute addresses.
 
 ## Build command
 
-    llvm-build/bin/clang -target i8080-unknown-v6c -O2 \
+    llvm-build/bin/clang -target i8080-unknown-v6clang -O2 \
         -nostartfiles -nodefaultlibs \
         "-Wl,--defsym=_start=main" \
         tests/features/o_lld_bsort.c \
         -o tests/features/o_lld_bsort.rom
 
 The `-nostartfiles -nodefaultlibs` and `-Wl,--defsym=_start=main` flags
-are temporary workarounds: V6C has no MC AsmParser, so the canonical
-`crt0.s` (under `compiler-rt/lib/builtins/v6c/crt0.s`) cannot be
-assembled to ELF today. Once the V6C MC AsmParser lands, the test will
+are temporary workarounds: V6CLANG has no MC AsmParser, so the canonical
+`crt0.s` (under `compiler-rt/lib/builtins/v6clang/crt0.s`) cannot be
+assembled to ELF today. Once the V6CLANG MC AsmParser lands, the test will
 drop these flags and pick up the real crt0.
 
 ## Run command
@@ -40,11 +40,11 @@ drop these flags and pick up the real crt0.
 Each value is `ARR[i] + 0x42` for i = 0..15, where ARR was statically
 initialized to {0x00, 0x01, ..., 0x0F}. The bias is applied in
 `bias_arr()` (a noinline function reached via CALL, exercising
-R_V6C_16 cross-section relocation against the ARR symbol in .data).
+R_V6CLANG_16 cross-section relocation against the ARR symbol in .data).
 
 ## Termination
 
-Execution halts inside main()'s `__builtin_v6c_hlt()` before the
+Execution halts inside main()'s `__builtin_v6clang_hlt()` before the
 implicit `return 0;` is reached, so the missing crt0 stack/return
 plumbing never matters.
 

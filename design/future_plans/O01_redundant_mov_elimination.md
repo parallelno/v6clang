@@ -2,8 +2,8 @@
 
 ## Problem
 
-`V6C_ADD16` expansion emits `MOV A, LhsLo` unconditionally. When the
-preceding `V6C_BUILD_PAIR` just did `MOV L, A`, the accumulator already
+`V6CLANG_ADD16` expansion emits `MOV A, LhsLo` unconditionally. When the
+preceding `V6CLANG_BUILD_PAIR` just did `MOV L, A`, the accumulator already
 holds the value. The resulting `MOV A, L` is a no-op.
 
 ## Before → After
@@ -19,7 +19,7 @@ MOV  C, A       ;  8cc           ...
 
 ## Implementation
 
-Extend `V6CPeephole::eliminateRedundantMov()` to catch the pattern:
+Extend `V6ClangPeephole::eliminateRedundantMov()` to catch the pattern:
 `MOV dst, A` followed (with no A/dst clobber in between) by `MOV A, dst`
 → remove the second MOV.
 

@@ -31,7 +31,7 @@ sets flags.
 
 ### Root cause
 
-V6C_ADD16 is an ISel pseudo that expands post-RA into either:
+V6CLANG_ADD16 is an ISel pseudo that expands post-RA into either:
 - `DAD rp` (12cc) when the destination is HL, or
 - a 6-instruction 8-bit ADD/ADC chain (~40cc, plus the 12cc LXI to
   materialize the constant) for all other register pairs.
@@ -53,8 +53,8 @@ that causes spills in tight loops.
 
 ## 2. Strategy
 
-The optimization belongs in `V6CInstrInfo::expandPostRAPseudo()`, where
-V6C_ADD16 is already expanded. This is the natural place because:
+The optimization belongs in `V6ClangInstrInfo::expandPostRAPseudo()`, where
+V6CLANG_ADD16 is already expanded. This is the natural place because:
 
 1. **Physical registers are known** — we can check dst == lhs directly.
 2. **The LXI that materializes the constant is visible** — we can scan
@@ -68,14 +68,14 @@ V6C_ADD16 is already expanded. This is the natural place because:
 
 An ISel pattern like `(add i16:$src, 1) → INX` would require proving at
 the DAG level that FLAGS from the add is unused. This is fragile because
-V6C_ADD16 declares `Defs = [A, FLAGS]` and the rest of the pipeline
+V6CLANG_ADD16 declares `Defs = [A, FLAGS]` and the rest of the pipeline
 assumes that declaration is accurate. At the post-RA level, the implicit
 def operand carries a concrete `isDead()` flag that we can trust.
 
 ### Why not a later peephole?
 
-After V6C_ADD16 expansion, the 8-bit chain has already been emitted as
-6+ individual instructions. Matching that pattern in V6CPeephole.cpp would
+After V6CLANG_ADD16 expansion, the 8-bit chain has already been emitted as
+6+ individual instructions. Matching that pattern in V6ClangPeephole.cpp would
 require recognizing a specific 6-instruction sequence across the expanded
 code — much more complex and brittle than checking the pseudo's operands
 directly before expansion.
@@ -84,11 +84,11 @@ directly before expansion.
 
 | Step | What | Where |
 |------|------|-------|
-| Detect constant operand | Scan backward for LXI defining the RHS/LHS register | `expandPostRAPseudo`, V6C_ADD16 case |
+| Detect constant operand | Scan backward for LXI defining the RHS/LHS register | `expandPostRAPseudo`, V6CLANG_ADD16 case |
 | Verify safety | Check FLAGS implicit-def isDead | Same |
 | Emit INX/DCX chain | Replace expansion with 1–3 INX or DCX instructions | Same |
 | Clean up LXI | Erase dead LXI if constant register is no longer used | Same |
-| Handle SUB16 | Same logic for V6C_SUB16 with inverted direction | `expandPostRAPseudo`, V6C_SUB16 case |
+| Handle SUB16 | Same logic for V6CLANG_SUB16 with inverted direction | `expandPostRAPseudo`, V6CLANG_SUB16 case |
 
 ---
 
@@ -96,7 +96,7 @@ directly before expansion.
 
 ### Step 3.1 — Add helper: find constant-defining LXI [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Add a static helper function before `expandPostRAPseudo`:
 
@@ -115,7 +115,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
     MachineInstr &Cand = *I;
 
     // Found LXI defining Reg — return it.
-    if (Cand.getOpcode() == V6C::LXI &&
+    if (Cand.getOpcode() == V6CLANG::LXI &&
         Cand.getOperand(0).getReg() == Reg)
       return &Cand;
 
@@ -129,7 +129,7 @@ static MachineInstr *findDefiningLXI(MachineBasicBlock &MBB,
 
 ### Step 3.2 — Add helper: check FLAGS is dead [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Add a helper to check whether the FLAGS implicit-def is marked dead on a
 MachineInstr:
@@ -138,7 +138,7 @@ MachineInstr:
 /// Return true if the FLAGS register implicit-def on \p MI is dead.
 static bool isFlagsDefDead(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.implicit_operands()) {
-    if (MO.isReg() && MO.isDef() && MO.getReg() == V6C::FLAGS)
+    if (MO.isReg() && MO.isDef() && MO.getReg() == V6CLANG::FLAGS)
       return MO.isDead();
   }
   // No FLAGS implicit def found — conservatively safe (no flags produced).
@@ -148,7 +148,7 @@ static bool isFlagsDefDead(const MachineInstr &MI) {
 
 ### Step 3.3 — Add helper: check register is dead after instruction [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 To safely erase the LXI, we need to know whether the constant register has
 any remaining uses. Add a simple forward-scan helper:
@@ -176,16 +176,16 @@ static bool isRegDeadAfter(MachineBasicBlock &MBB,
 > are acceptable: the LXI wastes 12cc but correctness is preserved. The
 > dead LXI can be cleaned up by a later peephole pass if needed.
 
-### Step 3.4 — INX/DCX expansion in V6C_ADD16 [x]
+### Step 3.4 — INX/DCX expansion in V6CLANG_ADD16 [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-In the `case V6C::V6C_ADD16:` block of `expandPostRAPseudo`, insert the
+In the `case V6CLANG::V6CLANG_ADD16:` block of `expandPostRAPseudo`, insert the
 INX/DCX check **before** the DAD checks. This way HL benefits from INX
 too (8cc beats LXI+DAD at 24cc for small constants):
 
 ```cpp
-  case V6C::V6C_ADD16: {
+  case V6CLANG::V6CLANG_ADD16: {
     Register DstReg = MI.getOperand(0).getReg();
     Register LhsReg = MI.getOperand(1).getReg();
     Register RhsReg = MI.getOperand(2).getReg();
@@ -210,10 +210,10 @@ too (8cc beats LXI+DAD at 24cc for small constants):
         unsigned Opc = 0;
         unsigned Count = 0;
         if (ImmVal >= 1 && ImmVal <= 3) {
-          Opc = V6C::INX;
+          Opc = V6CLANG::INX;
           Count = static_cast<unsigned>(ImmVal);
         } else if (ImmVal >= -3 && ImmVal <= -1) {
-          Opc = V6C::DCX;
+          Opc = V6CLANG::DCX;
           Count = static_cast<unsigned>(-ImmVal);
         }
 
@@ -231,11 +231,11 @@ too (8cc beats LXI+DAD at 24cc for small constants):
     }
 
     // [existing] DAD rp: HL = HL + rp.
-    if (DstReg == V6C::HL && LhsReg == V6C::HL) { ... }
-    if (DstReg == V6C::HL && RhsReg == V6C::HL) { ... }
+    if (DstReg == V6CLANG::HL && LhsReg == V6CLANG::HL) { ... }
+    if (DstReg == V6CLANG::HL && RhsReg == V6CLANG::HL) { ... }
 
     // [existing] General case: expand to 8-bit chain.
-    MCRegister DstLo = RI.getSubReg(DstReg, V6C::sub_lo);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
     ...
   }
 ```
@@ -277,19 +277,19 @@ too (8cc beats LXI+DAD at 24cc for small constants):
 >   `isRegDeadAfter` helper is conservative — it keeps the LXI if unsure.
 >
 > - **INX on GR16All**: The physical INX instruction works on all register
->   pairs including SP. The V6C_ADD16 pseudo uses GR16 (BC, DE, HL only).
->   Since DstReg comes from V6C_ADD16, it will never be SP, so there is
+>   pairs including SP. The V6CLANG_ADD16 pseudo uses GR16 (BC, DE, HL only).
+>   Since DstReg comes from V6CLANG_ADD16, it will never be SP, so there is
 >   no risk of accidentally incrementing SP.
 
-### Step 3.5 — DCX expansion in V6C_SUB16 [x]
+### Step 3.5 — DCX expansion in V6CLANG_SUB16 [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-Apply the same pattern to the `case V6C::V6C_SUB16:` block. Subtraction is
+Apply the same pattern to the `case V6CLANG::V6CLANG_SUB16:` block. Subtraction is
 **not** commutative, so only RhsReg can be the constant:
 
 ```cpp
-  case V6C::V6C_SUB16: {
+  case V6CLANG::V6CLANG_SUB16: {
     Register DstReg = MI.getOperand(0).getReg();
     Register LhsReg = MI.getOperand(1).getReg();
     Register RhsReg = MI.getOperand(2).getReg();
@@ -305,10 +305,10 @@ Apply the same pattern to the `case V6C::V6C_SUB16:` block. Subtraction is
         unsigned Opc = 0;
         unsigned Count = 0;
         if (ImmVal >= 1 && ImmVal <= 3) {
-          Opc = V6C::DCX;  // sub rp, N → N × DCX rp
+          Opc = V6CLANG::DCX;  // sub rp, N → N × DCX rp
           Count = static_cast<unsigned>(ImmVal);
         } else if (ImmVal >= -3 && ImmVal <= -1) {
-          Opc = V6C::INX;  // sub rp, -N → N × INX rp
+          Opc = V6CLANG::INX;  // sub rp, -N → N × INX rp
           Count = static_cast<unsigned>(-ImmVal);
         }
 
@@ -325,17 +325,17 @@ Apply the same pattern to the `case V6C::V6C_SUB16:` block. Subtraction is
     }
 
     // [existing] General case: expand to 8-bit chain.
-    MCRegister DstLo = RI.getSubReg(DstReg, V6C::sub_lo);
+    MCRegister DstLo = RI.getSubReg(DstReg, V6CLANG::sub_lo);
     ...
   }
 ```
 
 ### Step 3.6 — Lit test: INX/DCX chains [x]
 
-**File**: `tests/lit/CodeGen/V6C/inx-dcx-peephole.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/inx-dcx-peephole.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 ; Test that i16 add-by-1 becomes INX instead of 8-bit chain.
 define i16 @inc16(i16 %x) {
@@ -428,10 +428,10 @@ define i16 @inc16_with_flags(i16 %x, i16 %y) {
 
 ### Step 3.7 — Lit test: loop with pointer increment [x]
 
-**File**: `tests/lit/CodeGen/V6C/loop-pointer-inx.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/loop-pointer-inx.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 ; Verify that a loop with pointer increment uses INX, not the 8-bit chain.
 @buf = global [64 x i8] zeroinitializer
@@ -482,8 +482,8 @@ chain), update the CHECK lines.
 ### Step 3.10 — Verify assembly on array copy benchmark [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_inx.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_inx.asm
 ```
 
 Inspect the loop body. Expected improvement:
@@ -562,7 +562,7 @@ replaced by a single INX/DCX (1 byte), saving **8 bytes**. For ±2: save
 | LXI used by another instruction — erasing it breaks other code | `isRegDeadAfter()` conservatively keeps the LXI when any downstream use exists; false negatives keep the LXI (wastes 12cc, but correct) |
 | DstReg != BaseReg — INX can't express a 3-operand add | Fall through to existing 8-bit chain; no correctness risk. After RA coalescing, the `rp = rp + 1` pattern almost always has DstReg == LhsReg |
 | Scan window too small — misses LXI placed far away | 16-instruction window covers the common case. If the LXI is farther away, the constant was likely loaded for multiple uses and shouldn't be deleted anyway |
-| INX on SP by accident | V6C_ADD16 uses GR16 (BC/DE/HL), never SP. INX's GR16All class is irrelevant since we inherit the register from V6C_ADD16's operand |
+| INX on SP by accident | V6CLANG_ADD16 uses GR16 (BC/DE/HL), never SP. INX's GR16All class is irrelevant since we inherit the register from V6CLANG_ADD16's operand |
 
 ---
 
@@ -573,7 +573,7 @@ This is the first of three improvements identified for the array-copy loop:
 1. **INX/DCX peephole** (this plan) — replaces 8-bit add/sub chains for
    small constants (±1 to ±3) with INX/DCX instruction chains.
 2. **CMP-based 16-bit comparison** — replaces the destructive XOR-based
-   V6C_BR_CC16 EQ/NE with a non-destructive `CPI lo; JNZ; CPI hi; JNZ`
+   V6CLANG_BR_CC16 EQ/NE with a non-destructive `CPI lo; JNZ; CPI hi; JNZ`
    sequence. This eliminates the register copy that RA inserts to preserve
    the compared register pair.
 3. **Spill elimination** — expected to follow automatically from (1) and
@@ -602,7 +602,7 @@ After all three, the target loop body is:
 The implementation was completed and all tests pass (70/70 lit + 15/15
 golden). The following deviations from the plan were made:
 
-### Step 3.4 — V6C_ADD16: condition check reordered
+### Step 3.4 — V6CLANG_ADD16: condition check reordered
 
 The plan nests conditions as:
 ```cpp
@@ -623,7 +623,7 @@ if (LXI && DstReg == BaseReg) {
 This avoids computing ImmVal/Opc when `DstReg != BaseReg` (which would
 always fall through anyway). Semantically equivalent.
 
-### Step 3.5 — V6C_SUB16: same reordering
+### Step 3.5 — V6CLANG_SUB16: same reordering
 
 The plan has:
 ```cpp
@@ -647,7 +647,7 @@ This additionally avoids the backward LXI scan when `DstReg != LhsReg`.
 
 | Aspect | Plan | Implementation |
 |--------|------|----------------|
-| RUN line | `-mtriple=i8080-unknown-v6c -O2` | `-march=v6c` (V6C backend default triple; `-O2` is llc default) |
+| RUN line | `-mtriple=i8080-unknown-v6clang -O2` | `-march=v6clang` (V6CLANG backend default triple; `-O2` is llc default) |
 | CHECK patterns | Generic `INX`/`DCX` | Register-specific `INX HL`/`DCX HL` (stronger assertion) |
 | Function terminators | None | Added `CHECK: RET` after each function to bound CHECK-NOT scope |
 | `add_four` test | `CHECK-NOT: INX` | `CHECK-NOT: INX` × 2 + `CHECK: DAD` (also verifies DAD fallback) |
@@ -670,7 +670,7 @@ The implementation uses:
 The `CHECK-NOT: ADC` was removed because only the DE pointer increment
 benefits from INX in this loop. The BC increment still uses the 8-bit
 chain because HL is clobbered by stack accesses (frame pointer save/restore)
-between the LXI and the V6C_ADD16 for BC, so `findDefiningLXI` cannot
+between the LXI and the V6CLANG_ADD16 for BC, so `findDefiningLXI` cannot
 find the LXI within its 16-instruction scan window. The `CHECK: JNZ`
 was also removed as unnecessary — checking `INX DE` is sufficient.
 
@@ -680,7 +680,7 @@ The plan predicted both pointer increments would become INX (92cc → 16cc).
 In practice, only the DE increment became `INX D` (8cc). The BC increment
 still uses the 8-bit chain because intervening stack accesses (from the
 comparison's register pressure) clobber HL between the `LXI H, 1` and the
-`V6C_ADD16` for BC, breaking the `findDefiningLXI` backward scan.
+`V6CLANG_ADD16` for BC, breaking the `findDefiningLXI` backward scan.
 
 The full improvement predicted in Section 4 (Array copy loop impact)
 requires the CMP-based 16-bit comparison from Section 6, which would

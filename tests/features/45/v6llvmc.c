@@ -1,6 +1,6 @@
 // Test case for O68 Phase 2 — `rotl i16 x, 1` via DAD H + ACI 0.
 //
-// Today the V6C backend lowers `(x<<1)|(x>>15)` (the canonical
+// Today the V6CLANG backend lowers `(x<<1)|(x>>15)` (the canonical
 // `ISD::ROTL i16, 1` form) through the default Expand path: a
 // 6-instruction shift-left chain plus a 7-step shift-right
 // chain plus an OR-of-halves — ~17 B / ~100 cc per rotate.
@@ -17,10 +17,10 @@
 // The savings compound inside CRC-style inner loops.
 //
 // Compile baseline / new:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\45\v6llvmc.c -o tests\features\45\v6llvmc_old.asm
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\45\v6llvmc.c -o tests\features\45\v6llvmc_new01.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\45\v6clang.c -o tests\features\45\v6clang_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\45\v6clang.c -o tests\features\45\v6clang_new01.asm
 
 typedef unsigned short u16;
 typedef unsigned char  u8;

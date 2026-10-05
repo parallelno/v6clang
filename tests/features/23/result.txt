@@ -100,7 +100,7 @@ main:                                   ; 21B
 Note: c8080 recomputes array base + index from memory every iteration.
 Each loop uses static memory for the counter (LDA/STA per iteration).
 
-## v6llvmc assembly (OLD — before O20, Defs = [HL] on pseudos)
+## v6clang assembly (OLD — before O20, Defs = [HL] on pseudos)
 
 ```asm
 fill_array:                             ; 22B
@@ -139,7 +139,7 @@ copy_array:                             ; 23B
     ; Loop body: 56cc (already optimal dual-pointer)
 ```
 
-## v6llvmc assembly (NEW — after O20, honest pseudo defs)
+## v6clang assembly (NEW — after O20, honest pseudo defs)
 
 ```asm
 fill_array:                             ; 24B
@@ -193,7 +193,7 @@ main:                                   ; 22B (identical to old)
     RET                                 ; 12cc, 1B
 ```
 
-## v6llvmc stats
+## v6clang stats
 
 | Function    | OLD Cycles | OLD Bytes | NEW Cycles | NEW Bytes | Δ Cycles |
 |-------------|------------|-----------|------------|-----------|----------|
@@ -213,7 +213,7 @@ MOV L, C    ; 8cc ┘ because RA declares HL clobbered by pseudo
 MOV M, E    ; 8cc   store via HL
 INX BC      ; 8cc   pointer++
 ```
-RA kept pointer in BC because it believed HL was clobbered by V6C_STORE8_P.
+RA kept pointer in BC because it believed HL was clobbered by V6CLANG_STORE8_P.
 
 ### After O20 (loop body = 56cc):
 ```
@@ -235,9 +235,9 @@ in the preheader — an artifact of the cross-BB INX peephole optimization
 that doesn't erase constants from predecessor blocks. This is negligible
 (one-time setup cost, not per-iteration).
 
-## v6llvmc vs c8080
+## v6clang vs c8080
 
-| Function    | c8080 Cycles | v6llvmc Cycles | Speedup |
+| Function    | c8080 Cycles | v6clang Cycles | Speedup |
 |-------------|--------------|----------------|---------|
 | fill_array  |       14,860 |          5,668 |   2.62× |
 | copy_array  |       18,844 |          5,672 |   3.32× |

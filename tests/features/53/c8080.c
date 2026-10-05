@@ -1,7 +1,7 @@
 /* tests/features/53/c8080.c
  *
- * c8080 reference. Mirrors v6llvmc.c functions for asm-comparison.
- * c8080 doesn't compile __builtin_v6c_out, so main() just returns
+ * c8080 reference. Mirrors v6clang.c functions for asm-comparison.
+ * c8080 doesn't compile __builtin_v6clang_out, so main() just returns
  * after calling each helper.
  */
 

@@ -1,4 +1,4 @@
-Feature 71 — O89 Dead High-Byte Elision in V6C_AND16 / V6C_OR16 / V6C_XOR16
+Feature 71 — O89 Dead High-Byte Elision in V6CLANG_AND16 / V6CLANG_OR16 / V6CLANG_XOR16
 ============================================================================
 
 Status
@@ -13,13 +13,13 @@ round-trip for the return/pass-through cases, collapsing the full 6-instruction
 sequence to just 3 instructions: `MOV A, r; OP r; RET`.
 
 The fix is a single `bool HiDead = isRegDeadAfter(...)` guard wrapping the
-three hi-byte `BuildMI` calls in `V6CInstrInfo::expandPostRAPseudo`.
+three hi-byte `BuildMI` calls in `V6ClangInstrInfo::expandPostRAPseudo`.
 
 
 C Test Case Code
 ----------------
 
-`v6llvmc.c` / `c8080.c`
+`v6clang.c` / `c8080.c`
 
 ```c
 typedef unsigned char  u8;
@@ -137,10 +137,10 @@ c8080 Stats (approximate, Vector 06c timings)
 | `xor16_full`       |    18 |          120 | spill/reload + inline __o_xor_16  |
 
 
-v6llvmc OLD ASM (relevant functions)
+v6clang OLD ASM (relevant functions)
 -------------------------------------
 
-`v6llvmc_old.asm` (before O89):
+`v6clang_old.asm` (before O89):
 
 ```asm
 xor16_to_i8:
@@ -193,10 +193,10 @@ xor16_full:             ; control — DstHi LIVE, both XRA emitted
 ```
 
 
-v6llvmc NEW ASM (after O89)
+v6clang NEW ASM (after O89)
 ----------------------------
 
-`v6llvmc_new01.asm`:
+`v6clang_new01.asm`:
 
 ```asm
 xor16_to_i8:
@@ -272,37 +272,37 @@ xor16_full:             ; control — unchanged (DstHi live)
 Comparison Table
 ----------------
 
-| Function           | Compiler       | Bytes | Worst cc | vs v6llvmc old       |
+| Function           | Compiler       | Bytes | Worst cc | vs v6clang old       |
 |--------------------|----------------|------:|---------:|----------------------|
 | `xor16_to_i8`      | c8080          |    12 |       76 | —                    |
-| `xor16_to_i8`      | v6llvmc (old)  |     7 |       52 | baseline             |
-| `xor16_to_i8`      | v6llvmc (new)  |     3 |       24 | **−4B, −28cc**       |
+| `xor16_to_i8`      | v6clang (old)  |     7 |       52 | baseline             |
+| `xor16_to_i8`      | v6clang (new)  |     3 |       24 | **−4B, −28cc**       |
 | `or16_to_i8`       | c8080          |    12 |       76 | —                    |
-| `or16_to_i8`       | v6llvmc (old)  |     7 |       52 | baseline             |
-| `or16_to_i8`       | v6llvmc (new)  |     3 |       24 | **−4B, −28cc**       |
+| `or16_to_i8`       | v6clang (old)  |     7 |       52 | baseline             |
+| `or16_to_i8`       | v6clang (new)  |     3 |       24 | **−4B, −28cc**       |
 | `and16_to_i8`      | c8080          |    12 |       76 | —                    |
-| `and16_to_i8`      | v6llvmc (old)  |     7 |       52 | baseline             |
-| `and16_to_i8`      | v6llvmc (new)  |     3 |       24 | **−4B, −28cc**       |
+| `and16_to_i8`      | v6clang (old)  |     7 |       52 | baseline             |
+| `and16_to_i8`      | v6clang (new)  |     3 |       24 | **−4B, −28cc**       |
 | `xor_bytes`        | c8080          |     9 |       60 | —                    |
-| `xor_bytes`        | v6llvmc (old)  |     7 |       48 | baseline             |
-| `xor_bytes`        | v6llvmc (new)  |     3 |       24 | **−4B, −24cc**       |
+| `xor_bytes`        | v6clang (old)  |     7 |       48 | baseline             |
+| `xor_bytes`        | v6clang (new)  |     3 |       24 | **−4B, −24cc**       |
 | `xor16_cmp_zero`   | c8080          |    19 |       92 | —                    |
-| `xor16_cmp_zero`   | v6llvmc (old)  |    13 |       72 | baseline             |
-| `xor16_cmp_zero`   | v6llvmc (new)  |    11 |       60 | **−2B, −12cc**       |
+| `xor16_cmp_zero`   | v6clang (old)  |    13 |       72 | baseline             |
+| `xor16_cmp_zero`   | v6clang (new)  |    11 |       60 | **−2B, −12cc**       |
 | `and16_cmp_zero`   | c8080          |    19 |       92 | —                    |
-| `and16_cmp_zero`   | v6llvmc (old)  |    13 |       72 | baseline             |
-| `and16_cmp_zero`   | v6llvmc (new)  |    11 |       60 | **−2B, −12cc**       |
+| `and16_cmp_zero`   | v6clang (old)  |    13 |       72 | baseline             |
+| `and16_cmp_zero`   | v6clang (new)  |    11 |       60 | **−2B, −12cc**       |
 | `or16_cmp_zero`    | c8080          |    19 |       92 | —                    |
-| `or16_cmp_zero`    | v6llvmc (old)  |    13 |       72 | baseline             |
-| `or16_cmp_zero`    | v6llvmc (new)  |    11 |       60 | **−2B, −12cc**       |
+| `or16_cmp_zero`    | v6clang (old)  |    13 |       72 | baseline             |
+| `or16_cmp_zero`    | v6clang (new)  |    11 |       60 | **−2B, −12cc**       |
 | `xor16_full`       | c8080          |    18 |      120 | —                    |
-| `xor16_full`       | v6llvmc (old)  |     7 |       52 | baseline             |
-| `xor16_full`       | v6llvmc (new)  |     7 |       52 | no change (correct)  |
+| `xor16_full`       | v6clang (old)  |     7 |       52 | baseline             |
+| `xor16_full`       | v6clang (new)  |     7 |       52 | no change (correct)  |
 
 For the simple truncation cases (`xor16_to_i8`, `or16_to_i8`, `and16_to_i8`,
 `xor_bytes`), O89 combined with AccumulatorPlanning removes all redundant work,
 cutting code from 7 instructions to 3 instructions: a 54% size reduction and a
-54% cycle reduction per call.  v6llvmc's register-based ABI already gave it a
+54% cycle reduction per call.  v6clang's register-based ABI already gave it a
 large lead over c8080; O89 extends that lead to a 3× speed advantage on these
 idioms.
 

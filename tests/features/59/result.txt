@@ -1,9 +1,9 @@
-Feature 59 — O77: V6C_STORE8_P Per-Shape Redesign
+Feature 59 — O77: V6CLANG_STORE8_P Per-Shape Redesign
 ==================================================
 
 Goal
 ----
-Rewrite the priority-4 arm of `V6C_STORE8_P` (the i8 store-through-pointer
+Rewrite the priority-4 arm of `V6CLANG_STORE8_P` (the i8 store-through-pointer
 pseudo) to dispatch on `(AddrReg, A-liveness, dead-GR8 availability)`
 instead of always emitting `PUSH PSW; MOV A,src; STAX; POP PSW`.
 
@@ -20,7 +20,7 @@ New shapes:
             4B / 44cc (unchanged).
 
 
-C test case (tests/features/59/v6llvmc.c)
+C test case (tests/features/59/v6clang.c)
 -----------------------------------------
 Six pinned-register DE-store probes + one BC-store probe + driver:
 
@@ -63,7 +63,7 @@ plain C — c8080 cannot pin physical registers, so it serves only as a
 per-function cycle/byte anchor. Functions: store_use_b, store_use_c,
 store_use_h, store_use_l, store_via_bc.
 
-Note on v6llvmc free-list CC: for these signatures the i8 argument
+Note on v6clang free-list CC: for these signatures the i8 argument
 `v_in` always arrives in B, so register pinning to B/C/H/L/D/E in
 the source is a no-op at -O2 — the asm still uses B as src for every
 DE test. Partner-MOV cases (src ∈ {H, L, D, E}) are exercised by the
@@ -114,7 +114,7 @@ store_via_bc                          : same as store_use_b plus one
 
 c8080 stats (per function, body + RET)
 --------------------------------------
-Timings (V6CInstructionTimings.md): LHLD/SHLD=3B/20cc, LDA/STA=3B/16cc,
+Timings (V6ClangInstructionTimings.md): LHLD/SHLD=3B/20cc, LDA/STA=3B/16cc,
 LXI=3B/10cc, MOV M,r=1B/8cc, CALL=3B/24cc, RET=1B/12cc.
 
   store_use_b   ........... 17 B / 104 cc
@@ -127,13 +127,13 @@ LXI=3B/10cc, MOV M,r=1B/8cc, CALL=3B/24cc, RET=1B/12cc.
 The c8080 store proper (`*p = v`) costs `STA spill; LHLD ptr; MOV M, A`
 = 7B / 44cc — c8080 must spill A and reload the pointer from a
 static-stack slot per call. The store itself (`MOV M, A`) is 1B/8cc,
-same as v6llvmc. Not directly comparable to v6llvmc's free-list
+same as v6clang. Not directly comparable to v6clang's free-list
 register CC where the pointer arrives in DE/BC and the value in B.
-The relevant comparison is v6llvmc-old vs v6llvmc-new at the
+The relevant comparison is v6clang-old vs v6clang-new at the
 store-expansion site (next two sections).
 
 
-v6llvmc OLD ASM — store expansion (tests/features/59/v6llvmc_old.asm)
+v6clang OLD ASM — store expansion (tests/features/59/v6clang_old.asm)
 ---------------------------------------------------------------------
 test_de_b / test_de_c / test_de_d / test_de_e / test_de_h / test_de_l:
 
@@ -156,7 +156,7 @@ test_bc_b: (5-arg frame: v_in arrives via stack slot)
         RET
 
 
-v6llvmc NEW ASM — store expansion (tests/features/59/v6llvmc_new01.asm)
+v6clang NEW ASM — store expansion (tests/features/59/v6clang_new01.asm)
 -----------------------------------------------------------------------
 test_de_b / test_de_c / test_de_d / test_de_e / test_de_h / test_de_l:
 
@@ -183,7 +183,7 @@ Comparison — store-expansion only (per fire, excluding identical RET + sinks)
 Timings: PUSH PSW=1B/16cc, POP PSW=1B/12cc, STAX=1B/8cc, MOV r,r=1B/8cc,
 MOV M,r=1B/8cc, XCHG=1B/4cc.
 
-| Function   | c8080 store shape        | v6llvmc OLD                       | v6llvmc NEW                       | Δ vs OLD     |
+| Function   | c8080 store shape        | v6clang OLD                       | v6clang NEW                       | Δ vs OLD     |
 |------------|--------------------------|-----------------------------------|-----------------------------------|--------------|
 | test_de_b  | 7B / 44cc (STA+LHLD+MOV) | 4B / 44cc (PSW + MOV + STAX)      | 3B / 16cc (XCHG + MOV M + XCHG)   | −1B, −28cc   |
 | test_de_c  | 7B / 44cc                | 4B / 44cc                         | 3B / 16cc                         | −1B, −28cc   |
@@ -196,7 +196,7 @@ MOV M,r=1B/8cc, XCHG=1B/4cc.
 
 Comparison — full function body (including RET, excluding OUT sinks)
 --------------------------------------------------------------------
-| Function   | v6llvmc OLD       | v6llvmc NEW       | Δ          |
+| Function   | v6clang OLD       | v6clang NEW       | Δ          |
 |------------|-------------------|-------------------|------------|
 | test_de_b  | 5B / 56 cc        | 4B / 28 cc        | −1B, −28cc |
 | test_de_c  | 5B / 56 cc        | 4B / 28 cc        | −1B, −28cc |
@@ -227,11 +227,11 @@ Benchmark impact:
 
 Files changed
 -------------
-  llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp
-    case V6C::V6C_STORE8_P: priority-4 arm rewritten (~70 lines).
+  llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp
+    case V6CLANG::V6CLANG_STORE8_P: priority-4 arm rewritten (~70 lines).
     Reuses isRegDeadAtMI, findDeadGR8AtMI; mirrors the LOAD8_P shape.
 
-  tests/features/59/{v6llvmc.c, c8080.c, *.asm, result.txt}    (new)
+  tests/features/59/{v6clang.c, c8080.c, *.asm, result.txt}    (new)
 
 
 Correctness — XCHG bypass safety
@@ -246,8 +246,8 @@ post-pseudo liveness. No RA-invariant argument required.
 
 References
 ----------
-  design/future_plans/O77_V6C_STORE8_P_redesign.md   (design doc)
-  design/plan_O77_V6C_STORE8_P_redesign.md           (8-section plan)
-  design/future_plans/O76_V6C_LOAD8_P_redesign.md    (sibling load redesign)
-  docs/V6CInstructionTimings.md                      (cycle counts)
+  design/future_plans/O77_V6CLANG_STORE8_P_redesign.md   (design doc)
+  design/plan_O77_V6CLANG_STORE8_P_redesign.md           (8-section plan)
+  design/future_plans/O76_V6CLANG_LOAD8_P_redesign.md    (sibling load redesign)
+  docs/V6ClangInstructionTimings.md                      (cycle counts)
   tests/features/README.md                           (this file format)

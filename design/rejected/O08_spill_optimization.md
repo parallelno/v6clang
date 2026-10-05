@@ -33,7 +33,7 @@ Selection priority: T1 → T2 → T3. Each tier's constraints checked statically
 
 ## Implementation
 
-A new `V6CSpillOpt` MachineFunction pass running **before** `eliminateFrameIndex()`:
+A new `V6ClangSpillOpt` MachineFunction pass running **before** `eliminateFrameIndex()`:
 
 1. **Inventory**: Scan for SPILL/RELOAD pseudos, classify by slot
 2. **LIFO analysis**: Check bracket nesting for T1 eligibility

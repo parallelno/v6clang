@@ -3,11 +3,11 @@
 sumarray:                               ; @sumarray
 ; %bb.0:
 	LXI	HL, arr2
-	SHLD	__v6c_ss.sumarray
+	SHLD	__v6clang_ss.sumarray
 	LXI	HL, arr1
 	LXI	DE, 0
 .LBB0_1:                                ; =>This Inner Loop Header: Depth=1
-	SHLD	__v6c_ss.sumarray+4
+	SHLD	__v6clang_ss.sumarray+4
 	MOV	B, D
 	MOV	C, E
 	MOV	E, M
@@ -15,8 +15,8 @@ sumarray:                               ; @sumarray
 	MOV	D, M
 	XCHG
 	DAD	BC
-	SHLD	__v6c_ss.sumarray+2
-	LHLD	__v6c_ss.sumarray
+	SHLD	__v6clang_ss.sumarray+2
+	LHLD	__v6clang_ss.sumarray
 	MOV	C, L
 	MOV	B, H
 	MOV	H, B
@@ -24,14 +24,14 @@ sumarray:                               ; @sumarray
 	MOV	E, M
 	INX	HL
 	MOV	D, M
-	LHLD	__v6c_ss.sumarray+2
+	LHLD	__v6clang_ss.sumarray+2
 	DAD	DE
 	XCHG
-	LHLD	__v6c_ss.sumarray+4
+	LHLD	__v6clang_ss.sumarray+4
 	INX	BC
 	INX	BC
 	PUSH	HL
-	LXI	HL, __v6c_ss.sumarray
+	LXI	HL, __v6clang_ss.sumarray
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -53,11 +53,11 @@ sumarray:                               ; @sumarray
 main:                                   ; @main
 ; %bb.0:
 	LXI	HL, arr2
-	SHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main
 	LXI	HL, arr1
 	LXI	DE, 0
 .LBB1_1:                                ; =>This Inner Loop Header: Depth=1
-	SHLD	__v6c_ss.main+4
+	SHLD	__v6clang_ss.main+4
 	MOV	B, D
 	MOV	C, E
 	MOV	E, M
@@ -65,8 +65,8 @@ main:                                   ; @main
 	MOV	D, M
 	XCHG
 	DAD	BC
-	SHLD	__v6c_ss.main+2
-	LHLD	__v6c_ss.main
+	SHLD	__v6clang_ss.main+2
+	LHLD	__v6clang_ss.main
 	MOV	C, L
 	MOV	B, H
 	MOV	H, B
@@ -74,14 +74,14 @@ main:                                   ; @main
 	MOV	E, M
 	INX	HL
 	MOV	D, M
-	LHLD	__v6c_ss.main+2
+	LHLD	__v6clang_ss.main+2
 	DAD	DE
 	XCHG
-	LHLD	__v6c_ss.main+4
+	LHLD	__v6clang_ss.main+4
 	INX	BC
 	INX	BC
 	PUSH	HL
-	LXI	HL, __v6c_ss.main
+	LXI	HL, __v6clang_ss.main
 	MOV	M, C
 	INX	HL
 	MOV	M, B
@@ -106,10 +106,10 @@ arr1:
 	.globl	arr2                            ; @arr2
 arr2:
 
-	.local	__v6c_ss.sumarray               ; @__v6c_ss.sumarray
-	.comm	__v6c_ss.sumarray,6,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,6,1
+	.local	__v6clang_ss.sumarray               ; @__v6clang_ss.sumarray
+	.comm	__v6clang_ss.sumarray,6,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,6,1
 	.addrsig
 	.addrsig_sym arr1
 	.addrsig_sym arr2

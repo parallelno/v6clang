@@ -34,14 +34,14 @@ static void bsort(uint8_t *a, uint8_t n) {
 __attribute__((noinline))
 static void print_arr(const uint8_t *a, uint8_t n) {
     for (uint8_t i = 0; i < n; i++) {
-        __builtin_v6c_out(0xED, a[i] + 0x42);
+        __builtin_v6clang_out(0xED, a[i] + 0x42);
     }
 }
 
 int main(void) {
-    __builtin_v6c_di();
+    __builtin_v6clang_di();
     bsort(arr, N);
     print_arr(arr, N);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_hlt();
     return 0;
 }

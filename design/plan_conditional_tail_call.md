@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-The O14 peephole (`eliminateTailCall` in `V6CPeephole.cpp`) converts
+The O14 peephole (`eliminateTailCall` in `V6ClangPeephole.cpp`) converts
 `CALL target; RET` → `JMP target` only when both instructions are in the
 same basic block. When a conditional branch splits tail-call code into
 separate blocks, `CALL` ends one block and `RET` sits alone in its
@@ -44,10 +44,10 @@ not recognized.
 
 ### Approach: Extend `eliminateTailCall` with cross-block pattern
 
-Add a second pattern to `eliminateTailCall` in `V6CPeephole.cpp`:
+Add a second pattern to `eliminateTailCall` in `V6ClangPeephole.cpp`:
 if the last non-debug instruction in a block is `CALL`, and the block
 has exactly one successor that contains only `RET`, replace `CALL`
-with `V6C_TAILJMP` and remove the successor edge.
+with `V6CLANG_TAILJMP` and remove the successor edge.
 
 ### Why this works
 
@@ -56,15 +56,15 @@ with `V6C_TAILJMP` and remove the successor edge.
 - The successor block (`RET`-only) may still be reachable from other
   predecessors, so it is not removed — only the edge from the current
   block is dropped.
-- `V6C_TAILJMP` is `isReturn=1, isBarrier=1`, so the block no longer
+- `V6CLANG_TAILJMP` is `isReturn=1, isBarrier=1`, so the block no longer
   falls through. The CFG is clean.
 
 ### Summary of changes
 
 | Step | What | Where |
 |------|------|-------|
-| Cross-block tail call | Check CALL → RET-only successor | V6CPeephole.cpp |
-| Lit test | New conditional-tail-call.ll | tests/lit/CodeGen/V6C/ |
+| Cross-block tail call | Check CALL → RET-only successor | V6ClangPeephole.cpp |
+| Lit test | New conditional-tail-call.ll | tests/lit/CodeGen/V6CLANG/ |
 | Regression tests | run_all.py | tests/ |
 | Feature test | tests/features/07/ | tests/features/ |
 
@@ -74,14 +74,14 @@ with `V6C_TAILJMP` and remove the successor edge.
 
 ### Step 3.1 — Extend `eliminateTailCall` with cross-block pattern [x]
 
-**File**: `llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 After the existing same-block `CALL; RET` check, add a new pattern:
 
 1. If the last non-debug instruction in the block is `CALL`:
 2. Check that the block has exactly one successor.
 3. Check that the successor contains only `RET` (plus debug instrs).
-4. Replace `CALL` with `V6C_TAILJMP`.
+4. Replace `CALL` with `V6CLANG_TAILJMP`.
 5. Remove the successor edge from the CFG.
 
 > **Design Notes**: The `succ_size() == 1` check is correct because
@@ -104,7 +104,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: conditional-tail-call.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/conditional-tail-call.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/conditional-tail-call.ll`
 
 Test cases:
 1. Pattern A: `if (x) return bar(x); return 0;` → CALL→JMP in conditional block
@@ -123,7 +123,7 @@ python tests\run_all.py
 
 ### Step 3.5 — Verification assembly steps from `tests\features\README.md` [x]
 
-Compile `tests\features\07\v6llvmc.c` to `v6llvmc_new01.asm` and verify
+Compile `tests\features\07\v6clang.c` to `v6clang_new01.asm` and verify
 that the `CALL` instructions in conditional paths are converted to `JMP`.
 
 > **Implementation Notes**:
@@ -176,7 +176,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 | Risk | Mitigation |
 |------|------------|
-| Removing successor edge corrupts CFG | Only remove edge when CALL is replaced with V6C_TAILJMP (barrier/return) |
+| Removing successor edge corrupts CFG | Only remove edge when CALL is replaced with V6CLANG_TAILJMP (barrier/return) |
 | RET-only block removed prematurely | We don't remove it — other predecessors keep it alive; BranchOpt handles dead blocks |
 | False match on non-tail CALL | Only matches when CALL is the very last non-debug instruction — no work after the call |
 
@@ -194,16 +194,16 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ## 7. Future Enhancements
 
 - **ISel-level tail call recognition**: `LowerTailCall()` in
-  `V6CISelLowering.cpp` could catch tail calls earlier in the pipeline,
+  `V6ClangISelLowering.cpp` could catch tail calls earlier in the pipeline,
   enabling cases where arguments need shuffling.
 - **Sibling calls**: Tail calls to functions with identical argument
   signatures could skip frame setup entirely.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O23 Feature Description](design\future_plans\O23_conditional_tail_call.md)
 * [O14 Plan](design\plan_tail_call_optimization.md)
-* [Existing tail call lit test](tests\lit\CodeGen\V6C\tail-call-opt.ll)
+* [Existing tail call lit test](tests\lit\CodeGen\V6CLANG\tail-call-opt.ll)

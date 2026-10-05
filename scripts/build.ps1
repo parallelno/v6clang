@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build the V6C toolchain: sync mirror, cmake configure, ninja, crt0.o, tests.
+    Build the V6CLANG toolchain: sync mirror, cmake configure, ninja, crt0.o, tests.
 
 .DESCRIPTION
     Day-to-day build script. Activates the MSVC toolchain environment on
@@ -119,7 +119,7 @@ if (-not $SkipBuild) {
           "-DCMAKE_MAKE_PROGRAM=$VenvNinjaFwd" `
           "-DPython3_EXECUTABLE=$VenvPythonFwd" `
           -DLLVM_TARGETS_TO_BUILD=X86 `
-          -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6C `
+          -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG `
           '-DLLVM_ENABLE_PROJECTS=clang;lld'
     if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
 
@@ -134,9 +134,9 @@ if (-not $SkipBuild) {
     # crt0.o is not built by ninja (compiler-rt is not configured for i8080).
     # Assemble it now using the just-built clang so the dev tree, tests, and
     # downstream make_dist.ps1 all see an up-to-date object next to crt0.s.
-    Write-Host '--- Assemble V6C runtime (crt0.o) ---'
-    & (Join-Path $PSScriptRoot 'build_v6c_runtime.ps1') -BuildDir $BuildDir
-    if ($LASTEXITCODE -ne 0) { throw 'build_v6c_runtime.ps1 failed' }
+    Write-Host '--- Assemble V6CLANG runtime (crt0.o) ---'
+    & (Join-Path $PSScriptRoot 'build_v6clang_runtime.ps1') -BuildDir $BuildDir
+    if ($LASTEXITCODE -ne 0) { throw 'build_v6clang_runtime.ps1 failed' }
 }
 
 if (-not $SkipTests) {

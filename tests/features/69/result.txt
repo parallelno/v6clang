@@ -6,9 +6,9 @@ Status
 
 O87 is implemented and validated.
 
-The new V6C backend behaviour is:
-- i16 canonical negate now lowers to `V6C_NEG16`, removing the artificial zero pair before RA.
-- result-only i8 negate now lowers to `V6C_NEG8` only when the operand already arrives in `A`.
+The new V6CLANG backend behaviour is:
+- i16 canonical negate now lowers to `V6CLANG_NEG16`, removing the artificial zero pair before RA.
+- result-only i8 negate now lowers to `V6CLANG_NEG8` only when the operand already arrives in `A`.
 - non-`A` and memory-source i8 negates stay on the subtract path, so `neg_i8_global_unary` keeps the better `SUB M` shape.
 
 All cycle counts below include the terminating `RET`. The core sequence win the user asked about is still the same:
@@ -19,7 +19,7 @@ All cycle counts below include the terminating `RET`. The core sequence win the 
 C Test Case Code
 ----------------
 
-`v6llvmc.c` / `c8080.c`
+`v6clang.c` / `c8080.c`
 
 ```c
 typedef signed char s8;
@@ -188,10 +188,10 @@ and `__o_minus_16` as reached by the fixed `* -1` path.
 | `__o_mul_u16` | 21 | 1044 | fixed `DE=1` path reached from `__o_mul_i16` |
 
 
-v6llvmc OLD ASM (relevant functions)
+v6clang OLD ASM (relevant functions)
 ------------------------------------
 
-`v6llvmc_old.asm`
+`v6clang_old.asm`
 
 ```asm
 neg_i16_unary:
@@ -300,10 +300,10 @@ main:
 ```
 
 
-v6llvmc NEW ASM (relevant functions)
+v6clang NEW ASM (relevant functions)
 ------------------------------------
 
-`v6llvmc_new01.asm`
+`v6clang_new01.asm`
 
 ```asm
 neg_i16_unary:
@@ -404,7 +404,7 @@ Comparison Table
 
 Public negate functions:
 
-| Function              | c8080       | v6llvmc old| v6llvmc new| New vs old |
+| Function              | c8080       | v6clang old| v6clang new| New vs old |
 |-----------------------|-------------|------------|-----------|-------------|
 | `neg_i16_unary`       | 14B / 80cc  | 10B / 64cc | 8B / 48cc | -2B / -16cc |
 | `neg_i16_mul_left`    | 76B / 1300cc| 10B / 64cc | 8B / 48cc | -2B / -16cc |
@@ -415,7 +415,7 @@ Public negate functions:
 
 `main` body only:
 
-| Function | c8080 | v6llvmc old | v6llvmc new | New vs old |
+| Function | c8080 | v6clang old | v6clang new | New vs old |
 |----------|-------:|------------:|------------:|-----------:|
 | `main` | 55B / 376cc | 75B / 452cc | 69B / 396cc | -6B / -56cc |
 
@@ -426,4 +426,4 @@ Summary
 - The i16 negate specialization lands exactly where intended: all three local i16 spellings and the global i16 load case drop the zero-pair materialization and save 2 bytes / 16 cycles per function including `RET`.
 - The i8 accumulator case also lands as intended: `neg_i8_unary` shrinks from `MOV L,A; XRA A; SUB L` to `CMA; INR A`, saving 1 byte / 4 cycles including `RET`.
 - The memory-source byte case is intentionally unchanged. `neg_i8_global_unary` stays on `LXI H, g_i8; XRA A; SUB M`, which is better than forcing `LDA g_i8; CMA; INR A`.
-- `main` improves by 6 bytes / 56 cycles because the four inlined i16 negates all use the shorter `V6C_NEG16` expansion.
+- `main` improves by 6 bytes / 56 cycles because the four inlined i16 negates all use the shorter `V6CLANG_NEG16` expansion.

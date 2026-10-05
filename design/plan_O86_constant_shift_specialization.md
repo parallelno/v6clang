@@ -4,10 +4,10 @@
 
 ### Current behavior
 
-`V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16` constant shifts still use broad,
+`V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` constant shifts still use broad,
 accumulator-heavy expansion strategies in
-`llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp` and
-`llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`.
+`llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` and
+`llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`.
 
 Current gaps from the design:
 
@@ -57,7 +57,7 @@ their true clobber set to register allocation.
 
 ### Approach: amount-specialized lowering plus post-RA expansion
 
-Introduce a dedicated `V6CISD::SHL16` node so constant left shifts reach a
+Introduce a dedicated `V6ClangISD::SHL16` node so constant left shifts reach a
 shift pseudo instead of generic ADD expansion. Split the broad shift pseudos
 into strategy-specific variants first, then specialize the post-RA expander by
 shift amount:
@@ -84,14 +84,14 @@ shift amount:
 
 | Step | What | Where |
 |------|------|-------|
-| 1 | Add `V6CISD::SHL16` target node and node-name plumbing | `V6CISelLowering.h/.cpp` |
-| 2 | Lower constant `SHL16` through the dedicated target node | `V6CISelLowering.cpp` |
-| 3 | Split broad shift pseudos into strategy-specific variants with truthful `Defs` | `V6CInstrInfo.td` |
-| 4 | Specialize `SHL16 1..7` expansion via the DAD strategy variants | `V6CISelLowering.cpp`, `V6CInstrInfo.cpp` |
-| 5 | Add lit coverage for `SHL16 1..7` | `llvm-project/llvm/test/CodeGen/V6C/` |
-| 6 | Specialize `SHL16 9..15` via ADD-A / RRC+ANI variants | `V6CISelLowering.cpp`, `V6CInstrInfo.cpp` |
-| 7 | Specialize `SRL16 3..7` and `9..15` via dedicated variants | `V6CISelLowering.cpp`, `V6CInstrInfo.cpp` |
-| 8 | Specialize `SRA16 3..7` and `9..15` via dedicated variants | `V6CISelLowering.cpp`, `V6CInstrInfo.cpp` |
+| 1 | Add `V6ClangISD::SHL16` target node and node-name plumbing | `V6ClangISelLowering.h/.cpp` |
+| 2 | Lower constant `SHL16` through the dedicated target node | `V6ClangISelLowering.cpp` |
+| 3 | Split broad shift pseudos into strategy-specific variants with truthful `Defs` | `V6ClangInstrInfo.td` |
+| 4 | Specialize `SHL16 1..7` expansion via the DAD strategy variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
+| 5 | Add lit coverage for `SHL16 1..7` | `llvm-project/llvm/test/CodeGen/V6CLANG/` |
+| 6 | Specialize `SHL16 9..15` via ADD-A / RRC+ANI variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
+| 7 | Specialize `SRL16 3..7` and `9..15` via dedicated variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
+| 8 | Specialize `SRA16 3..7` and `9..15` via dedicated variants | `V6ClangISelLowering.cpp`, `V6ClangInstrInfo.cpp` |
 | 9 | Add dead-half omission when truncated user makes zero-fill dead | lowering and/or post-RA peephole |
 | 10 | Verify feature test assembly and create `result.txt` | `tests/features/68/` |
 
@@ -103,7 +103,7 @@ Read:
 
 - `design/future_plans/O86_constant_shift_specialization.md`
 - `design/future_plans/README.md`
-- `docs/V6CBuildGuide.md`
+- `docs/V6ClangBuildGuide.md`
 - `tests/features/result.md`
 
 > **Implementation Notes**: Reviewed the O86 design note, backlog entry,
@@ -111,22 +111,22 @@ Read:
 > pipeline document later to audit missed process steps and bring the plan back
 > into sync with the actual work.
 
-### Step 3.2 — Add `V6CISD::SHL16` and route constant left shifts through it [x]
+### Step 3.2 — Add `V6ClangISD::SHL16` and route constant left shifts through it [x]
 
 Files:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.h`
-- `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.h`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
 Replace the current `LowerSHL_i16` ADD-chain lowering with a dedicated target
 node for constant amounts `1..15`.
 
 > **Design Notes**: This is the root fix for the current `SHL16 1..7`
-> pessimization. Without it, the post-RA `V6C_SHL16` specialization never sees
+> pessimization. Without it, the post-RA `V6CLANG_SHL16` specialization never sees
 > the small constant shifts.
 >
 > **Implementation Notes**: Completed in a slightly stronger final form than
-> the original step text. Instead of landing a single broad `V6CISD::SHL16`
+> the original step text. Instead of landing a single broad `V6ClangISD::SHL16`
 > node, constant left shifts now route through strategy-specific SHL nodes so
 > the old ADD-chain bypass is gone entirely.
 
@@ -134,10 +134,10 @@ node for constant amounts `1..15`.
 
 Files:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
-- `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
 
-Replace the single `V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16` pseudo family with
+Replace the single `V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` pseudo family with
 strategy-specific variants so the allocator sees the real clobbers for each
 path.
 
@@ -154,15 +154,15 @@ Implement at least these families explicitly:
 > pseudo definition.
 >
 > **Implementation Notes**: Landed strategy-specific SHL/SRL/SRA SDNodes and
-> pseudos in `V6CISelLowering.h/.cpp` and `V6CInstrInfo.td`. The DAD-based
+> pseudos in `V6ClangISelLowering.h/.cpp` and `V6ClangInstrInfo.td`. The DAD-based
 > SHL family now has `Defs = [FLAGS]` rather than over-claiming `A`.
 
-### Step 3.3 — Specialize `V6C_SHL16` for amounts `1..7` [x]
+### Step 3.3 — Specialize `V6CLANG_SHL16` for amounts `1..7` [x]
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp`
-- `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Implement:
 
@@ -174,9 +174,9 @@ Implement:
 > **Design Notes**: Keep the fallback path correct first; strict HL-only would
 > recreate register-pressure problems noted in O86.
 >
-> **Implementation Notes**: Implemented via `V6C_SHL16_DAD`. `HL` uses repeated
+> **Implementation Notes**: Implemented via `V6CLANG_SHL16_DAD`. `HL` uses repeated
 > `DAD H`, `DE` uses the `XCHG`-wrapped fast path, and non-`HL` destinations use
-> the same HL-temporary preservation model as the existing `V6C_DAD` expander.
+> the same HL-temporary preservation model as the existing `V6CLANG_DAD` expander.
 
 ### Step 3.4 — Build [x]
 
@@ -205,14 +205,14 @@ Add focused CodeGen coverage that checks `<<1`, `<<3`, and `<<7` for:
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Implement:
 
 - `9..13`: `MOV A,Lo ; ADD A x (N-8) ; MOV Hi,A ; [MVI Lo,0]`
 - `14..15`: `MOV A,Lo ; RRC x ... ; ANI mask ; MOV Hi,A ; [MVI Lo,0]`
 
-> **Implementation Notes**: `V6C_SHL16_RAM_HI` now uses the intended direct
+> **Implementation Notes**: `V6CLANG_SHL16_RAM_HI` now uses the intended direct
 > `MOV A, SrcLo` path for `9..13` and the `RRC + ANI` form for `14..15`.
 > A stale regression back to the old DstHi loop was caught and fixed during
 > focused lit validation.
@@ -234,7 +234,7 @@ Check `<<9`, `<<13`, `<<14`, `<<15` for the expected sequence families.
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Implement:
 
@@ -243,8 +243,8 @@ Implement:
 - `9..15`: rotate-and-mask with optional dead `MVI Hi,0` omission
 
 > **Implementation Notes**: The core specialization landed as
-> `V6C_SRL16_RAR`, `V6C_SRL16_24BIT`, `V6C_SRL16_BYTE`, and
-> `V6C_SRL16_RAM_LO`, and the emitted assembly is validated. This step remains
+> `V6CLANG_SRL16_RAR`, `V6CLANG_SRL16_24BIT`, `V6CLANG_SRL16_BYTE`, and
+> `V6CLANG_SRL16_RAM_LO`, and the emitted assembly is validated. This step remains
 > open because the optional dead `MVI H,0` omission described in the plan has
 > not been implemented yet.
 
@@ -257,20 +257,20 @@ Implement:
 
 Check `>>1`, `>>2`, `>>7`, `>>9`, `>>15`.
 
-> **Implementation Notes**: The focused V6C shift lit tests passed with the new
+> **Implementation Notes**: The focused V6CLANG shift lit tests passed with the new
 > `>>7`, `>>9`, and `>>15` sequences, and feature 68 confirms the expected
-> `shr_u16_7/9/15` codegen in `v6llvmc_new02.asm`.
+> `shr_u16_7/9/15` codegen in `v6clang_new02.asm`.
 
 ### Step 3.12 — Specialize `SRA16` constant ranges [x]
 
 File:
 
-- `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+- `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Implement arithmetic versions of the `3..7` and `9..15` strategies.
 
-> **Implementation Notes**: Landed `V6C_SRA16_RAR`, `V6C_SRA16_24BIT`,
-> `V6C_SRA16_BYTE`, and `V6C_SRA16_RAM_LO`. `sar >> 9` intentionally keeps the
+> **Implementation Notes**: Landed `V6CLANG_SRA16_RAR`, `V6CLANG_SRA16_24BIT`,
+> `V6CLANG_SRA16_BYTE`, and `V6CLANG_SRA16_RAM_LO`. `sar >> 9` intentionally keeps the
 > cheaper byte-lane-plus-one-step form rather than the longer rotate/mask path.
 
 ### Step 3.13 — Build [x]
@@ -289,29 +289,29 @@ Check `sar 7`, `sar 9`, `sar 15`.
 
 Files:
 
-- `tests/features/68/v6llvmc.c`
+- `tests/features/68/v6clang.c`
 - `tests/features/68/c8080.c`
 - `tests/features/68/c8080.asm`
-- `tests/features/68/v6llvmc_old.asm`
+- `tests/features/68/v6clang_old.asm`
 
 The test case must call every specialized shift family from `main()` so the
 assembly is directly comparable.
 
-> **Implementation Notes**: Feature folder 68 was prepared with `v6llvmc.c`,
-> `c8080.c`, `c8080.asm`, and `v6llvmc_old.asm`. The test case exercises every
+> **Implementation Notes**: Feature folder 68 was prepared with `v6clang.c`,
+> `c8080.c`, `c8080.asm`, and `v6clang_old.asm`. The test case exercises every
 > specialized shift family from `main()`.
 
 ### Step 3.16 — Verification assembly steps from `tests/features/result.md` [x]
 
 Compile:
 
-- `tests/features/68/v6llvmc_new01.asm`
+- `tests/features/68/v6clang_new01.asm`
 
-Explain the improvement against `v6llvmc_old.asm` and iterate if needed.
+Explain the improvement against `v6clang_old.asm` and iterate if needed.
 
-> **Implementation Notes**: Generated and inspected `v6llvmc_new01.asm`, then
-> regenerated `v6llvmc_new02.asm` after the pseudo-family refactor and the
-> restored cheaper `sar_i16_9` path. `v6llvmc_new02.asm` is the current source
+> **Implementation Notes**: Generated and inspected `v6clang_new01.asm`, then
+> regenerated `v6clang_new02.asm` after the pseudo-family refactor and the
+> restored cheaper `sar_i16_9` path. `v6clang_new02.asm` is the current source
 > of truth for feature verification.
 
 ### Step 3.17 — Run regression tests [x]
@@ -331,7 +331,7 @@ Create `tests/features/68/result.txt` with the required structure from
 `tests/features/result.md`.
 
 > **Implementation Notes**: Created `tests/features/68/result.txt` with the C
-> testcase, converted c8080 asm excerpts, old/new V6C asm excerpts, c8080 stats,
+> testcase, converted c8080 asm excerpts, old/new V6CLANG asm excerpts, c8080 stats,
 > and the three-way size/cycle comparison table.
 
 ### Step 3.19 — Sync mirror [x]
@@ -398,8 +398,8 @@ trailing `MVI H,0` omitted when only the low byte is consumed.
 
 ## 8. References
 
-* `docs/V6CBuildGuide.md`
-* `docs/V6CInstructionTimings.md`
+* `docs/V6ClangBuildGuide.md`
+* `docs/V6ClangInstructionTimings.md`
 * `design/future_plans/README.md`
 * `design/future_plans/O62_efficient_shift_expansion.md`
 * `design/future_plans/O68_wide_shl_rotate_dad_h.md`

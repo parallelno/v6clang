@@ -5,7 +5,7 @@
 
 ## Problem
 
-The V6C backend emits branch-over-call patterns for conditional function calls:
+The V6CLANG backend emits branch-over-call patterns for conditional function calls:
 
 ```asm
   JZ  skip        ; 12cc, 3B  (branch if condition false)
@@ -14,7 +14,7 @@ skip:
 ```
 
 The 8080 has dedicated conditional call instructions (CC, CNC, CZ, CNZ, CP, CM,
-CPE, CPO) that combine the test and call into one instruction — but V6C never
+CPE, CPO) that combine the test and call into one instruction — but V6CLANG never
 emits them.
 
 ## Before → After

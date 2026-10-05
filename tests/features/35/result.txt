@@ -5,7 +5,7 @@ Stage 2 scope: extend Stage 1's HL-only patcher to a full cost-model
 chooser driven by per-reload cycle-saving Δ × block frequency.
 Patched reload target extended from `HL` to `{HL, DE, BC}`. Still
 K ≤ 1 patched reload per spill; single-source HL spill only.
-Behind `-mllvm -mv6c-spill-patched-reload` (default off).
+Behind `-mllvm -mv6clang-spill-patched-reload` (default off).
 
 Δ table (from design/future_plans/O61_spill_in_reload_immediate.md):
   HL              : +8  cc  (LHLD 20 -> LXI HL 12)
@@ -16,7 +16,7 @@ Behind `-mllvm -mv6c-spill-patched-reload` (default off).
 
 
 -----------------------------------------------------------------
-C test source (tests/features/35/v6llvmc.c)
+C test source (tests/features/35/v6clang.c)
 -----------------------------------------------------------------
 __attribute__((leaf)) extern unsigned int op1(unsigned int x);
 __attribute__((leaf)) extern unsigned int op2(unsigned int x);
@@ -141,19 +141,19 @@ __o_xor_16               48      10
 
 
 -----------------------------------------------------------------
-v6llvmc assembly baseline (-O2, Stage 2 off)
-  -- from tests/features/35/v6llvmc_old.asm
+v6clang assembly baseline (-O2, Stage 2 off)
+  -- from tests/features/35/v6clang_old.asm
 -----------------------------------------------------------------
 de_one_reload:
     XCHG
     PUSH    HL
     XCHG
     CALL    op1
-    SHLD    __v6c_ss.de_one_reload+2
+    SHLD    __v6clang_ss.de_one_reload+2
     POP     HL
     CALL    op2
     XCHG
-    LHLD    __v6c_ss.de_one_reload+2
+    LHLD    __v6clang_ss.de_one_reload+2
     DAD     DE
     RET
 
@@ -168,11 +168,11 @@ mixed_hl_de:
     POP     HL
     XCHG
     DAD     DE
-    SHLD    __v6c_ss.mixed_hl_de+2
+    SHLD    __v6clang_ss.mixed_hl_de+2
     POP     HL
     CALL    op2
     XCHG
-    LHLD    __v6c_ss.mixed_hl_de+2
+    LHLD    __v6clang_ss.mixed_hl_de+2
     DAD     DE
     RET
 
@@ -181,8 +181,8 @@ main:
 
 
 -----------------------------------------------------------------
-v6llvmc assembly (-O2 -mllvm -mv6c-spill-patched-reload)
-  -- from tests/features/35/v6llvmc_new02.asm
+v6clang assembly (-O2 -mllvm -mv6clang-spill-patched-reload)
+  -- from tests/features/35/v6clang_new02.asm
 -----------------------------------------------------------------
 de_one_reload:                          ; Stage 2: DE reload patched
     XCHG
@@ -208,11 +208,11 @@ mixed_hl_de:                            ; Stage 2 skipped: multi-source
     POP     HL
     XCHG
     DAD     DE                          ; t1 + a (result to HL)
-    SHLD    __v6c_ss.mixed_hl_de+2      ; spill (t1+a)
+    SHLD    __v6clang_ss.mixed_hl_de+2      ; spill (t1+a)
     POP     HL                          ; reload y
     CALL    op2
     XCHG
-    LHLD    __v6c_ss.mixed_hl_de+2      ; reload (t1+a)
+    LHLD    __v6clang_ss.mixed_hl_de+2      ; reload (t1+a)
     DAD     DE
     RET
 
@@ -247,7 +247,7 @@ main:                                   ; Stage 2 skipped: multi-source spill
 
 
 -----------------------------------------------------------------
-v6llvmc stats (worst-case cycles / body bytes, RET included)
+v6clang stats (worst-case cycles / body bytes, RET included)
 -----------------------------------------------------------------
                      cycles   bytes     vs Stage 2 off
 de_one_reload           118      18      -12 cc, -1 B   (patched DE reload,
@@ -255,15 +255,15 @@ de_one_reload           118      18      -12 cc, -1 B   (patched DE reload,
 mixed_hl_de             196      27      unchanged      (multi-source spill,
                                                          filter rejected)
 main                    274      38      unchanged      (multi-source spill
-                                                         on __v6c_ss.main)
+                                                         on __v6clang_ss.main)
 
 Per-slot impact, `de_one_reload`:
   Stage 2 off: `SHLD  ...+2` + `XCHG`+`LHLD ...+2` + `DAD DE` = 20+4+20+10 = 54 cc, 8 B
   Stage 2 on : `SHLD  .LLo61_0+1` + `LXI DE,0`    + `DAD DE` = 20  +12  +10 = 42 cc, 7 B
   Net      : -12 cc, -1 B.
 
-Mechanism: Stage 2 runs after V6CSpillForwarding, scans each static-
-stack-eligible function for V6C_SPILL16/V6C_RELOAD16 groups, and for
+Mechanism: Stage 2 runs after V6ClangSpillForwarding, scans each static-
+stack-eligible function for V6CLANG_SPILL16/V6CLANG_RELOAD16 groups, and for
 each single-source HL spill with all reload dsts in {HL,DE,BC}, scores
 candidate reloads by BlockFrequency × Δ from the per-target table. The
 winning reload is rewritten as `LXI <DstRP>, 0` with a pre-instr label

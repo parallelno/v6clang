@@ -906,7 +906,7 @@ void InputSection::relocateNonAlloc(uint8_t *buf, ArrayRef<RelTy> rels) {
       tombstone = 1;
     else if (name == ".debug_names")
       tombstone = UINT64_MAX; // tombstone value
-    else if (emachine == EM_V6C)
+    else if (emachine == EM_V6Clang)
       tombstone = UINT64_MAX;
     else
       tombstone = 0;

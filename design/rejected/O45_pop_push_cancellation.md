@@ -9,7 +9,7 @@ cancel: HL comes back to the same value and gets pushed right back. Costs
 
 ## Problem
 
-V6C's static-stack store/load expansions use `PUSH HL; ...; POP HL` to
+V6CLANG's static-stack store/load expansions use `PUSH HL; ...; POP HL` to
 preserve HL while it's temporarily used for addressing. Each expansion is
 self-contained, unaware of its neighbors. When two expansions are adjacent:
 
@@ -24,7 +24,7 @@ MOV  B, M            ; BC = *p1
 POP  HL              ; 12cc 1B — restore HL ← p3
 ; Expansion 2: spill BC to static stack via HL
 PUSH HL              ; 12cc 1B — save HL again — redundant!
-LXI  HL, __v6c_ss...+2
+LXI  HL, __v6clang_ss...+2
 MOV  M, C
 INX  HL
 MOV  M, B
@@ -36,7 +36,7 @@ immediately saved again with the same value. Removing both saves 24cc + 2B.
 
 ## Approach
 
-Post-expansion peephole in `V6CPeepholePass` (same pass as O44's XCHG
+Post-expansion peephole in `V6ClangPeepholePass` (same pass as O44's XCHG
 cancellation). Single linear scan looking for `POP rr; PUSH rr` pairs
 on the same register pair.
 
@@ -47,7 +47,7 @@ POP  rr
 PUSH rr
 ```
 
-Two adjacent instructions: `V6C::POP` followed by `V6C::PUSH` for the same
+Two adjacent instructions: `V6CLANG::POP` followed by `V6CLANG::PUSH` for the same
 register pair (HL, DE, or BC), with no intervening non-debug instructions.
 
 ### Safety conditions
@@ -77,7 +77,7 @@ MOV  H, B; MOV L, C                        ; MOV  H, B; MOV L, C
 MOV  C, M; INX HL; MOV B, M                ; MOV  C, M; INX HL; MOV B, M
 POP  HL              ; ← removed           ;
 PUSH HL              ; ← removed           ;
-LXI  HL, __v6c_ss...+2                     ; LXI  HL, __v6c_ss...+2
+LXI  HL, __v6clang_ss...+2                     ; LXI  HL, __v6clang_ss...+2
 MOV  M, C; INX HL; MOV M, B                ; MOV  M, C; INX HL; MOV M, B
 POP  HL                                     ; POP  HL
 ; Saves: 24cc, 2B per cancelled pair
@@ -87,16 +87,16 @@ POP  HL                                     ; POP  HL
 
 ### Location
 
-`V6CPeephole.cpp`, new method `cancelAdjacentPopPush()`, called from
+`V6ClangPeephole.cpp`, new method `cancelAdjacentPopPush()`, called from
 `runOnMachineFunction` alongside the existing `cancelAdjacentXchg()`.
 
 ### Algorithm
 
 ```cpp
-bool V6CPeephole::cancelAdjacentPopPush(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::cancelAdjacentPopPush(MachineBasicBlock &MBB) {
   bool Changed = false;
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
-    if (I->getOpcode() != V6C::POP)
+    if (I->getOpcode() != V6CLANG::POP)
       continue;
 
     // Skip debug instructions to find the next real instruction.
@@ -106,7 +106,7 @@ bool V6CPeephole::cancelAdjacentPopPush(MachineBasicBlock &MBB) {
     if (Next == E)
       continue;
 
-    if (Next->getOpcode() != V6C::PUSH)
+    if (Next->getOpcode() != V6CLANG::PUSH)
       continue;
 
     // Check same register pair.

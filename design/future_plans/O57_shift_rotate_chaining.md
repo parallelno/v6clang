@@ -27,7 +27,7 @@ A pre-legalize `MachineFunctionPass` (~120 lines) operating on GlobalISel
 5. Use dominance analysis to verify the shorter shift dominates the longer
 6. If not, hoist the shorter shift up to the common dominator
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
 The 8080's shift situation:
 - **8-bit shifts**: RLC/RRC (4cc each), RAL/RAR (4cc each, through carry)
@@ -37,7 +37,7 @@ The 8080's shift situation:
 Chaining is most valuable for **16-bit shifts**, where each bit costs
 ~12cc (shift L, rotate carry into H). Saving 3 bit positions saves ~36cc.
 
-Since V6C uses SelectionDAG (not GlobalISel), the pass would operate on
+Since V6CLANG uses SelectionDAG (not GlobalISel), the pass would operate on
 `ISD::SHL`, `ISD::SRL`, `ISD::SRA` nodes during DAGCombine, or as a
 post-ISel MachineFunction pass on the expanded shift sequences.
 

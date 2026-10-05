@@ -1,4 +1,4 @@
-// Minimal V6C ROM: emits a byte on the debug port and halts.
+// Minimal V6CLANG ROM: emits a byte on the debug port and halts.
 //
 // Build and run:
 //   samples\01_hello\build.bat
@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 int main(void) {
-    __builtin_v6c_out(0xED, 0x42);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, 0x42);
+    __builtin_v6clang_hlt();
     return 0;
 }

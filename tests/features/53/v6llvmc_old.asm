@@ -23,9 +23,9 @@ __mulqi3:                               ; -- Begin function __mulqi3
 
 	;NO_APP
                                         ; -- End function
-	.section	.text.__v6c_mulqihi3,"ax",@progbits
-__v6c_mulqihi3:                         ; -- Begin function __v6c_mulqihi3
-                                        ; @__v6c_mulqihi3
+	.section	.text.__v6clang_mulqihi3,"ax",@progbits
+__v6clang_mulqihi3:                         ; -- Begin function __v6clang_mulqihi3
+                                        ; @__v6clang_mulqihi3
 ; %bb.0:
 	;APP
 	MOV	E, B
@@ -82,9 +82,9 @@ __mulhi3:                               ; -- Begin function __mulhi3
 
 	;NO_APP
                                         ; -- End function
-	.section	.text.__v6c_udivmod16_body,"ax",@progbits
-__v6c_udivmod16_body:                   ; -- Begin function __v6c_udivmod16_body
-                                        ; @__v6c_udivmod16_body
+	.section	.text.__v6clang_udivmod16_body,"ax",@progbits
+__v6clang_udivmod16_body:                   ; -- Begin function __v6clang_udivmod16_body
+                                        ; @__v6clang_udivmod16_body
 ; %bb.0:
 	;APP
 	MOV	A, D
@@ -136,7 +136,7 @@ __udivhi3:                              ; -- Begin function __udivhi3
                                         ; @__udivhi3
 ; %bb.0:
 	;APP
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	RET
 
 
@@ -147,7 +147,7 @@ __umodhi3:                              ; -- Begin function __umodhi3
                                         ; @__umodhi3
 ; %bb.0:
 	;APP
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	MOV	H, B
 	MOV	L, C
 	RET
@@ -161,7 +161,7 @@ __udivmodhi4:                           ; -- Begin function __udivmodhi4
 ; %bb.0:
 	;APP
 	PUSH	B
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	XTHL
 
 	MOV	M, C
@@ -187,18 +187,18 @@ __divmodhi4:                            ; -- Begin function __divmodhi4
 	MOV	A, H
 	ORA	A
 	JP	.Ltmp11
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp11:
 	MOV	A, D
 	ORA	A
 	JP	.Ltmp12
-	CALL	__v6c_neg_de_body
+	CALL	__v6clang_neg_de_body
 .Ltmp12:
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	POP	PSW
 	ORA	A
 	JP	.Ltmp13
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp13:
 	POP	PSW
 	ORA	A
@@ -224,9 +224,9 @@ __divmodhi4:                            ; -- Begin function __divmodhi4
 
 	;NO_APP
                                         ; -- End function
-	.section	.text.__v6c_neg_hl_body,"ax",@progbits
-__v6c_neg_hl_body:                      ; -- Begin function __v6c_neg_hl_body
-                                        ; @__v6c_neg_hl_body
+	.section	.text.__v6clang_neg_hl_body,"ax",@progbits
+__v6clang_neg_hl_body:                      ; -- Begin function __v6clang_neg_hl_body
+                                        ; @__v6clang_neg_hl_body
 ; %bb.0:
 	;APP
 	MOV	A, L
@@ -243,9 +243,9 @@ __v6c_neg_hl_body:                      ; -- Begin function __v6c_neg_hl_body
 
 	;NO_APP
                                         ; -- End function
-	.section	.text.__v6c_neg_de_body,"ax",@progbits
-__v6c_neg_de_body:                      ; -- Begin function __v6c_neg_de_body
-                                        ; @__v6c_neg_de_body
+	.section	.text.__v6clang_neg_de_body,"ax",@progbits
+__v6clang_neg_de_body:                      ; -- Begin function __v6clang_neg_de_body
+                                        ; @__v6clang_neg_de_body
 ; %bb.0:
 	;APP
 	MOV	A, E
@@ -273,18 +273,18 @@ __divhi3:                               ; -- Begin function __divhi3
 	MOV	A, H
 	ORA	A
 	JP	.Ltmp15
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp15:
 	MOV	A, D
 	ORA	A
 	JP	.Ltmp16
-	CALL	__v6c_neg_de_body
+	CALL	__v6clang_neg_de_body
 .Ltmp16:
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	POP	PSW
 	ORA	A
 	JP	.Ltmp17
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp17:
 	RET
 
@@ -300,20 +300,20 @@ __modhi3:                               ; -- Begin function __modhi3
 	PUSH	PSW
 	ORA	A
 	JP	.Ltmp18
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp18:
 	MOV	A, D
 	ORA	A
 	JP	.Ltmp19
-	CALL	__v6c_neg_de_body
+	CALL	__v6clang_neg_de_body
 .Ltmp19:
-	CALL	__v6c_udivmod16_body
+	CALL	__v6clang_udivmod16_body
 	MOV	H, B
 	MOV	L, C
 	POP	PSW
 	ORA	A
 	JP	.Ltmp20
-	CALL	__v6c_neg_hl_body
+	CALL	__v6clang_neg_hl_body
 .Ltmp20:
 	RET
 
@@ -506,15 +506,15 @@ g_b:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

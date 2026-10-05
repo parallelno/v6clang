@@ -2,7 +2,7 @@
 Feature test 39 — O61 Stage 5 (DE/BC i16 spill sources)
 =====================================================================
 
-## Test case (v6llvmc.c)
+## Test case (v6clang.c)
 
 ```c
 __attribute__((leaf)) extern unsigned int op_u16(unsigned int x);
@@ -36,7 +36,7 @@ int main(void) {
 
 See c8080.asm. The c8080 compiler does not implement i16 through
 DE/BC; it routes all i16 arithmetic through HL and performs LXI/LHLD
-spills to named i16 globals. No direct comparison with V6C's
+spills to named i16 globals. No direct comparison with V6CLANG's
 register-pressure-driven spill/reload traffic is meaningful for this
 feature. c8080.c is preserved for link-comparison only.
 
@@ -47,44 +47,44 @@ feature. c8080.c is preserved for link-comparison only.
 | de_bc_three    | (not meaningful; see above)
 | de_one_reload  | (not meaningful; see above)
 
-## v6llvmc assembly — Stage 4 baseline (v6llvmc.asm)
+## v6clang assembly — Stage 4 baseline (v6clang.asm)
 
 Compiled with:
-  -O2 -mv6c-spill-patched-reload -v6c-disable-shld-lhld-fold
+  -O2 -mv6clang-spill-patched-reload -v6clang-disable-shld-lhld-fold
 
 `de_bc_three` body (spill/reload only, excluding CALL stubs):
 
 ```
 ; BC-source spill (arg2 %z, classical — Stage 4 rejects DE/BC sources)
     PUSH    HL                 ; 12cc, 1B
-    LXI     HL, __v6c_ss+4     ; 12cc, 3B
+    LXI     HL, __v6clang_ss+4     ; 12cc, 3B
     MOV     M, C               ;  8cc, 1B
     INX     HL                 ;  6cc, 1B
     MOV     M, B               ;  8cc, 1B
     POP     HL                 ; 12cc, 1B
 ; DE-source spill (arg1 %y, classical)
     XCHG                       ;  4cc, 1B
-    SHLD    __v6c_ss+2         ; 20cc, 3B
+    SHLD    __v6clang_ss+2         ; 20cc, 3B
     XCHG                       ;  4cc, 1B
 ; CALL op_u16
 ; HL-source patched spill of %a
     SHLD    .LLo61_0+1         ; 20cc, 3B
 ; Unpatched DE reload of %y from BSS
-    LHLD    __v6c_ss+2         ; 20cc, 3B
+    LHLD    __v6clang_ss+2         ; 20cc, 3B
 ; CALL op2_u16
 ; HL-source classical spill of %b to BSS (Stage 4 only patched %a)
-    SHLD    __v6c_ss+2         ; 20cc, 3B
+    SHLD    __v6clang_ss+2         ; 20cc, 3B
 ; Unpatched BC reload of %z from BSS
-    LHLD    __v6c_ss+4         ; 20cc, 3B
+    LHLD    __v6clang_ss+4         ; 20cc, 3B
 ; CALL op_u16
 ; HL-source classical spill of %c
-    SHLD    __v6c_ss+4         ; 20cc, 3B
+    SHLD    __v6clang_ss+4         ; 20cc, 3B
 ; Patched HL reload of %a
 .LLo61_0:
     LXI     HL, 0              ; 12cc, 3B
 ; BSS-sourced DE reload of %b (three reloads ...)
     XCHG                       ;  4cc, 1B
-    LHLD    __v6c_ss+2         ; 20cc, 3B
+    LHLD    __v6clang_ss+2         ; 20cc, 3B
     XCHG                       ;  4cc, 1B
 ; BC reload of %c
     MOV     C, L               ;  8cc, 1B
@@ -93,11 +93,11 @@ Compiled with:
 ; Unpatched HL/DE reloads of %a / %b / %c for the return sum
     LHLD    .LLo61_0+1         ; 20cc, 3B
     XCHG
-    LHLD    __v6c_ss+2         ; 20cc, 3B
+    LHLD    __v6clang_ss+2         ; 20cc, 3B
     XCHG
     DAD     DE                 ; 12cc, 1B
     XCHG
-    LHLD    __v6c_ss+4         ; 20cc, 3B
+    LHLD    __v6clang_ss+4         ; 20cc, 3B
     XCHG
     DAD     DE                 ; 12cc, 1B
     RET
@@ -105,7 +105,7 @@ Compiled with:
 
 Spill+reload cycles: **342 cc**, BSS = 6 B, + inline bytes.
 
-## v6llvmc assembly — Stage 5 (v6llvmc_new01.asm)
+## v6clang assembly — Stage 5 (v6clang_new01.asm)
 
 Compiled with the same flags; Stage 5 now patches the DE- and
 BC-source spills of `de_bc_three`.
@@ -155,7 +155,7 @@ BC-source spills of `de_bc_three`.
 
 Spill+reload cycles: **312 cc**, BSS = 0 B.
 
-## v6llvmc stats (Δ = Stage 4 → Stage 5)
+## v6clang stats (Δ = Stage 4 → Stage 5)
 
 | Function       | Stage 4 spill+reload cc | Stage 5 spill+reload cc | Δ cc  | Δ BSS   |
 |----------------|-------------------------|-------------------------|-------|---------|

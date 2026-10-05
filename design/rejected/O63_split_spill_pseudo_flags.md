@@ -2,9 +2,9 @@
 
 ## Resolution
 Rejected
-O63 as written is mostly obsolete on the current pipeline, and on the strongest repro I could get it still did not change generated code. If you want to revisit it later, the only plausible remaining target is earlier generic post-RA scheduling behavior, not the late V6C zero-test / redundant-flag passes. I reverted the temporary backend change and rebuilt the baseline compiler afterward; the normal build/test sweep passed again.
+O63 as written is mostly obsolete on the current pipeline, and on the strongest repro I could get it still did not change generated code. If you want to revisit it later, the only plausible remaining target is earlier generic post-RA scheduling behavior, not the late V6CLANG zero-test / redundant-flag passes. I reverted the temporary backend change and rebuilt the baseline compiler afterward; the normal build/test sweep passed again.
 
-**Source:** V6C
+**Source:** V6CLANG
 **Savings:** indirect — gives the pre-RA / post-RA scheduler freedom to
             move flag-setters (`CMP`, `XRA`, `INR`, `DCR`, `ADD`, …)
             across spill/reload pseudos in static-stack functions.
@@ -27,17 +27,17 @@ All four spill/reload pseudos declare `Defs = [FLAGS]`:
 
 ```tablegen
 let mayStore = 1, Defs = [FLAGS] in
-def V6C_SPILL8  : V6CPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
+def V6CLANG_SPILL8  : V6ClangPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
 
 let mayLoad  = 1, Defs = [FLAGS] in
-def V6C_RELOAD8 : V6CPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
+def V6CLANG_RELOAD8 : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
 
-// Same for V6C_SPILL16 / V6C_RELOAD16.
+// Same for V6CLANG_SPILL16 / V6CLANG_RELOAD16.
 ```
-(`llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td` — `def V6C_SPILL8`)
+(`llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td` — `def V6CLANG_SPILL8`)
 
 The flag def is **only actually true** on the dynamic-stack lowering in
-`V6CRegisterInfo::eliminateFrameIndex` (lines ~391–456), which emits
+`V6ClangRegisterInfo::eliminateFrameIndex` (lines ~391–456), which emits
 
 ```
 PUSH HL; LXI HL, offset+2; DAD SP; MOV M, r; POP HL
@@ -59,7 +59,7 @@ flag-clean instructions:
 
 No instruction in any static-stack expansion writes PSW. Static stack is
 the default mode (`hasStaticStack()` is true unless
-`-mv6c-no-static-stack`), so for the overwhelming majority of functions
+`-mv6clang-no-static-stack`), so for the overwhelming majority of functions
 the `Defs=[FLAGS]` attribute is a **false positive**.
 
 ### Cost of the false positive
@@ -85,7 +85,7 @@ On static-stack builds (production default) none of that is necessary.
 
 **Split each spill/reload pseudo into a STATIC flavour (no flag def) and
 a DYNAMIC flavour (keeps the flag def).** Select the flavour in
-`V6CInstrInfo::storeRegToStackSlot` / `loadRegFromStackSlot` based on
+`V6ClangInstrInfo::storeRegToStackSlot` / `loadRegFromStackSlot` based on
 `MachineFunctionInfo::hasStaticStack()`, which is already known at that
 point.
 
@@ -93,18 +93,18 @@ point.
 // Static-stack flavour: flag-safe — every expansion is LXI+MOV*/STA/LDA/
 // SHLD/LHLD, all of which leave PSW untouched.
 let mayStore = 1 in
-def V6C_SPILL8_S  : V6CPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
+def V6CLANG_SPILL8_S  : V6ClangPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
 let mayLoad  = 1 in
-def V6C_RELOAD8_S : V6CPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
+def V6CLANG_RELOAD8_S : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
 
 // Dynamic-stack flavour: DAD SP in the expansion clobbers CY.
 let mayStore = 1, Defs = [FLAGS] in
-def V6C_SPILL8_D  : V6CPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
+def V6CLANG_SPILL8_D  : V6ClangPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
 let mayLoad  = 1, Defs = [FLAGS] in
-def V6C_RELOAD8_D : V6CPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
+def V6CLANG_RELOAD8_D : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
 ```
 
-Same split for `V6C_SPILL16` / `V6C_RELOAD16`. `eliminateFrameIndex`
+Same split for `V6CLANG_SPILL16` / `V6CLANG_RELOAD16`. `eliminateFrameIndex`
 already has two disjoint lowering branches — they simply key off the new
 opcodes rather than off `hasStaticStack()` at expansion time.
 
@@ -115,7 +115,7 @@ Fallback plan for the case where Approach A turns out impractical
 (e.g. downstream consumers that hard-code the opcode names prove too
 tangled, or the split interacts badly with a future pass). Dynamic-stack
 allocation is the **lowest-priority code path** — it's used only when
-`-mv6c-no-static-stack` is on, or for functions that aren't
+`-mv6clang-no-static-stack` is on, or for functions that aren't
 `norecurse`. Its instruction count and cycle count are already dominated
 by `PUSH HL / LXI HL / DAD SP / MOV M,r / POP HL` (≥ 42 cc, 6 B per i8
 spill), so paying 2 extra instructions to preserve PSW is negligible
@@ -130,12 +130,12 @@ declaration entirely (single pseudo, no flavours).
 // PSW unchanged: static-stack lowering is naturally flag-clean, and
 // dynamic-stack lowering wraps DAD SP with PUSH PSW / POP PSW.
 let mayStore = 1 in
-def V6C_SPILL8  : V6CPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
+def V6CLANG_SPILL8  : V6ClangPseudo<(outs), (ins GR8:$src, i16imm:$fi), ...>;
 let mayLoad  = 1 in
-def V6C_RELOAD8 : V6CPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
+def V6CLANG_RELOAD8 : V6ClangPseudo<(outs GR8:$dst), (ins i16imm:$fi), ...>;
 ```
 
-Dynamic-stack lowering in `V6CRegisterInfo::eliminateFrameIndex`
+Dynamic-stack lowering in `V6ClangRegisterInfo::eliminateFrameIndex`
 (lines ~391–456) gets a **tight** wrapper around the only flag-setter:
 
 ```
@@ -203,9 +203,9 @@ A.
 
 ### Implementation sketch (Approach B)
 
-1. **`V6CInstrInfo.td`** — remove `Defs = [FLAGS]` from the four
+1. **`V6ClangInstrInfo.td`** — remove `Defs = [FLAGS]` from the four
    spill/reload pseudos. No new pseudos.
-2. **`V6CRegisterInfo.cpp::eliminateFrameIndex`** — in every dynamic-stack
+2. **`V6ClangRegisterInfo.cpp::eliminateFrameIndex`** — in every dynamic-stack
    branch that currently emits `DAD SP`, emit `PUSH PSW` immediately
    **before** the `DAD SP` and `POP PSW` immediately **after** it. The
    wrap is tight — it brackets only the flag-setter, not the surrounding
@@ -217,9 +217,9 @@ A.
    * Skip the wrap on SHLD/LHLD fast paths inside dynamic stack — they
      don't emit `DAD SP` and don't set flags.
 3. **Tests** — identical to Approach A: add flag-preservation lit
-   tests for both `-mv6c-no-static-stack` and default (static-stack).
-4. **No changes** in `V6CInstrInfo.cpp`, `V6CSpillForwarding.cpp`,
-   `V6CSpillPatchedReload.cpp`, or MIR-level tests.
+   tests for both `-mv6clang-no-static-stack` and default (static-stack).
+4. **No changes** in `V6ClangInstrInfo.cpp`, `V6ClangSpillForwarding.cpp`,
+   `V6ClangSpillPatchedReload.cpp`, or MIR-level tests.
 
 ### Decision rule
 
@@ -252,42 +252,42 @@ Go with the split.
 
 | Current pseudo | Static flavour          | Dynamic flavour         | Flag truth |
 |----------------|-------------------------|-------------------------|------------|
-| `V6C_SPILL8`   | `V6C_SPILL8_S`  (no `Defs=[FLAGS]`) | `V6C_SPILL8_D`  (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
-| `V6C_RELOAD8`  | `V6C_RELOAD8_S` (no `Defs=[FLAGS]`) | `V6C_RELOAD8_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
-| `V6C_SPILL16`  | `V6C_SPILL16_S` (no `Defs=[FLAGS]`) | `V6C_SPILL16_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
-| `V6C_RELOAD16` | `V6C_RELOAD16_S` (no `Defs=[FLAGS]`) | `V6C_RELOAD16_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
+| `V6CLANG_SPILL8`   | `V6CLANG_SPILL8_S`  (no `Defs=[FLAGS]`) | `V6CLANG_SPILL8_D`  (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
+| `V6CLANG_RELOAD8`  | `V6CLANG_RELOAD8_S` (no `Defs=[FLAGS]`) | `V6CLANG_RELOAD8_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
+| `V6CLANG_SPILL16`  | `V6CLANG_SPILL16_S` (no `Defs=[FLAGS]`) | `V6CLANG_SPILL16_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
+| `V6CLANG_RELOAD16` | `V6CLANG_RELOAD16_S` (no `Defs=[FLAGS]`) | `V6CLANG_RELOAD16_D` (keeps `Defs=[FLAGS]`) | DAD SP in dynamic |
 
 
 ## Implementation sketch
 
-1. **`V6CInstrInfo.td`** — replace each of the four pseudos with the `_S`
+1. **`V6ClangInstrInfo.td`** — replace each of the four pseudos with the `_S`
    / `_D` pair. Keep the existing ins/outs/predicates identical.
-2. **`V6CInstrInfo.cpp`** — in `storeRegToStackSlot` /
+2. **`V6ClangInstrInfo.cpp`** — in `storeRegToStackSlot` /
    `loadRegFromStackSlot` pick the flavour:
    ```cpp
-   auto *MFI = MF.getInfo<V6CMachineFunctionInfo>();
+   auto *MFI = MF.getInfo<V6ClangMachineFunctionInfo>();
    unsigned Opc = MFI->hasStaticStack()
-                    ? V6C::V6C_SPILL8_S
-                    : V6C::V6C_SPILL8_D;
+                    ? V6CLANG::V6CLANG_SPILL8_S
+                    : V6CLANG::V6CLANG_SPILL8_D;
    ```
    Four instances (i8 spill/reload, i16 spill/reload).
-3. **`V6CRegisterInfo.cpp::eliminateFrameIndex`** — switch the opcode
+3. **`V6ClangRegisterInfo.cpp::eliminateFrameIndex`** — switch the opcode
    comparisons to the new names. Each existing lowering branch already
    corresponds one-to-one with a flavour.
-4. **`V6CSpillPatchedReload.cpp`** — O61 only fires on static-stack
-   functions, so match only `*_S`. Update the `if (Opc == V6C::…)`
+4. **`V6ClangSpillPatchedReload.cpp`** — O61 only fires on static-stack
+   functions, so match only `*_S`. Update the `if (Opc == V6CLANG::…)`
    chain.
-5. **`V6CSpillForwarding.cpp`** — same (one-line update per branch).
-6. **`V6CInstrInfo.cpp::expandPostRAPseudo` + AsmPrinter annotation
-   comment** — update the opcode-to-name map so `-mv6c-annotate-pseudos`
-   still emits useful labels (`;--- V6C_SPILL8_S ---` vs
-   `;--- V6C_SPILL8_D ---`, or strip the suffix for readability).
+5. **`V6ClangSpillForwarding.cpp`** — same (one-line update per branch).
+6. **`V6ClangInstrInfo.cpp::expandPostRAPseudo` + AsmPrinter annotation
+   comment** — update the opcode-to-name map so `-mv6clang-annotate-pseudos`
+   still emits useful labels (`;--- V6CLANG_SPILL8_S ---` vs
+   `;--- V6CLANG_SPILL8_D ---`, or strip the suffix for readability).
 7. **Tests**
-   * Add a new lit test `test/CodeGen/V6C/spill-flags-static.ll`:
+   * Add a new lit test `test/CodeGen/V6CLANG/spill-flags-static.ll`:
      function with `CMP r; [spill]; JZ L` and assert that the `JZ` still
      reads the flags the `CMP` set (no reloaded flag restore).
    * Keep an analogous `spill-flags-dynamic.ll` under
-     `-mv6c-no-static-stack` that confirms the flag def is honoured
+     `-mv6clang-no-static-stack` that confirms the flag def is honoured
      (i.e. the scheduler / peephole doesn't fold across the spill).
    * Re-run the full lit + feature-test suites (O17 / O38 / O58 tests
      should still pass; a handful may tighten their CHECKs to show
@@ -339,27 +339,27 @@ Concrete examples to measure after implementation:
   inconsistent with the real code and O17/O38/O58 silently miscompile.
   Mitigation: the dispatch is centralised in `storeRegToStackSlot` /
   `loadRegFromStackSlot` — one branch each.
-* **External users of the opcodes.** O61 (`V6CSpillPatchedReload.cpp`),
-  O16 (`V6CSpillForwarding.cpp`), and `-mv6c-annotate-pseudos` all name
+* **External users of the opcodes.** O61 (`V6ClangSpillPatchedReload.cpp`),
+  O16 (`V6ClangSpillForwarding.cpp`), and `-mv6clang-annotate-pseudos` all name
   the current opcodes explicitly. Straightforward rename, but the
   compiler must be rebuilt after the TableGen change.
 * **MIR tests.** Any MIR-level test that literally spells
-  `V6C_SPILL8` needs updating. Grep first.
+  `V6CLANG_SPILL8` needs updating. Grep first.
 
 
 ## References
 
-* Pseudo defs — `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
-  (`def V6C_SPILL8`, `def V6C_RELOAD8`, `def V6C_SPILL16`,
-  `def V6C_RELOAD16`).
+* Pseudo defs — `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+  (`def V6CLANG_SPILL8`, `def V6CLANG_RELOAD8`, `def V6CLANG_SPILL16`,
+  `def V6CLANG_RELOAD16`).
 * Static-stack lowering —
-  `llvm-project/llvm/lib/Target/V6C/V6CRegisterInfo.cpp` lines ~143–250.
+  `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp` lines ~143–250.
 * Dynamic-stack lowering — same file, lines ~391–456.
-* Storage hook — `V6CInstrInfo::storeRegToStackSlot` /
+* Storage hook — `V6ClangInstrInfo::storeRegToStackSlot` /
   `loadRegFromStackSlot`.
-* Consumer 1 — `V6CSpillForwarding.cpp` (`Opc == V6C_SPILL8 ||
-  V6C_SPILL16`, `V6C_RELOAD8 || V6C_RELOAD16`).
-* Consumer 2 — `V6CSpillPatchedReload.cpp` (same opcodes).
+* Consumer 1 — `V6ClangSpillForwarding.cpp` (`Opc == V6CLANG_SPILL8 ||
+  V6CLANG_SPILL16`, `V6CLANG_RELOAD8 || V6CLANG_RELOAD16`).
+* Consumer 2 — `V6ClangSpillPatchedReload.cpp` (same opcodes).
 * Related design:
   * `design/future_plans/O20_honest_store_load_defs.md` — same class of
     fix for HL clobber on `STORE8_P` / `LOAD8_P`.

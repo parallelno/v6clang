@@ -57,7 +57,7 @@ jobs:
           restore-keys: |
             sccache-${{ runner.os }}-
 
-      - name: Populate llvm-project from V6C mirrors
+      - name: Populate llvm-project from V6CLANG mirrors
         shell: pwsh
         run: |
           pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/populate_llvm_project.ps1
@@ -85,11 +85,11 @@ jobs:
           V6ASM_TAG: v2026.07.22
           V6EMUL_TAG: v1.0.0
         run: |
-          # v6asm and v6emul are reference tools that V6C installs separately and
+          # v6asm and v6emul are reference tools that V6CLANG installs separately and
           # does not bundle. The golden/benchmark suites and validate_dist.ps1
           # require V6EMUL (and V6ASM for the golden suite). Pin the release tags
           # so the workflow is reproducible.
-          $tools = Join-Path $env:RUNNER_TEMP 'v6c-tools'
+          $tools = Join-Path $env:RUNNER_TEMP 'v6clang-tools'
           New-Item -ItemType Directory -Force -Path $tools | Out-Null
 
           gh release download $env:V6ASM_TAG  --repo parallelno/v6asm  --pattern '*windows-x86_64.zip' --dir $tools --clobber
@@ -138,7 +138,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=sccache `
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
             -DLLVM_TARGETS_TO_BUILD=X86 `
-            -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6C `
+            -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=V6CLANG `
             "-DLLVM_ENABLE_PROJECTS=clang;lld"
 
       - name: Build
@@ -165,20 +165,20 @@ jobs:
 
       - name: Smoke-test staged tree
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate_dist.ps1 -Stage "dist/v6c-${{ steps.ver.outputs.version }}-windows-x64"
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate_dist.ps1 -Stage "dist/v6clang-${{ steps.ver.outputs.version }}-windows-x64"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: v6c-${{ steps.ver.outputs.version }}-windows-x64
-          path: dist/v6c-${{ steps.ver.outputs.version }}-windows-x64.zip
+          name: v6clang-${{ steps.ver.outputs.version }}-windows-x64
+          path: dist/v6clang-${{ steps.ver.outputs.version }}-windows-x64.zip
           if-no-files-found: error
 
       - name: Publish GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: v6c ${{ steps.ver.outputs.version }}
+          name: v6clang ${{ steps.ver.outputs.version }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: dist/v6c-${{ steps.ver.outputs.version }}-windows-x64.zip
+          files: dist/v6clang-${{ steps.ver.outputs.version }}-windows-x64.zip

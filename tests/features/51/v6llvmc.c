@@ -1,4 +1,4 @@
-/* O22: TTI Cost Hooks Expansion — V6C test.
+/* O22: TTI Cost Hooks Expansion — V6CLANG test.
  *
  * The new TTI cost hooks (getArithmeticInstrCost / getMemoryOpCost /
  * getCmpSelInstrCost / getScalingFactorCost) are intended to keep IR-
@@ -10,8 +10,8 @@
  * as i8 ops; with the new hooks it should leave the loop alone.
  *
  * Compile:
- *   llvm-build\bin\clang -target i8080-unknown-v6c -O3 -S \
- *       tests\features\51\v6llvmc.c -o tests\features\51\v6llvmc_new01.asm
+ *   llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S \
+ *       tests\features\51\v6clang.c -o tests\features\51\v6clang_new01.asm
  */
 
 extern unsigned short ext_sink16(unsigned short v);

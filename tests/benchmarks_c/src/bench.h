@@ -1,5 +1,5 @@
 /*
- * bench.h - Per-compiler glue for V6C / i8080 C-compiler benchmarks.
+ * bench.h - Per-compiler glue for V6CLANG / i8080 C-compiler benchmarks.
  *
  * Every benchmark program ends with bench_finish(checksum):
  *   - writes the checksum byte to port 0xED (TEST_OUT)
@@ -10,7 +10,7 @@
  *   HALT at PC=0x.... after N cpu_cycles M frames
  *
  * Detection macros:
- *   __V6C__          -> v6llvmc (clang -target i8080-unknown-v6c)
+ *   __V6CLANG__          -> v6clang (clang -target i8080-unknown-v6clang)
  *   __C8080_COMPILER -> c8080
  *   __SCCZ80         -> z88dk sccz80
  *   __ACK            -> Amsterdam Compiler Kit (best-effort)
@@ -27,10 +27,10 @@ typedef unsigned char  u8;
 typedef unsigned short u16;
 
 /* ------------------------------------------------------------------ */
-#ifdef __V6C__
+#ifdef __V6CLANG__
 static inline void bench_finish(unsigned char checksum) {
-    __builtin_v6c_out(0xED, checksum);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, checksum);
+    __builtin_v6clang_hlt();
     __builtin_unreachable();
 }
 #define BENCH_HAVE_FINISH 1

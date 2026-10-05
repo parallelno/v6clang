@@ -5,8 +5,8 @@
 ## Problem
 
 When `SELECT_CC` is lowered with an i16 comparison against zero, ISel
-produces `V6CISD::CMP` (register-register) instead of using the
-`V6C_BR_CC16_IMM` path that has O27's zero-test fast path.
+produces `V6ClangISD::CMP` (register-register) instead of using the
+`V6CLANG_BR_CC16_IMM` path that has O27's zero-test fast path.
 
 This forces the register allocator to materialize the constant `0` into a
 register pair (`LXI BC, 0`), wasting a register and 3 bytes + 12 cycles.
@@ -18,11 +18,11 @@ savings of 3B + 12cc).
 
 `LowerSELECT_CC()` always emits:
 ```
-V6CISD::CMP lhs, rhs   →   (register-register compare)
-V6CISD::SELECT_CC true, false, cc, flags
+V6ClangISD::CMP lhs, rhs   →   (register-register compare)
+V6ClangISD::SELECT_CC true, false, cc, flags
 ```
 
-The `V6C_BR_CC16_IMM` with its `imm=0` fast path is only reachable from
+The `V6CLANG_BR_CC16_IMM` with its `imm=0` fast path is only reachable from
 the `BR_CC` lowering path — direct `br(icmp eq %x, 0)` patterns.
 
 ### Example: `select_second`
@@ -37,7 +37,7 @@ int select_second(int a, int b, int c) {
 After ISel the comparison becomes:
 ```
 $bc = LXI 0                    ; 3B 12cc — waste: materializes 0
-V6C_CMP16 $hl, $bc             ; register-register compare
+V6CLANG_CMP16 $hl, $bc             ; register-register compare
 JZ  ...
 ```
 
@@ -67,22 +67,22 @@ boolean selects, and conditional returns with zero-tested conditions.
 ### Approach
 
 In `LowerSELECT_CC()`, detect when the RHS is a known zero constant and
-the condition is EQ/NE. In that case, split into a `V6CISD::BR_CC16_IMM`
+the condition is EQ/NE. In that case, split into a `V6ClangISD::BR_CC16_IMM`
 (which has the zero fast path) + phi-based select, or alternatively add
-a new `V6CISD::CMP16_IMM` node that the post-RA expansion can recognize
+a new `V6ClangISD::CMP16_IMM` node that the post-RA expansion can recognize
 and expand with the `MOV A, H; ORA L` pattern.
 
 The simpler approach may be to add a zero-test check directly in the
-`V6C_CMP16` expansion: if the RHS register pair holds a known zero (both
+`V6CLANG_CMP16` expansion: if the RHS register pair holds a known zero (both
 sub-registers are `0`), emit `MOV A, LhsHi; ORA LhsLo` instead of
 `SUB RhsLo; SBB RhsHi`. However, this requires tracking the constant
 value through the register allocator, which is non-trivial.
 
 The cleanest approach is likely:
 1. In `LowerSELECT_CC()`, when RHS is `ConstantSDNode(0)` and CC is
-   EQ/NE, emit `V6CISD::BR_CC16_IMM` with `imm=0` into an
-   if-diamond instead of `V6CISD::CMP` + `V6CISD::SELECT_CC`.
-2. Or add a `V6CISD::CMP16_IMM` node paralleling `V6CISD::BR_CC16_IMM`
+   EQ/NE, emit `V6ClangISD::BR_CC16_IMM` with `imm=0` into an
+   if-diamond instead of `V6ClangISD::CMP` + `V6ClangISD::SELECT_CC`.
+2. Or add a `V6ClangISD::CMP16_IMM` node paralleling `V6ClangISD::BR_CC16_IMM`
    that expands in `expandPostRAPseudo` with the same zero fast path.
 
 ### Risks

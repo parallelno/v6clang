@@ -1,7 +1,7 @@
 /* O90: Pre-ISel i8 Narrowing — c8080 reference
  * c8080 compiler works natively with 8-bit values and applies bitwise
  * operations at the u8 level directly. This is the baseline for comparing
- * code quality of v6llvmc's improved output after O90.
+ * code quality of v6clang's improved output after O90.
  *
  * NOTE: c8080 uses 'unsigned int' for 16-bit, 'unsigned char' for 8-bit.
  */

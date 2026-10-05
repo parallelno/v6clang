@@ -1,5 +1,5 @@
 // Conditional Call Optimization c8080 baseline.
-// Same workload as v6llvmc.c, adapted for c8080 (no __attribute__,
+// Same workload as v6clang.c, adapted for c8080 (no __attribute__,
 // no stdint, main has argc/argv).
 
 extern void notify(void);

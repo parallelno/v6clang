@@ -1,4 +1,4 @@
-Feature 60 — O78: V6C_STORE8_IMM_P Per-Shape Redesign
+Feature 60 — O78: V6CLANG_STORE8_IMM_P Per-Shape Redesign
 =====================================================
 
 
@@ -6,10 +6,10 @@ Feature 60 — O78: V6C_STORE8_IMM_P Per-Shape Redesign
 1. C test case
 ================================================================
 
-tests/features/60/v6llvmc.c
+tests/features/60/v6clang.c
 ---------------------------
 
-  // O78 — V6C_STORE8_IMM_P per-shape redesign feature test.
+  // O78 — V6CLANG_STORE8_IMM_P per-shape redesign feature test.
   //
   // Free-list CC pinning: 1st i16 arg → HL, 2nd → DE, 3rd → BC.
   // Inline-asm OUT 0xde sinks pin liveness for each operand.
@@ -213,7 +213,7 @@ store_bc_all_live:
 3. c8080 stats — body bytes / cycles per function (incl. RET)
 ================================================================
 
-Timings (docs/V6CInstructionTimings.md):
+Timings (docs/V6ClangInstructionTimings.md):
   LHLD/SHLD = 3B/20cc, LDA/STA = 3B/16cc, LXI = 3B/10cc,
   MVI M,imm = 2B/12cc, CALL = 3B/24cc, RET = 1B/12cc.
 
@@ -228,7 +228,7 @@ Timings (docs/V6CInstructionTimings.md):
 
 
 ================================================================
-4. v6llvmc OLD ASM (tests/features/60/v6llvmc_old.asm)
+4. v6clang OLD ASM (tests/features/60/v6clang_old.asm)
 ================================================================
 
 test_hl:                                ; addr=HL
@@ -293,7 +293,7 @@ test_bc_all_live:                       ; addr=BC, all live
 
 
 ================================================================
-5. v6llvmc NEW ASM (tests/features/60/v6llvmc_new01.asm)
+5. v6clang NEW ASM (tests/features/60/v6clang_new01.asm)
 ================================================================
 
 test_hl:                                ; row 1 — unchanged
@@ -361,7 +361,7 @@ Timings: PUSH H = 1B/16cc, POP H = 1B/12cc, MOV r,r = 1B/8cc,
 MVI M,imm = 2B/12cc, MVI A,imm = 2B/8cc, STAX = 1B/8cc, XCHG = 1B/4cc,
 OUT n = 2B/10cc, RET = 1B/12cc.
 
-| Function          | c8080            | v6llvmc OLD     | v6llvmc NEW    | Δ (NEW vs OLD)   |
+| Function          | c8080            | v6clang OLD     | v6clang NEW    | Δ (NEW vs OLD)   |
 |-------------------|------------------|-----------------|----------------|------------------|
 | test_hl           |  6 B /  44 cc    |  3 B /  24 cc   |  3 B /  24 cc  |   0 B /   0 cc   |
 | test_bc_a_dead    | 15 B /  92 cc    | 11 B /  88 cc   |  8 B /  48 cc  |  −3 B / −40 cc ★ |
@@ -382,7 +382,7 @@ each callee.
 7. Test status
 ================================================================
 
-- Lit: `llvm-project/llvm/test/CodeGen/V6C/store8imm-shape-redesign.ll`
+- Lit: `llvm-project/llvm/test/CodeGen/V6CLANG/store8imm-shape-redesign.ll`
        (7 CHECK blocks, one per row) — PASS.
 - `python tests\run_all.py` → 134/134 PASS (lit + golden).
 - Benchmarks (bsort/sieve/fib_crc/fannkuch/lfsr16) — all checksums

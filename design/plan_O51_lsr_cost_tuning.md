@@ -8,14 +8,14 @@ Prerequisite: O7 (done — `isLSRCostLess` already overridden).
 
 ### Current behavior
 
-`V6CTTIImpl::isLSRCostLess` ranks LSR formulas register-pressure first:
+`V6ClangTTIImpl::isLSRCostLess` ranks LSR formulas register-pressure first:
 
 ```cpp
 return std::tie(C1.NumRegs, C1.Insns, C1.NumBaseAdds, C1.NumIVMuls,
                 C1.AddRecCost, C1.ImmCost, C1.SetupCost, C1.ScaleCost) <
        std::tie(C2.NumRegs, C2.Insns, ...);
 ```
-([V6CTargetTransformInfo.cpp](../llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp#L50))
+([V6ClangTargetTransformInfo.cpp](../llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp#L50))
 
 For loops with three or more live pointers (≥4 IVs counting the
 counter, against 3 GP pairs BC/DE/HL), LSR collapses the per-pointer
@@ -26,7 +26,7 @@ re-materializes the address with `LXI HL, slot` + `LHLD` + `DAD` —
 
 Demonstrated in [temp/o51_lsr_test_baseline.asm](../temp/o51_lsr_test_baseline.asm)
 (generated from [temp/o51_lsr_test.c](../temp/o51_lsr_test.c)). The
-`axpy3` inner loop body shows ~6 `LXI __v6c_ss.axpy3+N` /
+`axpy3` inner loop body shows ~6 `LXI __v6clang_ss.axpy3+N` /
 `MOV M,C; INX HL; MOV M,B` ping-pong sequences plus 4 `SHLD`/`LHLD`
 per iteration just to swap pointers in and out of HL.
 
@@ -49,7 +49,7 @@ return std::tie(C1.Insns, C1.NumRegs, C1.AddRecCost, C1.NumIVMuls,
        std::tie(C2.Insns, C2.NumRegs, ...);
 ```
 
-The V6C ordering was chosen at O7 time on the assumption that 3 GP
+The V6CLANG ordering was chosen at O7 time on the assumption that 3 GP
 pairs make register pressure absolute. Since O7, several pressure-
 relief features have landed (static stack, IPRA, store/load forwarding,
 deferred zero-load, spill-in-reload, liveness-aware i8 spill lowering,
@@ -60,9 +60,9 @@ then promoted to default if the data supports it.
 
 ## 2. Strategy
 
-### Approach: `V6COptMode`-keyed ordering with `cl::opt` override
+### Approach: `V6ClangOptMode`-keyed ordering with `cl::opt` override
 
-> **Status (post-implementation)**: The original V6COptMode-keyed dispatch
+> **Status (post-implementation)**: The original V6ClangOptMode-keyed dispatch
 > was wired up and validated end-to-end, then rolled back to
 > `auto = regs-first` after Step 3.7 A/B measurement showed `insns-first`
 > regressing 3 of 42 regression tests on bytes (test 20: +235 B,
@@ -70,12 +70,12 @@ then promoted to default if the data supports it.
 > and both orderings stay in place; `insns-first` is now opt-in only.
 > See Step 3.7 Implementation Notes for the data and the rationale.
 
-1. Reuse the existing `V6COptMode` enum from
-   [V6CInstrCost.h](../llvm/lib/Target/V6C/V6CInstrCost.h#L26)
+1. Reuse the existing `V6ClangOptMode` enum from
+   [V6ClangInstrCost.h](../llvm/lib/Target/V6CLANG/V6ClangInstrCost.h#L26)
    (Speed / Size / Balanced) — it already derives the mode from
    `Function::hasMinSize()/hasOptSize()` plus
    `TargetMachine::getOptLevel()`.
-2. In `V6CTTIImpl::isLSRCostLess`, dispatch on the mode:
+2. In `V6ClangTTIImpl::isLSRCostLess`, dispatch on the mode:
    * **Speed** (`-O2`/`-O3`) → Z80-style **Insns-first** ordering.
      Each in-loop instruction costs 4–12 cc with certainty; an extra
      register *may* spill, but on i8080 even a worst-case SHLD/LHLD
@@ -89,7 +89,7 @@ then promoted to default if the data supports it.
    * **Balanced** (`-O1` / fall-through) → also **Insns-first**.
      Insns reduction typically reduces bytes too, and Balanced
      averages the two anyway.
-3. Add a `cl::opt<v6c::LSRStrategy>` named `-v6c-lsr-strategy=` with
+3. Add a `cl::opt<v6clang::LSRStrategy>` named `-v6clang-lsr-strategy=` with
    values `auto` (default — use the mode-keyed dispatch),
    `insns-first`, `regs-first` so the experiment can be A/B-tested
    on the regression suite without recompiling clang for `-Os`/`-O2`.
@@ -106,8 +106,8 @@ orderings differ only in field priority — both are total orders over
 the same `LSRCost` fields, so neither can introduce illegal formulas;
 only the tie-breaking outcome changes.
 
-Keying on `V6COptMode` is consistent with the rest of the backend
-([V6CInstrInfo.cpp lines 603, 652, 799](../llvm/lib/Target/V6C/V6CInstrInfo.cpp#L600)
+Keying on `V6ClangOptMode` is consistent with the rest of the backend
+([V6ClangInstrInfo.cpp lines 603, 652, 799](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp#L600)
 already use the same hook for DAD/INX expansion), so a `-Os` build
 stays code-size-oriented end-to-end (LSR through post-RA peepholes)
 and a `-O2` build stays cycle-oriented end-to-end. The `cl::opt`
@@ -119,20 +119,20 @@ regresses for Speed mode.
 
 ### Summary of changes
 
-* `llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.h` — add
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h` — add
   `const Function &F` member so `isLSRCostLess` can derive the opt
   mode (TM is already accessible via `BaseT`).
-* `llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp` —
-  include `V6CInstrCost.h`, add `LSRStrategy` `cl::opt`,
+* `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp` —
+  include `V6ClangInstrCost.h`, add `LSRStrategy` `cl::opt`,
   mode-keyed `isLSRCostLess` body. Update the docstring.
-* `llvm/lib/Target/V6C/V6CTargetTransformInfo.{h,cpp}` — synced via
+* `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.{h,cpp}` — synced via
   `scripts/sync_llvm_mirror.ps1`.
-* `tests/lit/CodeGen/V6C/lsr-strategy-speed.ll` — lit test that the
+* `tests/lit/CodeGen/V6CLANG/lsr-strategy-speed.ll` — lit test that the
   Insns-first shape is emitted at `-O2` (and with
-  `-v6c-lsr-strategy=insns-first`).
-* `tests/lit/CodeGen/V6C/lsr-strategy-size.ll` — lit test that the
+  `-v6clang-lsr-strategy=insns-first`).
+* `tests/lit/CodeGen/V6CLANG/lsr-strategy-size.ll` — lit test that the
   NumRegs-first shape is emitted with `optsize`/`minsize` attribute
-  (and with `-v6c-lsr-strategy=regs-first`).
+  (and with `-v6clang-lsr-strategy=regs-first`).
 * `tests/features/43/` — feature test (multi-stream axpy) with
   baseline / new asm and `result.txt`.
 * `design/plan_O51_lsr_cost_tuning.md` — this file.
@@ -144,11 +144,11 @@ No `.td`, no pass pipeline, no codegen lowering changes.
 
 ### Step 3.1 — Add `cl::opt` and the two field orderings [x]
 
-Edit `llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp`:
+Edit `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`:
 
 * Add includes:
   ```cpp
-  #include "V6CInstrCost.h"
+  #include "V6ClangInstrCost.h"
   #include "llvm/IR/Function.h"
   #include "llvm/Support/CommandLine.h"
   ```
@@ -159,16 +159,16 @@ Edit `llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp`:
   } // namespace
 
   static llvm::cl::opt<LSRStrategy> LSRStrategyOpt(
-      "v6c-lsr-strategy",
-      llvm::cl::desc("LSR formula tie-breaker ordering on V6C."),
+      "v6clang-lsr-strategy",
+      llvm::cl::desc("LSR formula tie-breaker ordering on V6CLANG."),
       llvm::cl::init(LSRStrategy::Auto),
       llvm::cl::values(
           clEnumValN(LSRStrategy::Auto, "auto",
-                     "derive from V6COptMode (default)"),
+                     "derive from V6ClangOptMode (default)"),
           clEnumValN(LSRStrategy::InsnsFirst, "insns-first",
                      "Z80-style: instruction count first"),
           clEnumValN(LSRStrategy::RegsFirst, "regs-first",
-                     "V6C historical: register count first")),
+                     "V6CLANG historical: register count first")),
       llvm::cl::Hidden);
   ```
 * Add two static helpers (file-scope) so the body of
@@ -211,9 +211,9 @@ derive the mode without re-querying.
 
 Edit the header:
 ```cpp
-// V6CTargetTransformInfo.h
+// V6ClangTargetTransformInfo.h
 public:
-  explicit V6CTTIImpl(const V6CTargetMachine *TM, const Function &F)
+  explicit V6ClangTTIImpl(const V6ClangTargetMachine *TM, const Function &F)
       : BaseT(TM, F.getParent()->getDataLayout()),
         ST(TM->getSubtargetImpl(F)),
         TLI(ST->getTargetLowering()),
@@ -224,7 +224,7 @@ private:
 
 Replace the body of `isLSRCostLess`:
 ```cpp
-bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
+bool V6ClangTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
                                 const TTI::LSRCost &C2) const {
   // Explicit override.
   switch (LSRStrategyOpt) {
@@ -244,7 +244,7 @@ bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
 ```
 
 > **Design Notes**: We use `Function::hasMinSize/hasOptSize` directly
-> instead of constructing a `MachineFunction` to call `getV6COptMode`
+> instead of constructing a `MachineFunction` to call `getV6ClangOptMode`
 > — TTI runs at IR time, before `MachineFunction` exists. The
 > resulting decision is identical (same predicate the IR-level
 > attributes feed) for the Size case. For the Speed/Balanced
@@ -257,11 +257,11 @@ bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
 > intended behavior — Step 3.6/3.7 must validate it on the
 > regression corpus before merging. If a `-O2` test regresses, the
 > fix is to either (a) pin that test with
-> `-v6c-lsr-strategy=regs-first` while we investigate, or (b) revert
-> Auto to regs-first and require explicit `-v6c-lsr-strategy=
+> `-v6clang-lsr-strategy=regs-first` while we investigate, or (b) revert
+> Auto to regs-first and require explicit `-v6clang-lsr-strategy=
 > insns-first` for opt-in.
 >
-> **Implementation Notes**: First wired the V6COptMode-keyed dispatch
+> **Implementation Notes**: First wired the V6ClangOptMode-keyed dispatch
 > (Speed/Balanced → insns-first, Size → regs-first) using
 > `Func->hasMinSize()/hasOptSize()`. After Step 3.7 (A/B measurement)
 > showed insns-first regressing 3 of 42 tests on bytes with zero
@@ -286,16 +286,16 @@ explicit strategy override. Expected matrix:
 
 | Build | Expected ordering | Expected asm shape (`axpy3` inner) |
 |-------|-------------------|------------------------------------|
-| `-O2` (auto)              | Insns-first | per-IV `INX rp`, no in-loop `LXI __v6c_ss.*` |
-| `-O2 -v6c-lsr-strategy=regs-first` | Regs-first  | matches current `temp/o51_lsr_test_baseline.asm` |
+| `-O2` (auto)              | Insns-first | per-IV `INX rp`, no in-loop `LXI __v6clang_ss.*` |
+| `-O2 -v6clang-lsr-strategy=regs-first` | Regs-first  | matches current `temp/o51_lsr_test_baseline.asm` |
 | `-Os` (auto)              | Regs-first  | matches current baseline |
-| `-Os -v6c-lsr-strategy=insns-first` | Insns-first | same as `-O2` auto |
+| `-Os -v6clang-lsr-strategy=insns-first` | Insns-first | same as `-O2` auto |
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S temp\o51_lsr_test.c -o temp\o51_lsr_test_O2_auto.asm
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S temp\o51_lsr_test.c -o temp\o51_lsr_test_O2_regs.asm  -mllvm -v6c-lsr-strategy=regs-first
-llvm-build\bin\clang -target i8080-unknown-v6c -Os -S temp\o51_lsr_test.c -o temp\o51_lsr_test_Os_auto.asm
-llvm-build\bin\clang -target i8080-unknown-v6c -Os -S temp\o51_lsr_test.c -o temp\o51_lsr_test_Os_insns.asm -mllvm -v6c-lsr-strategy=insns-first
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S temp\o51_lsr_test.c -o temp\o51_lsr_test_O2_auto.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S temp\o51_lsr_test.c -o temp\o51_lsr_test_O2_regs.asm  -mllvm -v6clang-lsr-strategy=regs-first
+llvm-build\bin\clang -target i8080-unknown-v6clang -Os -S temp\o51_lsr_test.c -o temp\o51_lsr_test_Os_auto.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -Os -S temp\o51_lsr_test.c -o temp\o51_lsr_test_Os_insns.asm -mllvm -v6clang-lsr-strategy=insns-first
 fc temp\o51_lsr_test_O2_regs.asm  temp\o51_lsr_test_baseline.asm
 fc temp\o51_lsr_test_Os_auto.asm  temp\o51_lsr_test_baseline.asm
 fc temp\o51_lsr_test_O2_auto.asm  temp\o51_lsr_test_Os_insns.asm
@@ -307,7 +307,7 @@ baseline regardless of how it's selected, the last confirms
 Insns-first is consistent across the two paths that select it.
 
 > **Implementation Notes**: All three `fc` checks reported
-> "no differences encountered" with `-mllvm -mv6c-annotate-pseudos`
+> "no differences encountered" with `-mllvm -mv6clang-annotate-pseudos`
 > consistently applied. `O2_auto` (insns-first under the original
 > dispatch) byte-matched `Os_insns`; `O2_regs` byte-matched
 > `o51_lsr_test_baseline.asm`; `Os_auto` byte-matched the baseline.
@@ -316,16 +316,16 @@ Insns-first is consistent across the two paths that select it.
 
 ### Step 3.4 — Lit test: `lsr-strategy-speed.ll` [x]
 
-Create `tests/lit/CodeGen/V6C/lsr-strategy-speed.ll`. Source is the
+Create `tests/lit/CodeGen/V6CLANG/lsr-strategy-speed.ll`. Source is the
 IR of the multi-pointer `axpy3` loop. Two RUN lines:
 
 ```
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s --check-prefix=AUTO
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 -v6c-lsr-strategy=insns-first < %s | FileCheck %s --check-prefix=EXPLICIT
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s --check-prefix=AUTO
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 -v6clang-lsr-strategy=insns-first < %s | FileCheck %s --check-prefix=EXPLICIT
 ```
 
 Both check prefixes assert the Insns-first shape — `; CHECK-NOT: LXI
-HL, __v6c_ss` between the inner loop label and its `JNZ` back edge,
+HL, __v6clang_ss` between the inner loop label and its `JNZ` back edge,
 plus a positive `; CHECK: INX` count on the IV pairs.
 
 > **Design Notes**: Outside-loop spills are fine — the contract is
@@ -337,25 +337,25 @@ plus a positive `; CHECK: INX` count on the IV pairs.
 > **Implementation Notes**: After the Auto rollback the AUTO check
 > moved to `lsr-strategy-size.ll` and the speed test now has only
 > a single `EXPLICIT` (insns-first) RUN line; the lit signature is
-> `__v6c_ss.axpy3+10` plus `.comm   __v6c_ss.axpy3,12,1` (a 12-byte
+> `__v6clang_ss.axpy3+10` plus `.comm   __v6clang_ss.axpy3,12,1` (a 12-byte
 > static spill area, vs 10 B for regs-first).
 
 ### Step 3.5 — Lit test: `lsr-strategy-size.ll` [x]
 
-Create `tests/lit/CodeGen/V6C/lsr-strategy-size.ll`. Same IR but the
+Create `tests/lit/CodeGen/V6CLANG/lsr-strategy-size.ll`. Same IR but the
 function carries `optsize` IR attribute, plus an explicit
-`-v6c-lsr-strategy=regs-first` RUN line:
+`-v6clang-lsr-strategy=regs-first` RUN line:
 
 ```
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s --check-prefix=AUTO
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 -v6c-lsr-strategy=regs-first < %s | FileCheck %s --check-prefix=EXPLICIT
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s --check-prefix=AUTO
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 -v6clang-lsr-strategy=regs-first < %s | FileCheck %s --check-prefix=EXPLICIT
 ```
 
 CHECK lines pin the current NumRegs-first spilling shape (positive
-`; CHECK: LXI HL, __v6c_ss` inside the inner loop) so the Size mode
+`; CHECK: LXI HL, __v6clang_ss` inside the inner loop) so the Size mode
 dispatch is locked in.
 
-> **Implementation Notes**: Pinned via `.comm   __v6c_ss.axpy3,10,1`
+> **Implementation Notes**: Pinned via `.comm   __v6clang_ss.axpy3,10,1`
 > (10-byte spill area, no `+10` slot). Both AUTO (default after
 > rollback) and EXPLICIT regs-first paths produce the same shape.
 
@@ -373,28 +373,28 @@ failure as a real signal:
   outcome for the multi-pointer loops).
 * If the failing test is a runtime/golden test — runtime semantics
   must not change. Investigate; if isolated, narrow the failing
-  function with `-v6c-lsr-strategy=regs-first` while diagnosing.
+  function with `-v6clang-lsr-strategy=regs-first` while diagnosing.
 * If the failure rate is high or runtime tests fail — back out
   the Auto flip (Step 3.1b: change the trailing
   `return insnsFirstLess(...)` to `return regsFirstLess(...)`),
   rerun, document, and degrade O51 to opt-in via
-  `-v6c-lsr-strategy=insns-first`.
+  `-v6clang-lsr-strategy=insns-first`.
 
 > **Implementation Notes**: With Auto = insns-first the lit suite
-> (91/91) and the V6C regression suite (`tests/run_all.py` = 2/2
+> (91/91) and the V6CLANG regression suite (`tests/run_all.py` = 2/2
 > suites: golden + lit) both passed. With Auto = regs-first
 > (post-rollback) both still pass. No runtime regressions observed
 > in either configuration.
 
 ### Step 3.7 — A/B measurement on regression corpus [x]
 
-For every `.c` under `tests/features/*/v6llvmc.c`, compile three
+For every `.c` under `tests/features/*/v6clang.c`, compile three
 times at `-O2`:
 
 ```
-clang ... v6llvmc.c -o /tmp/<n>_auto.asm
-clang ... v6llvmc.c -o /tmp/<n>_insns.asm -mllvm -v6c-lsr-strategy=insns-first
-clang ... v6llvmc.c -o /tmp/<n>_regs.asm  -mllvm -v6c-lsr-strategy=regs-first
+clang ... v6clang.c -o /tmp/<n>_auto.asm
+clang ... v6clang.c -o /tmp/<n>_insns.asm -mllvm -v6clang-lsr-strategy=insns-first
+clang ... v6clang.c -o /tmp/<n>_regs.asm  -mllvm -v6clang-lsr-strategy=regs-first
 ```
 
 For each triple, count cycles of the inner-loop bodies (use the
@@ -447,18 +447,18 @@ regs-first-vs-insns-first cycle deltas. **Decision rule**:
 
 In `tests/features/43/`:
 
-* `v6llvmc_old.asm` already captured in Phase 1 (regs-first, before
+* `v6clang_old.asm` already captured in Phase 1 (regs-first, before
   the Auto-flip).
-* Compile with `-O2` → `v6llvmc_new01.asm` (Auto = Insns-first
+* Compile with `-O2` → `v6clang_new01.asm` (Auto = Insns-first
   after this plan).
-* Compile with `-Os` → `v6llvmc_new02.asm` (Auto = Regs-first;
-  expected byte-identical to `v6llvmc_old.asm` modulo size-driven
+* Compile with `-Os` → `v6clang_new02.asm` (Auto = Regs-first;
+  expected byte-identical to `v6clang_old.asm` modulo size-driven
   changes elsewhere).
-* Compile with `-O2 -mllvm -v6c-lsr-strategy=regs-first` →
-  `v6llvmc_new03.asm` (rollback / parity check vs `v6llvmc_old.asm`).
+* Compile with `-O2 -mllvm -v6clang-lsr-strategy=regs-first` →
+  `v6clang_new03.asm` (rollback / parity check vs `v6clang_old.asm`).
 
 Diff the inner loop of `axpy3` between `_new01` and the others.
-Confirm `LXI __v6c_ss.*` / `LHLD __v6c_ss.*` ping-pong is gone in
+Confirm `LXI __v6clang_ss.*` / `LHLD __v6clang_ss.*` ping-pong is gone in
 `_new01`, replaced by per-IV `INX rp`. Iterate with `_new04.asm`,
 `_new05.asm` if the shape is not yet what the plan predicts.
 
@@ -468,8 +468,8 @@ Confirm `LXI __v6c_ss.*` / `LHLD __v6c_ss.*` ping-pong is gone in
 >   `_old.asm`** (6078 B). No regression on the default path.
 > * `_new02.asm` (-Os auto = regs-first) — 8783 B (Os has unrelated
 >   size-mode codegen differences).
-> * `_new03.asm` (-O2 -mllvm -v6c-lsr-strategy=insns-first) —
->   6131 B; the +53 B is the extra `__v6c_ss.axpy3+10` spill slot
+> * `_new03.asm` (-O2 -mllvm -v6clang-lsr-strategy=insns-first) —
+>   6131 B; the +53 B is the extra `__v6clang_ss.axpy3+10` spill slot
 >   plus the in-loop reload sequence the insns-first formula
 >   demands.
 
@@ -480,8 +480,8 @@ Per `tests/features/README.md`. Include:
 * The C test case.
 * c8080 `main`-and-friends asm (translated to i8080 syntax) and per-
   function worst-case cycle / byte stats.
-* v6llvmc asm at `-O2` (auto = Insns-first), `-Os` (auto =
-  Regs-first), and `-O2 -v6c-lsr-strategy=regs-first` side-by-side,
+* v6clang asm at `-O2` (auto = Insns-first), `-Os` (auto =
+  Regs-first), and `-O2 -v6clang-lsr-strategy=regs-first` side-by-side,
   per-function stats for each, and the aggregate decision
   recommendation from Step 3.7.
 
@@ -500,18 +500,18 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ### Step 3.11 — Documentation [x]
 
-* Update `docs/V6COptimization.md` with a paragraph on the LSR
-  strategy: the `V6COptMode`-keyed Auto dispatch (Speed/Balanced →
+* Update `docs/V6ClangOptimization.md` with a paragraph on the LSR
+  strategy: the `V6ClangOptMode`-keyed Auto dispatch (Speed/Balanced →
   Insns-first, Size → Regs-first), the override
-  `-v6c-lsr-strategy={auto,insns-first,regs-first}`, and the
+  `-v6clang-lsr-strategy={auto,insns-first,regs-first}`, and the
   empirical decision from Step 3.7.
 * Mark O51 complete in
   [design/future_plans/README.md](future_plans/README.md) and tick
   the table-row checkbox.
 
 > **Implementation Notes**: Added an `LSR Strategy` section to
-> [docs/V6COptimization.md](../docs/V6COptimization.md) describing
-> the two orderings, the `-v6c-lsr-strategy` flag, and the empirical
+> [docs/V6ClangOptimization.md](../docs/V6ClangOptimization.md) describing
+> the two orderings, the `-v6clang-lsr-strategy` flag, and the empirical
 > finding that `insns-first` does not win on this target. Marked
 > O51 complete in `design/future_plans/README.md` (both the index
 > table and the summary table).
@@ -522,7 +522,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 Baseline today (regs-first):
 * Inner loop body ≈ 35+ instructions, dominated by 4 `SHLD`/`LHLD`
-  pairs and 6 `LXI __v6c_ss.axpy3+N`+`MOV M,C; INX HL; MOV M,B`
+  pairs and 6 `LXI __v6clang_ss.axpy3+N`+`MOV M,C; INX HL; MOV M,B`
   pointer-swap sequences per iteration.
 
 After Auto = Insns-first:
@@ -537,7 +537,7 @@ worth the cycle hit when the user has already opted into size.
 
 ### Example 2 — `dot` (2 streams + accumulator + counter)
 
-Default emits `__v6c_ss.dot`/`__v6c_ss.dot+2`/`__v6c_ss.dot+4`
+Default emits `__v6clang_ss.dot`/`__v6clang_ss.dot+2`/`__v6clang_ss.dot+4`
 ping-pong because the accumulator forces the same collapse. Insns-
 first should keep both pointers in registers and spill only the
 accumulator across the `__mulhi3` call site, where it has to spill
@@ -554,11 +554,11 @@ loops.
 
 | Risk | Mitigation |
 |------|------------|
-| Auto = Insns-first at `-O2` regresses a pressure-light loop that happened to be tuned for the old shape | Two lit tests pin both shapes; Step 3.6 catches it; per-test rollback via `-v6c-lsr-strategy=regs-first`; whole-mode rollback via 1-line edit in Step 3.1b. |
+| Auto = Insns-first at `-O2` regresses a pressure-light loop that happened to be tuned for the old shape | Two lit tests pin both shapes; Step 3.6 catches it; per-test rollback via `-v6clang-lsr-strategy=regs-first`; whole-mode rollback via 1-line edit in Step 3.1b. |
 | Regression suite has loops where `Insns` reduction comes from extra hoisted setup that the rest of the backend (e.g. constant sinking) then re-introduces, masking the gain | Step 3.7 measures end-to-end cycles after all post-RA passes, not LSR-output IR. |
 | Generic LSR cost field semantics drift between LLVM versions | Mirror the Z80 ordering verbatim; both backends sit on the same generic `LSRCost`, so any drift affects both equally and is caught by upstream-merge regression. |
 | `isNumRegsMajorCostOfLSR()=true` interacts non-trivially with `Insns`-first ordering and yields a non-monotone choice | Out of scope of this experiment — recorded in §7 as a follow-up to evaluate flipping that hook too. |
-| `-Os` users want the cycle win on one hot kernel without giving up size elsewhere | Per-function attribute override deferred to §7; meanwhile a single TU can be split or compiled with `-O2 -v6c-lsr-strategy=insns-first` for the kernel and `-Os` for the rest. |
+| `-Os` users want the cycle win on one hot kernel without giving up size elsewhere | Per-function attribute override deferred to §7; meanwhile a single TU can be split or compiled with `-O2 -v6clang-lsr-strategy=insns-first` for the kernel and `-Os` for the rest. |
 
 ---
 
@@ -590,13 +590,13 @@ loops.
   pointer IVs" so simple counted loops at `-O2` keep regs-first
   (which is harmless there but smaller).
 * Investigate per-function override via attribute (e.g.
-  `__attribute__((v6c_lsr_strategy("insns")))`) for hot functions
+  `__attribute__((v6clang_lsr_strategy("insns")))`) for hot functions
   that disagree with the global default — useful when a `-Os`
   build has one inner kernel that should still use Insns-first.
 
 ## 8. References
 
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](future_plans/README.md)
 * [O51 description](future_plans/O51_lsr_cost_tuning.md)

@@ -9,8 +9,8 @@ O90 is implemented and validated.
 InstCombine's `computeKnownBits` folds `icmp ne (trunc i16 (and i16 X, 1)), 0`
 into `icmp ne i16 (and i16 X, 1), 0`, widening the comparison to i16.  When X
 is a loop PHI with i16 siblings (like the lfsr16 pattern), the existing PHI
-sibling guard in `V6CTypeNarrowing::tryNarrowAndConst` blocked narrowing,
-forcing the full V6C_AND16 pseudo (6 instructions, ~36cc per iteration).
+sibling guard in `V6ClangTypeNarrowing::tryNarrowAndConst` blocked narrowing,
+forcing the full V6CLANG_AND16 pseudo (6 instructions, ~36cc per iteration).
 
 The fix adds an `allUsersAreZeroTests` helper: when every user of the AND
 result is an `icmp eq/ne %, 0`, the result never needs to be stored in a
@@ -26,7 +26,7 @@ regardless of X_hi, making the narrowing sound.
 C Test Case Code
 ----------------
 
-`v6llvmc.c` / `c8080.c`
+`v6clang.c` / `c8080.c`
 
 ```c
 typedef unsigned char  u8;
@@ -61,10 +61,10 @@ u16 lfsr_step(u16 lfsr) {
 ```
 
 
-v6llvmc OLD ASM (before O90)
+v6clang OLD ASM (before O90)
 -----------------------------
 
-`v6llvmc_old.asm`:
+`v6clang_old.asm`:
 
 ```asm
 and_lsb_branch:                     ; already narrowed (non-PHI, trunc path)
@@ -101,21 +101,21 @@ lfsr_step:                          ; INNER LOOP — PHI sibling guard blocks AN
     ; setup: XCHG, LXI H,0, MVI A,0x10 (loop counter), STA (self-mod x2)
     ...
 .loop:
-    LXI  D, 1          ; 12cc, 3B   ← V6C_AND16 constant load (16-bit!)
+    LXI  D, 1          ; 12cc, 3B   ← V6CLANG_AND16 constant load (16-bit!)
     MOV  A, C          ;  8cc, 1B
     ANA  E             ;  4cc, 1B   ← low byte of AND
     MOV  C, A          ;  8cc, 1B
     MOV  A, B          ;  8cc, 1B
     ANA  D             ;  4cc, 1B   ← high byte of AND (always 0, wasted!)
-    MOV  B, A          ;  8cc, 1B   — V6C_AND16: 7 insn, 53cc, 10B per iter
+    MOV  B, A          ;  8cc, 1B   — V6CLANG_AND16: 7 insn, 53cc, 10B per iter
     ; ... RAR shift, ORA+JNZ zero-test, XOR feedback, XOR acc, DCR counter
 ```
 
 
-v6llvmc NEW ASM (after O90)
+v6clang NEW ASM (after O90)
 ----------------------------
 
-`v6llvmc_new01.asm`:
+`v6clang_new01.asm`:
 
 ```asm
 and_lsb_branch:                     ; unchanged — was already optimal
@@ -169,7 +169,7 @@ Comparison Table
 | `or_hi_bit`        |         4 |         28 |         4 |         28 |       0 |        0 | DAGCombiner handles trunc path         |
 | `xor_pattern`      |         4 |         28 |         4 |         28 |       0 |        0 | DAGCombiner handles trunc path         |
 | `and_wide`         |        10 |         64 |        10 |         64 |       0 |        0 | Control: C > 0xFF, must stay 16-bit    |
-| `lfsr_step` (loop) |     ~10/i |      ~53/i |      ~3/i |      ~16/i |  -7/iter|  -37/iter| ← **O90 fix**: ANI 1 vs V6C_AND16     |
+| `lfsr_step` (loop) |     ~10/i |      ~53/i |      ~3/i |      ~16/i |  -7/iter|  -37/iter| ← **O90 fix**: ANI 1 vs V6CLANG_AND16     |
 
 
 lfsr16 Benchmark Impact
@@ -178,12 +178,12 @@ lfsr16 Benchmark Impact
 O90 affects the lfsr16 benchmark (full LFSR over 65535 × 16 iterations).
 The critical hot path is the `lsb = lfsr & 1` zero-test inside the inner loop.
 
-Before O90: V6C_AND16 emits `LXI rp,1; ANA E; ANA D` (6 instructions per iter).
+Before O90: V6CLANG_AND16 emits `LXI rp,1; ANA E; ANA D` (6 instructions per iter).
 After  O90: `ANI 1` (1 instruction per iter, sets Z flag, drives branch directly).
 
-| Compiler      | Code size | Cycles     | vs v6llvmc |
+| Compiler      | Code size | Cycles     | vs v6clang |
 |---------------|----------:|-----------:|------------|
-| v6llvmc -O2   |     123 B | 1,410,320  | 1.00×      |
+| v6clang -O2   |     123 B | 1,410,320  | 1.00×      |
 | c8080         |     176 B | 2,623,212  | 1.86×      |
 | z88dk         |    1019 B | 4,473,860  | 3.17×      |
 

@@ -5,7 +5,7 @@ int static_probe(int parameter) {
     int local = parameter + 0x123;
     volatile int addressable = local + 1;
     sink = addressable;
-    __builtin_v6c_hlt();
+    __builtin_v6clang_hlt();
     return local;
 }
 
@@ -14,7 +14,7 @@ int dynamic_probe(int parameter) {
     int local = parameter + 0x234;
     volatile int addressable = local + 1;
     sink = addressable;
-    __builtin_v6c_hlt();
+    __builtin_v6clang_hlt();
     return local;
 }
 

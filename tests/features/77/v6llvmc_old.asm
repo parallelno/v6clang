@@ -121,48 +121,48 @@ main:                                   ; @main
 	PUSH	H
 	LXI	H, 0x1234
 	CALL	xor16_hi_only
-	SHLD	__v6c_a.main+2
+	SHLD	__v6clang_a.main+2
 	LXI	H, 0x1234
 	CALL	or16_lo_only
-	SHLD	__v6c_a.main+4
+	SHLD	__v6clang_a.main+4
 	LXI	H, 0x1234
 	CALL	and16_clear_lo
-	SHLD	__v6c_a.main+6
+	SHLD	__v6clang_a.main+6
 	LXI	H, 0x1234
 	CALL	and16_mask
-	SHLD	__v6c_a.main+8
+	SHLD	__v6clang_a.main+8
 	LXI	H, 0xffff
-	SHLD	__v6c_a.main+10
+	SHLD	__v6clang_a.main+10
 	LXI	H, 0xace1
 	MVI	A, 0x10
 	CALL	lfsr_run
-	SHLD	__v6c_a.main+12
+	SHLD	__v6clang_a.main+12
 	POP	H
-	LHLD	__v6c_a.main+2
-	LHLD	__v6c_a.main+4
-	LHLD	__v6c_a.main+6
-	LHLD	__v6c_a.main+8
-	LHLD	__v6c_a.main+10
-	LHLD	__v6c_a.main+12
+	LHLD	__v6clang_a.main+2
+	LHLD	__v6clang_a.main+4
+	LHLD	__v6clang_a.main+6
+	LHLD	__v6clang_a.main+8
+	LHLD	__v6clang_a.main+10
+	LHLD	__v6clang_a.main+12
 	LXI	H, 0
 	RET
                                         ; -- End function
-	.local	__v6c_a.main                    ; @__v6c_a.main
-	.comm	__v6c_a.main,14,1
+	.local	__v6clang_a.main                    ; @__v6clang_a.main
+	.comm	__v6clang_a.main,14,1
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3
 	.addrsig_sym __lshrhi3
 	.addrsig_sym __ashrhi3
-	.addrsig_sym __v6c_a.main
+	.addrsig_sym __v6clang_a.main

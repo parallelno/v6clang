@@ -2,9 +2,9 @@
 ; DESC: Bubble sort an 8-element uint8 array in memory; OUT each sorted value.
 ;       Regression test for O27 i16-zero-test polarity bug — the outer-loop
 ;       guard `(n - 1 - i) > 0` is exactly the `sgt i16, 0` pattern that
-;       triggered the inverted JNZ in V6C_BR_CC16_IMM. Pure-asm version here
+;       triggered the inverted JNZ in V6CLANG_BR_CC16_IMM. Pure-asm version here
 ;       proves the algorithm; the compiled-C variant lives in
-;       tests/features/43/v6llvmc_bsort_spillfrwd.c.
+;       tests/features/43/v6clang_bsort_spillfrwd.c.
 ; EXPECT_HALT: yes
 ; EXPECT_OUTPUT: 1, 2, 3, 4, 5, 6, 7, 8
 

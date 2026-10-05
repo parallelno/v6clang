@@ -6,7 +6,7 @@
  *   MVI Z, imm
  *
  * The canonical trigger is zext i8 -> i16 when the hi-half zero is
- * materialised via an intermediate register before V6C_BUILD_PAIR.
+ * materialised via an intermediate register before V6CLANG_BUILD_PAIR.
  */
 typedef unsigned char u8;
 typedef unsigned short u16;

@@ -136,7 +136,7 @@ createTargetCodeGenInfo(CodeGenModule &CGM) {
   }
 
   case llvm::Triple::i8080:
-    return createV6CTargetCodeGenInfo(CGM);
+    return createV6ClangTargetCodeGenInfo(CGM);
 
   case llvm::Triple::aarch64:
   case llvm::Triple::aarch64_32:
@@ -2507,11 +2507,11 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
 
   F->addFnAttrs(B);
 
-  // V6C: tag for the V6C AsmPrinter (suppression in `-S` text output).
+  // V6CLANG: tag for the V6CLANG AsmPrinter (suppression in `-S` text output).
   // Emitted as an LLVM string function attribute so it does not affect
   // IPO/IPSCCP/ArgumentPromotion (unlike __attribute__((annotate))).
-  if (D->hasAttr<V6CRtHelperAttr>())
-    F->addFnAttr("v6c-rt-helper");
+  if (D->hasAttr<V6ClangRtHelperAttr>())
+    F->addFnAttr("v6clang-rt-helper");
 
   unsigned alignment = D->getMaxAlignment() / Context.getCharWidth();
   if (alignment)

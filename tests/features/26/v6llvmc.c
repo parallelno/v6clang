@@ -1,4 +1,4 @@
-// O44 Adjacent XCHG Cancellation — feature test (v6llvmc version)
+// O44 Adjacent XCHG Cancellation — feature test (v6clang version)
 // Tests that adjacent XCHG pairs from consecutive DE spill/reload
 // expansions are eliminated by the peephole pass.
 

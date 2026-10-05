@@ -266,7 +266,7 @@ def main():
     failed = 0
     results = []
 
-    with tempfile.TemporaryDirectory(prefix="v6c_golden_") as tmp_dir:
+    with tempfile.TemporaryDirectory(prefix="v6clang_golden_") as tmp_dir:
         for asm_path in test_files:
             ok, name, message = run_test(v6asm, v6emul, asm_path, tmp_dir, args.verbose)
             if ok:

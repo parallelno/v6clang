@@ -6,7 +6,7 @@
 
 ## Problem
 
-The current V6C_BR_CC16_IMM pseudo handles EQ/NE comparisons with
+The current V6CLANG_BR_CC16_IMM pseudo handles EQ/NE comparisons with
 immediate RHS using `MVI A, const; CMP reg` (12cc per byte, no register
 pair needed). For ordering comparisons (SETULT, SETUGE, SETULT, SETUGT,
 SETULE, SETSLT, SETGE), the backend materializes the constant in a
@@ -115,7 +115,7 @@ spills elsewhere on the register-starved 8080.
 
 ## Implementation
 
-### Preferred: Extend V6C_BR_CC16_IMM expansion
+### Preferred: Extend V6CLANG_BR_CC16_IMM expansion
 
 Reuse the existing pseudo but expand differently for ordering conditions
 (ULT/UGE/UGT/ULE/SLT/SGE) versus EQ/NE conditions. The pseudo already
@@ -137,9 +137,9 @@ before branching.
 
 ### ISel matching
 
-In `V6CISelLowering.cpp` `LowerBR_CC()`, match `SETULT`/`SETUGE`/
+In `V6ClangISelLowering.cpp` `LowerBR_CC()`, match `SETULT`/`SETUGE`/
 `SETUGT`/`SETULE`/`SETLT`/`SETGE` with `ConstantSDNode` or
-`V6CISD::Wrapper` RHS → emit `V6C_BR_CC16_IMM` instead of the
+`V6ClangISD::Wrapper` RHS → emit `V6CLANG_BR_CC16_IMM` instead of the
 register-based SUB/SBB path.
 
 The pseudo expansion reads the `$cc` operand to decide:
@@ -152,7 +152,7 @@ On standard 8080, `SUI D8` and `SBI D8` cost the same as `MVI+SUB r`
 in bytes (2B each). But on Vector-06c, `SUB R` = 4cc while `SUI D8` =
 8cc. The MVI+SUB/SBB approach saves 8cc over SUI/SBI for the same
 code size (6B), because MVI loads A for free (no flag side effects)
-and register ALU ops are the cheapest instruction class on V6C.
+and register ALU ops are the cheapest instruction class on V6CLANG.
 
 | Approach          | Cycles | Bytes | Reg pair freed? |
 |-------------------|--------|-------|-----------------|

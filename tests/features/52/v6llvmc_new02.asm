@@ -46,7 +46,7 @@ shl_u16:                                ; @shl_u16
 	;  arg1 = A
 ; %bb.0:
 	MVI	E, 0
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	D, E
 	MOV	E, A
 	JMP	__ashlhi3
@@ -61,41 +61,41 @@ main:                                   ; @main
 	LDA	g_u8b
 	CALL	__mulqi3
 	STA	g_u8r
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u16a
 	XCHG
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u16b
 	CALL	__mulhi3
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_u16r
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u16a
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	XCHG
 	LHLD	g_u16b
 	XCHG
 	CALL	__udivhi3
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_u16r
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u16a
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	XCHG
 	LHLD	g_u16b
 	XCHG
 	CALL	__umodhi3
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_u16r
 	MVI	E, 0
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	g_u16a
 	LDA	g_u8a
-	;--- V6C_BUILD_PAIR ---
+	;--- V6CLANG_BUILD_PAIR ---
 	MOV	D, E
 	MOV	E, A
 	CALL	__ashlhi3
-	;--- V6C_STORE16_G ---
+	;--- V6CLANG_STORE16_G ---
 	SHLD	g_u16r
 	LXI	H, 0
 	RET
@@ -127,15 +127,15 @@ g_u16r:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

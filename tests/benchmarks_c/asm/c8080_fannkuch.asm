@@ -25,12 +25,12 @@ __init_loop:
 ; 35         add  hl, de
 ; 36         jp   nc, __init_loop
 ; 37     }
-; 38 
+; 38
 ; 39     /* Init stack */
 ; 40 #if __has_include(<c8080/initstack.inc>) && !defined(ARCH_CPM_CCP) && !defined(ARCH_CPM_BDOS) && !defined(ARCH_CPM_BIOS)
 ; 41 #include <c8080/initstack.inc>
 ; 42 #endif
-; 43 
+; 43
 ; 44 #ifdef ARCH_CPM_CCP /* CCP remains in memory */
 ; 45     // clang-format off
 ; 46     asm {
@@ -44,7 +44,7 @@ __init_loop:
 ; 54     }
 ; 55     // clang-format on
 ; 56 #endif
-; 57 
+; 57
 ; 58 #ifdef ARCH_CPM_BDOS /* BDOS remains in memory */
 ; 59     asm {
 ; 60         ld   a, (7)
@@ -55,11 +55,11 @@ __init_loop:
 ; 65         push hl
 ; 66     }
 ; 67 #endif
-; 68 
+; 68
 ; 69 #ifdef ARCH_CPM_BIOS /* BIOS remains in memory */
 ; 70 #error TODO
 ; 71 #endif
-; 72 
+; 72
 ; 73     main(0, NULL);
 	ld hl, 0
 	ld (__a_1_main), hl
@@ -67,7 +67,7 @@ main:
 ; 23 int main(int argc, char **argv) {
 	ld (__a_2_main), hl
 ; 24     (void)argc; (void)argv;
-; 25 
+; 25
 ; 26     volatile u8 seed = N;
 	ld a, 7
 	ld (main_seed), a
@@ -75,7 +75,7 @@ main:
 	ld (main_n), a
 ; 28     u8 i, k, r, flips, flips_max;
 ; 29     u8 perm0;
-; 30 
+; 30
 ; 31     for (i = 0; i < n; i++) perm1[i] = i;
 	xor a
 	ld (main_i), a
@@ -98,7 +98,7 @@ l_2:
 ; 33     flips_max = 0;
 	xor a
 	ld (main_flips_max), a
-; 34 
+; 34
 ; 35     for (;;) {
 l_3:
 ; 36         while (r != 1) { count[r - 1] = r; r--; }
@@ -116,7 +116,7 @@ l_6:
 	ld (main_r), a
 	jp l_6
 l_7:
-; 37 
+; 37
 ; 38         for (i = 0; i < n; i++) perm[i] = perm1[i];
 	xor a
 	ld (main_i), a
@@ -211,7 +211,7 @@ l_12:
 	ld a, (main_flips)
 	ld (main_flips_max), a
 l_15:
-; 56 
+; 56
 ; 57         for (;;) {
 l_17:
 ; 58             if (r == n) {
@@ -318,4 +318,4 @@ main_tmp equ __s_main + 10
 __s_bench_finish equ __static_stack + 0
 __a_1_bench_finish equ __s_bench_finish + 0
 main_perm0 equ __s_main + 7
-    savebin "C:\Work\Programming\v6llvmc\tests\benchmarks_c\build\c8080_fannkuch.com", __begin, __bss - __begin
+    savebin "C:\Work\Programming\v6clang\tests\benchmarks_c\build\c8080_fannkuch.com", __begin, __bss - __begin

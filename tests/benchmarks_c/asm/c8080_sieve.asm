@@ -25,12 +25,12 @@ __init_loop:
 ; 35         add  hl, de
 ; 36         jp   nc, __init_loop
 ; 37     }
-; 38 
+; 38
 ; 39     /* Init stack */
 ; 40 #if __has_include(<c8080/initstack.inc>) && !defined(ARCH_CPM_CCP) && !defined(ARCH_CPM_BDOS) && !defined(ARCH_CPM_BIOS)
 ; 41 #include <c8080/initstack.inc>
 ; 42 #endif
-; 43 
+; 43
 ; 44 #ifdef ARCH_CPM_CCP /* CCP remains in memory */
 ; 45     // clang-format off
 ; 46     asm {
@@ -44,7 +44,7 @@ __init_loop:
 ; 54     }
 ; 55     // clang-format on
 ; 56 #endif
-; 57 
+; 57
 ; 58 #ifdef ARCH_CPM_BDOS /* BDOS remains in memory */
 ; 59     asm {
 ; 60         ld   a, (7)
@@ -55,11 +55,11 @@ __init_loop:
 ; 65         push hl
 ; 66     }
 ; 67 #endif
-; 68 
+; 68
 ; 69 #ifdef ARCH_CPM_BIOS /* BIOS remains in memory */
 ; 70 #error TODO
 ; 71 #endif
-; 72 
+; 72
 ; 73     main(0, NULL);
 	ld hl, 0
 	ld (__a_1_main), hl
@@ -68,7 +68,7 @@ main:
 	ld (__a_2_main), hl
 ; 22     (void)argc; (void)argv;
 ; 23     u16 i, i_sq, k, count;
-; 24 
+; 24
 ; 25     /* some compilers do not initialize properly */
 ; 26     {
 ; 27         u16 n;
@@ -90,11 +90,11 @@ l_0:
 	jp l_0
 l_2:
 ; 29     }
-; 30 
+; 30
 ; 31     count = SIZE - 2;
 	ld hl, 7998
 	ld (main_count), hl
-; 32 
+; 32
 ; 33     i_sq = 4;
 	ld hl, 4
 	ld (main_i_sq), hl
@@ -161,7 +161,7 @@ l_6:
 	jp l_3
 l_5:
 ; 42     }
-; 43 
+; 43
 ; 44     bench_finish((u8)((u8)count ^ (u8)(count >> 8)));
 	ld a, (main_count)
 	ld hl, (main_count)
@@ -197,4 +197,4 @@ main_i equ __s_main + 0
 main_k equ __s_main + 4
 __s_bench_finish equ __static_stack + 0
 __a_1_bench_finish equ __s_bench_finish + 0
-    savebin "C:\Work\Programming\v6llvmc\tests\benchmarks_c\build\c8080_sieve.com", __begin, __bss - __begin
+    savebin "C:\Work\Programming\v6clang\tests\benchmarks_c\build\c8080_sieve.com", __begin, __bss - __begin

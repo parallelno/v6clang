@@ -4,13 +4,13 @@
 
 ### Current behavior
 
-`V6C_BUILD_PAIR` expands hi-first, lo-second. When the hi source register was
+`V6CLANG_BUILD_PAIR` expands hi-first, lo-second. When the hi source register was
 materialised by an immediately preceding `MVI reg, imm`, the expansion emits a
 dead copy through that intermediate:
 
 ```asm
 MVI   L, 0          ; 8cc, 2B — zero hi via intermediate L
-;--- V6C_BUILD_PAIR ---
+;--- V6CLANG_BUILD_PAIR ---
 MOV   H, L          ; 8cc, 1B — redundant: just copies the known-zero L to H
 MOV   L, A          ; 8cc, 1B
 ```
@@ -22,16 +22,16 @@ are sufficient.
 
 ```asm
 MVI   H, 0          ; 8cc, 2B — zero written directly to the destination half
-;--- V6C_BUILD_PAIR ---
+;--- V6CLANG_BUILD_PAIR ---
 MOV   L, A          ; 8cc, 1B
 ```
 
 ### Root cause
 
-`collapseMovChain` in `V6CPeephole.cpp` only scans for `MOVrr` producers:
+`collapseMovChain` in `V6ClangPeephole.cpp` only scans for `MOVrr` producers:
 
 ```cpp
-if (ProducerMI.getOpcode() != V6C::MOVrr)
+if (ProducerMI.getOpcode() != V6CLANG::MOVrr)
     continue;  // ← MVIr producers are skipped entirely
 ```
 
@@ -45,7 +45,7 @@ next instruction `MOV H, L`.
 
 ### Approach: extend `collapseMovChain` with an `MVIr`-producer loop
 
-Add a second forward-scan loop in `V6CPeephole::collapseMovChain` that handles
+Add a second forward-scan loop in `V6ClangPeephole::collapseMovChain` that handles
 `MVIr` producers. When the sole consumer `MOV Z, X` is reached and `X` is dead
 after that consumer, emit `MVI Z, Imm` in place of the `MOV` and erase the
 original `MVI X, Imm`.
@@ -64,8 +64,8 @@ original `MVI X, Imm`.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp` | Add `MVIr`-producer loop in `collapseMovChain` |
-| `llvm-project/llvm/test/CodeGen/V6C/peephole-mvi-through-mov.ll` | New lit test |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp` | Add `MVIr`-producer loop in `collapseMovChain` |
+| `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-through-mov.ll` | New lit test |
 | `tests/features/70/` | New feature test with C source and baseline/new asm |
 
 ---
@@ -74,7 +74,7 @@ original `MVI X, Imm`.
 
 ### Step 3.1 — Extend `collapseMovChain` with `MVIr`-producer case [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 After the existing `MOVrr`-producer loop (ends before the `return Changed;`
 statement), add a second loop:
@@ -86,7 +86,7 @@ statement), add a second loop:
   // Transform: erase both, emit MVI Z, Imm before the old MOV position.
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6C::MVIr)
+    if (ProducerMI.getOpcode() != V6CLANG::MVIr)
       continue;
     if (isO61PatchedImm(ProducerMI))
       continue;
@@ -100,7 +100,7 @@ statement), add a second loop:
         continue;
       ++Steps;
 
-      bool IsConsumer = J->getOpcode() == V6C::MOVrr &&
+      bool IsConsumer = J->getOpcode() == V6CLANG::MOVrr &&
                         TRI->regsOverlap(J->getOperand(1).getReg(), X);
 
       bool ReadsX = false, ClobbersX = false;
@@ -120,7 +120,7 @@ statement), add a second loop:
           Register Z = J->getOperand(0).getReg();
           const TargetInstrInfo &TII =
               *MBB.getParent()->getSubtarget().getInstrInfo();
-          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6C::MVIr), Z)
+          BuildMI(MBB, J, J->getDebugLoc(), TII.get(V6CLANG::MVIr), Z)
               .addImm(Imm);
           auto Next = std::next(I);
           J->eraseFromParent();
@@ -164,24 +164,24 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Create and run lit test: `peephole-mvi-through-mov.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/peephole-mvi-through-mov.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/peephole-mvi-through-mov.ll`
 
 Test cases:
 1. `sin8`-like: `zext i8 → i16`, pointer lookup — should produce `MVI H, 0`
    not `MVI L, 0; MOV H, L`.
-2. Disabled form: with `--v6c-disable-peephole` both instructions must appear.
+2. Disabled form: with `--v6clang-disable-peephole` both instructions must appear.
 3. O61-patched MVI guard: a patched MVI must NOT be folded.
 4. Multi-consumer safety: `MVI X, 0; MOV Y, X; MOV Z, X` — must NOT fold when
    X is still live after the first consumer MOV.
 
 Run:
 ```
-llvm-build\bin\llc -march=v6c llvm-project\llvm\test\CodeGen\V6C\peephole-mvi-through-mov.ll | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6C\peephole-mvi-through-mov.ll
+llvm-build\bin\llc -march=v6clang llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll | llvm-build\bin\FileCheck llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll
 ```
 
 Or via lit:
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6C\peephole-mvi-through-mov.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\peephole-mvi-through-mov.ll -v
 ```
 
 ### Step 3.4 — Run regression tests [x]
@@ -196,7 +196,7 @@ All tests must pass.
 
 Compile the feature test case with the new compiler:
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\70\v6llvmc.c -o tests\features\70\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\70\v6clang.c -o tests\features\70\v6clang_new01.asm
 ```
 
 Verify that `sin8` body no longer contains `MVI L, 0; MOV H, L` and instead
@@ -278,7 +278,7 @@ this naturally emerge from the test.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
-* [Vector 06c CPU Timings](docs\V6CInstructionTimings.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
+* [Vector 06c CPU Timings](docs\V6ClangInstructionTimings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O88 Design](design\future_plans\O88_mvi_through_mov_collapse.md)

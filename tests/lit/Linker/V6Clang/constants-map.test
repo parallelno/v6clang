@@ -1,0 +1,25 @@
+# RUN: rm -rf %t && mkdir -p %t && split-file %s %t
+# RUN: llvm-mc -filetype=obj -triple=i8080-unknown-v6clang %t/main.s -o %t/main.o
+# RUN: ld.lld -m elf32v6clang -T %v6clang_ld_script --defsym=_start=main \
+# RUN:   --v6clang-constants-map=%t/constants.map -o %t/out.elf %t/main.o
+# RUN: FileCheck %s --input-file=%t/constants.map
+
+# CHECK: # V6CLANG final global absolute constants
+# CHECK: # Value     Symbol
+# CHECK: 00000000 CONTROL_CODE_NO
+# CHECK: 00000001 CONTROL_CODE_RIGHT
+# CHECK: 00000004 CONTROL_CODE_UP
+# CHECK-NOT: main
+
+#--- main.s
+.globl CONTROL_CODE_UP
+CONTROL_CODE_UP = 4
+.globl CONTROL_CODE_NO
+CONTROL_CODE_NO = 0
+.globl CONTROL_CODE_RIGHT
+CONTROL_CODE_RIGHT = 1
+
+.section .text,"ax",@progbits
+.globl main
+main:
+  ret

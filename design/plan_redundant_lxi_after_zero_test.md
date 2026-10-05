@@ -30,7 +30,7 @@ test_cond_zero_tailcall:
 
 ### Root cause
 
-V6CLoadImmCombine currently tracks known register values only within a
+V6ClangLoadImmCombine currently tracks known register values only within a
 basic block, starting from `invalidateAll()` at the top of each BB. There
 is no cross-block value propagation from predecessor blocks. When a
 predecessor ends with a zero-test + conditional branch/return (e.g.,
@@ -39,9 +39,9 @@ that HL==0 and A==0, so it cannot eliminate redundant `LXI HL, 0`.
 
 ## 2. Strategy
 
-### Approach: Seed known values at BB entry in V6CLoadImmCombine
+### Approach: Seed known values at BB entry in V6ClangLoadImmCombine
 
-Extend V6CLoadImmCombine's `processBlock()` method. Before the existing
+Extend V6ClangLoadImmCombine's `processBlock()` method. Before the existing
 instruction scan loop, check if the block has a **single predecessor**
 whose terminator implies known register values on the fallthrough path.
 
@@ -58,27 +58,27 @@ Recognized patterns:
 
 ### Why this works
 
-- V6CLoadImmCombine already tracks per-register known values and
+- V6ClangLoadImmCombine already tracks per-register known values and
   eliminates redundant MVI/LXI as MOV/INR/DCR. By seeding the value
   map at block entry, the existing elimination logic handles the rest.
 - Single-predecessor check ensures the seeded values are sound — if a
   block has multiple predecessors, the values can't be guaranteed.
-- The zero-test idiom (`MOV A,H; ORA L`) is emitted by the V6C_BR_CC16
+- The zero-test idiom (`MOV A,H; ORA L`) is emitted by the V6CLANG_BR_CC16
   zero-compare fast path and ZeroTestOpt, so this pattern is common.
 
 ### Summary of changes
 
 | Step | What | Where |
 |------|------|-------|
-| Add seedPredecessorValues | Analyze single pred terminator, seed KnownVal | V6CLoadImmCombine.cpp |
-| Call before scan loop | Replace bare `invalidateAll()` with seed + fallback | V6CLoadImmCombine.cpp |
+| Add seedPredecessorValues | Analyze single pred terminator, seed KnownVal | V6ClangLoadImmCombine.cpp |
+| Call before scan loop | Replace bare `invalidateAll()` with seed + fallback | V6ClangLoadImmCombine.cpp |
 | Lit test | Verify LXI HL,0 is eliminated after zero-test | load-imm-combine-branch-seed.ll |
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `seedPredecessorValues()` to V6CLoadImmCombine [x]
+### Step 3.1 — Add `seedPredecessorValues()` to V6ClangLoadImmCombine [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
 
 Add a new private method `seedPredecessorValues(MachineBasicBlock &MBB)`
 that:
@@ -115,7 +115,7 @@ because their fallthrough path means the zero condition was TRUE.
 
 ### Step 3.2 — Integrate seeding into processBlock [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
 
 In `processBlock()`, replace:
 ```cpp
@@ -140,7 +140,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: load-imm-combine-branch-seed.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/load-imm-combine-branch-seed.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/load-imm-combine-branch-seed.ll`
 
 Tests:
 - Test 1: 16-bit zero-test + RNZ → LXI HL,0 eliminated.
@@ -159,7 +159,7 @@ python tests\run_all.py
 
 Compile the feature test case and analyze the output:
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\15\v6llvmc.c -o tests\features\15\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\15\v6clang.c -o tests\features\15\v6clang_new01.asm
 ```
 
 Verify that `test_cond_zero_tailcall` no longer has `LXI HL, 0`.
@@ -241,8 +241,8 @@ all three patterns (16-bit zero-test, 8-bit zero-test, CPI imm).
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O36 Design](design\future_plans\O36_redundant_lxi_after_zero_test.md)
-* [V6CLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6C\V6CLoadImmCombine.cpp)
+* [V6ClangLoadImmCombine.cpp](llvm-project\llvm\lib\Target\V6CLANG\V6ClangLoadImmCombine.cpp)

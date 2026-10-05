@@ -19,11 +19,11 @@ The PUSH/POP replacement preserves the value in HL but does NOT write it
 back to the static stack slot.  The LHLD at the top of the loop reads stale
 data on subsequent iterations.
 
-== v6llvmc assembly (BEFORE fix, O16 disabled) ==
+== v6clang assembly (BEFORE fix, O16 disabled) ==
 
 .LBB0_2:                                ; =>This Inner Loop Header
     ...
-    LHLD  __v6c_ss.interleaved_add       ; <-- reads slot +0 (stale!)
+    LHLD  __v6clang_ss.interleaved_add       ; <-- reads slot +0 (stale!)
     ...
     POP   HL
     INX   HL
@@ -36,16 +36,16 @@ Lines 51-52: PUSH HL / POP HL is a no-op on HL and does NOT update the
 static slot.  The LHLD at the loop top re-reads the original (stale) value
 of the pointer on every iteration instead of the incremented value.
 
-== v6llvmc assembly (AFTER fix, O16 disabled) ==
+== v6clang assembly (AFTER fix, O16 disabled) ==
 
 .LBB0_2:                                ; =>This Inner Loop Header
     ...
-    LHLD  __v6c_ss.interleaved_add       ; <-- reads slot +0 (correct!)
+    LHLD  __v6clang_ss.interleaved_add       ; <-- reads slot +0 (correct!)
     ...
     POP   HL
     INX   HL
-    SHLD  __v6c_ss.interleaved_add       ; <-- FIXED: writeback preserved
-    LHLD  __v6c_ss.interleaved_add       ; <-- FIXED: reload preserved
+    SHLD  __v6clang_ss.interleaved_add       ; <-- FIXED: writeback preserved
+    LHLD  __v6clang_ss.interleaved_add       ; <-- FIXED: reload preserved
     ...
     JNZ   .LBB0_2
 

@@ -26,7 +26,7 @@ These two XCHGs cancel: `XCHG; XCHG` ≡ no-op. Removing both saves 8cc, 2B.
 
 ```asm
 ; Current (after O42 fix):
-SHLD  __v6c_ss.sumarray+2    ; spill arr1_ptr (DE via XCHG+SHLD+XCHG)
+SHLD  __v6clang_ss.sumarray+2    ; spill arr1_ptr (DE via XCHG+SHLD+XCHG)
 XCHG                          ; ← trailing from SPILL16 DE
 XCHG                          ; ← leading from LOAD16_P DE
 MOV   E, M                    ; load arr1[i] lo
@@ -35,7 +35,7 @@ MOV   D, M                    ; load arr1[i] hi
 XCHG                          ; trailing from LOAD16_P DE
 
 ; Optimized:
-SHLD  __v6c_ss.sumarray+2    ; spill arr1_ptr
+SHLD  __v6clang_ss.sumarray+2    ; spill arr1_ptr
                                ; (two XCHGs removed — 8cc, 2B saved)
 MOV   E, M
 INX   HL
@@ -45,7 +45,7 @@ XCHG
 
 ## Approach
 
-Post-expansion peephole in `V6CPeepholePass` (runs in `addPreEmitPass`).
+Post-expansion peephole in `V6ClangPeepholePass` (runs in `addPreEmitPass`).
 Single linear scan over each MBB looking for consecutive XCHG instructions.
 
 ### Pattern
@@ -55,12 +55,12 @@ XCHG
 XCHG
 ```
 
-Two adjacent `V6C::XCHG` instructions with no intervening labels, branches,
+Two adjacent `V6CLANG::XCHG` instructions with no intervening labels, branches,
 or other instructions. Delete both.
 
 ### Safety conditions
 
-1. **Both are plain XCHG** — opcode `V6C::XCHG`, no operands, no implicit
+1. **Both are plain XCHG** — opcode `V6CLANG::XCHG`, no operands, no implicit
    defs/uses beyond the standard DE↔HL swap.
 2. **Truly adjacent** — no debug values, labels, or other instructions
    between them. Skip over `DBG_VALUE` / `CFI_INSTRUCTION` if present.
@@ -78,7 +78,7 @@ with no coupling risk.
 
 ### Location
 
-`V6CPeepholePass::runOnMachineFunction` in `V6CPeephole.cpp`.
+`V6ClangPeepholePass::runOnMachineFunction` in `V6ClangPeephole.cpp`.
 Add as an early scan before other peephole patterns (so later patterns
 see cleaner code).
 
@@ -88,9 +88,9 @@ see cleaner code).
 for each MBB:
   I = MBB.begin()
   while I != MBB.end():
-    if I->getOpcode() == V6C::XCHG:
+    if I->getOpcode() == V6CLANG::XCHG:
       J = skipDebugValues(next(I))
-      if J != MBB.end() && J->getOpcode() == V6C::XCHG:
+      if J != MBB.end() && J->getOpcode() == V6CLANG::XCHG:
         // Adjacent XCHG pair — delete both
         J = MBB.erase(J)   // erase second XCHG
         I = MBB.erase(I)   // erase first XCHG, I now points to next
@@ -101,7 +101,7 @@ for each MBB:
 
 ### Estimated size
 
-~15 lines in `V6CPeephole.cpp`.
+~15 lines in `V6ClangPeephole.cpp`.
 
 ## Cost analysis
 
@@ -130,5 +130,5 @@ for each MBB:
   cancelled XCHGs expose more direct SHLD/LHLD HL pairs for O43 to match.
 - **XchgOpt pass**: XchgOpt replaces MOV pairs with XCHG. It doesn't
   detect or remove adjacent XCHGs. O44 is complementary.
-- **V6CAccumulatorPlanning**: Runs before peephole. May introduce XCHG
+- **V6ClangAccumulatorPlanning**: Runs before peephole. May introduce XCHG
   in some paths, but adjacent pairs from accumulator planning are unlikely.

@@ -1,4 +1,4 @@
-; V6C Encoding Validation Test
+; V6CLANG Encoding Validation Test
 ; Assemble with v6asm and verify opcode bytes against TableGen definitions.
 ; v6asm uses 0xNN for hex (NOT NNh suffix).
 

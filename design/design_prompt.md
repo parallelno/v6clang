@@ -37,8 +37,8 @@ R*      /N  8
 |-------------|------|
 | MOV r,r      | Twice slower than ALU ops — makes register shuffling costlier |
 | MVI r,n      | Nearly free difference vs MOV |
-| INR/DCR r    | Same cost as MOV on V6C |
-| INX/DCX rp   | Same cost as INR on V6C |
+| INR/DCR r    | Same cost as MOV on V6CLANG |
+| INX/DCX rp   | Same cost as INR on V6CLANG |
 | ADD/SUB/AND/OR/XOR r | ALU ops are the cheapest class |
 | ADI/SUI/ANI/ORI/XRI n | Immediate ALU ties with reg MVI |
 | DAD rp       | Relatively cheap 16-bit add |

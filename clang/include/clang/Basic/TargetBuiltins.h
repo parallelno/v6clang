@@ -366,12 +366,12 @@ namespace clang {
     };
   }
 
-  /// V6C (Intel 8080) builtins
-  namespace V6C {
+  /// V6CLANG (Intel 8080) builtins
+  namespace V6CLANG {
     enum {
       LastTIBuiltin = clang::Builtin::FirstTSBuiltin - 1,
 #define BUILTIN(ID, TYPE, ATTRS) BI##ID,
-#include "clang/Basic/BuiltinsV6C.def"
+#include "clang/Basic/BuiltinsV6CLANG.def"
       LastTSBuiltin
     };
   }
@@ -382,7 +382,7 @@ namespace clang {
        X86::LastTSBuiltin, VE::LastTSBuiltin, RISCV::LastTSBuiltin,
        Hexagon::LastTSBuiltin, Mips::LastTSBuiltin, XCore::LastTSBuiltin,
        SystemZ::LastTSBuiltin, WebAssembly::LastTSBuiltin,
-       V6C::LastTSBuiltin});
+       V6CLANG::LastTSBuiltin});
 
 } // end namespace clang.
 

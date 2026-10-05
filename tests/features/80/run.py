@@ -26,8 +26,8 @@ def build_and_stop(name, defines=()):
     rom = HERE / f"{name}.rom"
     elf = HERE / f"{name}.elf"
     run([
-        str(CLANG), "-target", "i8080-unknown-v6c", "-O0", "-g",
-        *defines, str(HERE / "v6llvmc.c"), "-o", str(rom),
+        str(CLANG), "-target", "i8080-unknown-v6clang", "-O0", "-g",
+        *defines, str(HERE / "v6clang.c"), "-o", str(rom),
     ])
     run([str(DWARFDUMP), "--verify", str(elf)])
     dwarf = run([str(DWARFDUMP), "--debug-info", str(elf)])
@@ -103,9 +103,9 @@ if "DW_OP_plus_uconst 0x4" not in static_locations["addressable"]:
     raise RuntimeError(f"addressable offset is wrong: {static_locations}")
 
 symbols = run([str(READELF), "-s", str(static_elf)])
-match = re.search(r"([0-9a-fA-F]{8})\s+\d+\s+OBJECT\s+LOCAL.*__v6c_a\.static_probe", symbols)
+match = re.search(r"([0-9a-fA-F]{8})\s+\d+\s+OBJECT\s+LOCAL.*__v6clang_a\.static_probe", symbols)
 if not match:
-    raise RuntimeError("missing __v6c_a.static_probe symbol")
+    raise RuntimeError("missing __v6clang_a.static_probe symbol")
 base = int(match.group(1), 16)
 static_memory = memory_from(static_snapshot)
 static_values = [word(static_memory, base + offset) for offset in (0, 2, 4)]

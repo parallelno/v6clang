@@ -3,16 +3,16 @@
 Status: implemented and validated 2026-04-22. See
 [tests/features/32/result.txt](../tests/features/32/result.txt) for the
 before/after assembly diff and metrics. Lit coverage:
-[shift-i16-byte-aligned.ll](../llvm-project/llvm/test/CodeGen/V6C/shift-i16-byte-aligned.ll)
+[shift-i16-byte-aligned.ll](../llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16-byte-aligned.ll)
 (new) and updated `srl10_i16` expectation in
-[shift-i16.ll](../llvm-project/llvm/test/CodeGen/V6C/shift-i16.ll).
+[shift-i16.ll](../llvm-project/llvm/test/CodeGen/V6CLANG/shift-i16.ll).
 
 ## 1. Problem
 
 ### Current behavior
 
-`V6C_SHL16` / `V6C_SRL16` / `V6C_SRA16` in
-[V6CInstrInfo.cpp](../llvm/lib/Target/V6C/V6CInstrInfo.cpp) expand with
+`V6CLANG_SHL16` / `V6CLANG_SRL16` / `V6CLANG_SRA16` in
+[V6ClangInstrInfo.cpp](../llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp) expand with
 an unconditional full 16-bit copy whenever `DstReg != SrcReg`:
 
 ```cpp
@@ -27,7 +27,7 @@ from one half to the other and zeroes (or sign-extends) the remaining
 half. The first MOV of the leading copy is therefore overwritten and
 **dead**, and one of the two halves of the source is never used.
 
-Concrete `V6C_SRL16` example with `SrcReg=HL, DstReg=DE, ShAmt=8`:
+Concrete `V6CLANG_SRL16` example with `SrcReg=HL, DstReg=DE, ShAmt=8`:
 
 ```asm
   MOV D, H            ; DEAD — overwritten by MVI D, 0
@@ -45,31 +45,31 @@ That is 4 × `MOV` = 32 cc, 4 B. The minimal correct sequence is:
 
 = 16 cc, 3 B — saves **16 cc and 1 B per occurrence**.
 
-For `V6C_SRL16` and `V6C_SRA16` with `ShAmt > 8`, the per-bit loop after
+For `V6CLANG_SRL16` and `V6CLANG_SRA16` with `ShAmt > 8`, the per-bit loop after
 the byte-lane move continues to shift *both* halves even though one
 half is known constant (`0` for SRL, sign byte for SRA). That doubles
 the per-bit cost for shift amounts 9..15.
 
-`V6C_SHL16` already has a half-width per-bit loop after the byte move
+`V6CLANG_SHL16` already has a half-width per-bit loop after the byte move
 (only `DstHi` is shifted, since `DstLo == 0`); only its dead-copy needs
 fixing.
 
-### i8 shift coverage (verified against [V6CISelLowering.cpp](../llvm/lib/Target/V6C/V6CISelLowering.cpp) lines 601-770)
+### i8 shift coverage (verified against [V6ClangISelLowering.cpp](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp) lines 601-770)
 
 The i8 shift paths today, and how O62 affects each:
 
 | i8 op | Constant amount lowering | Variable amount lowering | O62 effect |
 |-------|--------------------------|--------------------------|------------|
-| `shl i8`, 1..7 | `LowerSHL` unrolls into i8 `ADD A, A` repeated | `ZEXT→i16; SHL i16; TRUNCATE` (i16 var → libcall `__ashlhi3`) | **None** — pure i8 ALU, never touches `V6C_SHL16` |
-| `srl i8`, 1..7 | `LowerSRL`: `ZEXT i8→i16; V6CISD::SRL16(amt); TRUNCATE` | `ZEXT→i16; SRL i16; TRUNCATE` (libcall `__lshrhi3`) | **None** — `ShAmt` always 1..7, hits the unchanged `< 8` branch of `V6C_SRL16` |
-| `sra i8`, 1..7 | `LowerSRA`: `SEXT i8→i16; V6CISD::SRA16(amt); TRUNCATE` | `SEXT→i16; SRA i16; TRUNCATE` (libcall `__ashrhi3`) | **None** — `ShAmt` always 1..7, hits the unchanged `< 8` branch of `V6C_SRA16` |
+| `shl i8`, 1..7 | `LowerSHL` unrolls into i8 `ADD A, A` repeated | `ZEXT→i16; SHL i16; TRUNCATE` (i16 var → libcall `__ashlhi3`) | **None** — pure i8 ALU, never touches `V6CLANG_SHL16` |
+| `srl i8`, 1..7 | `LowerSRL`: `ZEXT i8→i16; V6ClangISD::SRL16(amt); TRUNCATE` | `ZEXT→i16; SRL i16; TRUNCATE` (libcall `__lshrhi3`) | **None** — `ShAmt` always 1..7, hits the unchanged `< 8` branch of `V6CLANG_SRL16` |
+| `sra i8`, 1..7 | `LowerSRA`: `SEXT i8→i16; V6ClangISD::SRA16(amt); TRUNCATE` | `SEXT→i16; SRA i16; TRUNCATE` (libcall `__ashrhi3`) | **None** — `ShAmt` always 1..7, hits the unchanged `< 8` branch of `V6CLANG_SRA16` |
 
 **Why O62 does not improve i8 shifts:**
 
 * i8 `shl` constant uses pure i8 `ADD A, A` and never enters the
   16-bit pseudo path that O62 rewrites.
-* i8 `srl` / `sra` constant *do* route through `V6C_SRL16` /
-  `V6C_SRA16`, but only ever with `ShAmt` in 1..7 (the C standard
+* i8 `srl` / `sra` constant *do* route through `V6CLANG_SRL16` /
+  `V6CLANG_SRA16`, but only ever with `ShAmt` in 1..7 (the C standard
   caps i8 shift amounts at 7, and the lowering masks `& 7`). O62
   exclusively rewrites the `ShAmt >= 8` branch, which is unreachable
   from i8 inputs.
@@ -83,13 +83,13 @@ leading 2-MOV copy followed by a byte-lane move — only exists for
 `ShAmt >= 8`, and only i16 constant shifts can reach that branch.
 O62 leaves the i8 paths bit-for-bit identical (verified by the
 unchanged `srl1_i16` / `sra1_i16` / `srl3_i16` / `sra3_i16` lit
-checks in [shift-i16.ll](../tests/lit/CodeGen/V6C/shift-i16.ll), all
+checks in [shift-i16.ll](../tests/lit/CodeGen/V6CLANG/shift-i16.ll), all
 of which exercise `ShAmt < 8`).
 
 A separate, future optimization — independent of O62 — could
 short-circuit the i8 `srl` / `sra` path by lowering directly to an
-i8 RAR/RLC chain instead of round-tripping through `V6C_SRL16` /
-`V6C_SRA16` with a known-zero/known-sign high byte. That belongs in
+i8 RAR/RLC chain instead of round-tripping through `V6CLANG_SRL16` /
+`V6CLANG_SRA16` with a known-zero/known-sign high byte. That belongs in
 Future Enhancements §7, not in O62 scope.
 
 ### Desired behavior
@@ -118,7 +118,7 @@ appropriate destination half, plus the constant fill (`MVI 0` for
 SHL/SRL, sign-byte for SRA), and runs a half-width per-bit loop for the
 remainder.
 
-Aliasing safety: under V6C's GR16 register classes (BC, DE, HL, PSW),
+Aliasing safety: under V6CLANG's GR16 register classes (BC, DE, HL, PSW),
 every pair uses distinct 8-bit registers, so `DstHi`, `DstLo`, `SrcHi`,
 `SrcLo` are all distinct — no overlap analysis is required.
 
@@ -136,19 +136,19 @@ every pair uses distinct 8-bit registers, so `DstHi`, `DstLo`, `SrcHi`,
 
 | Step | What | Where |
 |------|------|-------|
-| Rewrite `V6C_SHL16` `>=8` branch | Skip leading copy, byte-move directly from `SrcLo` | V6CInstrInfo.cpp |
-| Rewrite `V6C_SRL16` `>=8` branch | Skip leading copy, byte-move from `SrcHi`, half-width loop | V6CInstrInfo.cpp |
-| Rewrite `V6C_SRA16` `>=8` branch | Skip leading copy, sign-extend from `SrcHi`, half-width loop | V6CInstrInfo.cpp |
-| Lit test | New `shift-i16-byte-aligned.ll` exercising `dst != src` cases | tests/lit/CodeGen/V6C |
+| Rewrite `V6CLANG_SHL16` `>=8` branch | Skip leading copy, byte-move directly from `SrcLo` | V6ClangInstrInfo.cpp |
+| Rewrite `V6CLANG_SRL16` `>=8` branch | Skip leading copy, byte-move from `SrcHi`, half-width loop | V6ClangInstrInfo.cpp |
+| Rewrite `V6CLANG_SRA16` `>=8` branch | Skip leading copy, sign-extend from `SrcHi`, half-width loop | V6ClangInstrInfo.cpp |
+| Lit test | New `shift-i16-byte-aligned.ll` exercising `dst != src` cases | tests/lit/CodeGen/V6CLANG |
 | Feature test | C test under `tests/features/32` | tests/features/32 |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Rewrite `V6C_SHL16` `ShAmt >= 8` path [ ]
+### Step 3.1 — Rewrite `V6CLANG_SHL16` `ShAmt >= 8` path [ ]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp` (case `V6C::V6C_SHL16`)
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp` (case `V6CLANG::V6CLANG_SHL16`)
 
 Hoist the `ShAmt >= 8` test above the `DstReg != SrcReg` copy. Inside
 the byte-aligned branch:
@@ -168,7 +168,7 @@ sequence as today's in-place expansion.
 
 > **Implementation Notes**: _empty — fill after completion_
 
-### Step 3.2 — Rewrite `V6C_SRL16` `ShAmt >= 8` path [ ]
+### Step 3.2 — Rewrite `V6CLANG_SRL16` `ShAmt >= 8` path [ ]
 
 **File**: same. Mirror the SHL16 change; surviving source half is
 `SrcHi`, destination is `DstLo`, fill is `MVI DstHi, 0`. Replace the
@@ -177,10 +177,10 @@ post-byte-move per-bit loop with a half-width loop that only shifts
 
 ```cpp
 for (unsigned i = 0; i < ShAmt; ++i) {
-  BuildMI(..., MOVrr, V6C::A).addReg(DstLo);
-  BuildMI(..., ORAr, V6C::A).addReg(V6C::A).addReg(V6C::A); // CY = 0
-  BuildMI(..., RAR,  V6C::A).addReg(V6C::A);
-  BuildMI(..., MOVrr, DstLo).addReg(V6C::A);
+  BuildMI(..., MOVrr, V6CLANG::A).addReg(DstLo);
+  BuildMI(..., ORAr, V6CLANG::A).addReg(V6CLANG::A).addReg(V6CLANG::A); // CY = 0
+  BuildMI(..., RAR,  V6CLANG::A).addReg(V6CLANG::A);
+  BuildMI(..., MOVrr, DstLo).addReg(V6CLANG::A);
 }
 ```
 
@@ -188,7 +188,7 @@ The `ShAmt < 8` branch is unchanged (full 2-byte per-bit RAR loop).
 
 > **Implementation Notes**: _empty_
 
-### Step 3.3 — Rewrite `V6C_SRA16` `ShAmt >= 8` path [ ]
+### Step 3.3 — Rewrite `V6CLANG_SRA16` `ShAmt >= 8` path [ ]
 
 **File**: same. Surviving half is `SrcHi`, destination of byte move is
 `DstLo`, sign-extend `SrcHi` into `DstHi` via `RLC; SBB A,A`. The
@@ -198,20 +198,20 @@ is bit 7 of `DstLo`):
 
 ```cpp
 // Byte-aligned: read SrcHi via A first (it dies after).
-BuildMI(..., MOVrr, V6C::A).addReg(SrcHi);
+BuildMI(..., MOVrr, V6CLANG::A).addReg(SrcHi);
 if (DstLo != SrcHi)
   BuildMI(..., MOVrr, DstLo).addReg(SrcHi);
-BuildMI(..., RLC,   V6C::A).addReg(V6C::A);          // CY = sign
-BuildMI(..., SBBr,  V6C::A).addReg(V6C::A).addReg(V6C::A);
-BuildMI(..., MOVrr, DstHi).addReg(V6C::A);
+BuildMI(..., RLC,   V6CLANG::A).addReg(V6CLANG::A);          // CY = sign
+BuildMI(..., SBBr,  V6CLANG::A).addReg(V6CLANG::A).addReg(V6CLANG::A);
+BuildMI(..., MOVrr, DstHi).addReg(V6CLANG::A);
 ShAmt -= 8;
 // Half-width arithmetic right shift on DstLo only.
 for (unsigned i = 0; i < ShAmt; ++i) {
-  BuildMI(..., MOVrr, V6C::A).addReg(DstLo);
-  BuildMI(..., RLC,   V6C::A).addReg(V6C::A);        // CY = bit 7 = sign
-  BuildMI(..., MOVrr, V6C::A).addReg(DstLo);
-  BuildMI(..., RAR,   V6C::A).addReg(V6C::A);
-  BuildMI(..., MOVrr, DstLo).addReg(V6C::A);
+  BuildMI(..., MOVrr, V6CLANG::A).addReg(DstLo);
+  BuildMI(..., RLC,   V6CLANG::A).addReg(V6CLANG::A);        // CY = bit 7 = sign
+  BuildMI(..., MOVrr, V6CLANG::A).addReg(DstLo);
+  BuildMI(..., RAR,   V6CLANG::A).addReg(V6CLANG::A);
+  BuildMI(..., MOVrr, DstLo).addReg(V6CLANG::A);
 }
 ```
 
@@ -227,7 +227,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.5 — Lit test: shift-i16-byte-aligned [ ]
 
-**File**: `tests/lit/CodeGen/V6C/shift-i16-byte-aligned.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/shift-i16-byte-aligned.ll`
 
 Force `dst != src` by storing the original through a pointer kept live
 across the shift:
@@ -248,7 +248,7 @@ is gone and `CHECK` for the optimal byte-move sequence.
 ### Step 3.6 — Run lit subset [ ]
 
 ```
-llvm-build\bin\llvm-lit -v tests\lit\CodeGen\V6C\shift-i16.ll tests\lit\CodeGen\V6C\shift-i16-byte-aligned.ll
+llvm-build\bin\llvm-lit -v tests\lit\CodeGen\V6CLANG\shift-i16.ll tests\lit\CodeGen\V6CLANG\shift-i16-byte-aligned.ll
 ```
 
 ### Step 3.7 — Run regression tests [ ]
@@ -259,8 +259,8 @@ python tests\run_all.py
 
 ### Step 3.8 — Verification assembly steps from `tests\features\README.md` [ ]
 
-Compile `tests/features/32/v6llvmc.c` to `v6llvmc_new01.asm`, compare
-with `v6llvmc_old.asm`, iterate if needed.
+Compile `tests/features/32/v6clang.c` to `v6clang_new01.asm`, compare
+with `v6clang_old.asm`, iterate if needed.
 
 ### Step 3.9 — Make sure result.txt is created [ ]
 
@@ -297,8 +297,8 @@ Saves ~32 cc, 6 B.
 ### Example 4 — `unsigned x; ... = x << 8;` with `dst != src`
 
 From the `shl8_diff` baseline in
-[tests/features/32/v6llvmc_old.asm](../tests/features/32/v6llvmc_old.asm)
-the current `V6C_SHL16(BC←HL, 8)` expansion emits:
+[tests/features/32/v6clang_old.asm](../tests/features/32/v6clang_old.asm)
+the current `V6CLANG_SHL16(BC←HL, 8)` expansion emits:
 
 ```asm
   MOV B, H        ; DEAD — overwritten by byte-move below
@@ -324,7 +324,7 @@ unsigned char y = (unsigned char)((unsigned int)x >> 3);   // SRL16 amt=3
 signed char   z = (signed char)((int)x >> 3);              // SRA16 amt=3
 ```
 
-These reach `V6C_SRL16` / `V6C_SRA16` with `ShAmt = 3` — the unchanged
+These reach `V6CLANG_SRL16` / `V6CLANG_SRA16` with `ShAmt = 3` — the unchanged
 `< 8` branch. O62 emits exactly the same code as today for these.
 
 ---
@@ -353,36 +353,36 @@ These reach `V6C_SRL16` / `V6C_SRA16` with `ShAmt = 3` — the unchanged
 ## 7. Future Enhancements
 
 * Extend to `ShAmt == 15` special case using bit-test pattern.
-* Apply the same byte-aligned fast path to `V6C_SHL/SRL/SRA` i32 (when
+* Apply the same byte-aligned fast path to `V6CLANG_SHL/SRL/SRA` i32 (when
   added).
 * **Direct i8 right-shift lowering.** Today
-  [LowerSRL](../llvm/lib/Target/V6C/V6CISelLowering.cpp) and
+  [LowerSRL](../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp) and
   `LowerSRA` for i8 zero/sign-extend to i16 and route through
-  `V6C_SRL16` / `V6C_SRA16` with `ShAmt` 1..7. The high byte is
+  `V6CLANG_SRL16` / `V6CLANG_SRA16` with `ShAmt` 1..7. The high byte is
   known constant (0 for SRL, sign for SRA) but that information is
   lost by post-RA expansion, so the per-bit loop pointlessly shifts
   both halves and a final `TRUNCATE` discards the high byte. A
   dedicated i8 lowering would emit a pure i8 `ORA A; RAR` (SRL) or
   `MOV A,r; RLC; MOV A,r; RAR` (SRA) chain and skip the i16 round
   trip, saving ~12 cc + 3 B per i8 right shift. **Out of O62 scope**
-  — requires its own ISel work (new `V6CISD::SRL8` / `SRA8` nodes
+  — requires its own ISel work (new `V6ClangISD::SRL8` / `SRA8` nodes
   or pure-DAG expansion in `LowerSRL` / `LowerSRA`).
 * **Pre-existing trunc-store ISel gap (discovered while building O62
   test 32).** Code like `unsigned char y = x >> 3; *q = y;` (where
   `x` is `unsigned char`) crashes ISel with
   `Cannot select: ch = store<...trunc to i8> ... SRL16 build_pair(reg, 0), 3`.
-  The pattern reaches a `truncstore i8` of a `V6CISD::SRL16` result
+  The pattern reaches a `truncstore i8` of a `V6ClangISD::SRL16` result
   that has no selection rule. Same crash for `signed char y = x >> 3`.
   Workaround: introduce an explicit i16 temporary
   (`unsigned int t = x; *q = t >> 3;`). The fix belongs in
-  `V6CInstrInfo.td` (add a truncstore pattern) or in `LowerSRL`/`LowerSRA`
+  `V6ClangInstrInfo.td` (add a truncstore pattern) or in `LowerSRL`/`LowerSRA`
   (return an i8-valued node directly when input is i8). **Filed as
   follow-up; not blocking O62.**
 
 ## 8. References
 
 * [O62 design](future_plans/O62_efficient_shift_expansion.md)
-* [V6C Build Guide](../docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](future_plans/README.md)
 * [Pipeline Feature Workflow](pipeline_feature.md)

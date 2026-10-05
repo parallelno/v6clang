@@ -1,4 +1,4 @@
-C:\Work\Programming\v6llvmc\tests\features\83\contract-O2.elf:	file format elf32-v6c
+C:\Work\Programming\v6clang\tests\features\83\contract-O2.elf:	file format elf32-v6clang
 
 .debug_frame contents:
 
@@ -161,4 +161,3 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O2.elf:	file format elf32
 
 
 .eh_frame contents:
-

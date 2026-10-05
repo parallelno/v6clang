@@ -66,7 +66,7 @@ test_simple_tailcall:               ; 9B
 
 c8080 stats: 60B total (test funcs only), uses static stack for args.
 
-### v6llvmc Assembly
+### v6clang Assembly
 
 ```asm
 test_cond_zero_tailcall:            ; WITH O28 threading
@@ -105,11 +105,11 @@ test_simple_tailcall:
 ; Total: 6B, taken: 24cc, not-taken: 28cc
 ```
 
-v6llvmc stats: 36B total (test funcs only). No static stack needed.
+v6clang stats: 36B total (test funcs only). No static stack needed.
 
 ### Comparison
 
-| Function | c8080 | v6llvmc | Savings |
+| Function | c8080 | v6clang | Savings |
 |----------|-------|---------|---------|
 | test_cond_zero_tailcall | 18B | 11B | 7B (39%) |
 | test_two_cond_tailcall | 30B | 19B | 11B (37%) |

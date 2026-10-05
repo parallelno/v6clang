@@ -1,7 +1,7 @@
 # O85 — TypeNarrowing: Narrow i16 Up-Counter When IV Has Arithmetic Users
 
-**Source:** V6C — discovered while investigating O52 (Index IV Rewriting); O52 turned out to be
-superseded by `V6CLoopPointerInduction`, but the counter itself may survive as i16 when used in
+**Source:** V6CLANG — discovered while investigating O52 (Index IV Rewriting); O52 turned out to be
+superseded by `V6ClangLoopPointerInduction`, but the counter itself may survive as i16 when used in
 direct arithmetic in addition to GEP indexing.
 **Savings:** 2 cc/iter (INX rp → INR r); minor register-pressure reduction from splitting
 the pair live range
@@ -12,15 +12,15 @@ structural icmp path is straightforward
 **Risk:** Low — narrowing is only performed when the unsigned range is provably ⊆ [0, 255];
 all non-AddOp uses of the old i16 IV are replaced with `zext(i8 narrow_iv)`, which is
 bit-for-bit identical to the original i16 value within that range
-**Dependencies:** `V6CLoopPointerInduction` (runs first, may eliminate the exit icmp); existing
-`tryNarrowLoopIV` in `V6CTypeNarrowing.cpp` (this optimization extends it)
+**Dependencies:** `V6ClangLoopPointerInduction` (runs first, may eliminate the exit icmp); existing
+`tryNarrowLoopIV` in `V6ClangTypeNarrowing.cpp` (this optimization extends it)
 **Status:** [x] complete
 
 ---
 
 ## Problem
 
-`V6CLoopPointerInduction` (LPI) converts GEP-indexed loop bodies to running-pointer form.
+`V6ClangLoopPointerInduction` (LPI) converts GEP-indexed loop bodies to running-pointer form.
 When it fires, it:
 
 1. Replaces `gep base, %i` with an incrementing pointer PHI.
@@ -28,7 +28,7 @@ When it fires, it:
    `icmp eq ptr %ptr.next, arr_end`.
 
 After step 2 the counter PHI `%i` may still be live because it appears in body arithmetic
-(`sum += i`, `out[i] = weight * i`, etc.).  `V6CTypeNarrowing::tryNarrowLoopIV` then has the
+(`sum += i`, `out[i] = weight * i`, etc.).  `V6ClangTypeNarrowing::tryNarrowLoopIV` then has the
 opportunity to narrow it from i16 to i8 — but it refuses because of an overly conservative
 guard:
 
@@ -158,10 +158,10 @@ PHI users of `AddOp`), then replace each such use with `zext(i8 NewPN)` / `zext(
 
 ## Implementation
 
-### Step 1 — Enable SCEV in `V6CTypeNarrowing`
+### Step 1 — Enable SCEV in `V6ClangTypeNarrowing`
 
 ```cpp
-void V6CTypeNarrowing::getAnalysisUsage(AnalysisUsage &AU) const {
+void V6ClangTypeNarrowing::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.setPreservesAll();  // remove if we need to invalidate
 }
@@ -238,7 +238,7 @@ if (CmpsDirect.empty() && CmpsViaPtr.empty()) {
   (e.g., `for (int i = 0; i < n; i++)`) require a SCEV range that proves `[0, max_n − 1] ⊆ [0, 255]`
   which in practice only fires if `n` is derived from an i8 source.
 - Only handles **step ±1**.  Larger steps are already rejected by the existing guard.
-- Does NOT replace the GEP index — that is `V6CLoopPointerInduction`'s job.  O85 is purely
+- Does NOT replace the GEP index — that is `V6ClangLoopPointerInduction`'s job.  O85 is purely
   about the loop counter's data type, not about pointer form.
 - The inserted `zext(i8 narrow_iv)` increases the live range of `narrow_iv`.  In a tight
   register-pressure loop this could cause a spill; guard with a heuristic similar to the

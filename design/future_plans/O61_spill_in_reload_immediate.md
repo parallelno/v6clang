@@ -26,15 +26,15 @@ unsigned char arr_sum(unsigned char* arr, unsigned char n) {
 Build with:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S temp\o61_test.c \
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S temp\o61_test.c \
     -o temp\o61_test.asm \
-    -mllvm --enable-deferred-spilling -mllvm -mv6c-annotate-pseudos \
-    -mllvm -v6c-disable-shld-lhld-fold
+    -mllvm --enable-deferred-spilling -mllvm -mv6clang-annotate-pseudos \
+    -mllvm -v6clang-disable-shld-lhld-fold
 ```
 
 The loop body holds `arr` (HL/DE pointer), `i`, `n`, `sum`, `tmp2`, and the
 transient `arr[i]` / `arr[i-1]` loads simultaneously — more live values than
-GPRs — so RA emits multiple `V6C_SPILL*` / `V6C_RELOAD*` pairs per iteration.
+GPRs — so RA emits multiple `V6CLANG_SPILL*` / `V6CLANG_RELOAD*` pairs per iteration.
 Each reload is a prime O61 candidate: the spilled value is consumed exactly
 once, on a single code path, and the function is static-stack-eligible
 (`noinline`, no address-taken locals, not reachable from an ISR).
@@ -49,16 +49,16 @@ SHLD/LHLD pairs survive into the expansion stage where the O61 rewrite
 runs. Disable via the existing hidden flag:
 
 ```
--mllvm -v6c-disable-shld-lhld-fold
+-mllvm -v6clang-disable-shld-lhld-fold
 ```
 
 Full command for the reproducer:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S temp\o61_test.c \
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S temp\o61_test.c \
     -o temp\o61_test.asm \
-    -mllvm --enable-deferred-spilling -mllvm -mv6c-annotate-pseudos \
-    -mllvm -v6c-disable-shld-lhld-fold
+    -mllvm --enable-deferred-spilling -mllvm -mv6clang-annotate-pseudos \
+    -mllvm -v6clang-disable-shld-lhld-fold
 ```
 
 Once O61 lands, the two passes should coexist via a cost model that picks
@@ -73,9 +73,9 @@ Under **static stack allocation**, code lives at link-time-known addresses in
 RAM (the Vector 06c runs code from RAM). The classical spill/reload pair
 
 ```
-spill:   SHLD __v6c_ss.f+N        ; HL -> data slot        20cc
+spill:   SHLD __v6clang_ss.f+N        ; HL -> data slot        20cc
 ...
-reload:  LHLD __v6c_ss.f+N        ; slot -> HL             20cc
+reload:  LHLD __v6clang_ss.f+N        ; slot -> HL             20cc
 ```
 
 can be collapsed by making the **reload instruction itself be the data slot**.
@@ -113,8 +113,8 @@ immediate position is known:
 ## Cycle/Size Comparison vs Current Spilling
 
 Baseline assumes static stack (SHLD/LHLD/STA/LDA are available). All
-cycle figures are V6C cycles per
-[V6CInstructionTimings.md](../../docs/V6CInstructionTimings.md):
+cycle figures are V6CLANG cycles per
+[V6ClangInstructionTimings.md](../../docs/V6ClangInstructionTimings.md):
 `MOV r,r`/`MVI r,d8` = 8cc, `LXI rp,d16` = 12cc, `LDA`/`STA` = 16cc,
 `LHLD`/`SHLD` = 20cc, `XCHG` = 4cc.
 
@@ -159,7 +159,7 @@ optimization is a pure reload-side improvement.
 
 ### Memory footprint
 
-* Current: each spill slot takes 1B (i8) or 2B (i16) in `__v6c_ss.f` BSS
+* Current: each spill slot takes 1B (i8) or 2B (i16) in `__v6clang_ss.f` BSS
   **plus** the reload-site instruction (LHLD = 3B, LDA = 3B, +routing).
 * Patched: the reload-site instruction *is* the slot. BSS usage drops by
   1B/2B per spill slot. Reload-site size either stays the same (HL) or
@@ -167,10 +167,10 @@ optimization is a pure reload-side improvement.
 
 ## Prerequisites
 
-1. **Static stack eligibility** (already enforced by `V6CStaticStackAlloc`):
+1. **Static stack eligibility** (already enforced by `V6ClangStaticStackAlloc`):
    no recursion, not reachable from ISRs, no taken address, has frame
    objects. The reload-site must be written only by this function's spill.
-2. **Code is in RAM**. V6C runs from RAM; OK.
+2. **Code is in RAM**. V6CLANG runs from RAM; OK.
 3. **Spill dominates reload** on every path. Already an invariant of spill
    insertion (RA only inserts a reload where the slot is defined on every
    reaching path). Multiple spills joining into a single reload (Φ-style)
@@ -178,7 +178,7 @@ optimization is a pure reload-side improvement.
 4. **Reload-site addressability at link time.** The spill's operand must be
    `reload_site+offset`. That means either:
    * an assembler-level local symbol emitted next to the reload, referenced
-     from the spill — the V6C object writer already supports `R_V6C_16`
+     from the spill — the V6CLANG object writer already supports `R_V6CLANG_16`
      relocations (see M10), so this is straightforward, OR
    * an `MCSymbol` materialised in the MCStreamer and referenced as the
      spill's operand.
@@ -220,9 +220,9 @@ optimization is a pure reload-side improvement.
 ## How It Maps Onto the Current Pipeline
 
 The optimization is an **expansion-time rewrite**, not a new RA feature.
-The RA continues to create `V6C_SPILL*` / `V6C_RELOAD*` pseudos exactly as
+The RA continues to create `V6CLANG_SPILL*` / `V6CLANG_RELOAD*` pseudos exactly as
 today. The change happens in `eliminateFrameIndex` /
-`expandPostRAPseudo` in `V6CRegisterInfo.cpp`, keyed on:
+`expandPostRAPseudo` in `V6ClangRegisterInfo.cpp`, keyed on:
 
 1. Function is in the static-stack set (already a queryable attribute).
 2. The cost model (see [Cost Model](#cost-model)) selects `K ≥ 1`
@@ -262,12 +262,12 @@ logic is the `MO_PATCHED_IMM` flag plus its `LoadImmCombine` /
   these passes treat it as an opaque load, not as a constant-producing
   instruction. This is the single invasive change outside the expansion
   logic.
-* **V6CLoadStoreOpt / INX HL merging** — does not run on the reload site
+* **V6ClangLoadStoreOpt / INX HL merging** — does not run on the reload site
   (no consecutive LXI+MOV pattern).
-* **V6CRedundantFlagElim / ZeroTestOpt** — `LXI` and `MVI` do not touch
+* **V6ClangRedundantFlagElim / ZeroTestOpt** — `LXI` and `MVI` do not touch
   flags, so no interaction.
 * **Linker / relocations** — no change. The spill's `SHLD Sym+1` uses the
-  existing `R_V6C_16` relocation.
+  existing `R_V6CLANG_16` relocation.
 
 ## Cost Model
 
@@ -362,7 +362,7 @@ The LIFO-affinity heuristic (#3) is a second-order refinement that
 should be layered on later, once measurements exist to justify the
 extra chooser complexity.
 
-### Worked example: `arr_sum` slot `__v6c_ss.arr_sum+2`
+### Worked example: `arr_sum` slot `__v6clang_ss.arr_sum+2`
 
 Spill source: HL, one source point (`SHLD` = 20cc). Reloads in program
 order:
@@ -413,10 +413,10 @@ K = 1 patching reload #2 wins, in agreement with all the rules above.
 * Is there a case where the reload site is emitted inside a data region
   (e.g. jump-table)? No — reloads are always in the `.text` stream for
   this function.
-* What about `V6C_LEA_FI` (address-of spill slot)? Not applicable —
+* What about `V6CLANG_LEA_FI` (address-of spill slot)? Not applicable —
   a patched reload has no addressable slot. If `&spillslot` is needed,
   the function falls back to the classical slot. RA does not emit
-  `V6C_LEA_FI` against spill slots today, only against user allocas, so
+  `V6CLANG_LEA_FI` against spill slots today, only against user allocas, so
   this is moot.
 * How does this interact with **two-operand spills** (16-bit pair spilled
   via two 8-bit stores through A)? Each byte goes to its own imm field
@@ -459,7 +459,7 @@ while keeping each step bounded:
 6. **Stage 6 — extend i8 spill-side handling to non-A sources**
    (see [Stage 6 scope](#stage-6--i8-non-a-spill-sources) below).
    Stage 4 only patches i8 spills whose source is `A`. Stage 6 lifts
-   that restriction so `V6C_SPILL8` pseudos with src ∈ {B, C, D, E, H,
+   that restriction so `V6CLANG_SPILL8` pseudos with src ∈ {B, C, D, E, H,
    L} become eligible, reusing the O64 decision ladder
    (`expandSpill8Static`) with the `Sym+1` address appender.
    Reload-side handling is already complete in Stage 4 (all eight r8
@@ -469,7 +469,7 @@ while keeping each step bounded:
    unblocked.
 
 At every stage:
-* Gate behind `-mv6c-spill-patched-reload` for A/B testing.
+* Gate behind `-mv6clang-spill-patched-reload` for A/B testing.
 * Measure cycle count and code size, and the golden suite, focusing
   on the 3–5 functions with the highest spill traffic.
 * Verify that disabling the flag yields byte-identical output to
@@ -487,7 +487,7 @@ inefficient classical expansions currently used for BC.
 
 ### Cleanup #1 — BC spill expansion
 
-The current `V6C_SPILL16` with `BC` source expands via `LXI HL, slot;
+The current `V6CLANG_SPILL16` with `BC` source expands via `LXI HL, slot;
 MOV M,C; INX HL; MOV M,B` (12 + 8 + 6 + 8 = 34cc + prologue / 44cc with
 HL preservation, 8 bytes with `PUSH H`/`POP H`). The `MOV M,r` routing
 is the reason BC has historically been modelled as "36–48cc through
@@ -547,7 +547,7 @@ The Stage 3 filter
 
 ```cpp
 llvm::all_of(E.Spills, [](MachineInstr *S) {
-  return S->getOperand(0).getReg() == V6C::HL;
+  return S->getOperand(0).getReg() == V6CLANG::HL;
 });
 ```
 
@@ -556,7 +556,7 @@ becomes
 ```cpp
 llvm::all_of(E.Spills, [](MachineInstr *S) {
   Register Src = S->getOperand(0).getReg();
-  return Src == V6C::HL || Src == V6C::DE || Src == V6C::BC;
+  return Src == V6CLANG::HL || Src == V6CLANG::DE || Src == V6CLANG::BC;
 });
 ```
 
@@ -572,7 +572,7 @@ right store sequence (HL: `SHLD`; DE: `XCHG; SHLD[; XCHG]`; BC:
 The two spill-side cleanups (BC expansion, liveness-gated HL preservation)
 apply to the classical `eliminateFrameIndex` path as well, not just to
 the patched path. They belong in the same PR as Stage 5 so the
-`__v6c_ss.<fn>+N` baseline reflects the cheaper form before Δ is
+`__v6clang_ss.<fn>+N` baseline reflects the cheaper form before Δ is
 re-measured.
 
 ## Stage 6 — i8 non-A spill sources
@@ -594,7 +594,7 @@ one new call site through the shared helper.
 
 ### What becomes eligible
 
-Any `V6C_SPILL8` whose source is in `{B, C, D, E, H, L}`, subject to
+Any `V6CLANG_SPILL8` whose source is in `{B, C, D, E, H, L}`, subject to
 the usual static-stack gating. The reload-side emitter is unchanged:
 each patched reload site is `MVI r, 0` with `MO_PATCH_IMM`, 8 cc / 2 B,
 for any `r ∈ {A, B, C, D, E, H, L}`.
@@ -602,7 +602,7 @@ for any `r ∈ {A, B, C, D, E, H, L}`.
 ### Patched-spill sequence
 
 Exactly the O64 ladder, with the final store targeting `Sym+1`
-instead of `__v6c_ss.<fn>+N`. For `src ∈ {B, C, D, E}`:
+instead of `__v6clang_ss.<fn>+N`. For `src ∈ {B, C, D, E}`:
 
 | Row | Precondition                       | Patched sequence                                         | Cost      |
 |-----|-------------------------------------|----------------------------------------------------------|-----------|
@@ -693,17 +693,17 @@ Stage 6 is small because O64 already did the hard work:
 
 1. **Filter widening.** The Stage 5 spill filter
    ```cpp
-   return Src == V6C::HL || Src == V6C::DE || Src == V6C::BC;
+   return Src == V6CLANG::HL || Src == V6CLANG::DE || Src == V6CLANG::BC;
    ```
-   extends to accept `V6C_SPILL8` with any i8 source register
+   extends to accept `V6CLANG_SPILL8` with any i8 source register
    (existing i16 behaviour unchanged). Express the i8 admission as
    a separate branch, not by enlarging the regclass check, because
    the ladder helper differs (`expandSpill8Static` vs the i16
    emitters).
 2. **Emitter call.** Replace the Stage 4 A-only i8 spill emitter
    ```cpp
-   BuildMI(MBB, R, DL, TII.get(V6C::STA))
-       .addSym(Syms[0], V6CII::MO_PATCH_IMM);
+   BuildMI(MBB, R, DL, TII.get(V6CLANG::STA))
+       .addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
    ```
    with a call through the shared O64 helper:
    ```cpp
@@ -711,7 +711,7 @@ Stage 6 is small because O64 already did the hard work:
                       SrcReg, /*SrcIsKill=*/true,
                       TII, TRI,
                       [&](MachineInstrBuilder &B) {
-                        B.addSym(Syms[0], V6CII::MO_PATCH_IMM);
+                        B.addSym(Syms[0], V6ClangII::MO_PATCH_IMM);
                       });
    SpillMI->eraseFromParent();
    ```
@@ -746,10 +746,10 @@ Stage 6 is small because O64 already did the hard work:
   into the helper.
 * **O63** is orthogonal. Stage 6 uses only flag-clean instructions
   (the ladder is flag-clean by O64 construction), so whether or
-  not `V6C_SPILL8` still carries `Defs=[FLAGS]` is immaterial.
+  not `V6CLANG_SPILL8` still carries `Defs=[FLAGS]` is immaterial.
 * **O43** interaction is unchanged: O43 only folds adjacent
   SHLD/LHLD pairs, which Stage 6 never emits. Coexists cleanly
-  with the `-v6c-disable-shld-lhld-fold` measurement gate.
+  with the `-v6clang-disable-shld-lhld-fold` measurement gate.
 * **LoadImmCombine / AccumulatorPlanning** already treat patched
   `MVI` / `LXI` operands as opaque (the `MO_PATCH_IMM` flag
   introduced in Stage 1). No new opt-outs.
@@ -757,7 +757,7 @@ Stage 6 is small because O64 already did the hard work:
 ### Testing
 
 1. **Lit tests** under
-   `llvm/test/CodeGen/V6C/spill-patched-reload-i8-nonA-*.ll`, one
+   `llvm/test/CodeGen/V6CLANG/spill-patched-reload-i8-nonA-*.ll`, one
    function per source register in `{B, C, D, E, H, L}`, with
    CHECK lines asserting:
    * `STA .Lpatch<N>+1` (or `LXI HL, .Lpatch<N>+1; MOV M, r` for
@@ -767,12 +767,12 @@ Stage 6 is small because O64 already did the hard work:
 2. **Regression.** Stage 4 tests continue to pass unmodified
    (Stage 6 does not touch the A-source path). O64 lit tests
    continue to pass unmodified. O43 tests unaffected.
-3. **Feature tests.** Re-generate `tests/features/37/v6llvmc.asm`
+3. **Feature tests.** Re-generate `tests/features/37/v6clang.asm`
    (the existing O61 reproducer) and any other feature test whose
    hot loop spills a non-A i8 across a call. Expect strictly lower
    cycle/byte counts in every affected function; update
    `result.txt` accordingly following the five-section structure.
-4. **Flag gate.** With `-mv6c-spill-patched-reload` off, Stage 6
+4. **Flag gate.** With `-mv6clang-spill-patched-reload` off, Stage 6
    emits byte-identical output to the O64-only baseline. Verify
    on every affected test.
 

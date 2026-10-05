@@ -11297,9 +11297,9 @@ def err_omp_wrong_dependency_iterator_type : Error<
 def err_target_unsupported_type
     : Error<"%0 requires %select{|%2 bit size}1 %3 %select{|return }4type support,"
             " but target '%5' does not support it">;
-def warn_v6c_expensive_type
+def warn_v6clang_expensive_type
     : Warning<"use of %0 is expensive on target '%1' (software emulation required)">,
-      InGroup<DiagGroup<"v6c-expensive-type">>;
+      InGroup<DiagGroup<"v6clang-expensive-type">>;
 def err_omp_lambda_capture_in_declare_target_not_to : Error<
   "variable captured in declare target region must appear in a to clause">;
 def err_omp_device_type_mismatch : Error<

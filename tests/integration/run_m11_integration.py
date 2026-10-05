@@ -32,7 +32,7 @@ ROOT = find_project_root()
 DEFAULT_LLC = ROOT / "llvm-build" / "bin" / "llc.exe"
 DEFAULT_V6ASM = os.environ.get("V6ASM")
 DEFAULT_V6EMUL = os.environ.get("V6EMUL")
-RUNTIME_DIR = ROOT / "compiler-rt" / "lib" / "builtins" / "v6c"
+RUNTIME_DIR = ROOT / "compiler-rt" / "lib" / "builtins" / "v6clang"
 
 
 def compile_ir_to_asm(llc, ir_text):
@@ -43,7 +43,7 @@ def compile_ir_to_asm(llc, ir_text):
         ir_path = f.name
     try:
         result = subprocess.run(
-            [str(llc), "-mtriple=i8080-unknown-v6c", "-O2",
+            [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2",
              ir_path, "-o", "-"],
             capture_output=True, text=True, timeout=30,
         )
@@ -113,7 +113,7 @@ TESTS = []
 
 IR_HEADER = (
     'target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"\n'
-    'target triple = "i8080-unknown-v6c"\n\n'
+    'target triple = "i8080-unknown-v6clang"\n\n'
 )
 
 

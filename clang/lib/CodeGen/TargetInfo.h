@@ -522,7 +522,7 @@ std::unique_ptr<TargetCodeGenInfo>
 createVETargetCodeGenInfo(CodeGenModule &CGM);
 
 std::unique_ptr<TargetCodeGenInfo>
-createV6CTargetCodeGenInfo(CodeGenModule &CGM);
+createV6ClangTargetCodeGenInfo(CodeGenModule &CGM);
 
 enum class WebAssemblyABIKind {
   MVP = 0,

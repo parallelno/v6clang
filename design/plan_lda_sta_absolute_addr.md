@@ -22,7 +22,7 @@ MOV  M, A           ;  8cc, 1B
 ```
 
 Note: loads/stores from **global variables** already use LDA/STA via
-existing `V6Cwrapper tglobaladdr` patterns. This issue only affects
+existing `V6Clangwrapper tglobaladdr` patterns. This issue only affects
 constant integer addresses produced by `inttoptr` in the IR —
 typically used for memory-mapped I/O.
 
@@ -40,25 +40,25 @@ STA  0x8000         ; 16cc, 3B — direct absolute store
 
 ### Root cause
 
-The SelectionDAG ISel has combined patterns for `(load (V6Cwrapper
-tglobaladdr))` → LDA and `(store val, (V6Cwrapper tglobaladdr))` → STA,
+The SelectionDAG ISel has combined patterns for `(load (V6Clangwrapper
+tglobaladdr))` → LDA and `(store val, (V6Clangwrapper tglobaladdr))` → STA,
 but no corresponding patterns for bare `ConstantSDNode` addresses.
 
 When the address is a constant integer (from `inttoptr`), ISel
 materializes it first via `(i16 imm) → LXI`, then selects
-`V6C_LOAD8_P` / `V6C_STORE8_P` for the load/store through the register.
+`V6CLANG_LOAD8_P` / `V6CLANG_STORE8_P` for the load/store through the register.
 
 ## 2. Strategy
 
 ### Approach: Add ISel patterns for constant-address LDA/STA
 
-Add two `Pat<>` entries in `V6CInstrInfo.td` that match loads/stores
+Add two `Pat<>` entries in `V6ClangInstrInfo.td` that match loads/stores
 from bare immediate addresses, directly selecting LDA/STA.
 
 ### Why this works
 
 TableGen patterns with an `imm` constraint on the address operand are
-more specific than the generic `V6C_LOAD8_P` pattern (which accepts any
+more specific than the generic `V6CLANG_LOAD8_P` pattern (which accepts any
 `i16:$addr`). The more specific pattern wins during ISel, so LDA/STA
 will be selected whenever the address is a compile-time constant.
 
@@ -70,15 +70,15 @@ allocator — still cheaper than `LXI + MOV A,M + MOV r,A`.
 
 | File | Change |
 |------|--------|
-| `V6CInstrInfo.td` | Add 2 `Pat<>` for constant-address LDA/STA |
+| `V6ClangInstrInfo.td` | Add 2 `Pat<>` for constant-address LDA/STA |
 
 ## 3. Implementation Steps
 
 ### Step 3.1 — Add ISel patterns for constant-address LDA/STA [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-Add after the existing `(load (V6Cwrapper tglobaladdr))` → LDA pattern:
+Add after the existing `(load (V6Clangwrapper tglobaladdr))` → LDA pattern:
 
 ```tablegen
 // Load i8 from constant integer address via LDA
@@ -90,10 +90,10 @@ def : Pat<(store i8:$val, imm:$addr), (STA i8:$val, imm:$addr)>;
 
 > **Design Notes**: The `imm` predicate matches `ConstantSDNode`, which
 > is what `inttoptr (i16 const)` becomes in the SelectionDAG. This is
-> more specific than the `i16:$addr` in `V6C_LOAD8_P`/`V6C_STORE8_P`,
+> more specific than the `i16:$addr` in `V6CLANG_LOAD8_P`/`V6CLANG_STORE8_P`,
 > ensuring the new patterns take priority.
 >
-> **Implementation Notes**: Added 2 `Pat<>` entries after existing global-address patterns in V6CInstrInfo.td (lines ~650-654). The `imm` operand matches `ConstantSDNode` from `inttoptr` in IR.
+> **Implementation Notes**: Added 2 `Pat<>` entries after existing global-address patterns in V6ClangInstrInfo.td (lines ~650-654). The `imm` operand matches `ConstantSDNode` from `inttoptr` in IR.
 
 ### Step 3.2 — Build [x]
 
@@ -105,7 +105,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: lda-sta-const-addr.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/lda-sta-const-addr.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/lda-sta-const-addr.ll`
 
 Test that:
 1. Load i8 from constant address → LDA
@@ -215,7 +215,7 @@ RET                  ; 12cc, 1B
 | Risk | Mitigation |
 |------|------------|
 | LDA constrains result to A — extra MOV if value needed elsewhere | MOV copy is cheaper than LXI+MOV M; ISel naturally handles this |
-| Pattern could interfere with V6C_LOAD8_P for register-held addresses | `imm` is strictly more specific than `i16:$addr`; no interference |
+| Pattern could interfere with V6CLANG_LOAD8_P for register-held addresses | `imm` is strictly more specific than `i16:$addr`; no interference |
 | STA constrains source to A — extra MOV if value comes from elsewhere | Same reasoning; MOV copy cost is net-positive vs LXI+MOV M |
 
 ---
@@ -237,7 +237,7 @@ RET                  ; 12cc, 1B
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O6 Feature Description](design\future_plans\O06_lda_sta_absolute_addr.md)

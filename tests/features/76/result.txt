@@ -1,14 +1,14 @@
 Feature 76: O92 — Unified cross-BB physical-register value forwarding
 
-Optimization: A new post-RA dataflow pass (V6CRegValueForwarding) tracks, per
+Optimization: A new post-RA dataflow pass (V6ClangRegValueForwarding) tracks, per
 basic block, which physical register / constant each register currently holds,
 and propagates that lattice across all CFG edges — including loop back-edges —
 to a fixpoint. A `MOV r, s` (or `MVI r, imm`) is erased whenever the lattice
 already proves `r` holds that exact value on entry. This subsumes two older,
 weaker, intra-block-only removers:
 
-  - V6CAccumulatorPlanning::eliminateRedundantAccMoves  (A-specific, 1 block)
-  - V6CPeephole::eliminateRedundantMov                  (adjacent dup MOVs)
+  - V6ClangAccumulatorPlanning::eliminateRedundantAccMoves  (A-specific, 1 block)
+  - V6ClangPeephole::eliminateRedundantMov                  (adjacent dup MOVs)
 
 Both folded into O92; the AccumulatorPlanning pass is now a no-op placeholder
 and the Peephole helper was deleted. O92 is register-agnostic (TRI-based alias
@@ -21,7 +21,7 @@ Soundness guard: a `MOV A, D` that is a *legitimate* reload (A was clobbered in
 the loop body, so A no longer equals D) is preserved — see .LBB15_6 below.
 
 ====================================================================
-1. C test case (tests/features/76/v6llvmc.c)
+1. C test case (tests/features/76/v6clang.c)
 ====================================================================
 
 typedef unsigned char u8;
@@ -104,14 +104,14 @@ c8080 stats (worst path, bytes):
 (c8080 keeps everything memory-resident; cross-BB register forwarding is N/A.)
 
 ====================================================================
-3. v6llvmc OLD asm — repro (pre-O92)
+3. v6clang OLD asm — repro (pre-O92)
 ====================================================================
 
 repro:
 ; %bb.0:
         MVI     A, 7
-        STA     __v6c_a.repro
-        LDA     __v6c_a.repro
+        STA     __v6clang_a.repro
+        LDA     __v6clang_a.repro
         MOV     D, A
         ORA     A
         JZ      .LBB15_3
@@ -151,14 +151,14 @@ repro:
         JMP     .LBB15_4
 
 ====================================================================
-4. v6llvmc NEW asm — repro (with O92)
+4. v6clang NEW asm — repro (with O92)
 ====================================================================
 
 repro:
 ; %bb.0:
         MVI     A, 7
-        STA     __v6c_a.repro
-        LDA     __v6c_a.repro
+        STA     __v6clang_a.repro
+        LDA     __v6clang_a.repro
         MOV     D, A
         ORA     A
         JZ      .LBB15_3
@@ -211,9 +211,9 @@ register-agnostic).
   | compiler         | repro B  | inner-loop body (per iter)       |
   +------------------+----------+----------------------------------+
   | c8080            | ~268     | ~70cc (r/i memory-resident)      |
-  | v6llvmc OLD      |  base    | 48cc (MOV M,E;INR E;MOV A,D;     |
+  | v6clang OLD      |  base    | 48cc (MOV M,E;INR E;MOV A,D;     |
   |                  |          |       CMP E;INX H;JNZ)           |
-  | v6llvmc NEW      | base-2   | 40cc (MOV M,E;INR E;CMP E;       |
+  | v6clang NEW      | base-2   | 40cc (MOV M,E;INR E;CMP E;       |
   |                  |          |       INX H;JNZ)                 |
   +------------------+----------+----------------------------------+
 
@@ -228,10 +228,10 @@ Real-world impact (tests/run_all.py benchmark suite):
 6. Implementation
 ====================================================================
 
-New pass:     llvm/lib/Target/V6C/V6CRegValueForwarding.cpp
-              FunctionPass *createV6CRegValueForwardingPass()
-Pipeline:     addPreEmitPass(), between V6CZeroTestOpt and V6CRedundantFlagElim.
-CLI toggle:   -v6c-disable-reg-value-forwarding (default off = enabled)
+New pass:     llvm/lib/Target/V6CLANG/V6ClangRegValueForwarding.cpp
+              FunctionPass *createV6ClangRegValueForwardingPass()
+Pipeline:     addPreEmitPass(), between V6ClangZeroTestOpt and V6ClangRedundantFlagElim.
+CLI toggle:   -v6clang-disable-reg-value-forwarding (default off = enabled)
 Lattice:      ValState { Reg r | Const c }, DenseMap<Register, ValState>;
               absence = Top. RPO worklist, optimistic ("must") meet over
               already-computed predecessors so loop-carried equalities survive.
@@ -242,17 +242,17 @@ Soundness:    isValuePreservingAccOp() treats ORA A / ANA A as non-clobbering;
               immediates (getPreInstrSymbol / target flags) never folded.
 
 Removed (folded in):
-  V6CAccumulatorPlanning.cpp  -> eliminateRedundantAccMoves + helpers deleted;
+  V6ClangAccumulatorPlanning.cpp  -> eliminateRedundantAccMoves + helpers deleted;
                                  pass retained as a no-op placeholder.
-  V6CPeephole.cpp             -> eliminateRedundantMov deleted (declaration,
+  V6ClangPeephole.cpp             -> eliminateRedundantMov deleted (declaration,
                                  definition, call site). collapseMovChain
                                  (O82/O88) and eliminateSelfMov kept.
 
-New lit test: llvm/test/CodeGen/V6C/reg-value-forwarding-cross-bb.ll
+New lit test: llvm/test/CodeGen/V6CLANG/reg-value-forwarding-cross-bb.ll
 Baseline RUN lines of peephole-mov.ll, peephole-inx-dcx-spill-fold.ll,
 peephole-pair-copy-roundtrip.ll, shift-i16-byte-aligned.ll updated to also
-pass --v6c-disable-reg-value-forwarding so their "unoptimized" prefixes still
+pass --v6clang-disable-reg-value-forwarding so their "unoptimized" prefixes still
 show the pre-elimination output (O92 now also removes those round-trips).
 
-Regression: tests/run_all.py -> golden PASS, lit PASS (128 V6C), benchmarks
+Regression: tests/run_all.py -> golden PASS, lit PASS (128 V6CLANG), benchmarks
 PASS (all checksums match; fannkuch improved).

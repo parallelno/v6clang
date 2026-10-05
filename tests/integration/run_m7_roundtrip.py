@@ -41,7 +41,7 @@ def compile_ir_to_asm(llc, ir_text):
         ir_path = f.name
     try:
         result = subprocess.run(
-            [str(llc), "-mtriple=i8080-unknown-v6c", "-O2", ir_path, "-o", "-"],
+            [str(llc), "-mtriple=i8080-unknown-v6clang", "-O2", ir_path, "-o", "-"],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:

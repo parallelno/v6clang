@@ -6,7 +6,7 @@
 
 ## Problem
 
-V6C emits a 5-instruction sequence for "decrement counter and branch if
+V6CLANG emits a 5-instruction sequence for "decrement counter and branch if
 nonzero" because the accumulator is required for both `DCR` (which doesn't
 set all flags on all registers) and the branch test:
 

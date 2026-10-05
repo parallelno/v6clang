@@ -1,14 +1,14 @@
 Feature 33 — O61 Spill Into the Reload's Immediate Operand (Stage 1)
 ====================================================================
 
-Stage 1 scope: rewrite V6C_SPILL16 / V6C_RELOAD16 pairs whose source and
+Stage 1 scope: rewrite V6CLANG_SPILL16 / V6CLANG_RELOAD16 pairs whose source and
 destination are both `HL`, where a single spill feeds one or more reloads,
 into a SHLD that patches the immediate bytes of a later LXI HL (the
-reload). Behind `-mllvm -mv6c-spill-patched-reload` (default off).
+reload). Behind `-mllvm -mv6clang-spill-patched-reload` (default off).
 
 
 -----------------------------------------------------------------
-C test source (tests/features/33/v6llvmc.c)
+C test source (tests/features/33/v6clang.c)
 -----------------------------------------------------------------
 __attribute__((leaf)) extern unsigned int op1(unsigned int x);
 __attribute__((leaf)) extern unsigned int op2(unsigned int x);
@@ -129,18 +129,18 @@ __o_xor_16               48      10
 
 
 -----------------------------------------------------------------
-v6llvmc assembly (-O2 -mllvm -mv6c-spill-patched-reload)
+v6clang assembly (-O2 -mllvm -mv6clang-spill-patched-reload)
 -----------------------------------------------------------------
 hl_one_spill:                           ; Stage 1 filter rejects (HL->DE via XCHG)
     XCHG
     PUSH    HL
     XCHG
     CALL    op1
-    SHLD    __v6c_ss.hl_one_spill+2
+    SHLD    __v6clang_ss.hl_one_spill+2
     POP     HL
     CALL    op2
     XCHG
-    LHLD    __v6c_ss.hl_one_spill+2
+    LHLD    __v6clang_ss.hl_one_spill+2
     DAD     DE
     RET
 
@@ -185,7 +185,7 @@ main:
 
 
 -----------------------------------------------------------------
-v6llvmc stats (worst-case cycles / body bytes, RET included)
+v6clang stats (worst-case cycles / body bytes, RET included)
 -----------------------------------------------------------------
                      cycles   bytes     vs O61-off
 hl_one_spill            136      14      unchanged (filter rejected)
@@ -197,7 +197,7 @@ Per-slot impact, `hl_two_reloads`:
   O61 + fold:           `a` as SHLD+LXI (32 cc / 6 B) + `b1` as PUSH/POP (28 cc / 2 B) = 60 cc / 8 B
   Net:                  -8 cc, same byte count.
 
-Mechanism: prior to O61, the SHLD/LHLD -> PUSH/POP fold (V6CPeephole) could
+Mechanism: prior to O61, the SHLD/LHLD -> PUSH/POP fold (V6ClangPeephole) could
 only capture one of the two interleaved spill slots (they can't both
 nest on the hardware stack). O61 catches the slot the fold had to leave
 as SHLD/LHLD, and the fold promotes the other slot. The result is two

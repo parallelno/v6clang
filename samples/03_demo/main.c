@@ -1,10 +1,10 @@
-// V6C Demo: draws lines from the center to random points.
-// This demo shows how to use v6c_draw and v6c_math headers.
+// V6CLANG Demo: draws lines from the center to random points.
+// This demo shows how to use v6clang_draw and v6clang_math headers.
 //
 // Build:
 //   samples\03_demo\build.bat
 // Build .s output with annotations:
-//   clang -target i8080-unknown-v6c -O2 main.c -S -o main.s -g -mllvm -mv6c-annotate-pseudos
+//   clang -target i8080-unknown-v6clang -O2 main.c -S -o main.s -g -mllvm -mv6clang-annotate-pseudos
 //
 // Expected output: visual demo of lines drawn from (127, 127) to random points,
 // circles drawn at (127, 127) with decreasing radius, a sin wave across the
@@ -13,12 +13,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <v6c.h>
-#include <v6c_interrupt.h>
-#include <v6c_consts.h>
-#include <v6c_display.h>
-#include <v6c_draw.h>
-#include <v6c_math.h>
+#include <v6clang.h>
+#include <v6clang_interrupt.h>
+#include <v6clang_consts.h>
+#include <v6clang_display.h>
+#include <v6clang_draw.h>
+#include <v6clang_math.h>
 
 
 static uint8_t palette[16] = {
@@ -33,12 +33,12 @@ static uint8_t palette[16] = {
 void main() {
     // Set an empty interrupt handler to avoid issues with enabled iterrupts and
     // no handler.
-    v6c_set_empty_interrupt_handler();
+    v6clang_set_empty_interrupt_handler();
     // Enable interrupts so the palette update can work, because it expects
     // interrupts to be enabled to function correctly.
-    v6c_ei();
+    v6clang_ei();
     // Set the palette to a gradient to better visualize the lines and circles.
-    v6c_set_palette(palette + PALETTE_LEN - 1, true);
+    v6clang_set_palette(palette + PALETTE_LEN - 1, true);
 
     // Clear all 4 planes of the screen buffer.
     memset(SCR_BUFF0_PTR, 0x00, SCR_BUFF_LEN * 4);

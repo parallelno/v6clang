@@ -1,7 +1,7 @@
 # O38. XRA+CMP i8 Zero-Test Peephole
 
 *Identified from analysis of temp/test_o28.asm `test_two_cond_tailcall`.*
-*Fits into V6CPeephole — replaces MOV A,r + ORA A with XRA A + CMP r.*
+*Fits into V6ClangPeephole — replaces MOV A,r + ORA A with XRA A + CMP r.*
 
 ## Problem
 
@@ -61,7 +61,7 @@ eliminates 2 × `MVI A, 0` = **4B + 16cc** additional savings.
 
 ## Pattern
 
-### Match (post-RA, forward scan in V6CPeephole)
+### Match (post-RA, forward scan in V6ClangPeephole)
 
 ```
 MOV  A, r       ; r ∈ {B, C, D, E, H, L} (not A)
@@ -109,7 +109,7 @@ A = 0 — must verify A dead/zero-needed on the target block too.
 
 **Conservative first implementation:** require A dead on the fallthrough
 path. Use `computeRegisterLiveness()` which is already available in
-V6CPeephole. O13 will cascade-eliminate `MVI A, 0` automatically.
+V6ClangPeephole. O13 will cascade-eliminate `MVI A, 0` automatically.
 
 **Enhanced (future):** also check if the first A-consuming instruction
 in the fallthrough block is `MVI A, 0` — if so, consider A-zero as
@@ -117,10 +117,10 @@ acceptable and mark the MVI for elimination.
 
 ## Implementation
 
-### Approach: Extend V6CPeephole
+### Approach: Extend V6ClangPeephole
 
 Add a new pattern match in the existing peephole forward scan loop
-(`V6CPeephole.cpp`). ~40-50 lines.
+(`V6ClangPeephole.cpp`). ~40-50 lines.
 
 ```
 For each MBB:
@@ -138,7 +138,7 @@ For each MBB:
 
 ### Pass ordering
 
-V6CPeephole already runs in the post-RA pipeline before LoadImmCombine.
+V6ClangPeephole already runs in the post-RA pipeline before LoadImmCombine.
 The XRA A seeds A = 0 in the value tracker, and O13 eliminates
 downstream `MVI A, 0`. No pass ordering change needed.
 
@@ -153,7 +153,7 @@ Check actual pipeline order and adjust if needed during implementation.
 
 ## Complexity & Risk
 
-- **Complexity:** Low (~40-50 lines in V6CPeephole)
+- **Complexity:** Low (~40-50 lines in V6ClangPeephole)
 - **Risk:** Very Low — conservative A-dead check prevents miscompiles;
   pattern is narrow (MOV A,r → ORA A → Jcc Z/NZ)
 - **Dependencies:** None required. Benefits from O13 (cascade elimination).

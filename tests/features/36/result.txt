@@ -2,7 +2,7 @@ O61 Stage 3 — Spill Into the Reload's Immediate Operand
   (K <= 2 single-source; K <= 1 multi-source)
 
 ========================================================================
-C test case (tests\features\36\v6llvmc.c)
+C test case (tests\features\36\v6clang.c)
 ========================================================================
 extern int op1(int x) __attribute__((leaf));
 extern int op2(int x) __attribute__((leaf));
@@ -74,15 +74,15 @@ c8080 stats (main, O2-ish hand-optimised):
   length       ~= 69 bytes body
 
 ========================================================================
-v6llvmc Stage 3 asm (tests\features\36\v6llvmc_new02.asm, production flags)
+v6clang Stage 3 asm (tests\features\36\v6clang_new02.asm, production flags)
 ========================================================================
-(see tests\features\36\v6llvmc_new02.asm for full listing)
+(see tests\features\36\v6clang_new02.asm for full listing)
 
 Highlights that demonstrate Stage 3 firing:
 
 multi_src_de:
     XCHG
-    SHLD    __v6c_ss.multi_src_de         ; spill y (separate slot)
+    SHLD    __v6clang_ss.multi_src_de         ; spill y (separate slot)
     XCHG
     MOV     A, B
     ORA     C
@@ -94,7 +94,7 @@ multi_src_de:
 .LBB0_3:
     SHLD    .LLo61_0+1                    ; O61 spill of a into the
                                           ; patched LXI imm bytes
-    LHLD    __v6c_ss.multi_src_de         ; reload y (classical)
+    LHLD    __v6clang_ss.multi_src_de         ; reload y (classical)
     CALL    op2
 .LLo61_0:
     LXI     DE, 0                         ; O61 patched reload of a
@@ -139,7 +139,7 @@ table of Δ cycles):
   Dst=BC (HL-dead) replaced by LXI BC,imm   : +24 cc / +3 B
   Dst=BC (HL-live) replaced by LXI BC,imm   : +52 cc / +5 B
 
-v6llvmc stats for Stage 3 (with -mv6c-spill-patched-reload):
+v6clang stats for Stage 3 (with -mv6clang-spill-patched-reload):
   multi_src_de:   one Δ=+16 reload patched (DE, HL live)  → -16 cc / -3 B
   k2_two_reloads: one Δ=+16 reload patched                → -16 cc / -3 B
   main:           one Δ=+16 reload patched                → -16 cc / -3 B
@@ -156,10 +156,10 @@ register-starved target.
 Flags & regression
 ========================================================================
 Stage 3 invoked via:
-    clang -target i8080-unknown-v6c -O2 -S \
-        -mllvm -mv6c-spill-patched-reload \
-        [-mllvm -v6c-disable-shld-lhld-fold]   ; optional: keeps the
+    clang -target i8080-unknown-v6clang -O2 -S \
+        -mllvm -mv6clang-spill-patched-reload \
+        [-mllvm -v6clang-disable-shld-lhld-fold]   ; optional: keeps the
                                                ; SHLD/LHLD peephole off
 
 Regression: 105/105 lit tests, golden tests all pass.
-New lit test: llvm-project\llvm\test\CodeGen\V6C\spill-patched-reload-k2.ll
+New lit test: llvm-project\llvm\test\CodeGen\V6CLANG\spill-patched-reload-k2.ll

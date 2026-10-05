@@ -23,7 +23,7 @@ LXI  H, 2      ; 12cc  ← costly  INX  H         ;  8cc
 MOV  A, M      ;  8cc            MOV  A, M      ;  8cc
 ```
 
-## Existing implementation (V6CLoadStoreOpt.cpp `mergeAdjacentAccess`)
+## Existing implementation (V6ClangLoadStoreOpt.cpp `mergeAdjacentAccess`)
 
 Matches the strict 4-instruction window
 `LXI H,N ; <load|store via M> ; LXI H,N+1 ; <load|store via M>` with
@@ -83,7 +83,7 @@ for the common path).
 
 Threshold `|Δ| ≤ 3`: 3 × INX H = 24cc / 3B vs. 12cc / 3B for LXI — break-even
 in size, +12cc in speed. Choose threshold dynamically using the dual cost
-model (`V6CCost::INX` vs. `V6CCost::LXI`) so `-Os` allows up to 3 and `-O2`
+model (`V6ClangCost::INX` vs. `V6ClangCost::LXI`) so `-Os` allows up to 3 and `-O2`
 allows up to 1 (any more loses speed). For mixed: Δ = 1 always wins
 (8cc < 12cc, 1B < 3B).
 
@@ -151,13 +151,13 @@ common case but kept for cross-pattern leftovers.
 
 ## Option B — Remove `Defs = [HL]` for HL-addressed loads (deferred)
 
-When `V6C_LOAD8_P` addr operand is already HL, the expansion is just
+When `V6CLANG_LOAD8_P` addr operand is already HL, the expansion is just
 `MOV dst, M` — HL is preserved. An implicit-def of HL is only needed
 when the address is in BC/DE (copy to HL clobbers it). Letting the
 register allocator know HL is still live would enable natural sequential
 reuse without a peephole.
 
-Requires splitting V6C_LOAD8_P into two variants or adding a dynamic
+Requires splitting V6CLANG_LOAD8_P into two variants or adding a dynamic
 implicit-def during ISel based on the addr operand. Higher risk:
 changes RA-visible liveness globally. Defer until E1–E4 land and
 remaining gaps are characterized.
@@ -186,7 +186,7 @@ remaining gaps are characterized.
 
 - E1–E4: Low-medium. State machine is local to each MBB; on any
   unrecognized instruction the state resets to Unknown — fail-safe.
-  Must cover implicit defs (CALL clobbers HL via libcalls; `V6C_LOAD8_P`
+  Must cover implicit defs (CALL clobbers HL via libcalls; `V6CLANG_LOAD8_P`
   with addr=BC/DE clobbers HL via copy). Existing `definesHL` check
   already handles implicit operands — reuse.
 - Option B: Medium. Changing `Defs` affects RA globally. Must verify no

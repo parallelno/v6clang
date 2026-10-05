@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-`V6CTypeNarrowing::tryNarrowLoopIV` contains an overly conservative guard:
+`V6ClangTypeNarrowing::tryNarrowLoopIV` contains an overly conservative guard:
 
 ```cpp
 // PN's only user (besides the backedge from AddOp) must be... well, AddOp.
@@ -112,8 +112,8 @@ insufficient and the case is rare in practice.
 
 | File | Change |
 |------|--------|
-| `llvm-project/llvm/lib/Target/V6C/V6CTypeNarrowing.cpp` | Extend `tryNarrowLoopIV`: add `ExtraPNUses`/`ExtraAddUses` collectors; add range guard; add zext substitution block |
-| `tests/features/67/v6llvmc.c` | New feature test (sum_indices, weighted_sum) |
+| `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTypeNarrowing.cpp` | Extend `tryNarrowLoopIV`: add `ExtraPNUses`/`ExtraAddUses` collectors; add range guard; add zext substitution block |
+| `tests/features/67/v6clang.c` | New feature test (sum_indices, weighted_sum) |
 | `tests/features/67/c8080.c` | Reference implementation |
 
 ---
@@ -122,11 +122,11 @@ insufficient and the case is rare in practice.
 
 ### Step 3.1 — Create test folder and baseline assembly [x]
 
-Create `tests/features/67/` with `v6llvmc.c`, `c8080.c`, and baseline assembly:
+Create `tests/features/67/` with `v6clang.c`, `c8080.c`, and baseline assembly:
 
 ```
 tools\c8080\c8080.exe tests\features\67\c8080.c -a tests\features\67\c8080.asm
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\67\v6llvmc.c -o tests\features\67\v6llvmc_old.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\67\v6clang.c -o tests\features\67\v6clang_old.asm
 ```
 
 > **Design Notes**: Test focuses on `sum_indices` (pure arithmetic, no GEP) as
@@ -137,7 +137,7 @@ llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\67\v6llvmc.
 
 ### Step 3.2 — Extend `tryNarrowLoopIV`: PN extra-use collector [x]
 
-In `V6CTypeNarrowing.cpp`, replace the strict PN-user guard block:
+In `V6ClangTypeNarrowing.cpp`, replace the strict PN-user guard block:
 
 ```cpp
 // OLD — bail on any non-AddOp user of PN:
@@ -252,7 +252,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.7 — Lit test [x]
 
-Create `llvm-project/llvm/test/CodeGen/V6C/type-narrowing-iv-arith-users.ll`
+Create `llvm-project/llvm/test/CodeGen/V6CLANG/type-narrowing-iv-arith-users.ll`
 covering:
 
 - **Test A** (up-counter, PN extra use): `phi i16 [0], [add i16 phi, 1]`;
@@ -270,7 +270,7 @@ covering:
 
 Run:
 ```
-llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6C\type-narrowing-iv-arith-users.ll -v
+llvm-build\bin\llvm-lit llvm-project\llvm\test\CodeGen\V6CLANG\type-narrowing-iv-arith-users.ll -v
 ```
 
 > **Implementation Notes**:
@@ -286,7 +286,7 @@ python tests\run_all.py
 ### Step 3.9 — Verification assembly steps from `tests\features\README.md` [x]
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\67\v6llvmc.c -o tests\features\67\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\67\v6clang.c -o tests\features\67\v6clang_new01.asm
 ```
 
 Verify that:
@@ -355,7 +355,7 @@ uint16_t sum_indices(void) {
     DAD B           ; 12cc — s += i
     MOV B, H        ; 8cc
     MOV C, L        ; 8cc
-    INR E           ; 8cc — i++ (same cost as INX D on V6C)
+    INR E           ; 8cc — i++ (same cost as INX D on V6CLANG)
     MVI A, 100      ; 8cc
     CMP E           ; 4cc
     JNZ .loop       ; 12cc
@@ -390,7 +390,7 @@ register-pressure scenario this prevents a spill that costs
 
 ## 6. Relationship to Other Improvements
 
-- **V6CLoopPointerInduction (LPI)**: runs before TypeNarrowing.  If LPI
+- **V6ClangLoopPointerInduction (LPI)**: runs before TypeNarrowing.  If LPI
   eliminates the exit icmp (pointer comparison), the new guard catches it and
   returns false.  The Case A scenario (LPI replaced icmp, counter has arith
   users) is deferred to a SCEV-based O85b.
@@ -416,6 +416,6 @@ register-pressure scenario this prevents a spill that costs
 ## 8. References
 
 * [O85 Design Doc](design/future_plans/O85_type_narrowing_iv_arithmetic_users.md)
-* [V6C Build Guide](docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](design/future_plans/README.md)

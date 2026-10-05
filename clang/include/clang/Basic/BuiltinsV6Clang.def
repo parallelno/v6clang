@@ -1,0 +1,29 @@
+//===--- BuiltinsV6CLANG.def - V6CLANG Builtin function database --------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines the V6CLANG (Intel 8080) target-specific builtin function
+// database. Users of this file must define the BUILTIN macro to make use of
+// this information.
+//
+//===----------------------------------------------------------------------===//
+
+// The format of this database matches clang/Basic/Builtins.def.
+
+// I/O port access
+BUILTIN(__builtin_v6clang_in, "UcUc", "n")
+BUILTIN(__builtin_v6clang_out, "vUcUc", "n")
+
+// Interrupt control
+BUILTIN(__builtin_v6clang_di, "v", "n")
+BUILTIN(__builtin_v6clang_ei, "v", "n")
+
+// Processor control
+BUILTIN(__builtin_v6clang_hlt, "v", "n")
+BUILTIN(__builtin_v6clang_nop, "v", "n")
+
+#undef BUILTIN

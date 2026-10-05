@@ -1,6 +1,6 @@
 Feature 73: O91 — CMP8_ZERO elision after flag-setting ALU op
 
-Optimization: When V6C_CMP8_ZERO (shape 2: XRA A + CMP R) follows an ALU op
+Optimization: When V6CLANG_CMP8_ZERO (shape 2: XRA A + CMP R) follows an ALU op
 that already set Z, and R holds A's value via MOV R,A, the entire triple
 MOV R,A + XRA A + CMP R is redundant and eliminated.
 
@@ -40,7 +40,7 @@ After O91:
   RET
 Worst path: 44cc, 8B  (saved 16cc, 3B)
 
-Implementation: V6CRedundantFlagElim.cpp extended with:
+Implementation: V6ClangRedundantFlagElim.cpp extended with:
   - SmallSet<Register,4> AValueRegs  (registers holding A's last ALU result)
   - DenseMap<Register, MachineInstr*> AValueSrc  (MOV R,A bridge instruction)
   - getMOVrADest(): detect MOV R,A copies
@@ -48,4 +48,4 @@ Implementation: V6CRedundantFlagElim.cpp extended with:
   - isBridgeDead(): confirm R is dead after CMP R
   - New elimination rule: ZFlagValid && XRA A && next=CMP R && R in AValueRegs
 
-New lit test: llvm-project/llvm/test/CodeGen/V6C/cmp8-zero-redundant-after-alu.ll
+New lit test: llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-redundant-after-alu.ll

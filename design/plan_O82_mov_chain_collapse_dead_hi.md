@@ -4,7 +4,7 @@
 
 ### Current behavior
 
-After O62, `V6C_SRL16`-by-8 expansion emits a 2-instruction sequence:
+After O62, `V6CLANG_SRL16`-by-8 expansion emits a 2-instruction sequence:
 
 ```asm
 MOV  DstLo, SrcHi     ; 8cc, 1B
@@ -43,7 +43,7 @@ to `MOV B, H` in-place.  **Net savings: 16cc, 3B** per occurrence.
 
 ### Root cause
 
-Two independent issues both rooted in `V6CPeephole.cpp`:
+Two independent issues both rooted in `V6ClangPeephole.cpp`:
 
 1. **No dead-MVI elimination**: `foldMviZeroToXraA` only replaces
    `MVI A, 0` → `XRA A`; it does not erase `MVI r, imm` when `r` is
@@ -57,7 +57,7 @@ Two independent issues both rooted in `V6CPeephole.cpp`:
 
 ## 2. Strategy
 
-### Approach: two new helpers in `V6CPeephole`
+### Approach: two new helpers in `V6ClangPeephole`
 
 **Pattern A — `eliminateDeadMVI`**: scan every `MVI r, imm` in each
 MBB.  If `isRegDeadAfter(MBB, MI.getIterator(), r, TRI)` returns true,
@@ -98,10 +98,10 @@ then Pattern B.
 
 | Step | What | Where |
 |------|------|-------|
-| Add `eliminateDeadMVI` | Erase `MVI r, imm` when r dead | V6CPeephole.cpp |
-| Add `collapseMovChain` | Forward `MOV X,Y;…;MOV Z,X` → `MOV Z,Y` | V6CPeephole.cpp |
-| Declare both helpers | Add to private methods | V6CPeephole.cpp |
-| Wire into `runOnMachineFunction` | Call after `eliminateRedundantMov` | V6CPeephole.cpp |
+| Add `eliminateDeadMVI` | Erase `MVI r, imm` when r dead | V6ClangPeephole.cpp |
+| Add `collapseMovChain` | Forward `MOV X,Y;…;MOV Z,X` → `MOV Z,Y` | V6ClangPeephole.cpp |
+| Declare both helpers | Add to private methods | V6ClangPeephole.cpp |
+| Wire into `runOnMachineFunction` | Call after `eliminateRedundantMov` | V6ClangPeephole.cpp |
 | Lit test | `tests/features/63/` | see Step 3.5 |
 
 ---
@@ -110,7 +110,7 @@ then Pattern B.
 
 ### Step 3.1 — Add `eliminateDeadMVI` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a new private method after `foldMviZeroToXraA`:
 
@@ -119,17 +119,17 @@ Add a new private method after `foldMviZeroToXraA`:
 /// MVI r, imm writes only r and does not set FLAGS, so erasing it when r
 /// is dead is always safe. O61 patched MVIs are excluded because the label
 /// on the MVI byte is referenced by STA spills.
-bool V6CPeephole::eliminateDeadMVI(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::eliminateDeadMVI(MachineBasicBlock &MBB) {
   bool Changed = false;
   const TargetRegisterInfo *TRI =
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-    if (MI.getOpcode() != V6C::MVIr)
+    if (MI.getOpcode() != V6CLANG::MVIr)
       continue;
     // Skip MVI A — handled separately by foldMviZeroToXraA / foldMviAluImm.
     Register Dst = MI.getOperand(0).getReg();
-    if (Dst == V6C::A)
+    if (Dst == V6CLANG::A)
       continue;
     // Skip O61 patched-immediate sites (pre-instr label or MO_PATCH_IMM flag).
     if (isO61PatchedImm(MI))
@@ -143,7 +143,7 @@ bool V6CPeephole::eliminateDeadMVI(MachineBasicBlock &MBB) {
 }
 ```
 
-Also add the declaration to the `V6CPeephole` class private section:
+Also add the declaration to the `V6ClangPeephole` class private section:
 
 ```cpp
   bool eliminateDeadMVI(MachineBasicBlock &MBB);
@@ -165,7 +165,7 @@ Also add the declaration to the `V6CPeephole` class private section:
 
 ### Step 3.2 — Add `collapseMovChain` helper [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add after `eliminateDeadMVI`:
 
@@ -176,7 +176,7 @@ Add after `eliminateDeadMVI`:
 ///
 /// After rewriting the consumer, if X is also dead at the producer, the
 /// producer is erased too. Scan window is bounded to avoid O(N²) cost.
-bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::collapseMovChain(MachineBasicBlock &MBB) {
   bool Changed = false;
   const TargetRegisterInfo *TRI =
       MBB.getParent()->getSubtarget().getRegisterInfo();
@@ -185,7 +185,7 @@ bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ++I) {
     MachineInstr &ProducerMI = *I;
-    if (ProducerMI.getOpcode() != V6C::MOVrr)
+    if (ProducerMI.getOpcode() != V6CLANG::MOVrr)
       continue;
 
     Register X = ProducerMI.getOperand(0).getReg(); // intermediate
@@ -223,7 +223,7 @@ bool V6CPeephole::collapseMovChain(MachineBasicBlock &MBB) {
       }
 
       // Is this a MOV Z, X consumer?
-      if (J->getOpcode() == V6C::MOVrr &&
+      if (J->getOpcode() == V6CLANG::MOVrr &&
           TRI->regsOverlap(J->getOperand(1).getReg(), X) &&
           !ReadsX) {
         // X used only as source of this copy and is dead after it.
@@ -280,7 +280,7 @@ Add declaration to class:
 
 ### Step 3.3 — Wire both helpers into `runOnMachineFunction` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 In `runOnMachineFunction`, add after `eliminateRedundantMov`:
 
@@ -326,7 +326,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 Compile the feature test with the new build and verify both patterns fire:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\63\v6llvmc.c -o tests\features\63\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\63\v6clang.c -o tests\features\63\v6clang_new01.asm
 ```
 
 Expected in `test_chain_and_dead_hi`:
@@ -423,7 +423,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 |------|----------|
 | O62 — Efficient Shift Expansion | Prerequisite (✅). O62 reduced SRL16-by-8 from 4 MOVs to 2; O82 eliminates the remaining waste. |
 | O01 — Redundant MOV Elimination | O01 covers `MOV X, A; MOV A, X` only. Pattern B generalises to arbitrary GR8 pairs. |
-| O55 — Additional Peepholes | Precedent for FLAGS-gated MVI rewrite in `V6CPeephole`; Pattern A is simpler (no FLAGS involvement). |
+| O55 — Additional Peepholes | Precedent for FLAGS-gated MVI rewrite in `V6ClangPeephole`; Pattern A is simpler (no FLAGS involvement). |
 | O79 — MVI+ALU Fold | Both use `isRegDeadAfter` to decide safety; no interaction. |
 
 ---
@@ -438,8 +438,8 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ## 8. References
 
-- [V6C Build Guide](docs/V6CBuildGuide.md)
+- [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
 - [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 - [Future Improvements](design/future_plans/README.md)
 - [O82 Design](design/future_plans/O82_mov_chain_collapse_dead_hi.md)
-- [V6CPeephole.cpp](llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp)
+- [V6ClangPeephole.cpp](llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp)

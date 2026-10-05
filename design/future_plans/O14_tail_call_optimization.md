@@ -39,5 +39,5 @@ Very Low. ~15 lines in peephole pass.
 ## Risk
 
 Very Low. Well-understood optimization. Must not apply when there's frame
-cleanup (epilogue) between CALL and RET — but V6C already emits epilogue
+cleanup (epilogue) between CALL and RET — but V6CLANG already emits epilogue
 before the CALL in such cases.

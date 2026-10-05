@@ -1,4 +1,4 @@
-// O76 — V6C_LOAD8_P per-shape redesign feature test.
+// O76 — V6CLANG_LOAD8_P per-shape redesign feature test.
 //
 // Exercises the new priority-4 sub-shapes:
 //   - case7_de_b/c/h/l : addr=DE, dst=non-A, A live → XCHG bypass (3B/16cc)

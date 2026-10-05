@@ -52,7 +52,7 @@ could be obtained more cheaply from another register or an increment.
 
 ### Approach: Post-RA forward scan with register value tracking
 
-Add a new `MachineFunctionPass` (`V6CLoadImmCombine`) that runs early in
+Add a new `MachineFunctionPass` (`V6ClangLoadImmCombine`) that runs early in
 the pre-emit pipeline (after `AccumulatorPlanning`, before `Peephole`).
 It performs a forward scan through each basic block, tracking the known
 constant value in each of the 7 GPRs (A, B, C, D, E, H, L).
@@ -87,19 +87,19 @@ subsequent patterns). Running before Peephole maximizes cleanup opportunities.
 
 | Step | What | Where |
 |------|------|-------|
-| Create pass file | V6CLoadImmCombine.cpp | llvm/lib/Target/V6C/ |
-| Declare factory | createV6CLoadImmCombinePass() | V6C.h |
-| Register in pipeline | After AccumulatorPlanning, before Peephole | V6CTargetMachine.cpp |
-| Add to build | CMakeLists.txt | llvm/lib/Target/V6C/ |
-| Lit test | load-imm-combine.ll | tests/lit/CodeGen/V6C/ |
+| Create pass file | V6ClangLoadImmCombine.cpp | llvm/lib/Target/V6CLANG/ |
+| Declare factory | createV6ClangLoadImmCombinePass() | V6Clang.h |
+| Register in pipeline | After AccumulatorPlanning, before Peephole | V6ClangTargetMachine.cpp |
+| Add to build | CMakeLists.txt | llvm/lib/Target/V6CLANG/ |
+| Lit test | load-imm-combine.ll | tests/lit/CodeGen/V6CLANG/ |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CLoadImmCombine.cpp [x]
+### Step 3.1 — Create V6ClangLoadImmCombine.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CLoadImmCombine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangLoadImmCombine.cpp`
 
 Implement the post-RA pass:
 
@@ -115,7 +115,7 @@ Implement the post-RA pass:
 - On ALU ops that write a register: invalidate that register
 - On CALL, RET: invalidate all registers
 - On any other write to a register: invalidate it
-- Toggle: `-v6c-disable-load-imm-combine`
+- Toggle: `-v6clang-disable-load-imm-combine`
 
 > **Design Notes**:
 > - `MOV r, r'` preference: prefer non-A source registers to avoid
@@ -130,31 +130,31 @@ Implement the post-RA pass:
 
 > **Implementation Notes**: <empty>
 
-### Step 3.2 — Declare factory in V6C.h [x]
+### Step 3.2 — Declare factory in V6Clang.h [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6C.h`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6Clang.h`
 
 Add:
 ```cpp
-FunctionPass *createV6CLoadImmCombinePass();
+FunctionPass *createV6ClangLoadImmCombinePass();
 ```
 
 > **Implementation Notes**: <empty>
 
 ### Step 3.3 — Register in pipeline [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CTargetMachine.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
 
-Add `addPass(createV6CLoadImmCombinePass())` after AccumulatorPlanning,
+Add `addPass(createV6ClangLoadImmCombinePass())` after AccumulatorPlanning,
 before Peephole in `addPreEmitPass()`.
 
 > **Implementation Notes**: <empty>
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/CMakeLists.txt`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/CMakeLists.txt`
 
-Add `V6CLoadImmCombine.cpp` to the source list.
+Add `V6ClangLoadImmCombine.cpp` to the source list.
 
 > **Implementation Notes**: <empty>
 
@@ -168,7 +168,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.6 — Lit test: load-imm-combine.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/load-imm-combine.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/load-imm-combine.ll`
 
 Test cases:
 1. Two `MVI r, 0` → second replaced with `MOV r, r'`
@@ -277,7 +277,7 @@ Saves 2 bytes total.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O13 Feature Description](design\future_plans\O13_load_immediate_combining.md)

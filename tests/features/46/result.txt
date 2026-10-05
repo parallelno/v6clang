@@ -1,27 +1,27 @@
 O55 Pattern 2 -- `MVI A, 0` -> `XRA A` when FLAGS dead -- feature test 46
 ==========================================================================
 
-Adds a single post-RA peephole, `foldMviZeroToXraA`, to V6CPeephole.cpp.
+Adds a single post-RA peephole, `foldMviZeroToXraA`, to V6ClangPeephole.cpp.
 For every `MVI A, 0` whose iterator-following uses of FLAGS are all dead,
 the pass replaces the 2-byte / 7-cycle `MVI A, 0` with the 1-byte /
 4-cycle `XRA A`. Pure size + speed win, no register class change, no
 ISel surface area touched. The FLAGS-liveness predicate reuses the
 existing `isRegDeadAfter()` helper (also used by O18, O38, O44, O65),
 which already handles Jcc/RST_cc as `Uses=[FLAGS]` thanks to the
-`Defs=[FLAGS]` declarations in V6CInstrInfo.td.
+`Defs=[FLAGS]` declarations in V6ClangInstrInfo.td.
 
 The two sibling patterns from the parent spec
 (`design/future_plans/O55_additional_peepholes.md`) are obsolete:
   * Pattern 1 (`XRI 0FFH` -> `CMA`) is already handled at ISel:
-    `(not i8) -> CMA` lives in V6CInstrInfo.td:539.
+    `(not i8) -> CMA` lives in V6ClangInstrInfo.td:539.
   * Pattern 3 (idempotent `ANI/ORI 0FFH` and `ORI 0`) is dead code:
-    a corpus-wide grep across every V6C lit test, every benchmark in
+    a corpus-wide grep across every V6CLANG lit test, every benchmark in
     docs/benchmarks.md, and the entire docs/ directory turns up zero
     occurrences. DAG combiner already folds these constants away.
 Pattern 2 was the only one with non-zero hits in real codegen output.
 
 
-## C source (tests/features/46/v6llvmc.c)
+## C source (tests/features/46/v6clang.c)
 
     typedef unsigned char  u8;
     typedef signed char    i8;
@@ -133,14 +133,14 @@ uses `int main(int argc, char **argv)` because c8080 rejects `void`-arg
     __o_sub_16            7       38
 
 Note: c8080 silently elides the second volatile store in
-`clear_sink_twice`, breaking C volatile semantics. v6llvmc honours
+`clear_sink_twice`, breaking C volatile semantics. v6clang honours
 both. The two compilers are otherwise structurally similar in this
 test, but main is a much smaller call-shaped function in c8080
 because c8080's static-stack ABI moves all argument marshalling
 into named locations (`__a_*_neg_or_seven`).
 
 
-## v6llvmc -O2 + O55 Pattern 2 (v6llvmc_new01.asm body)
+## v6clang -O2 + O55 Pattern 2 (v6clang_new01.asm body)
 
     const_zero:                        ; bytes / worst cc
         XRA     A                      ;  1 /  4    [O55 rewrote MVI A, 0]
@@ -184,7 +184,7 @@ into named locations (`__a_*_neg_or_seven`).
                                        ; --- 33 B / 130 cc (worst path) ---
 
 
-## v6llvmc stats (worst CC and length per function)
+## v6clang stats (worst CC and length per function)
 
     Function             OLD bytes   NEW bytes   OLD cc   NEW cc   delta
     -------------------  ---------   ---------   ------   ------   ----------
@@ -200,7 +200,7 @@ into named locations (`__a_*_neg_or_seven`).
 
 Five `MVI A, 0` sites total, five `XRA A` rewrites, five bytes saved
 across the test, no liveness regressions, no failures in the new lit
-test (peephole-mvi-zero-to-xra.ll) or the V6C C-feature golden suite
+test (peephole-mvi-zero-to-xra.ll) or the V6CLANG C-feature golden suite
 (120/121 passing -- the one failure, ipra-call-preservation.ll, is a
 pre-existing regression unrelated to O55, verified by stashing the
 peephole change and observing the same failure).
@@ -208,7 +208,7 @@ peephole change and observing the same failure).
 
 ## Verification
 
-- New lit test: `llvm/test/CodeGen/V6C/peephole-mvi-zero-to-xra.ll`
+- New lit test: `llvm/test/CodeGen/V6CLANG/peephole-mvi-zero-to-xra.ll`
   -- 3 cases:
     * `const_zero`     -- positive (trailing zero -> RET).
     * `cold_zero`      -- positive (zero on JP-not-taken arm).
@@ -216,14 +216,14 @@ peephole change and observing the same failure).
                           MVI A, 0 sits between the carry-producer
                           and a Jcc that consumes it; rewrite must
                           NOT fire).
-- Full V6C lit suite: 95/96 PASS (the 1 fail is the pre-existing
+- Full V6CLANG lit suite: 95/96 PASS (the 1 fail is the pre-existing
   ipra-call-preservation.ll regression).
 - Golden trust baseline (run_all.py): PASS.
 
 
 ## Notes
 
-- The peephole runs in V6CPeephole, after register allocation and
+- The peephole runs in V6ClangPeephole, after register allocation and
   after all the existing peepholes, so any FLAGS-clobbering rewrites
   earlier in the pass cannot retroactively invalidate this one.
 - The transformation is exact: `XRA A` clears A and clears CY/AC/PSW

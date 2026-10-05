@@ -2,8 +2,8 @@
 
 Reference design: [design/future_plans/O80_cmp8_zero_inr_dcr.md](future_plans/O80_cmp8_zero_inr_dcr.md).
 Pipeline: [design/pipeline_feature.md](pipeline_feature.md).
-CPU timings: [docs/V6CInstructionTimings.md](../docs/V6CInstructionTimings.md).
-Build/sync: [docs/V6CBuildGuide.md](../docs/V6CBuildGuide.md).
+CPU timings: [docs/V6ClangInstructionTimings.md](../docs/V6ClangInstructionTimings.md).
+Build/sync: [docs/V6ClangBuildGuide.md](../docs/V6ClangBuildGuide.md).
 
 ## 1. Problem
 
@@ -13,22 +13,22 @@ The i8 "compare against zero" idiom (`if (r) …`, `while (r) …`,
 `r != 0`) lowers, in TableGen, through the `CPI` pattern:
 
 ```tablegen
-def CPI : V6CInstImm8Opc<0b111,
+def CPI : V6ClangInstImm8Opc<0b111,
     (outs), (ins Acc:$lhs, imm8:$imm),
-    "CPI\t$imm", [(set FLAGS, (V6Ccmp i8:$lhs, (i8 imm:$imm)))]>;
+    "CPI\t$imm", [(set FLAGS, (V6Clangcmp i8:$lhs, (i8 imm:$imm)))]>;
 ```
 
 `Acc:$lhs` pins the LHS to A. The post-RA peephole pass
-[V6CZeroTestOpt.cpp](../llvm-project/llvm/lib/Target/V6C/V6CZeroTestOpt.cpp)
+[V6ClangZeroTestOpt.cpp](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangZeroTestOpt.cpp)
 then rewrites `CPI 0` to `ORA A` (saves 4cc per fire). The combined
 sequence emitted today, observed at
-[tests/features/37/v6llvmc.s line 76](../tests/features/37/v6llvmc.s#L76):
+[tests/features/37/v6clang.s line 76](../tests/features/37/v6clang.s#L76):
 
 ```asm
 MOV  L, A      ; save A          (1B / 8cc, scratch GR8 burn)
 MOV  A, C      ; pin LHS to A    (1B / 8cc)
 ORA  A         ; from CPI 0      (1B / 4cc)
-;--- V6C_BRCOND ---
+;--- V6CLANG_BRCOND ---
 JZ   .LBB17_2
 MOV  A, L      ; restore A       (1B / 8cc)
 ```
@@ -47,7 +47,7 @@ zero, then `CMP src` does the byte compare in 4cc). Shape 3 also burns
 a scratch GR8, which can transitively cause spills in tight loops
 (see [tests/features/43](../tests/features/43)).
 
-Verified by reading [tests/features/62/v6llvmc_old.asm](../tests/features/62/v6llvmc_old.asm)
+Verified by reading [tests/features/62/v6clang_old.asm](../tests/features/62/v6clang_old.asm)
 for `shape_a_dead` (shape 2 — `XRA A; CMP B`) and `shape_a_live`
 (shape 3 — `MOV H,A; XRA A; CMP B; …; MOV A,H`).
 
@@ -59,7 +59,7 @@ an A-preserving zero-test using the `INR/DCR` pair:
 ```asm
 INR  src       ; 1B / 8cc   (Z/S/P set; A unchanged; CY unchanged)
 DCR  src       ; 1B / 8cc   (Z/S/P set from src's original value)
-;--- V6C_BRCOND ---
+;--- V6CLANG_BRCOND ---
 JZ   .LBB17_2
 ```
 
@@ -86,40 +86,40 @@ Per-fire savings vs today:
 
 The `Acc:$lhs` operand class on `CPI` forces the LHS into A. There is
 no flag-producing i8 zero-test that operates on a non-A GR8 today.
-Adding one as a pseudo (analogous to `V6C_CMP16_ZERO`) lets ISel skip
+Adding one as a pseudo (analogous to `V6CLANG_CMP16_ZERO`) lets ISel skip
 the A-pinning entirely; post-RA expansion then chooses the cheapest
 correct sequence per liveness shape.
 
 ## 2. Strategy
 
-### Approach: new `V6C_CMP8_ZERO` pseudo, expanded post-RA
+### Approach: new `V6CLANG_CMP8_ZERO` pseudo, expanded post-RA
 
-1. **Define `V6C_CMP8_ZERO`** as a `V6CPseudo` with one `GR8` input
+1. **Define `V6CLANG_CMP8_ZERO`** as a `V6ClangPseudo` with one `GR8` input
    (not `Acc`), `Defs = [FLAGS]`, matched from
-   `(set FLAGS, (V6Ccmp i8:$src, (i8 0)))`.
+   `(set FLAGS, (V6Clangcmp i8:$src, (i8 0)))`.
 2. **TableGen pattern preference**: a literal `(i8 0)` is more specific
    than `(i8 imm:$imm)` on `CPI`, so ISel naturally prefers the new
    pseudo for the zero-test case. No `AddedComplexity` needed.
-3. **Expand post-RA** in `V6CInstrInfo::expandPostRAPseudo`:
+3. **Expand post-RA** in `V6ClangInstrInfo::expandPostRAPseudo`:
    - `src == A` → `ORA A` (1B / 4cc).
    - `A` dead → `XRA A; CMP src` (2B / 8cc — preserves today's O38 path).
    - `A` live → `INR src; DCR src` (2B / 16cc, A-preserving).
-4. **Annotation** is automatic: the `V6C_PSEUDO_COMMENT` machinery in
+4. **Annotation** is automatic: the `V6CLANG_PSEUDO_COMMENT` machinery in
    `expandPostRAPseudo` calls `TII->getName(OrigOpc)`, so
-   `;--- V6C_CMP8_ZERO ---` emerges with no extra wiring.
+   `;--- V6CLANG_CMP8_ZERO ---` emerges with no extra wiring.
 
 ### Why this works
 
 - `INR r`/`DCR r` set `Z`, `S`, `P`, `AC` and leave `CY`/`A`
   unchanged. The pair is byte-idempotent on `r`.
-- All zero-test consumers (i8 `V6C_BRCOND` /
-  `V6C_SELECT_CC`) read only `Z`/`S`/`P` via the V6CCC codes
+- All zero-test consumers (i8 `V6CLANG_BRCOND` /
+  `V6CLANG_SELECT_CC`) read only `Z`/`S`/`P` via the V6ClangCC codes
   `COND_Z`/`COND_NZ`/`COND_P`/`COND_M`/`COND_PE`/`COND_PO`. None
   reads `CY` or `AC`. Diverging on those two flags is harmless on the
   consumer set.
 - `(i8 imm:$imm)` on `CPI` continues to handle non-zero immediate
   compares unchanged.
-- The existing `V6CZeroTestOpt` `CPI 0 → ORA A` pass is left alone;
+- The existing `V6ClangZeroTestOpt` `CPI 0 → ORA A` pass is left alone;
   with the new pseudo present, ISel won't emit `CPI 0` for the
   zero-compare case, so that pass simply fires less often.
 
@@ -127,36 +127,36 @@ correct sequence per liveness shape.
 
 - `CY` divergence from `ORA A` is unobservable: `ORA A` clears `CY`,
   `INR/DCR` preserve it. No zero-test consumer reads `CY`. Verified
-  by inspection of `V6CCC` enum users and `V6CISelLowering::Select`.
+  by inspection of `V6ClangCC` enum users and `V6ClangISelLowering::Select`.
 - Verifier on `INR/DCR` twin-def: both are tied (`$rd = $src`).
   The first `INR` carries a regular use of `Src`; the second `DCR`
   carries the `kill` flag (or whatever flag the original
-  `V6C_CMP8_ZERO` operand had).
-- No interaction with `V6CPeephole` / O41 (`pre_ra_inx_dcx_pseudo`):
+  `V6CLANG_CMP8_ZERO` operand had).
+- No interaction with `V6ClangPeephole` / O41 (`pre_ra_inx_dcx_pseudo`):
   those operate on i16 `INX`/`DCX`, not i8 `INRr`/`DCRr`.
 
 ### Summary of changes
 
 | Step | What | Where |
 |------|------|-------|
-| Add pseudo `V6C_CMP8_ZERO` | `(outs), (ins GR8:$src)`, `Defs=[FLAGS]`, pattern `(V6Ccmp i8:$src, (i8 0))` | `V6CInstrInfo.td` |
-| Implement expansion | 3-priority shape table | `V6CInstrInfo.cpp::expandPostRAPseudo` |
-| Lit test | All three shapes | `llvm-project/llvm/test/CodeGen/V6C/cmp8-zero-inr-dcr.ll` |
+| Add pseudo `V6CLANG_CMP8_ZERO` | `(outs), (ins GR8:$src)`, `Defs=[FLAGS]`, pattern `(V6Clangcmp i8:$src, (i8 0))` | `V6ClangInstrInfo.td` |
+| Implement expansion | 3-priority shape table | `V6ClangInstrInfo.cpp::expandPostRAPseudo` |
+| Lit test | All three shapes | `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll` |
 | Feature test | C source mirroring `tests/features/37` | `tests/features/62/` |
 
-No changes to: ISel C++, register allocator, `V6CZeroTestOpt`, calling
+No changes to: ISel C++, register allocator, `V6ClangZeroTestOpt`, calling
 convention, frame lowering, peepholes.
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `V6C_CMP8_ZERO` TableGen pseudo [x]
+### Step 3.1 — Add `V6CLANG_CMP8_ZERO` TableGen pseudo [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
-Place the new def adjacent to `V6C_CMP16_ZERO` (around line 1008):
+Place the new def adjacent to `V6CLANG_CMP16_ZERO` (around line 1008):
 
 ```tablegen
-// O80: 8-bit zero-test comparison. Mirrors V6C_CMP16_ZERO for i8.
+// O80: 8-bit zero-test comparison. Mirrors V6CLANG_CMP16_ZERO for i8.
 // Expanded post-RA into one of three shapes:
 //   src=A          → ORA A                     (1B / 4cc)
 //   src≠A, A dead  → MOV A,src; ORA A          (2B / 12cc)
@@ -165,9 +165,9 @@ Place the new def adjacent to `V6C_CMP16_ZERO` (around line 1008):
 // preserves A). The post-RA expander adds an A def to the MOV+ORA
 // shapes via BuildMI's RegState::Define.
 let Defs = [FLAGS] in
-def V6C_CMP8_ZERO : V6CPseudo<(outs), (ins GR8:$src),
+def V6CLANG_CMP8_ZERO : V6ClangPseudo<(outs), (ins GR8:$src),
     "# CMP8_ZERO $src",
-    [(set FLAGS, (V6Ccmp i8:$src, (i8 0)))]>;
+    [(set FLAGS, (V6Clangcmp i8:$src, (i8 0)))]>;
 ```
 
 > **Design Note**: `Defs = [FLAGS]` (not `[FLAGS, A]`) is conservative
@@ -175,7 +175,7 @@ def V6C_CMP8_ZERO : V6CPseudo<(outs), (ins GR8:$src),
 > expander writes A but RA has already finished by post-RA expansion,
 > so the static `Defs` list is irrelevant for liveness; what matters
 > is that the BuildMI call carries the correct register state. Mirror
-> the comment style used by `V6C_CMP16_ZERO`.
+> the comment style used by `V6CLANG_CMP16_ZERO`.
 
 > **Design Note**: TableGen pattern preference — literal `(i8 0)` is
 > strictly more specific than `(i8 imm:$imm)` on `CPI`. ISel will
@@ -186,36 +186,36 @@ def V6C_CMP8_ZERO : V6CPseudo<(outs), (ins GR8:$src),
 
 ### Step 3.2 — Implement post-RA expansion [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
-Add a new `case` in `V6CInstrInfo::expandPostRAPseudo` next to
-`case V6C::V6C_CMP16_ZERO:` (around line 996):
+Add a new `case` in `V6ClangInstrInfo::expandPostRAPseudo` next to
+`case V6CLANG::V6CLANG_CMP16_ZERO:` (around line 996):
 
 ```cpp
-case V6C::V6C_CMP8_ZERO: {
+case V6CLANG::V6CLANG_CMP8_ZERO: {
   // O80: i8 zero-test, A-preserving when A is live.
   Register Src = MI.getOperand(0).getReg();
   bool SrcKilled = MI.getOperand(0).isKill();
 
-  if (Src == V6C::A) {
+  if (Src == V6CLANG::A) {
     // Shape 1: src already in A → ORA A (1B / 4cc).
-    BuildMI(MBB, MI, DL, get(V6C::ORAr), V6C::A)
-        .addReg(V6C::A);
-  } else if (isRegDeadAtMI(V6C::A, MI, MBB, &RI)) {
+    BuildMI(MBB, MI, DL, get(V6CLANG::ORAr), V6CLANG::A)
+        .addReg(V6CLANG::A);
+  } else if (isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)) {
     // Shape 2: A dead → XRA A; CMP src (2B / 8cc).
     // Mirrors O38's emission so we don't regress that path.
-    BuildMI(MBB, MI, DL, get(V6C::XRAr), V6C::A)
-        .addReg(V6C::A);
-    BuildMI(MBB, MI, DL, get(V6C::CMPr))
-        .addReg(V6C::A)
+    BuildMI(MBB, MI, DL, get(V6CLANG::XRAr), V6CLANG::A)
+        .addReg(V6CLANG::A);
+    BuildMI(MBB, MI, DL, get(V6CLANG::CMPr))
+        .addReg(V6CLANG::A)
         .addReg(Src, getKillRegState(SrcKilled));
   } else {
     // Shape 3: A live → INR src; DCR src (2B / 16cc, A-preserving).
     // Both INR and DCR are tied ($rd = $src); use addReg() with the
     // tied operand pattern used by other expanders in this file.
-    BuildMI(MBB, MI, DL, get(V6C::INRr), Src)
+    BuildMI(MBB, MI, DL, get(V6CLANG::INRr), Src)
         .addReg(Src);
-    BuildMI(MBB, MI, DL, get(V6C::DCRr), Src)
+    BuildMI(MBB, MI, DL, get(V6CLANG::DCRr), Src)
         .addReg(Src, getKillRegState(SrcKilled));
   }
 
@@ -224,10 +224,10 @@ case V6C::V6C_CMP8_ZERO: {
 }
 ```
 
-> **Design Note**: `isRegDeadAtMI(V6C::A, ...)` is the same helper
-> used by `V6C_LOAD8_P` (line 1542) and the BC-swap path (line 549).
+> **Design Note**: `isRegDeadAtMI(V6CLANG::A, ...)` is the same helper
+> used by `V6CLANG_LOAD8_P` (line 1542) and the BC-swap path (line 549).
 > Liveness is reliable post-RA because
-> `MachineFunctionProperties::TracksLiveness` is set for V6C.
+> `MachineFunctionProperties::TracksLiveness` is set for V6CLANG.
 
 > **Implementation Notes**: <empty>
 
@@ -241,13 +241,13 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.4 — Lit test: cmp8-zero-inr-dcr.ll [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/cmp8-zero-inr-dcr.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll`
 
 Cover all three shapes via separate functions. Use IR + extern call
 patterns to deterministically pin source and A across the test:
 
 ```ll
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 declare void @sink(i8)
 declare i8   @keep_a()
@@ -299,10 +299,10 @@ nz: %a2 = add i8 %a, 1
 > `[BCDEHL]` regex matches any GR8 because RA's choice of `src`
 > register is not deterministic.
 
-> **Design Note**: Run with `-mllvm -mv6c-annotate-pseudos` in a
+> **Design Note**: Run with `-mllvm -mv6clang-annotate-pseudos` in a
 > separate `RUN:` line if needed to verify annotation. Not required
 > for primary correctness — annotation falls out automatically from
-> `V6C_PSEUDO_COMMENT` + `TII->getName`.
+> `V6CLANG_PSEUDO_COMMENT` + `TII->getName`.
 
 > **Implementation Notes**: <empty>
 
@@ -313,7 +313,7 @@ nz: %a2 = add i8 %a, 1
 ### Step 3.6 — Run lit subset [x]
 
 ```
-python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6C\cmp8-zero-inr-dcr.ll
+python llvm-build\bin\llvm-lit.py -v llvm-project\llvm\test\CodeGen\V6CLANG\cmp8-zero-inr-dcr.ll
 ```
 
 > **Implementation Notes**: <empty>
@@ -332,7 +332,7 @@ Expected: 133/133 lit + golden + benchmarks pass with cycle/byte
 ### Step 3.8 — Verification assembly steps from `tests\features\README.md` [x]
 
 Use `tests/features/62/` (created in preparation phase). Compile
-`v6llvmc.c` with the new backend; produce `v6llvmc_new01.asm`.
+`v6clang.c` with the new backend; produce `v6clang_new01.asm`.
 Confirm the shape-3 pattern emits `INR src; DCR src` (no
 `MOV scratch,A; … MOV A,scratch`).
 
@@ -344,9 +344,9 @@ Per `tests\features\README.md`:
 - C test case code.
 - c8080 main + dependent funcs body (Z80→i8080).
 - c8080 stats: worst CPU cycles, length in bytes per func.
-- v6llvmc old asm.
-- v6llvmc new asm.
-- Comparison table (cycles, bytes) for c8080 vs v6llvmc old vs new.
+- v6clang old asm.
+- v6clang new asm.
+- Comparison table (cycles, bytes) for c8080 vs v6clang old vs new.
 
 > **Implementation Notes**: <empty>
 
@@ -363,7 +363,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 - Mark all steps `[x]` in this plan.
 - Set `[x]` next to `O80_cmp8_zero_inr_dcr.md` in
   [design/future_plans/README.md](future_plans/README.md).
-- Update repo memory `/memories/repo/v6c-backend.md` with a one-paragraph
+- Update repo memory `/memories/repo/v6clang-backend.md` with a one-paragraph
   summary (cycles/bytes saved, files touched) following the existing
   "RESOLVED" convention.
 
@@ -373,7 +373,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ### Example 1 — A-live shape 3 (the headline case)
 
-C source (`tests/features/62/v6llvmc.c`):
+C source (`tests/features/62/v6clang.c`):
 
 ```c
 extern unsigned char op1(unsigned char);
@@ -388,7 +388,7 @@ unsigned char gate(unsigned char val_in_A, unsigned char cond) {
 }
 ```
 
-Today's emission (-O2, copied from `tests/features/62/v6llvmc_old.asm`):
+Today's emission (-O2, copied from `tests/features/62/v6clang_old.asm`):
 
 ```asm
 shape_a_live:
@@ -444,27 +444,27 @@ The pseudo's shape-2 expansion preserves the existing O38 path.
 
 ### Example 3 — Annotation regression fix (free side benefit)
 
-[tests/features/37/v6llvmc.s line 76](../tests/features/37/v6llvmc.s#L76)
+[tests/features/37/v6clang.s line 76](../tests/features/37/v6clang.s#L76)
 currently shows the bare `MOV A, C; ORA A` sequence with no
-`;--- ... ---` annotation, even with `-mllvm -mv6c-annotate-pseudos`.
-After O80, that location prints `;--- V6C_CMP8_ZERO ---` (or
-`;--- V6C_BRCOND ---` only, with INR/DCR underneath when A is live).
+`;--- ... ---` annotation, even with `-mllvm -mv6clang-annotate-pseudos`.
+After O80, that location prints `;--- V6CLANG_CMP8_ZERO ---` (or
+`;--- V6CLANG_BRCOND ---` only, with INR/DCR underneath when A is live).
 
 ## 5. Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| `CY`/`AC` divergence from `ORA A` semantics. | Documented: only `Z`/`S`/`P` consumers exist for `V6CISD::CMP` against zero. Verified by inspection of `V6CCC` enum users (`COND_Z`/`NZ`/`P`/`M`/`PE`/`PO` only). Add the comment block from §2 to the pseudo's TableGen doc. |
-| Verifier rejects twin-def of `Src` across `INR`+`DCR`. | Both INR/DCR are tied (`$rd = $src`). BuildMI with `(get(V6C::INRr), Src).addReg(Src)` produces the standard tied form used elsewhere in the backend. The kill flag goes only on the second (DCR). |
+| `CY`/`AC` divergence from `ORA A` semantics. | Documented: only `Z`/`S`/`P` consumers exist for `V6ClangISD::CMP` against zero. Verified by inspection of `V6ClangCC` enum users (`COND_Z`/`NZ`/`P`/`M`/`PE`/`PO` only). Add the comment block from §2 to the pseudo's TableGen doc. |
+| Verifier rejects twin-def of `Src` across `INR`+`DCR`. | Both INR/DCR are tied (`$rd = $src`). BuildMI with `(get(V6CLANG::INRr), Src).addReg(Src)` produces the standard tied form used elsewhere in the backend. The kill flag goes only on the second (DCR). |
 | TableGen pattern collision with existing `CPI` pattern. | `(i8 0)` is strictly more specific than `(i8 imm:$imm)`. TableGen disambiguates by specificity. Validated by lit test shape 3 — if it ever emits `CPI 0` instead of `INR/DCR`, the pattern preference is broken. |
-| Future peephole pass folds `INR r; DCR r` away as "no-op". | Not currently implemented; no V6C pass touches the i8 `INRr/DCRr` pair. If added, must skip the pair when both are emitted from `V6C_CMP8_ZERO` expansion. Track via a comment in `V6CInstrInfo.cpp` next to the expansion. Annotation comment `;--- V6C_CMP8_ZERO ---` survives mostly intact for grep. |
-| Shape-2 (A dead, 8cc) is cheaper than shape 3 (16cc); accidentally selecting INR/DCR when A is dead is a regression. | Priority order in expansion: A check first. `isRegDeadAtMI(V6C::A, ...)` is reliable post-RA. Lit test shape 2 explicitly checks for `XRA A; CMP r` and `CHECK-NOT: INR`. |
-| Existing `V6CZeroTestOpt` (`CPI 0 → ORA A`) continues to find `CPI 0` from sources we missed. | Harmless — that pass remains correct and continues to fire on any non-O80 path (e.g. inline asm). Run lit with the pass disabled (`-v6c-disable-zero-test-opt`) to confirm O80 alone produces the right shapes. |
+| Future peephole pass folds `INR r; DCR r` away as "no-op". | Not currently implemented; no V6CLANG pass touches the i8 `INRr/DCRr` pair. If added, must skip the pair when both are emitted from `V6CLANG_CMP8_ZERO` expansion. Track via a comment in `V6ClangInstrInfo.cpp` next to the expansion. Annotation comment `;--- V6CLANG_CMP8_ZERO ---` survives mostly intact for grep. |
+| Shape-2 (A dead, 8cc) is cheaper than shape 3 (16cc); accidentally selecting INR/DCR when A is dead is a regression. | Priority order in expansion: A check first. `isRegDeadAtMI(V6CLANG::A, ...)` is reliable post-RA. Lit test shape 2 explicitly checks for `XRA A; CMP r` and `CHECK-NOT: INR`. |
+| Existing `V6ClangZeroTestOpt` (`CPI 0 → ORA A`) continues to find `CPI 0` from sources we missed. | Harmless — that pass remains correct and continues to fire on any non-O80 path (e.g. inline asm). Run lit with the pass disabled (`-v6clang-disable-zero-test-opt`) to confirm O80 alone produces the right shapes. |
 
 ## 6. Relationship to Other Improvements
 
 - **O27 (i16 zero test)**: O80 is the i8 analogue. O27 introduced
-  `V6C_CMP16_ZERO`; O80 introduces `V6C_CMP8_ZERO`. Same shape,
+  `V6CLANG_CMP16_ZERO`; O80 introduces `V6CLANG_CMP8_ZERO`. Same shape,
   different width.
 - **O17 (Redundant flag elim)**: orthogonal. O17 elides `ORA A` after
   ALU ops that already set Z. After O80, fewer `ORA A`s exist (shape 3
@@ -472,7 +472,7 @@ After O80, that location prints `;--- V6C_CMP8_ZERO ---` (or
   compares.
 - **O75 (flag-producing arith SDNodes)**: orthogonal. O75 fuses
   `(arith op + zero compare)` into a single flag-producing op
-  (`DCR r; JNZ`). When O75 fires, no `V6C_CMP8_ZERO` is generated at
+  (`DCR r; JNZ`). When O75 fires, no `V6CLANG_CMP8_ZERO` is generated at
   all. When O75 doesn't fire (multi-use, no fusion), O80 still wins
   the standalone zero-test by 12cc.
 - **O38 (XRA cmp zero test)**: orthogonal. O38 uses `XRA r` for
@@ -481,7 +481,7 @@ After O80, that location prints `;--- V6C_CMP8_ZERO ---` (or
 
 ## 7. Future Enhancements
 
-- **A-preference allocator hint**. Once `V6C_CMP8_ZERO` exists, ISel
+- **A-preference allocator hint**. Once `V6CLANG_CMP8_ZERO` exists, ISel
   can attach a register-allocator hint to `$src` preferring `A`.
   This collapses shape 2 (12cc) into shape 1 (4cc) when the producer
   of `src` is otherwise free to target A. Strictly additive; tracked
@@ -489,17 +489,17 @@ After O80, that location prints `;--- V6C_CMP8_ZERO ---` (or
 - **i8 register-vs-register compare via SUB-without-store**. Out of
   scope — the win is specific to the zero comparand because INR/DCR
   reify a unary flag-set.
-- **Extend to `V6C_CMP16_ZERO`**. Already cycle-optimal at 12cc
+- **Extend to `V6CLANG_CMP16_ZERO`**. Already cycle-optimal at 12cc
   (`MOV A,Hi; ORA Lo`); no INR/DCR equivalent for i16. Skipped.
 
 ## 8. References
 
 - [O80 design doc](future_plans/O80_cmp8_zero_inr_dcr.md)
-- [V6C Build Guide](../docs/V6CBuildGuide.md)
-- [V6C Instruction Timings](../docs/V6CInstructionTimings.md)
+- [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md)
+- [V6CLANG Instruction Timings](../docs/V6ClangInstructionTimings.md)
 - [Future Improvements](future_plans/README.md)
 - [Feature Pipeline](pipeline_feature.md)
 - [Feature Test README](../tests/features/result.md)
 - Reference plan format: [plan_cmp_based_comparison.md](plan_cmp_based_comparison.md)
-- Sibling pseudo: [`V6C_CMP16_ZERO`](../llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td) (line ~1008)
-- Annotation infrastructure: [V6CAsmPrinter.cpp::emitInstruction](../llvm-project/llvm/lib/Target/V6C/V6CAsmPrinter.cpp) (line ~202)
+- Sibling pseudo: [`V6CLANG_CMP16_ZERO`](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td) (line ~1008)
+- Annotation infrastructure: [V6ClangAsmPrinter.cpp::emitInstruction](../llvm-project/llvm/lib/Target/V6CLANG/V6ClangAsmPrinter.cpp) (line ~202)

@@ -2,43 +2,43 @@
 	.globl	xor_bytes                       ; -- Begin function xor_bytes
 xor_bytes:                              ; @xor_bytes
 ; %bb.0:
-	LXI	HL, __v6c_ss.xor_bytes+2
+	LXI	HL, __v6clang_ss.xor_bytes+2
 	MOV	M, C
-	LXI	HL, __v6c_ss.xor_bytes+1
+	LXI	HL, __v6clang_ss.xor_bytes+1
 	MOV	M, E
 	CALL	op
-	STA	__v6c_ss.xor_bytes
-	LDA	__v6c_ss.xor_bytes+1
+	STA	__v6clang_ss.xor_bytes
+	LDA	__v6clang_ss.xor_bytes+1
 	CALL	op
-	STA	__v6c_ss.xor_bytes+1
-	LDA	__v6c_ss.xor_bytes+2
+	STA	__v6clang_ss.xor_bytes+1
+	LDA	__v6clang_ss.xor_bytes+2
 	CALL	op
-	STA	__v6c_ss.xor_bytes+2
+	STA	__v6clang_ss.xor_bytes+2
 	LXI	HL, 0
 	DAD	SP
 	XCHG
 	LDAX	DE
 	CALL	op
-	STA	__v6c_ss.xor_bytes+3
+	STA	__v6clang_ss.xor_bytes+3
 	LXI	HL, 0
 	DAD	SP
 	XCHG
 	LDAX	DE
 	CALL	op
-	STA	__v6c_ss.xor_bytes+4
-	LDA	__v6c_ss.xor_bytes
+	STA	__v6clang_ss.xor_bytes+4
+	LDA	__v6clang_ss.xor_bytes
 	CALL	use1
-	LDA	__v6c_ss.xor_bytes+1
-	LXI	HL, __v6c_ss.xor_bytes+2
+	LDA	__v6clang_ss.xor_bytes+1
+	LXI	HL, __v6clang_ss.xor_bytes+2
 	MOV	L, M
 	XRA	L
-	LXI	HL, __v6c_ss.xor_bytes+3
+	LXI	HL, __v6clang_ss.xor_bytes+3
 	MOV	L, M
 	XRA	L
-	LXI	HL, __v6c_ss.xor_bytes+4
+	LXI	HL, __v6clang_ss.xor_bytes+4
 	MOV	L, M
 	XRA	L
-	LXI	HL, __v6c_ss.xor_bytes
+	LXI	HL, __v6clang_ss.xor_bytes
 	MOV	H, M
 	XRA	H
 	RET
@@ -46,25 +46,25 @@ xor_bytes:                              ; @xor_bytes
 	.globl	and_bytes                       ; -- Begin function and_bytes
 and_bytes:                              ; @and_bytes
 ; %bb.0:
-	LXI	HL, __v6c_ss.and_bytes+1
+	LXI	HL, __v6clang_ss.and_bytes+1
 	MOV	M, C
-	LXI	HL, __v6c_ss.and_bytes+2
+	LXI	HL, __v6clang_ss.and_bytes+2
 	MOV	M, E
 	CALL	op
-	STA	__v6c_ss.and_bytes
-	LDA	__v6c_ss.and_bytes+2
+	STA	__v6clang_ss.and_bytes
+	LDA	__v6clang_ss.and_bytes+2
 	CALL	op
-	STA	__v6c_ss.and_bytes+2
-	LDA	__v6c_ss.and_bytes+1
+	STA	__v6clang_ss.and_bytes+2
+	LDA	__v6clang_ss.and_bytes+1
 	CALL	op
-	STA	__v6c_ss.and_bytes+1
-	LDA	__v6c_ss.and_bytes
+	STA	__v6clang_ss.and_bytes+1
+	LDA	__v6clang_ss.and_bytes
 	CALL	use1
-	LDA	__v6c_ss.and_bytes+2
-	LXI	HL, __v6c_ss.and_bytes+1
+	LDA	__v6clang_ss.and_bytes+2
+	LXI	HL, __v6clang_ss.and_bytes+1
 	MOV	L, M
 	ANA	L
-	LXI	HL, __v6c_ss.and_bytes
+	LXI	HL, __v6clang_ss.and_bytes
 	MOV	H, M
 	ANA	H
 	RET
@@ -72,25 +72,25 @@ and_bytes:                              ; @and_bytes
 	.globl	or_bytes                        ; -- Begin function or_bytes
 or_bytes:                               ; @or_bytes
 ; %bb.0:
-	LXI	HL, __v6c_ss.or_bytes+1
+	LXI	HL, __v6clang_ss.or_bytes+1
 	MOV	M, C
-	LXI	HL, __v6c_ss.or_bytes+2
+	LXI	HL, __v6clang_ss.or_bytes+2
 	MOV	M, E
 	CALL	op
-	STA	__v6c_ss.or_bytes
-	LDA	__v6c_ss.or_bytes+2
+	STA	__v6clang_ss.or_bytes
+	LDA	__v6clang_ss.or_bytes+2
 	CALL	op
-	STA	__v6c_ss.or_bytes+2
-	LDA	__v6c_ss.or_bytes+1
+	STA	__v6clang_ss.or_bytes+2
+	LDA	__v6clang_ss.or_bytes+1
 	CALL	op
-	STA	__v6c_ss.or_bytes+1
-	LDA	__v6c_ss.or_bytes
+	STA	__v6clang_ss.or_bytes+1
+	LDA	__v6clang_ss.or_bytes
 	CALL	use1
-	LDA	__v6c_ss.or_bytes+2
-	LXI	HL, __v6c_ss.or_bytes+1
+	LDA	__v6clang_ss.or_bytes+2
+	LXI	HL, __v6clang_ss.or_bytes+1
 	MOV	L, M
 	ORA	L
-	LXI	HL, __v6c_ss.or_bytes
+	LXI	HL, __v6clang_ss.or_bytes
 	MOV	H, M
 	ORA	H
 	RET
@@ -98,25 +98,25 @@ or_bytes:                               ; @or_bytes
 	.globl	add_bytes                       ; -- Begin function add_bytes
 add_bytes:                              ; @add_bytes
 ; %bb.0:
-	LXI	HL, __v6c_ss.add_bytes+1
+	LXI	HL, __v6clang_ss.add_bytes+1
 	MOV	M, C
-	LXI	HL, __v6c_ss.add_bytes+2
+	LXI	HL, __v6clang_ss.add_bytes+2
 	MOV	M, E
 	CALL	op
-	STA	__v6c_ss.add_bytes
-	LDA	__v6c_ss.add_bytes+2
+	STA	__v6clang_ss.add_bytes
+	LDA	__v6clang_ss.add_bytes+2
 	CALL	op
-	STA	__v6c_ss.add_bytes+2
-	LDA	__v6c_ss.add_bytes+1
+	STA	__v6clang_ss.add_bytes+2
+	LDA	__v6clang_ss.add_bytes+1
 	CALL	op
-	STA	__v6c_ss.add_bytes+1
-	LDA	__v6c_ss.add_bytes
+	STA	__v6clang_ss.add_bytes+1
+	LDA	__v6clang_ss.add_bytes
 	CALL	use1
-	LXI	HL, __v6c_ss.add_bytes
+	LXI	HL, __v6clang_ss.add_bytes
 	MOV	L, M
-	LDA	__v6c_ss.add_bytes+2
+	LDA	__v6clang_ss.add_bytes+2
 	ADD	L
-	LXI	HL, __v6c_ss.add_bytes+1
+	LXI	HL, __v6clang_ss.add_bytes+1
 	MOV	L, M
 	ADD	L
 	RET
@@ -124,36 +124,36 @@ add_bytes:                              ; @add_bytes
 	.globl	xor_with_passthrough            ; -- Begin function xor_with_passthrough
 xor_with_passthrough:                   ; @xor_with_passthrough
 ; %bb.0:
-	LXI	HL, __v6c_ss.xor_with_passthrough+2
+	LXI	HL, __v6clang_ss.xor_with_passthrough+2
 	MOV	M, C
-	LXI	HL, __v6c_ss.xor_with_passthrough+1
+	LXI	HL, __v6clang_ss.xor_with_passthrough+1
 	MOV	M, E
 	CALL	op
-	STA	__v6c_ss.xor_with_passthrough
-	LDA	__v6c_ss.xor_with_passthrough+1
+	STA	__v6clang_ss.xor_with_passthrough
+	LDA	__v6clang_ss.xor_with_passthrough+1
 	CALL	op
-	STA	__v6c_ss.xor_with_passthrough+1
-	LDA	__v6c_ss.xor_with_passthrough+2
+	STA	__v6clang_ss.xor_with_passthrough+1
+	LDA	__v6clang_ss.xor_with_passthrough+2
 	CALL	op
-	STA	__v6c_ss.xor_with_passthrough+2
+	STA	__v6clang_ss.xor_with_passthrough+2
 	LXI	HL, 0
 	DAD	SP
 	XCHG
 	LDAX	DE
 	CALL	op
-	STA	__v6c_ss.xor_with_passthrough+3
-	LDA	__v6c_ss.xor_with_passthrough
-	LXI	HL, __v6c_ss.xor_with_passthrough+1
+	STA	__v6clang_ss.xor_with_passthrough+3
+	LDA	__v6clang_ss.xor_with_passthrough
+	LXI	HL, __v6clang_ss.xor_with_passthrough+1
 	MOV	E, M
 	CALL	use2
-	LDA	__v6c_ss.xor_with_passthrough+2
-	LXI	HL, __v6c_ss.xor_with_passthrough+3
+	LDA	__v6clang_ss.xor_with_passthrough+2
+	LXI	HL, __v6clang_ss.xor_with_passthrough+3
 	MOV	L, M
 	XRA	L
-	LXI	HL, __v6c_ss.xor_with_passthrough
+	LXI	HL, __v6clang_ss.xor_with_passthrough
 	MOV	H, M
 	XRA	H
-	LXI	HL, __v6c_ss.xor_with_passthrough+1
+	LXI	HL, __v6clang_ss.xor_with_passthrough+1
 	MOV	H, M
 	XRA	H
 	RET
@@ -245,7 +245,7 @@ main:                                   ; @main
 ; %bb.0:
 	MVI	A, 0x11
 	CALL	op
-	STA	__v6c_ss.main
+	STA	__v6clang_ss.main
 	MVI	A, 0x22
 	CALL	op
 	MVI	A, 0x33
@@ -254,47 +254,47 @@ main:                                   ; @main
 	CALL	op
 	MVI	A, 0x55
 	CALL	op
-	LDA	__v6c_ss.main
+	LDA	__v6clang_ss.main
 	CALL	use1
 	MVI	A, 0xf0
 	CALL	op
-	STA	__v6c_ss.main
+	STA	__v6clang_ss.main
 	MVI	A, 0xf
 	CALL	op
 	MVI	A, 0xaa
 	CALL	op
-	LDA	__v6c_ss.main
+	LDA	__v6clang_ss.main
 	CALL	use1
 	MVI	A, 1
 	CALL	op
-	STA	__v6c_ss.main
+	STA	__v6clang_ss.main
 	MVI	A, 2
 	CALL	op
 	MVI	A, 4
 	CALL	op
-	LDA	__v6c_ss.main
+	LDA	__v6clang_ss.main
 	CALL	use1
 	MVI	A, 0x10
 	CALL	op
-	STA	__v6c_ss.main
+	STA	__v6clang_ss.main
 	MVI	A, 0x20
 	CALL	op
 	MVI	A, 0x30
 	CALL	op
-	LDA	__v6c_ss.main
+	LDA	__v6clang_ss.main
 	CALL	use1
 	MVI	A, 0xa1
 	CALL	op
-	STA	__v6c_ss.main
+	STA	__v6clang_ss.main
 	MVI	A, 0xb2
 	CALL	op
-	STA	__v6c_ss.main+1
+	STA	__v6clang_ss.main+1
 	MVI	A, 0xc3
 	CALL	op
 	MVI	A, 0xd4
 	CALL	op
-	LDA	__v6c_ss.main
-	LXI	HL, __v6c_ss.main+1
+	LDA	__v6clang_ss.main
+	LXI	HL, __v6clang_ss.main+1
 	MOV	E, M
 	CALL	use2
 	LXI	HL, counter
@@ -325,18 +325,18 @@ flag:
 slot:
 	DB	0                               ; 0x0
 
-	.local	__v6c_ss.xor_bytes              ; @__v6c_ss.xor_bytes
-	.comm	__v6c_ss.xor_bytes,5,1
-	.local	__v6c_ss.and_bytes              ; @__v6c_ss.and_bytes
-	.comm	__v6c_ss.and_bytes,3,1
-	.local	__v6c_ss.or_bytes               ; @__v6c_ss.or_bytes
-	.comm	__v6c_ss.or_bytes,3,1
-	.local	__v6c_ss.add_bytes              ; @__v6c_ss.add_bytes
-	.comm	__v6c_ss.add_bytes,3,1
-	.local	__v6c_ss.xor_with_passthrough   ; @__v6c_ss.xor_with_passthrough
-	.comm	__v6c_ss.xor_with_passthrough,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,2,1
+	.local	__v6clang_ss.xor_bytes              ; @__v6clang_ss.xor_bytes
+	.comm	__v6clang_ss.xor_bytes,5,1
+	.local	__v6clang_ss.and_bytes              ; @__v6clang_ss.and_bytes
+	.comm	__v6clang_ss.and_bytes,3,1
+	.local	__v6clang_ss.or_bytes               ; @__v6clang_ss.or_bytes
+	.comm	__v6clang_ss.or_bytes,3,1
+	.local	__v6clang_ss.add_bytes              ; @__v6clang_ss.add_bytes
+	.comm	__v6clang_ss.add_bytes,3,1
+	.local	__v6clang_ss.xor_with_passthrough   ; @__v6clang_ss.xor_with_passthrough
+	.comm	__v6clang_ss.xor_with_passthrough,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,2,1
 	.addrsig
 	.addrsig_sym counter
 	.addrsig_sym flag

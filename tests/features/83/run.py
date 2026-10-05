@@ -49,8 +49,8 @@ for level in ("O0", "O1", "O2", "Os"):
     elf = HERE / f"contract-{level}.elf"
     image = HERE / f"contract-{level}.bin"
     run([
-        str(CLANG), "-target", "i8080-unknown-v6c", f"-{level}", "-g",
-        str(HERE / "v6llvmc.c"), "-o", str(rom),
+        str(CLANG), "-target", "i8080-unknown-v6clang", f"-{level}", "-g",
+        str(HERE / "v6clang.c"), "-o", str(rom),
     ])
     run([str(DWARFDUMP), "--verify", str(elf)])
     run([str(OBJCOPY), "-O", "binary", str(elf), str(image)])

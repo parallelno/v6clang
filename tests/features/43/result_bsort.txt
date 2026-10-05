@@ -2,8 +2,8 @@
 O51 — LSR Cost Tuning: bubble-sort A/B microbenchmark
 ================================================================
 
-Source:    tests/features/43/v6llvmc_bsort.c
-Generated: clang 18.1.0rc, target i8080-unknown-v6c
+Source:    tests/features/43/v6clang_bsort.c
+Generated: clang 18.1.0rc, target i8080-unknown-v6clang
 
 Goal: complement the axpy3 A/B (see result.txt) with a second loop
 shape — a classic bubble sort — to test whether the regs-first vs
@@ -35,21 +35,21 @@ insns-first ordering picked in O51 generalises across loop kinds.
 2. Build commands
 ----------------------------------------------------------------
 
-    llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-        tests\features\43\v6llvmc_bsort.c \
-        -o tests\features\43\v6llvmc_bsort_regs.asm \
-        -mllvm -v6c-lsr-strategy=regs-first
+    llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+        tests\features\43\v6clang_bsort.c \
+        -o tests\features\43\v6clang_bsort_regs.asm \
+        -mllvm -v6clang-lsr-strategy=regs-first
 
-    llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-        tests\features\43\v6llvmc_bsort.c \
-        -o tests\features\43\v6llvmc_bsort_insns.asm \
-        -mllvm -v6c-lsr-strategy=insns-first
+    llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+        tests\features\43\v6clang_bsort.c \
+        -o tests\features\43\v6clang_bsort_insns.asm \
+        -mllvm -v6clang-lsr-strategy=insns-first
 
-    llvm-build\bin\clang -target i8080-unknown-v6c -Os -S \
-        tests\features\43\v6llvmc_bsort.c \
-        -o tests\features\43\v6llvmc_bsort_os.asm
+    llvm-build\bin\clang -target i8080-unknown-v6clang -Os -S \
+        tests\features\43\v6clang_bsort.c \
+        -o tests\features\43\v6clang_bsort_os.asm
 
-`-O2` with no `-mllvm -v6c-lsr-strategy=...` flag uses the default
+`-O2` with no `-mllvm -v6clang-lsr-strategy=...` flag uses the default
 Auto = regs-first (post-rollback decision from result.txt) and is
 byte-identical to the explicit regs-first run.
 
@@ -60,9 +60,9 @@ byte-identical to the explicit regs-first run.
 
     file                          bytes      vs. regs
     --------------------------- --------    ----------
-    v6llvmc_bsort_regs.asm        10315     baseline
-    v6llvmc_bsort_insns.asm        9843     -472 B  (-4.6 %)
-    v6llvmc_bsort_os.asm           7957     -2358 B (Os, see note)
+    v6clang_bsort_regs.asm        10315     baseline
+    v6clang_bsort_insns.asm        9843     -472 B  (-4.6 %)
+    v6clang_bsort_os.asm           7957     -2358 B (Os, see note)
 
 Note: the Os column is included only as a reference for the
 size-mode pipeline; it is not directly comparable because Os
@@ -121,11 +121,11 @@ hit per iteration.
 
 regs-first   (67 lines):
     ; pointer-fold path
-    LXI   HL, __v6c_ss.bsort_two+N    ; reload base
+    LXI   HL, __v6clang_ss.bsort_two+N    ; reload base
     MOV   C, M / INX HL / MOV B, M    ; -> BC = stream pointer
     PUSH/POP shuffles to recover HL
     STAX  BC / INX BC / STAX BC       ; store hi byte
-    SHLD  __v6c_ss.bsort_two+M        ; spill back
+    SHLD  __v6clang_ss.bsort_two+M        ; spill back
     ... repeat for each output stream ...
 
 insns-first  (46 lines):
@@ -137,10 +137,10 @@ insns-first  (46 lines):
     INX   HL          ; out_hi IV
     INX   HL
     PUSH  HL
-    LHLD  __v6c_ss.bsort_two          ; reload &arr[j+1] (1 spill)
+    LHLD  __v6clang_ss.bsort_two          ; reload &arr[j+1] (1 spill)
     INX   HL
     INX   HL
-    SHLD  __v6c_ss.bsort_two
+    SHLD  __v6clang_ss.bsort_two
     POP   HL
     MOV   M, ... / MOV M, ...
 
@@ -169,7 +169,7 @@ loops with N>3 streams where only 1-2 are touched per iteration
 For now, users who suspect their loop is in the bsort_two
 category can opt in explicitly with:
 
-    -mllvm -v6c-lsr-strategy=insns-first
+    -mllvm -v6clang-lsr-strategy=insns-first
 
 and verify with the same A/B procedure used here.
 
@@ -178,10 +178,10 @@ and verify with the same A/B procedure used here.
 8. Files in this comparison
 ----------------------------------------------------------------
 
-    tests/features/43/v6llvmc_bsort.c             source
-    tests/features/43/v6llvmc_bsort_regs.asm      -O2 regs-first
-    tests/features/43/v6llvmc_bsort_insns.asm     -O2 insns-first
-    tests/features/43/v6llvmc_bsort_os.asm        -Os reference
+    tests/features/43/v6clang_bsort.c             source
+    tests/features/43/v6clang_bsort_regs.asm      -O2 regs-first
+    tests/features/43/v6clang_bsort_insns.asm     -O2 insns-first
+    tests/features/43/v6clang_bsort_os.asm        -Os reference
 
     tests/features/43/result.txt                  axpy3 A/B (this
                                                   file's companion)

@@ -38,7 +38,7 @@ MOV  B, H         ; 1B  7cc  ← not needed: only 3 instructionss
 
 The expansions unconditionally wrap with PUSH/POP because the original
 implementation did not query post-RA register liveness at expansion time.
-The `isRegDeadAtMI()` helper already exists in V6CInstrInfo.cpp (used by
+The `isRegDeadAtMI()` helper already exists in V6ClangInstrInfo.cpp (used by
 LOAD8_P/STORE8_P priority-3 path) but is not applied to other pseudos.
 
 ---
@@ -63,17 +63,17 @@ dead, emit the shorter sequence without PUSH/POP.
 
 | File | Change |
 |------|--------|
-| V6CRegisterInfo.cpp | Add `isRegDeadAfterMI()` static helper; modify 10 static stack + 8 dynamic stack expansion paths |
-| V6CInstrInfo.cpp | Modify LOAD16_P (addr=BC), LOAD16_G (dst=BC), STORE16_P (addr=DE/BC), LOAD8_P (P4), STORE8_P (P4) |
+| V6ClangRegisterInfo.cpp | Add `isRegDeadAfterMI()` static helper; modify 10 static stack + 8 dynamic stack expansion paths |
+| V6ClangInstrInfo.cpp | Modify LOAD16_P (addr=BC), LOAD16_G (dst=BC), STORE16_P (addr=DE/BC), LOAD8_P (P4), STORE8_P (P4) |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `isRegDeadAfterMI` helper to V6CRegisterInfo.cpp [ ]
+### Step 3.1 — Add `isRegDeadAfterMI` helper to V6ClangRegisterInfo.cpp [ ]
 
 Add a static helper function identical to `isRegDeadAtMI()` from
-V6CInstrInfo.cpp. Both files need independent access to this check.
+V6ClangInstrInfo.cpp. Both files need independent access to this check.
 
 ```cpp
 /// Check if a physical register is dead after a given instruction.
@@ -108,7 +108,7 @@ static bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
 }
 ```
 
-> **Design Notes**: Replicates `isRegDeadAtMI()` from V6CInstrInfo.cpp
+> **Design Notes**: Replicates `isRegDeadAtMI()` from V6ClangInstrInfo.cpp
 > because both files need independent access (both are static helpers).
 > An alternative is moving to a shared header, but that's unnecessary
 > complexity for a 25-line function.
@@ -117,7 +117,7 @@ static bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
 
 ### Step 3.2 — Static stack SPILL8/RELOAD8: skip PUSH/POP when preserved reg dead [ ]
 
-**File**: `V6CRegisterInfo.cpp` — `eliminateFrameIndex`, static stack section.
+**File**: `V6ClangRegisterInfo.cpp` — `eliminateFrameIndex`, static stack section.
 
 **SPILL8 (B,C,D,E) — HL dead**: Skip PUSH HL / POP HL.
 - Before: `PUSH HL; LXI HL, addr; MOV M, r; POP HL` (6B, 42cc)
@@ -140,7 +140,7 @@ static bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
 
 ### Step 3.3 — Static stack SPILL16/RELOAD16: optimized paths when preserved reg dead [ ]
 
-**File**: `V6CRegisterInfo.cpp` — `eliminateFrameIndex`, static stack section.
+**File**: `V6ClangRegisterInfo.cpp` — `eliminateFrameIndex`, static stack section.
 
 **SPILL16 BC — HL dead**: Use MOV+SHLD instead of PUSH/LXI/MOV/INX/MOV/POP.
 - Before: `PUSH HL; LXI HL, addr; MOV M, C; INX HL; MOV M, B; POP HL` (8B, 50cc)
@@ -166,7 +166,7 @@ static bool isRegDeadAfterMI(unsigned Reg, const MachineInstr &MI,
 
 ### Step 3.4 — Dynamic stack SPILL8/RELOAD8: skip PUSH/POP + adjust offset [ ]
 
-**File**: `V6CRegisterInfo.cpp` — `eliminateFrameIndex`, dynamic stack section.
+**File**: `V6ClangRegisterInfo.cpp` — `eliminateFrameIndex`, dynamic stack section.
 
 Same patterns as static stack, but with DAD SP addressing. When PUSH is
 skipped, the offset changes from `Offset + 2` to `Offset` (no PUSH on
@@ -196,7 +196,7 @@ stack to account for).
 
 ### Step 3.5 — Dynamic stack SPILL16/RELOAD16: skip PUSH/POP + adjust offset [ ]
 
-**File**: `V6CRegisterInfo.cpp` — `eliminateFrameIndex`, dynamic stack section.
+**File**: `V6ClangRegisterInfo.cpp` — `eliminateFrameIndex`, dynamic stack section.
 
 **SPILL16 HL — DE dead**:
 - Before: `PUSH DE; MOV D,H; MOV E,L; LXI HL, offset+2; DAD SP; store; restore; POP DE`
@@ -218,7 +218,7 @@ stack to account for).
 
 ### Step 3.6 — LOAD16_P (addr=BC) and LOAD16_G (dst=BC): skip PUSH/POP HL [ ]
 
-**File**: `V6CInstrInfo.cpp` — `expandPostRAPseudo`.
+**File**: `V6ClangInstrInfo.cpp` — `expandPostRAPseudo`.
 
 **LOAD16_P (addr=BC) — HL dead**:
 - Before: `PUSH HL; MOV H,B; MOV L,C; load; POP HL`
@@ -234,7 +234,7 @@ stack to account for).
 
 ### Step 3.7 — STORE16_P (val=HL, addr=DE/BC): skip PUSH/POP when addr dead [ ]
 
-**File**: `V6CInstrInfo.cpp` — `expandPostRAPseudo`.
+**File**: `V6ClangInstrInfo.cpp` — `expandPostRAPseudo`.
 
 **STORE16_P (val=HL, addr=DE) — DE dead**:
 - Before: `PUSH DE; MOV A,L; STAX DE; INX DE; MOV A,H; STAX DE; POP DE`
@@ -250,7 +250,7 @@ stack to account for).
 
 ### Step 3.8 — LOAD8_P/STORE8_P (priority 4): skip PUSH/POP HL [ ]
 
-**File**: `V6CInstrInfo.cpp` — `expandPostRAPseudo`.
+**File**: `V6ClangInstrInfo.cpp` — `expandPostRAPseudo`.
 
 **LOAD8_P (priority 4, addr=BC/DE, A alive) — HL dead**:
 - Before: `PUSH HL; MOV H,hi; MOV L,lo; MOV dst,M; POP HL` (43cc)
@@ -274,7 +274,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.10 — Lit test: liveness-aware-expansion.ll [ ]
 
-**File**: `tests/lit/CodeGen/V6C/liveness-aware-expansion.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/liveness-aware-expansion.ll`
 
 Test cases:
 1. **reload16_bc_hl_dead**: RELOAD16 BC when HL is killed by preceding
@@ -397,7 +397,7 @@ Saves **4B, 44cc per iteration**.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O42 Design](design\future_plans\O42_liveness_aware_expansion.md)

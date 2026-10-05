@@ -3,7 +3,7 @@
 multi_src_de:                           ; @multi_src_de
 ; %bb.0:
 	XCHG
-	SHLD	__v6c_ss.multi_src_de
+	SHLD	__v6clang_ss.multi_src_de
 	XCHG
 	MOV	A, B
 	ORA	C
@@ -15,7 +15,7 @@ multi_src_de:                           ; @multi_src_de
 	CALL	op2
 .LBB0_3:
 	SHLD	.LLo61_0+1
-	LHLD	__v6c_ss.multi_src_de
+	LHLD	__v6clang_ss.multi_src_de
 	CALL	op2
 .LLo61_0:
 	LXI	DE, 0
@@ -26,17 +26,17 @@ multi_src_de:                           ; @multi_src_de
 k2_two_reloads:                         ; @k2_two_reloads
 ; %bb.0:
 	PUSH	HL
-	LXI	HL, __v6c_ss.k2_two_reloads
+	LXI	HL, __v6clang_ss.k2_two_reloads
 	MOV	M, C
 	INX	HL
 	MOV	M, B
 	POP	HL
 	XCHG
-	SHLD	__v6c_ss.k2_two_reloads+2
+	SHLD	__v6clang_ss.k2_two_reloads+2
 	XCHG
 	CALL	op1
 	SHLD	.LLo61_1+1
-	LHLD	__v6c_ss.k2_two_reloads+2
+	LHLD	__v6clang_ss.k2_two_reloads+2
 	CALL	op2
 .LLo61_1:
 	LXI	DE, 0
@@ -47,11 +47,11 @@ k2_two_reloads:                         ; @k2_two_reloads
 	ADC	D
 	MOV	D, A
 	DAD	DE
-	SHLD	__v6c_ss.k2_two_reloads+2
-	LHLD	__v6c_ss.k2_two_reloads
+	SHLD	__v6clang_ss.k2_two_reloads+2
+	LHLD	__v6clang_ss.k2_two_reloads
 	CALL	op2
 	XCHG
-	LHLD	__v6c_ss.k2_two_reloads+2
+	LHLD	__v6clang_ss.k2_two_reloads+2
 	DAD	DE
 	RET
                                         ; -- End function
@@ -101,10 +101,10 @@ g1:
 g2:
 	DW	0                               ; 0x0
 
-	.local	__v6c_ss.multi_src_de           ; @__v6c_ss.multi_src_de
-	.comm	__v6c_ss.multi_src_de,4,1
-	.local	__v6c_ss.k2_two_reloads         ; @__v6c_ss.k2_two_reloads
-	.comm	__v6c_ss.k2_two_reloads,6,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,2,1
+	.local	__v6clang_ss.multi_src_de           ; @__v6clang_ss.multi_src_de
+	.comm	__v6clang_ss.multi_src_de,4,1
+	.local	__v6clang_ss.k2_two_reloads         ; @__v6clang_ss.k2_two_reloads
+	.comm	__v6clang_ss.k2_two_reloads,6,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,2,1
 	.addrsig

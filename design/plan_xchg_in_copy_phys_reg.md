@@ -5,7 +5,7 @@
 ### Current behavior
 
 When the register allocator needs to copy between DE and HL, it calls
-`V6CInstrInfo::copyPhysReg()` which unconditionally emits two MOV
+`V6ClangInstrInfo::copyPhysReg()` which unconditionally emits two MOV
 instructions:
 
 ```asm
@@ -52,14 +52,14 @@ are in {DE, HL} and `KillSrc` is true, emit XCHG instead of two MOVs.
 - XCHG does not affect FLAGS on 8080
 - XCHG clobbers both DE and HL — but `KillSrc=true` guarantees the source
   is dead, and the destination gets the correct value
-- No pattern-matching heuristics needed (unlike V6CXchgOpt peephole)
+- No pattern-matching heuristics needed (unlike V6ClangXchgOpt peephole)
 - Runs earlier, giving downstream passes better input
 
 ### Summary of changes
 
 | File | Change |
 |------|--------|
-| V6CInstrInfo.cpp | Add XCHG early-exit in `copyPhysReg()` 16-bit path |
+| V6ClangInstrInfo.cpp | Add XCHG early-exit in `copyPhysReg()` 16-bit path |
 | xchg-copyphysreg.ll | New lit test verifying XCHG for DE→HL dead-source copy |
 
 ---
@@ -68,7 +68,7 @@ are in {DE, HL} and `KillSrc` is true, emit XCHG instead of two MOVs.
 
 ### Step 3.1 — Add XCHG optimization in copyPhysReg [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Add an early check in the 16-bit copy path of `copyPhysReg()`. Before
 the existing sub-register decomposition, check if both registers are
@@ -77,15 +77,15 @@ a single XCHG and return.
 
 ```cpp
   // 16-bit pair copy: two MOV instructions (hi byte, then lo byte)
-  if (V6C::GR16RegClass.contains(DestReg) &&
-      V6C::GR16RegClass.contains(SrcReg)) {
+  if (V6CLANG::GR16RegClass.contains(DestReg) &&
+      V6CLANG::GR16RegClass.contains(SrcReg)) {
 
     // DE↔HL with source killed: use XCHG (1B/4cc vs 2B/16cc).
     // Safe because source is dead — the reverse swap side-effect is harmless.
     if (KillSrc &&
-        ((DestReg == V6C::HL && SrcReg == V6C::DE) ||
-         (DestReg == V6C::DE && SrcReg == V6C::HL))) {
-      BuildMI(MBB, MI, DL, get(V6C::XCHG));
+        ((DestReg == V6CLANG::HL && SrcReg == V6CLANG::DE) ||
+         (DestReg == V6CLANG::DE && SrcReg == V6CLANG::HL))) {
+      BuildMI(MBB, MI, DL, get(V6CLANG::XCHG));
       return;
     }
 
@@ -99,7 +99,7 @@ a single XCHG and return.
 > overwritten is harmless. The destination pair gets the source's value,
 > which is the desired semantics.
 
-> **Implementation Notes**: Added 6-line early-exit check before sub-register decomposition. Checks `KillSrc && ((DestReg == V6C::HL && SrcReg == V6C::DE) || (DestReg == V6C::DE && SrcReg == V6C::HL))` and emits `BuildMI(MBB, MI, DL, get(V6C::XCHG))`.
+> **Implementation Notes**: Added 6-line early-exit check before sub-register decomposition. Checks `KillSrc && ((DestReg == V6CLANG::HL && SrcReg == V6CLANG::DE) || (DestReg == V6CLANG::DE && SrcReg == V6CLANG::HL))` and emits `BuildMI(MBB, MI, DL, get(V6CLANG::XCHG))`.
 
 ### Step 3.2 — Build [x]
 
@@ -111,7 +111,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: xchg-copyphysreg.ll [x]
 
-**File**: `tests/lit/CodeGen/V6C/xchg-copyphysreg.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/xchg-copyphysreg.ll`
 
 Create a lit test that verifies XCHG is emitted for a DE→HL copy where
 the source register is dead. A function that returns its second argument
@@ -119,7 +119,7 @@ the source register is dead. A function that returns its second argument
 at the return point.
 
 ```llvm
-; RUN: llc -march=v6c < %s | FileCheck %s
+; RUN: llc -march=v6clang < %s | FileCheck %s
 
 ; The second i16 argument arrives in DE. Returning it requires a copy
 ; DE→HL. Since DE is dead after the copy, copyPhysReg should emit XCHG.
@@ -132,7 +132,7 @@ define i16 @return_second(i16 %a, i16 %b) {
 }
 ```
 
-> **Implementation Notes**: Created `tests/lit/CodeGen/V6C/xchg-copyphysreg.ll` with `return_second` (returns 2nd i16 arg). CHECK: XCHG / CHECK-NEXT: RET / CHECK-NOT: MOV H, D / CHECK-NOT: MOV L, E. Test passes.
+> **Implementation Notes**: Created `tests/lit/CodeGen/V6CLANG/xchg-copyphysreg.ll` with `return_second` (returns 2nd i16 arg). CHECK: XCHG / CHECK-NEXT: RET / CHECK-NOT: MOV H, D / CHECK-NOT: MOV L, E. Test passes.
 
 ### Step 3.4 — Run regression tests [x]
 
@@ -159,7 +159,7 @@ at function exits where DE→HL copies have dead sources.
 powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 ```
 
-> **Implementation Notes**: Mirror sync complete. V6CInstrInfo.cpp synced to llvm/.
+> **Implementation Notes**: Mirror sync complete. V6ClangInstrInfo.cpp synced to llvm/.
 
 ---
 
@@ -200,14 +200,14 @@ since it's the last use before the function return.
 |------|------------|
 | XCHG clobbers both DE and HL | `KillSrc=true` guarantees source is dead; destination gets correct value |
 | Interaction with FLAGS | XCHG does not affect FLAGS on 8080 — no risk |
-| Post-RA passes confused by XCHG | XCHG is already used by V6CXchgOpt; all passes handle it |
+| Post-RA passes confused by XCHG | XCHG is already used by V6ClangXchgOpt; all passes handle it |
 | `KillSrc` accuracy | Set by the register allocator — authoritative for physical copies |
 
 ---
 
 ## 6. Relationship to Other Improvements
 
-- **Supersedes most V6CXchgOpt (O8/M8) cases**: The peephole catches MOV pairs
+- **Supersedes most V6ClangXchgOpt (O8/M8) cases**: The peephole catches MOV pairs
   that `copyPhysReg` emitted. With this change, those pairs are never emitted
   when the source is killed — the peephole has less work.
 - **O33 (XCHG peephole relaxation)**: Handles remaining edge cases where
@@ -218,14 +218,14 @@ since it's the last use before the function return.
 
 ## 7. Future Enhancements
 
-- O33 can relax the V6CXchgOpt peephole to drop the `isRegLiveBefore` guard,
+- O33 can relax the V6ClangXchgOpt peephole to drop the `isRegLiveBefore` guard,
   catching more XCHG opportunities that `copyPhysReg` can't see.
 
 ---
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [Feature Design](design\future_plans\O32_xchg_in_copy_phys_reg.md)

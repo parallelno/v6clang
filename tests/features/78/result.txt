@@ -6,12 +6,12 @@ Status
 
 Implemented and validated locally:
 
-- V6C ELF objects report `elf32-v6c` and architecture `i8080`.
+- V6CLANG ELF objects report `elf32-v6clang` and architecture `i8080`.
 - DWARF register contract v1 is implemented: A=0, B=1, C=2, D=3,
   E=4, H=5, L=6, BC=7, DE=8, HL=9, SP=10, PC=11.
 - FLAGS and PSW intentionally have no DWARF number.
 - PC is modeled as a reserved, non-allocatable return-address register.
-- Discarded V6C debug relocations use the all-ones tombstone instead of zero.
+- Discarded V6CLANG debug relocations use the all-ones tombstone instead of zero.
 - Runtime-helper final ELFs pass `llvm-dwarfdump --verify` without retaining
   dead helper text or symbols.
 - The public debug workflow and tests use DWARF v5.
@@ -19,13 +19,13 @@ Implemented and validated locally:
 C Test Case
 -----------
 
-See `v6llvmc.c` and the c8080-compatible `c8080.c`. The test keeps a real
+See `v6clang.c` and the c8080-compatible `c8080.c`. The test keeps a real
 `main -> middle -> leaf` call chain and one local value in `leaf`.
 
-v6llvmc Assembly
+v6clang Assembly
 ----------------
 
-The feature is metadata-only. `v6llvmc_old.asm` and `v6llvmc_new01.asm` are
+The feature is metadata-only. `v6clang_old.asm` and `v6clang_new01.asm` are
 byte-identical (SHA-256 files are identical). Relevant functions:
 
     leaf:
@@ -56,14 +56,14 @@ Final ELF Evidence
 
 `elf-header.txt` records:
 
-    Format: elf32-v6c
+    Format: elf32-v6clang
     Arch: i8080
     AddressSize: 32bit
 
 The DWARF compile unit uses target `addr_size = 0x02`. `dwarf.txt` contains
 register names/numbers and final linked ranges. Verification result:
 
-    Verifying v6llvmc.elf: file format elf32-v6c
+    Verifying v6clang.elf: file format elf32-v6clang
     No errors.
 
 Permanent tests additionally prove all byte/pair/SP mappings with real
@@ -102,7 +102,7 @@ The separately installed tools were configured from sibling workspaces:
 - v6emul ran this fixture to `HLT` at PC `0x011e`, SP `0x0000`, after 1,524
     cycles; see `emulator.txt`.
 - The full benchmark matrix passed all expected checksums and retained the
-    established V6C cycle counts and ROM sizes.
+    established V6CLANG cycle counts and ROM sizes.
 - v6asm mixed DWARF v4/v5 linking passed its lit regression.
 
 Z88DK was not configured and was skipped as an optional comparator.
@@ -111,7 +111,7 @@ Known Limitation
 ----------------
 
 Final object/ELF debug emission is supported and verified. Textual
-`clang -S -g` currently reaches a V6C MC streamer value form that cannot be
+`clang -S -g` currently reaches a V6CLANG MC streamer value form that cannot be
 printed; ordinary `clang -S` and `clang -c/-g` work. The debugger contract uses
 the final linked ELF, so this does not affect the produced debug companion.
 

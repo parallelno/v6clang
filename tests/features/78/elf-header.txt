@@ -1,6 +1,6 @@
 
-File: .\tests\features\78\v6llvmc.elf
-Format: elf32-v6c
+File: .\tests\features\78\v6clang.elf
+Format: elf32-v6clang
 Arch: i8080
 AddressSize: 32bit
 LoadName: <Not found>

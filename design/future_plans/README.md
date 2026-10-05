@@ -1,4 +1,4 @@
-# Future Optimizations — V6C Backend
+# Future Optimizations — V6CLANG Backend
 
 ### Implementation order
 
@@ -45,14 +45,14 @@ O54d_alloca_constant_size_push.md
 ✅ O67_i8_rotate_isel_via_rlc_rrc.md
 ✅ O68_wide_shl_rotate_dad_h.md
 ✅ O69_lea_fi_pointer_use_folding.md
-✅ O71_V6C_LOAD16_P_redesign.md
-✅ O72_V6C_STORE16_P_redesign.md
-✅ O73_V6C_LOAD16_G_redesign.md
-✅ O74_V6C_STORE16_G_redesign.md
+✅ O71_V6CLANG_LOAD16_P_redesign.md
+✅ O72_V6CLANG_STORE16_P_redesign.md
+✅ O73_V6CLANG_LOAD16_G_redesign.md
+✅ O74_V6CLANG_STORE16_G_redesign.md
 ✅ O75_flag_producing_arith_sdnodes.md
-✅ O76_V6C_LOAD8_P_redesign.md
-✅ O77_V6C_STORE8_P_redesign.md
-✅ O78_V6C_STORE8_IMM_P_redesign.md
+✅ O76_V6CLANG_LOAD8_P_redesign.md
+✅ O77_V6CLANG_STORE8_P_redesign.md
+✅ O78_V6CLANG_STORE8_IMM_P_redesign.md
 ✅ O79_mvi_alu_reg_to_alu_imm_fold.md
 ✅ O80_cmp8_zero_inr_dcr.md
 ✅ O81_select_cc_i8_through_accumulator.md
@@ -101,7 +101,7 @@ O57_shift_rotate_chaining.md
 
 ### Tooling and debugger features
 
-- `plan_source_debug_metadata.md` - final ELF/DWARF contract, V6C
+- `plan_source_debug_metadata.md` - final ELF/DWARF contract, V6CLANG
 	Clang/LLD enablement, artifact validation, and DAP source-to-address mapping.
 - v6asm DWARF emission is packaged in `2026.07.29-6dab24c`. Mixed-language,
 	relocation-name, and adapter verification are tracked in

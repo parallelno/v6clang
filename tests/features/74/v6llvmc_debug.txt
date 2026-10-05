@@ -1,13 +1,13 @@
 [O92-DBG] collapseMovChain called for: __mulqi3
-[O92-DBG] collapseMovChain called for: __v6c_mulqihi3
+[O92-DBG] collapseMovChain called for: __v6clang_mulqihi3
 [O92-DBG] collapseMovChain called for: __mulhi3
-[O92-DBG] collapseMovChain called for: __v6c_udivmod16_body
+[O92-DBG] collapseMovChain called for: __v6clang_udivmod16_body
 [O92-DBG] collapseMovChain called for: __udivhi3
 [O92-DBG] collapseMovChain called for: __umodhi3
 [O92-DBG] collapseMovChain called for: __udivmodhi4
 [O92-DBG] collapseMovChain called for: __divmodhi4
-[O92-DBG] collapseMovChain called for: __v6c_neg_hl_body
-[O92-DBG] collapseMovChain called for: __v6c_neg_de_body
+[O92-DBG] collapseMovChain called for: __v6clang_neg_hl_body
+[O92-DBG] collapseMovChain called for: __v6clang_neg_de_body
 [O92-DBG] collapseMovChain called for: __divhi3
 [O92-DBG] collapseMovChain called for: __modhi3
 [O92-DBG] collapseMovChain called for: __ashlhi3
@@ -66,7 +66,7 @@
 [O92-DBG] RPLo=L RPHi=H
 [O92-DBG] Step 1: CALL @p1_lo_byte_after_xor16, <regmask $noreg $b $bc $c>, implicit-def $sp, implicit $sp, implicit $hl, implicit-def dead $a
 [O92-DBG] Step 2: $a = MVIr -1
-[O92-DBG] Step 3: STA killed $a, @__v6c_a.main :: (volatile store (s8) into @__v6c_a.main, !tbaa !21)
+[O92-DBG] Step 3: STA killed $a, @__v6clang_a.main :: (volatile store (s8) into @__v6clang_a.main, !tbaa !21)
 [O92-DBG] Step 4: $hl = LXI 22136
 [O92-DBG] Found LXI: $hl = LXI 22136
 [O92-DBG] Passed O61 check
@@ -74,11 +74,11 @@
 [O92-DBG] RPLo=L RPHi=H
 [O92-DBG] Step 1: CALL @p2_hi_byte_after_xor16, <regmask $noreg $b $bc $c>, implicit-def $sp, implicit $sp, implicit $hl, implicit-def dead $a
 [O92-DBG] Step 2: $a = MVIr -76
-[O92-DBG] Step 3: STA killed $a, @__v6c_a.main + 1 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6c_a.main, i16 0, i16 1)`, !tbaa !21)
+[O92-DBG] Step 3: STA killed $a, @__v6clang_a.main + 1 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6clang_a.main, i16 0, i16 1)`, !tbaa !21)
 [O92-DBG] Step 4: $a = MVIr 52
-[O92-DBG] Step 5: STA killed $a, @__v6c_a.main + 2 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6c_a.main, i16 0, i16 2)`, !tbaa !21)
+[O92-DBG] Step 5: STA killed $a, @__v6clang_a.main + 2 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6clang_a.main, i16 0, i16 2)`, !tbaa !21)
 [O92-DBG] Step 6: $a = MVIr 18
-[O92-DBG] Step 7: STA killed $a, @__v6c_a.main + 3 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6c_a.main, i16 0, i16 3)`, !tbaa !21)
+[O92-DBG] Step 7: STA killed $a, @__v6clang_a.main + 3 :: (volatile store (s8) into `ptr getelementptr inbounds ([6 x i8], ptr @__v6clang_a.main, i16 0, i16 3)`, !tbaa !21)
 [O92-DBG] Step 8: $hl = LXI -21555
 [O92-DBG] Found LXI: $hl = LXI -21555
 [O92-DBG] Passed O61 check
@@ -89,9 +89,9 @@
 [O92-DBG] Passed O61 check
 [O92-DBG] RP=HL
 [O92-DBG] RPLo=L RPHi=H
-[O92-DBG] Step 1: SHLD $hl, @__v6c_a.main + 4
+[O92-DBG] Step 1: SHLD $hl, @__v6clang_a.main + 4
 [O92-DBG] Step 2: $l = MVIr 0
-[O92-DBG] Step 3: $a = LDA @__v6c_a.main :: (volatile dereferenceable load (s8) from @__v6c_a.main, !tbaa !21)
+[O92-DBG] Step 3: $a = LDA @__v6clang_a.main :: (volatile dereferenceable load (s8) from @__v6clang_a.main, !tbaa !21)
 [O92-DBG] Step 4: $d = MOVrr $l
 [O92-DBG] Found consumer at step 4: $d = MOVrr $l
 [O92-DBG] Half=L Clobbered=1 Byte=255
@@ -100,9 +100,9 @@
 [O92-DBG] Passed O61 check
 [O92-DBG] RP=DE
 [O92-DBG] RPLo=E RPHi=D
-[O92-DBG] Step 1: $a = LDA @__v6c_a.main + 4
+[O92-DBG] Step 1: $a = LDA @__v6clang_a.main + 4
 [O92-DBG] Step 2: $c = MOVrr $a
-[O92-DBG] Step 3: $a = LDA @__v6c_a.main + 5
+[O92-DBG] Step 3: $a = LDA @__v6clang_a.main + 5
 [O92-DBG] Step 4: $b = MOVrr $a
 [O92-DBG] Step 5: $a = MOVrr $c
 [O92-DBG] Step 6: $a = ANAr $a(tied-def 0), $e, implicit-def $flags

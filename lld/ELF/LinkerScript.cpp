@@ -19,7 +19,7 @@
 #include "Symbols.h"
 #include "SyntheticSections.h"
 #include "Target.h"
-#include "V6CPackedSections.h"
+#include "V6ClangPackedSections.h"
 #include "Writer.h"
 #include "lld/Common/CommonLinkerContext.h"
 #include "lld/Common/Strings.h"
@@ -1054,7 +1054,7 @@ void LinkerScript::assignOffsets(OutputSection *sec) {
   sec->size = 0;
 
   uint64_t packedEnd;
-  if (assignV6CPackedSectionOffsets(*sec, dot, packedEnd)) {
+  if (assignV6ClangPackedSectionOffsets(*sec, dot, packedEnd)) {
     assert(packedEnd >= dot);
     expandOutputSection(packedEnd - dot);
     dot = packedEnd;

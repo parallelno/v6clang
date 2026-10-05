@@ -1,7 +1,7 @@
-; ModuleID = 'tests\features\26\v6llvmc.c'
-source_filename = "tests\\features\\26\\v6llvmc.c"
+; ModuleID = 'tests\features\26\v6clang.c'
+source_filename = "tests\\features\\26\\v6clang.c"
 target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"
-target triple = "i8080-unknown-v6c"
+target triple = "i8080-unknown-v6clang"
 
 @arr1 = dso_local global [100 x i16] zeroinitializer, align 1
 @arr2 = dso_local global [100 x i16] zeroinitializer, align 1

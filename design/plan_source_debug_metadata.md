@@ -3,7 +3,7 @@
 ## Scope
 
 This plan defines the shared debug-artifact contract for C and assembly,
-enables the V6C LLVM toolchain to produce that artifact, and defines how a
+enables the V6CLANG LLVM toolchain to produce that artifact, and defines how a
 Debug Adapter Protocol (DAP) adapter resolves source locations before sending
 numeric breakpoints to `v6emul`.
 
@@ -23,11 +23,11 @@ contract.
 - `v6emul` already accepts address-triggered breakpoints through its IPC debug
   commands (`DEBUG_BREAKPOINT_ADD`, delete, enable, disable, and query), but it
   has no source-file knowledge.
-- The current V6C Clang build does not produce usable debug sections. A local
+- The current V6CLANG Clang build does not produce usable debug sections. A local
   probe on 2026-07-28 using
-  `clang -target i8080-unknown-v6c -g -O0 -c` produced `.text`, relocation,
+  `clang -target i8080-unknown-v6clang -g -O0 -c` produced `.text`, relocation,
   `.symtab`, and string-table sections, but no `.debug_*` sections.
-- `V6CMCAsmInfo` sets the 16-bit code-pointer size but does not advertise debug
+- `V6ClangMCAsmInfo` sets the 16-bit code-pointer size but does not advertise debug
   information support. The MC ELF writer maps 8-bit and 16-bit fixups only;
   DWARF section offsets may additionally require a 32-bit relocation.
 - The normal Clang ROM path links a final ELF at runtime VMAs and then runs
@@ -41,7 +41,7 @@ contract.
   `--debug-elf`, matching the copied documentation. It is the rebuilt
   `2026.07.29-6dab24c` release; record its executable hash in integration
   results together with that version.
-- No V6C source-to-address reader or DAP breakpoint resolver exists in this
+- No V6CLANG source-to-address reader or DAP breakpoint resolver exists in this
   workspace.
 
 ### Desired behavior
@@ -77,12 +77,12 @@ artifact, but required these corrections after repository verification:
 - v6asm's documented `.symbols.json` path is stale: the current upstream source
   contains no generator or CLI option for it. It cannot be the compatibility
   path for this feature.
-- Current Clang V6C `-g` emits no DWARF, so this is not only a v6asm task.
+- Current Clang V6CLANG `-g` emits no DWARF, so this is not only a v6asm task.
 - `.debug_line` plus `.symtab` is conceptually enough for a custom reader, but
   a standards-compatible artifact should also carry a minimal compile unit in
   `.debug_info` with `.debug_abbrev` and strings. This makes LLVM tooling and
   third-party DWARF readers reliable.
-- Final ELF VMAs already equal CPU addresses under `v6c.ld` (normally starting
+- Final ELF VMAs already equal CPU addresses under `v6clang.ld` (normally starting
   at `0x0100`). The adapter must not add the ROM load address a second time.
 - Macro definition and invocation provenance cannot both be represented as one
   primary DWARF line row. Level 1 uses invocation rows as statement boundaries
@@ -114,7 +114,7 @@ scope for Level 1.
 
 - The final linked ELF is authoritative. The adapter never resolves against a
   relocatable `.o`.
-- For the default `v6c.ld`, ELF virtual addresses are CPU addresses. Validate
+- For the default `v6clang.ld`, ELF virtual addresses are CPU addresses. Validate
   every executable address is in `0x0000..0xFFFF` and send it unchanged.
 - A non-zero adapter relocation bias is allowed only as an explicit launch
   configuration for an image that is intentionally loaded somewhere other
@@ -122,7 +122,7 @@ scope for Level 1.
 - Produce ROM bytes only from the retained ELF:
 
   ```powershell
-  clang -target i8080-unknown-v6c -g -gdwarf-4 app.c -o program.elf
+  clang -target i8080-unknown-v6clang -g -gdwarf-4 app.c -o program.elf
   llvm-objcopy -O binary program.elf program.rom
   ```
 
@@ -180,8 +180,8 @@ gaps outside a sequence are disassembly-only locations.
 
 | Component | Change |
 |-----------|--------|
-| V6C MC/AsmInfo | Enable debug emission; support all fixups required by minimal DWARF |
-| V6C ELF ABI + LLD | Add and apply a 32-bit absolute relocation if the probe proves DWARF section references require it |
+| V6CLANG MC/AsmInfo | Enable debug emission; support all fixups required by minimal DWARF |
+| V6CLANG ELF ABI + LLD | Add and apply a 32-bit absolute relocation if the probe proves DWARF section references require it |
 | Clang/LLVM tests | Verify C `-g -gdwarf-4` objects and final linked ELF line mappings |
 | Build workflow | Retain `program.elf`, derive `program.rom` from it, document both launch paths |
 | v6asm | Packaged release emits the metadata; run mixed-language, relocation-name, and adapter verification |
@@ -192,10 +192,10 @@ gaps outside a sequence are disassembly-only locations.
 
 ### Step 3.1 - Read and freeze the contracts [ ]
 
-Read `docs/V6CBuildGuide.md`, `docs/V6CArchitecture.md`,
-`docs/V6CClangUsage.md`, `tools/v6emul/docs/cli.md`,
-`tools/v6emul/docs/ipc-protocol.md`, `clang/lib/Driver/ToolChains/V6C.cpp`,
-`clang/lib/Driver/ToolChains/V6C/v6c.ld`, the V6C MC assembler backend, and
+Read `docs/V6ClangBuildGuide.md`, `docs/V6ClangArchitecture.md`,
+`docs/V6ClangUsage.md`, `tools/v6emul/docs/cli.md`,
+`tools/v6emul/docs/ipc-protocol.md`, `clang/lib/Driver/ToolChains/V6Clang.cpp`,
+`clang/lib/Driver/ToolChains/V6CLANG/v6clang.ld`, the V6CLANG MC assembler backend, and
 the DAP `setBreakpoints`, `Breakpoint`, `Source`, and `sourceFileMap` semantics.
 
 Record the Level 1 DWARF version, path policy, line-sliding policy, zero address
@@ -215,17 +215,17 @@ The first version of this test must fail on the current absence of `.debug_*`.
 Also add `llvm-dwarfdump` to the documented/build test targets if the local
 build does not currently produce it.
 
-> **Implementation Notes**: Added `llvm/test/CodeGen/V6C/debug-line.ll` with
+> **Implementation Notes**: Added `llvm/test/CodeGen/V6CLANG/debug-line.ll` with
 > a minimal debug compile unit and line location; it failed before MC debug
 > support was enabled and now verifies the required DWARF sections. Added
-> `clang/test/Driver/v6c-debug-metadata.c`, a real C/header fixture compiled
+> `clang/test/Driver/v6clang-debug-metadata.c`, a real C/header fixture compiled
 > with `-g -gdwarf-4`, which checks emitted sections, source names, and decoded
 > line-table rows.
 
-### Step 3.3 - Enable V6C MC debug information [x]
+### Step 3.3 - Enable V6CLANG MC debug information [x]
 
 Set the appropriate `MCAsmInfo` debug-information capability in
-`V6CMCAsmInfo.cpp`. Verify that `CodePointerSize = 2` produces DWARF address
+`V6ClangMCAsmInfo.cpp`. Verify that `CodePointerSize = 2` produces DWARF address
 size 2 and that generated `.loc` information survives instruction selection,
 pseudo expansion, and assembly.
 
@@ -234,18 +234,18 @@ immediately and inspect every generated relocation and malformed-section
 diagnostic.
 
 > **Implementation Notes**: Set `SupportsDebugInformation = true` in
-> `llvm/lib/Target/V6C/MCTargetDesc/V6CMCAsmInfo.cpp`. The resulting object
+> `llvm/lib/Target/V6CLANG/MCTargetDesc/V6ClangMCAsmInfo.cpp`. The resulting object
 > emits DWARF v4 with address size 2.
 
-### Step 3.4 - Complete the V6C debug relocation ABI [x]
+### Step 3.4 - Complete the V6CLANG debug relocation ABI [x]
 
 Inventory fixups generated by the Step 3.2 object. The current backend handles
 `FK_Data_1`, `FK_Data_2`, and target 8/16-bit fixups; it applies `FK_Data_4`
 locally but has no ELF relocation for an unresolved 32-bit value.
 
-If DWARF section references emit unresolved `FK_Data_4`, add `R_V6C_32` to the
-shared V6C relocation definitions, MC ELF writer, relocation-name support, and
-`lld/ELF/Arch/V6C.cpp`. LLD must write a little-endian 32-bit absolute value.
+If DWARF section references emit unresolved `FK_Data_4`, add `R_V6CLANG_32` to the
+shared V6CLANG relocation definitions, MC ELF writer, relocation-name support, and
+`lld/ELF/Arch/V6Clang.cpp`. LLD must write a little-endian 32-bit absolute value.
 Keep CPU addresses 16-bit; the 32-bit relocation exists for ELF/DWARF section
 offsets, not for machine instructions.
 
@@ -253,11 +253,11 @@ Add MC relocation tests and LLD positive/overflow tests before enabling the
 new relocation in production output.
 
 > **Implementation Notes**: The debug object probe emitted unresolved
-> `FK_Data_4` references as relocation type zero. Added `R_V6C_32 = 5` in the
+> `FK_Data_4` references as relocation type zero. Added `R_V6CLANG_32 = 5` in the
 > MC writer and both LLD source trees; it writes 32-bit little-endian DWARF
 > section references. The regression verifies its `00000505` encoding. Named
-> V6C relocations are accepted by `.reloc`, `llvm-readelf` reports their names,
-> and `R_V6C_32` preserves the `0xffffffff` boundary value. ELF32 relocation
+> V6CLANG relocations are accepted by `.reloc`, `llvm-readelf` reports their names,
+> and `R_V6CLANG_32` preserves the `0xffffffff` boundary value. ELF32 relocation
 > fields cannot represent a wider value; malformed relocation names are
 > rejected before object creation.
 
@@ -273,7 +273,7 @@ Verify:
 - final `.symtab` values equal disassembly addresses;
 - no stripping occurs unless explicitly requested.
 
-Add a V6C linker lit test that correlates `llvm-dwarfdump --debug-line`,
+Add a V6CLANG linker lit test that correlates `llvm-dwarfdump --debug-line`,
 `llvm-readelf -s`, and `llvm-objdump -d` for the same final ELF.
 
 > **Implementation Notes**: `debug-line.ll` links its debug object through the
@@ -281,7 +281,7 @@ Add a V6C linker lit test that correlates `llvm-dwarfdump --debug-line`,
 > remaining relocations. A manual final-ELF probe also confirmed that
 > `.debug_line` contains the linked `.text` address. The planned two-object
 > `--gc-sections` live/discarded-function coverage now exists in
-> `llvm/test/Linker/V6C/debug-gc-sections.test`: live code and symbols remain,
+> `llvm/test/Linker/V6CLANG/debug-gc-sections.test`: live code and symbols remain,
 > while `.text.dead` and its symbol are removed. LLD keeps a non-allocating
 > `dead.c` line-program contribution with a zero address after collection, so
 > an adapter must aggregate only rows that fall in a final executable section.
@@ -298,9 +298,9 @@ explicit debug-companion output path. Do not silently change release builds or
 make `-save-temps` the public debug-artifact contract.
 
 > **Implementation Notes**: Debug flat-ROM links now retain `<output>.elf` in
-> `clang/lib/Driver/ToolChains/V6C.cpp`; the normal `llvm-objcopy` stage still
+> `clang/lib/Driver/ToolChains/V6Clang.cpp`; the normal `llvm-objcopy` stage still
 > derives `<output>.rom` from it. Non-debug flat-ROM links still use a temporary
-> ELF. `clang/test/Driver/v6c-debug-companion.c` and the V6C build guides cover
+> ELF. `clang/test/Driver/v6clang-debug-companion.c` and the V6CLANG build guides cover
 > the behavior.
 
 ### Step 3.7 - Implement the adapter ELF/DWARF reader [ ]
@@ -308,7 +308,7 @@ make `-save-temps` the public debug-artifact contract.
 Use a maintained structured ELF/DWARF library in the adapter's implementation
 language. Do not parse `llvm-dwarfdump`, map files, listings, or `readelf` text.
 
-Implement strict validation for ELF32 little-endian `EM_V6C`, address size 2,
+Implement strict validation for ELF32 little-endian `EM_V6Clang`, address size 2,
 supported DWARF version, line-program bounds, executable-section membership,
 and 16-bit addresses. Expose a small `DebugIndex` API for source-to-address,
 address-to-source, and address-to-symbol queries.
@@ -370,18 +370,18 @@ without identifying which producer emitted each line table.
 > results. A local `-g -f obj` probe emitted
 > `.debug_info`, `.debug_abbrev`, `.debug_line`, `.debug_str`, and
 > `.rela.debug_line` with two code-section relocations. `llvm-readelf` and
-> `llvm-readobj` now print named V6C relocations after the LLVM-side
+> `llvm-readobj` now print named V6CLANG relocations after the LLVM-side
 > relocation-name registration. A direct-ROM probe emitted
 > a 3-byte ROM plus an ELF32 `ET_EXEC` companion with `.text` at `0x0100` and
 > all four DWARF sections. The packaged executable SHA-256 is
 > `4C41C67DD24E3F8BEC186A040401A1A862A50D7E3E3231F216F773D1EC1158BC`.
-> `llvm/test/Linker/V6C/debug-v6asm-mixed.test` compiles a Clang `-g -gdwarf-4`
+> `llvm/test/Linker/V6CLANG/debug-v6asm-mixed.test` compiles a Clang `-g -gdwarf-4`
 > object and a v6asm `-g -f obj` object, links them into one ELF, and verifies
 > both symbols, both source file names in `.debug_line`, all required DWARF
 > sections, and complete relocation resolution. Adapter consumption remains
 > pending outside this repository.
 
-### Step 3.12 - Build (local V6C workspace) [x]
+### Step 3.12 - Build (local V6CLANG workspace) [x]
 
 Run `pwsh scripts/build.ps1 -SkipTests`, build the adapter/emulator with their
 documented presets, and build the upstream v6asm workspace. Ensure
@@ -389,7 +389,7 @@ documented presets, and build the upstream v6asm workspace. Ensure
 `llvm-objcopy` are available in the test build.
 
 > **Implementation Notes**: Ran `pwsh scripts/build.ps1 -SkipTests`. CMake
-> configured LLVM with the experimental V6C target, then Ninja rebuilt Clang,
+> configured LLVM with the experimental V6CLANG target, then Ninja rebuilt Clang,
 > LLD, LLc, object tools, FileCheck, and `not`; the
 > script also assembled `crt0.o`. The requested adapter/emulator and upstream
 > v6asm workspace builds are outside this repository and were intentionally
@@ -397,12 +397,12 @@ documented presets, and build the upstream v6asm workspace. Ensure
 
 ### Step 3.13 - Lit tests: debug metadata and relocation [x]
 
-Run focused MC, CodeGen, and Linker V6C tests covering debug sections,
-`R_V6C_32` if added, linked addresses, GC, include paths, optimized repeated
+Run focused MC, CodeGen, and Linker V6CLANG tests covering debug sections,
+`R_V6CLANG_32` if added, linked addresses, GC, include paths, optimized repeated
 lines, and malformed/overflow relocation rejection.
 
 > **Implementation Notes**: Focused `llvm-lit` runs cover LLVM IR and C/header
-> debug metadata, named `R_V6C_32`, its complete ELF32 boundary value,
+> debug metadata, named `R_V6CLANG_32`, its complete ELF32 boundary value,
 > malformed relocation-name rejection, final linked addresses, live/dead
 > `--gc-sections` behavior, named LO8/HI8 relocations, and mixed Clang/v6asm
 > linkage. The final local run passed all 170 lit tests. Optimized
@@ -453,7 +453,7 @@ observable output.
 
 ### Step 3.18 - Documentation [ ]
 
-Update the V6C build/Clang guides, v6emul IPC docs, adapter launch
+Update the V6CLANG build/Clang guides, v6emul IPC docs, adapter launch
 configuration reference, and v6asm docs. Document path mapping, line movement,
 multi-address breakpoints, optimized-code limitations, runtime address rules,
 artifact mismatch errors, and stripping behavior.
@@ -465,12 +465,12 @@ files changed, tests run, and deviations from this design.
 
 ### Step 3.19 - Sync mirror [x]
 
-Run `pwsh scripts/sync_llvm_mirror.ps1`. Ensure V6C target, LLD, Clang, and lit
+Run `pwsh scripts/sync_llvm_mirror.ps1`. Ensure V6CLANG target, LLD, Clang, and lit
 test changes are present in both canonical and tracked mirror locations, with
 no unrelated generated changes.
 
 > **Implementation Notes**: Ran `pwsh scripts/sync_llvm_mirror.ps1` after the
-> canonical LLVM, LLD, Clang, and test updates. The modified V6C source files
+> canonical LLVM, LLD, Clang, and test updates. The modified V6CLANG source files
 > match their tracked mirror copies byte-for-byte.
 
 ## 4. Expected Results
@@ -502,7 +502,7 @@ instead of placing a breakpoint at an unrelated address.
 
 | Risk | Mitigation |
 |------|------------|
-| Enabling MC debug support exposes a missing relocation | Start with a failing object test; inventory fixups; add `R_V6C_32` only when demonstrated |
+| Enabling MC debug support exposes a missing relocation | Start with a failing object test; inventory fixups; add `R_V6CLANG_32` only when demonstrated |
 | LLD GC leaves stale debug rows | Linker test live and discarded function sections; validate every indexed row belongs to executable output |
 | Adapter adds `0x0100` twice | Default to zero bias and assert final ELF VMA equals disassembly/emulator PC |
 | Windows and DWARF paths differ | Canonical matching plus explicit `sourceFileMap`; reject ambiguous basename matches |
@@ -527,7 +527,7 @@ instead of placing a breakpoint at an unrelated address.
 
 - DWARF v5 after all chosen adapter libraries pass equivalent fixtures.
 - `.debug_info` subprograms, variables, types, scopes, and location lists.
-- `.debug_frame` or `.eh_frame` and a defined V6C unwind ABI.
+- `.debug_frame` or `.eh_frame` and a defined V6CLANG unwind ABI.
 - `.debug_macro` or equivalent macro definition/invocation views.
 - Build-ID notes as a fast precheck in addition to ROM-byte verification.
 - DAP function breakpoints, data breakpoints from symbols, and source-aware
@@ -538,9 +538,9 @@ instead of placing a breakpoint at an unrelated address.
 
 * [Debug Adapter Protocol - setBreakpoints](https://microsoft.github.io/debug-adapter-protocol/specification#Requests_SetBreakpoints)
 * [DWARF Debugging Information Format](https://dwarfstd.org/)
-* `docs/V6CBuildGuide.md`
-* `docs/V6CArchitecture.md`
-* `docs/V6CClangUsage.md`
+* `docs/V6ClangBuildGuide.md`
+* `docs/V6ClangArchitecture.md`
+* `docs/V6ClangUsage.md`
 * `tools/v6emul/docs/cli.md`
 * `tools/v6emul/docs/ipc-protocol.md`
 * `tools/v6asm/docs/object-output.md`

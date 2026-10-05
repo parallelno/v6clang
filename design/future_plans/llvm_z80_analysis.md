@@ -1,7 +1,7 @@
 # LLVM-Z80 Backend Optimization Analysis
 
 Analysis of Z80 LLVM backend repositories for optimization strategies
-applicable to the V6C (i8080) backend.
+applicable to the V6CLANG (i8080) backend.
 
 ## Repositories Surveyed
 
@@ -14,15 +14,15 @@ applicable to the V6C (i8080) backend.
 
 The Z80 is a **direct superset** of the Intel 8080 — every 8080 instruction
 exists in the Z80 with the same encoding. This makes Z80 optimization
-strategies *more directly applicable* to V6C than the 6502 (llvm-mos) strategies.
+strategies *more directly applicable* to V6CLANG than the 6502 (llvm-mos) strategies.
 
-| Feature | Z80 | i8080 (V6C) | Impact |
+| Feature | Z80 | i8080 (V6CLANG) | Impact |
 |---------|-----|-------------|--------|
 | Registers | A,B,C,D,E,H,L + IX,IY | A,B,C,D,E,H,L | Same core set |
 | Register pairs | BC,DE,HL,IX,IY | BC,DE,HL | Z80 has 2 extra index regs |
 | ALU operations | Accumulator-only (A) | Accumulator-only (A) | **Identical bottleneck** |
 | Addressing modes | (HL), (BC), (DE), (IX+d), (IY+d) | (HL), (BC), (DE) | Z80 has indexed addressing |
-| Stack-relative | Via IX+d (8-bit offset) | None | Major V6C disadvantage |
+| Stack-relative | Via IX+d (8-bit offset) | None | Major V6CLANG disadvantage |
 | Branch types | JP abs, JR rel, DJNZ | JMP abs only | Z80 has relative branches |
 | Conditional CALL | CALL CC, nn | CC/CNC/CZ/CNZ/CP/CM/CPE/CPO | **Both have it** |
 | Barrel shifter | No (1-bit shifts only) | No (1-bit shifts only) | **Identical constraint** |
@@ -115,7 +115,7 @@ flag state tracking (8 bits: S,Z,H,P/V,N,C with known mask/value).
 - `Sub16`/`Cmp16` → `SBC16` when carry flag is provably 0
 - Dead/killed flag propagation for safe register reuse
 
-**V6C applicability**: **Very High**. The 8080 has the same register set
+**V6CLANG applicability**: **Very High**. The 8080 has the same register set
 (minus IX/IY). This is a significantly more powerful version of O13
 (Load-Immediate Combining). The flag tracking translates directly —
 8080 has the same S,Z,AC,P,CY flags. The `SLA A` → `ADD A,A` pattern
@@ -143,8 +143,8 @@ copies), this replaces the pattern with a conditional CALL.
 skip:
 ```
 
-**V6C applicability**: **High**. The 8080 has conditional CALL instructions
-(CC, CNC, CZ, CNZ, CP, CM, CPE, CPO) that are *never used* by V6C today.
+**V6CLANG applicability**: **High**. The 8080 has conditional CALL instructions
+(CC, CNC, CZ, CNZ, CP, CM, CPE, CPO) that are *never used* by V6CLANG today.
 Converting `JNZ skip / CALL target / skip:` to `CNZ target` saves:
 - 3 bytes (JNZ=3B + CALL=3B → CNZ=3B)
 - ~6cc when the call happens, ~18cc when skipped (JNZ=12cc → 0cc)
@@ -163,8 +163,8 @@ their consumers via `TII.optimizeLoadInstr()`. This is a simplified
 version of MachineLICM's load folding, targeted at the Z80's limited
 addressing modes.
 
-**V6C applicability**: **Medium**. V6C's `optimizeLoadInstr()` would need
-implementation in `V6CInstrInfo`. The technique is sound but may yield
+**V6CLANG applicability**: **Medium**. V6CLANG's `optimizeLoadInstr()` would need
+implementation in `V6ClangInstrInfo`. The technique is sound but may yield
 fewer opportunities on the 8080 which has fewer foldable patterns.
 
 ---
@@ -182,7 +182,7 @@ Pre-computes the cheapest SP adjustment among 5 methods:
 
 Considers `-Os` vs speed optimization and eZ80 vs Z80 instruction costs.
 
-**V6C applicability**: **High**. V6C currently uses a simple approach for
+**V6CLANG applicability**: **High**. V6CLANG currently uses a simple approach for
 stack adjustment. The POP-based strategy (1 byte per 2 bytes) is directly
 applicable: `POP PSW` costs 12cc on 8080 (vs `INX SP; INX SP` = 12cc but
 2 bytes). For sizes > 4 bytes, POP is more compact. For large frames,
@@ -205,11 +205,11 @@ replaces the reload with `LD R', R` (or eliminates it if R'==R).
 - On clobber of any tracked register: invalidate affected entries
 - On call/unmodeled side effects: clear all entries
 
-**V6C applicability**: **Very High**. This is one of the most impactful
-optimizations for V6C. Stack access on the 8080 costs ~52cc (see O8). If
+**V6CLANG applicability**: **Very High**. This is one of the most impactful
+optimizations for V6CLANG. Stack access on the 8080 costs ~52cc (see O8). If
 a spilled value is still in a register when reloaded, replacing the reload
 with a `MOV R', R` (8cc) saves ~44cc per instance. The tracking mechanism
-works identically — V6C uses SHLD/LHLD or multi-instruction sequences
+works identically — V6CLANG uses SHLD/LHLD or multi-instruction sequences
 instead of IX+d, but the concept of "offset→register" mapping is the same.
 
 ---
@@ -223,9 +223,9 @@ values as either register or immediate at each SP-relative offset. Handles
 16-bit store/load patterns, redundant store elimination, and full forwarding
 with circular dependency checking.
 
-**V6C applicability**: **High**. SM83 is closer to 8080 than Z80 in terms
+**V6CLANG applicability**: **High**. SM83 is closer to 8080 than Z80 in terms
 of stack access (neither has IX+d). The slot tracking with SP delta
-management is directly applicable to V6C's stack access patterns.
+management is directly applicable to V6CLANG's stack access patterns.
 
 ---
 
@@ -244,9 +244,9 @@ flag correctly.
   JR Z, label
 ```
 
-**V6C applicability**: **High**. The 8080 pattern is `ORA A` before `JZ`/`JNZ`.
+**V6CLANG applicability**: **High**. The 8080 pattern is `ORA A` before `JZ`/`JNZ`.
 After `ANA`, `ORA`, `XRA`, `ADD`, `ADC`, `SUB`, `SBB`, `CMP` — all set the
-zero flag. The subsequent `ORA A` is redundant. V6C's `V6CEliminateZeroTest`
+zero flag. The subsequent `ORA A` is redundant. V6CLANG's `V6ClangEliminateZeroTest`
 already does a version of this for the `ZERO_TEST` pseudo, but a more general
 post-RA pass that catches all missed patterns would be valuable.
 
@@ -267,7 +267,7 @@ Collection of targeted peepholes beyond store-to-load forwarding:
 | ALU #n; ALU #n → ALU #n (idempotent) | varies | ANI n; ANI n → ANI n |
 | XOR compare constant folding | 1B | XRI-based 16-bit compare folding |
 
-**V6C applicability**: **Very High** for the loop counter optimization in
+**V6CLANG applicability**: **Very High** for the loop counter optimization in
 particular. The `DCR r; JNZ` pattern (10cc, 2B) replaces the 5-instruction
 decrement-and-branch-if-nonzero sequence (28T, 6B). The `CMA` and `XRA A`
 patterns are also directly applicable.
@@ -288,7 +288,7 @@ instead of library calls:
 - **Variable shifts**: DJNZ/DEC B loops
 - **Saturating arithmetic**: branch-based clamping
 
-**V6C applicability**: **Medium-High**. V6C currently uses library calls for
+**V6CLANG applicability**: **Medium-High**. V6CLANG currently uses library calls for
 multiply and divide. Inline expansion eliminates:
 - CALL/RET overhead (30cc)
 - Full register save/restore in the called function (~40-80cc)
@@ -312,9 +312,9 @@ Restricts function inlining to:
 **Rationale**: With only 3 GP register pairs, inlining large functions causes
 massive register spilling that dwarfs the benefit of eliminating the call/ret.
 
-**V6C applicability**: **High**. V6C has the same 3 register pairs (BC, DE, HL).
+**V6CLANG applicability**: **High**. V6CLANG has the same 3 register pairs (BC, DE, HL).
 LLVM's default inlining thresholds are tuned for targets with 16-32 GPRs.
-Without TTI overrides, V6C inlines aggressively, causing spill explosions
+Without TTI overrides, V6CLANG inlines aggressively, causing spill explosions
 in the callers. This simple TTI hook prevents that with minimal code.
 
 ---
@@ -326,7 +326,7 @@ in the callers. This simple TTI hook prevents that with minimal code.
 Overrides Loop Strength Reduction cost comparison to prioritize instruction
 count over other metrics (NumRegs, AddRecCost, etc.).
 
-**V6C applicability**: **High**. Directly complements O7 (TTI for LSR).
+**V6CLANG applicability**: **High**. Directly complements O7 (TTI for LSR).
 The Z80's priority ordering (Insns first) makes sense for the 8080 too —
 each extra instruction costs 4-12cc and 1-3 bytes, while extra registers
 cause spills costing 52-104cc each.
@@ -341,13 +341,13 @@ Chains constant-amount shifts of the same base value:
 `SHL x, 5` when `SHL x, 3` already exists → rewrite to `SHL (SHL x, 3), 2`.
 Uses dominance analysis to move the earlier shift up if needed.
 
-**V6C applicability**: **Medium**. Already mentioned in llvm-mos analysis.
+**V6CLANG applicability**: **Medium**. Already mentioned in llvm-mos analysis.
 The Z80 version is essentially identical to the llvm-mos version ported for
 the Z80's GlobalISel pipeline.
 
 ---
 
-## Ranked Strategies (Impact × Feasibility for V6C)
+## Ranked Strategies (Impact × Feasibility for V6CLANG)
 
 | Rank | Strategy | Impact | Feasibility | Notes |
 |------|---------|--------|-------------|-------|
@@ -361,14 +361,14 @@ the Z80's GlobalISel pipeline.
 | 8 | S7. Redundant Flag Elimination | Medium | High | Extends existing ZERO_TEST |
 | 9 | S11. LSR Cost Tuning | Medium | Very High | 10-line TTI addition |
 | 10 | S6. SP-Relative Forwarding | Medium | Medium | SM83 patterns closer to 8080 |
-| 11 | S3. Load Folding | Low-Med | Medium | Requires V6CInstrInfo additions |
+| 11 | S3. Load Folding | Low-Med | Medium | Requires V6ClangInstrInfo additions |
 | 12 | S12. Shift/Rotate Chaining | Low | High | Already covered in llvm-mos analysis |
 
 ---
 
-## Mapping to Existing V6C Optimizations (O1-O14)
+## Mapping to Existing V6CLANG Optimizations (O1-O14)
 
-| Z80 Strategy | V6C Item | Relationship |
+| Z80 Strategy | V6CLANG Item | Relationship |
 |-------------|----------|-------------|
 | S1 (Value Tracking) | O13 | **Extends** — O13 is a subset of S1 |
 | S2 (Conditional Call) | — | **New** → O15 |

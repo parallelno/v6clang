@@ -1,14 +1,14 @@
 /* O69: Direct frame-index load/store pseudos.
  *
  * Goal: exercise stack-relative i8/i16 loads and stores that previously
- * lowered through V6C_LEA_FI + V6C_LOAD*_P/V6C_STORE*_P address temporaries.
+ * lowered through V6CLANG_LEA_FI + V6CLANG_LOAD*_P/V6CLANG_STORE*_P address temporaries.
  *
  * Compile for assembly verification:
- *   llvm-build\bin\clang -target i8080-unknown-v6c -O3 -S \
- *       tests\features\48\v6llvmc.c -o tests\features\48\v6llvmc_new01.asm \
- *       -mllvm -mv6c-annotate-pseudos \
- *       -mllvm -v6c-disable-alloca-promote \
- *       -mllvm -v6c-disable-static-stack-alloc
+ *   llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S \
+ *       tests\features\48\v6clang.c -o tests\features\48\v6clang_new01.asm \
+ *       -mllvm -mv6clang-annotate-pseudos \
+ *       -mllvm -v6clang-disable-alloca-promote \
+ *       -mllvm -v6clang-disable-static-stack-alloc
  */
 
 typedef unsigned char u8;
@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
     g16 = load16_stack_arg(1, 2, 3, 4);
     g8 = store8_local(g8);
     g16 = store16_local(g16);
-    __builtin_v6c_out(0xED, g8);
-    __builtin_v6c_out(0xED, (unsigned char)g16);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, g8);
+    __builtin_v6clang_out(0xED, (unsigned char)g16);
+    __builtin_v6clang_hlt();
     return 0;
 }

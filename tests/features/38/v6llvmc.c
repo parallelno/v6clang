@@ -6,9 +6,9 @@
 // live while A is dead — O64's main win.
 //
 // Compile:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\38\v6llvmc.c -o tests\features\38\v6llvmc_new01.asm \
-//       -mllvm -mv6c-annotate-pseudos
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\38\v6clang.c -o tests\features\38\v6clang_new01.asm \
+//       -mllvm -mv6clang-annotate-pseudos
 
 __attribute__((leaf)) extern unsigned char op(unsigned char x);
 __attribute__((leaf)) extern void use5(unsigned char, unsigned char,

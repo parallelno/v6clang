@@ -1,28 +1,28 @@
 # O75. Flag-Producing Arithmetic SDNodes (Fold `setcc(arith, 0)` at ISel)
 
-*V6C-native optimization. Inspired by X86's `X86ISD::ADD/SUB/DEC` family
+*V6CLANG-native optimization. Inspired by X86's `X86ISD::ADD/SUB/DEC` family
 returning `(value, EFLAGS)` and ARM's `ARMISD::ADDC/SUBC` flag-producing
 nodes.*
 
 ## Problem
 
-V6C's ISel models flags via a single SDNode — `V6CISD::CMP` (and its sibling
-`V6CISD::CMP_ZERO` for i16 zero tests). Only this node carries
+V6CLANG's ISel models flags via a single SDNode — `V6ClangISD::CMP` (and its sibling
+`V6ClangISD::CMP_ZERO` for i16 zero tests). Only this node carries
 `SDNPOutGlue`; every flag-setting arithmetic op (DCR, INR, ADD, ADC, SUB,
 SBB, ANA, ORA, XRA, RLC, RRC, RAL, RAR, …) is matched from a plain
 arithmetic SDAG pattern that produces only an `i8`/`i16` value and discards
 its FLAGS at the SDAG level.
 
-`LowerBR_CC` ([V6CISelLowering.cpp:471](../../llvm/lib/Target/V6C/V6CISelLowering.cpp#L471))
-unconditionally creates a fresh `V6CISD::CMP` node from the icmp's LHS/RHS,
+`LowerBR_CC` ([V6ClangISelLowering.cpp:471](../../llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp#L471))
+unconditionally creates a fresh `V6ClangISD::CMP` node from the icmp's LHS/RHS,
 even when LHS is itself an arithmetic result that already set the right
 flags:
 
 ```cpp
 // For i8: emit CMP (produces glue with FLAGS) then BRCOND.
-SDValue Glue = DAG.getNode(V6CISD::CMP, DL, MVT::Glue, LHS, RHS);
-SDValue CCVal = DAG.getConstant(V6CC, DL, MVT::i8);
-return DAG.getNode(V6CISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
+SDValue Glue = DAG.getNode(V6ClangISD::CMP, DL, MVT::Glue, LHS, RHS);
+SDValue CCVal = DAG.getConstant(V6ClangC, DL, MVT::i8);
+return DAG.getNode(V6ClangISD::BRCOND, DL, MVT::Other, Chain, Dest, CCVal, Glue);
 ```
 
 For C source like `while (--n) { ... }` the result is:
@@ -31,7 +31,7 @@ For C source like `while (--n) { ... }` the result is:
 %8:gr8  = DCRr %1:gr8(tied-def 0), implicit-def dead $flags
 %19:acc = COPY %8:gr8                 ; <-- forced because CPI's operand class is Acc
 CPI %19:acc, 0, implicit-def $flags
-V6C_BRCOND %bb.2, 1, implicit $flags
+V6CLANG_BRCOND %bb.2, 1, implicit $flags
 ```
 
 After register allocation this becomes:

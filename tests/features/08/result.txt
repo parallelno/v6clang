@@ -64,7 +64,7 @@ c8080 stats:
   test_eq_zero:  64cc worst, 15B
   test_null_ptr: 90cc worst, 16B
 
-=== v6llvmc assembly ===
+=== v6clang assembly ===
 
 test_ne_zero:
     MOV  D, H                 ;  8cc, 1B
@@ -108,14 +108,14 @@ test_null_ptr:
     RET                       ; 10cc, 1B
 ; Total: 80cc, 14B (non-null); 58cc, 11B (null)
 
-v6llvmc stats:
+v6clang stats:
   test_ne_zero:  84cc worst, 16B
   test_eq_zero:  84cc worst, 16B
   test_null_ptr: 80cc worst, 14B
 
-=== Improvement (O27 vs old v6llvmc) ===
+=== Improvement (O27 vs old v6clang) ===
 
-Old v6llvmc (before O27) used MVI+CMP with MBB splitting:
+Old v6clang (before O27) used MVI+CMP with MBB splitting:
   test_ne_zero:  old 84cc, 19B → new 84cc, 16B  (saved 3B)
   test_eq_zero:  old 84cc, 19B → new 84cc, 16B  (saved 3B)
   test_null_ptr: old 80cc, 17B → new 80cc, 14B  (saved 3B)

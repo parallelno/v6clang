@@ -110,7 +110,7 @@ c8080 stats (all functions):
   main:                 212cc, 34B
   Total:                692cc, 114B
 
-== v6llvmc assembly BEFORE (O13 not applied) ==
+== v6clang assembly BEFORE (O13 not applied) ==
 
 use8:
     STA  sink8                         ; 16cc, 3B
@@ -174,7 +174,7 @@ main:
     RET                                ; 12cc, 1B
                                        ; total: 196cc, 34B
 
-v6llvmc BEFORE stats:
+v6clang BEFORE stats:
   use8:                  28cc,  4B
   use16:                 32cc,  4B
   test_multi_zext:       84cc, 11B
@@ -184,7 +184,7 @@ v6llvmc BEFORE stats:
   main:                 196cc, 34B
   Total:                528cc, 84B
 
-== v6llvmc assembly AFTER (O13 load-immediate combining) ==
+== v6clang assembly AFTER (O13 load-immediate combining) ==
 
 use8:
     STA  sink8                         ; 16cc, 3B
@@ -248,7 +248,7 @@ main:
     RET                                ; 12cc, 1B
                                        ; total: 196cc, 33B  (saved 1B)
 
-v6llvmc AFTER stats:
+v6clang AFTER stats:
   use8:                  28cc,  4B
   use16:                 32cc,  4B
   test_multi_zext:       84cc, 11B
@@ -260,14 +260,14 @@ v6llvmc AFTER stats:
 
 == Summary ==
   c8080 total:           692cc, 114B
-  v6llvmc BEFORE (O13):  528cc,  84B
-  v6llvmc AFTER  (O13):  528cc,  82B  (saved 2 bytes, same cycle count)
+  v6clang BEFORE (O13):  528cc,  84B
+  v6clang AFTER  (O13):  528cc,  82B  (saved 2 bytes, same cycle count)
 
 O13 improvements in this test:
   - test_sequential_values: MVI A, 0xb -> INR A (saved 1 byte)
   - main (inlined):         MVI A, 0xb -> INR A (saved 1 byte)
   - Cycle count unchanged (MVI 8cc = INR 8cc), pure code size win
 
-Note: v6llvmc already greatly outperforms c8080 (82B vs 114B, 528cc vs 692cc)
+Note: v6clang already greatly outperforms c8080 (82B vs 114B, 528cc vs 692cc)
 due to register-based calling convention and inlining. O13 provides incremental
 code size reduction by eliminating redundant immediate loads.

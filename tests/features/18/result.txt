@@ -95,7 +95,7 @@ __o_xor_16:                             ; helper subroutine, 40cc, 8B
 Note: c8080 uses static stack allocation (SHLD/LHLD), shared XOR subroutine,
 and conditional CALL (CNZ/CZ). Each function body is 19B + shared __o_xor_16 8B.
 
-## v6llvmc assembly (after O29)
+## v6clang assembly (after O29)
 
 ```asm
 test_ne_same_bytes:
@@ -141,7 +141,7 @@ test_ne_diff_bytes:
   ...
 ```
 
-### v6llvmc stats
+### v6clang stats
 
 | Function | Before O29 | After O29 | Savings |
 |----------|-----------|-----------|---------|

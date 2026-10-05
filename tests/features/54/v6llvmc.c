@@ -1,6 +1,6 @@
-/* tests/features/54/v6llvmc.c
+/* tests/features/54/v6clang.c
  *
- * O72 — V6C_STORE16_P redesign. Companion to O71 (LOAD16_P). The
+ * O72 — V6CLANG_STORE16_P redesign. Companion to O71 (LOAD16_P). The
  * old expander declares a blanket `Defs = [HL, A]` that
  * over-clobbers `A` on 6 of 9 shapes and forces RA to spill `A`
  * across every 16-bit pointer store. The redesigned expander
@@ -68,19 +68,19 @@ int main(void) {
     buf[2] = 0;
 
     row3_de_hl(0xAA55, &buf[0]);
-    __builtin_v6c_out(0xDE, (uint8_t)buf[0]);
+    __builtin_v6clang_out(0xDE, (uint8_t)buf[0]);
 
     g_r = row2_hl_reused(&buf[1], 0x1234);
-    __builtin_v6c_out(0xDE, (uint8_t)g_r);
+    __builtin_v6clang_out(0xDE, (uint8_t)g_r);
 
     g_a = row5_bc_hl_a_live(0xCAFE, 0x99, &buf[2]);
-    __builtin_v6c_out(0xDE, (uint8_t)g_a);
+    __builtin_v6clang_out(0xDE, (uint8_t)g_a);
 
     row6_bc_bc(0x1111, 0x2222, &buf[0]);
-    __builtin_v6c_out(0xDE, (uint8_t)buf[0]);
+    __builtin_v6clang_out(0xDE, (uint8_t)buf[0]);
 
     g_r = row4_de_de(0xBEEF, &buf[1]);
-    __builtin_v6c_out(0xDE, (uint8_t)g_r);
+    __builtin_v6clang_out(0xDE, (uint8_t)g_r);
 
     return 0;
 }

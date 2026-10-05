@@ -189,7 +189,7 @@ TargetInfo *getPPCTargetInfo();
 TargetInfo *getRISCVTargetInfo();
 TargetInfo *getSPARCV9TargetInfo();
 TargetInfo *getSystemZTargetInfo();
-TargetInfo *getV6CTargetInfo();
+TargetInfo *getV6ClangTargetInfo();
 TargetInfo *getX86TargetInfo();
 TargetInfo *getX86_64TargetInfo();
 template <class ELFT> TargetInfo *getMipsTargetInfo();

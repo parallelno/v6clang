@@ -7,10 +7,10 @@
 //     (2nd-patch Δ = −12 cc — net loss per the design doc).
 //
 // Compile:
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
-//       tests\features\36\v6llvmc.c -o tests\features\36\v6llvmc_new01.asm \
-//       -mllvm -mv6c-spill-patched-reload \
-//       -mllvm -v6c-disable-shld-lhld-fold
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+//       tests\features\36\v6clang.c -o tests\features\36\v6clang_new01.asm \
+//       -mllvm -mv6clang-spill-patched-reload \
+//       -mllvm -v6clang-disable-shld-lhld-fold
 
 __attribute__((leaf)) extern unsigned int op1(unsigned int x);
 __attribute__((leaf)) extern unsigned int op2(unsigned int x);

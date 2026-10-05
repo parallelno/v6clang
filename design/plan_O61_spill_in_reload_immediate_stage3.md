@@ -6,13 +6,13 @@
 >
 > * Raise the patched-reload cap from **K ≤ 1 (Stage 2)** to **K ≤ 2**
 >   for **single-source** spills.
-> * Keep **K ≤ 1** for **multi-source** spills (≥ 2 `V6C_SPILL16` at
+> * Keep **K ≤ 1** for **multi-source** spills (≥ 2 `V6CLANG_SPILL16` at
 >   distinct program points writing the same FI).
 > * When selecting the 2nd patch, the chooser must **skip `HL`-target
 >   reload candidates** (the 2nd-patch Δ is −12 cc — a net loss), and
 >   implicitly skip `A`-target candidates (Δ = 0 in the Stage 2 table,
 >   Stage 4 territory).
-> * Spill source remains `HL` (i.e. `V6C_SPILL16` with src = HL). Any
+> * Spill source remains `HL` (i.e. `V6CLANG_SPILL16` with src = HL). Any
 >   non-HL spill keeps the classical slot path (deferred).
 > * Patched reload targets stay in `{HL, DE, BC}`. A/r8 patched reloads
 >   are Stage 4.
@@ -23,7 +23,7 @@ Stage 2 shipped the Δ table, the `BFreq × Δ` chooser, and the
 DE/BC patched-reload emitter behind single-source, K ≤ 1:
 [plan_O61_spill_in_reload_immediate_stage2.md](plan_O61_spill_in_reload_immediate_stage2.md).
 Stage 3 is a **filter relaxation plus a second-patch chooser**
-extension to the existing `V6CSpillPatchedReload` pass; no new
+extension to the existing `V6ClangSpillPatchedReload` pass; no new
 infrastructure is required.
 
 ## 1. Problem
@@ -31,17 +31,17 @@ infrastructure is required.
 ### Current behavior
 
 Stage 2's filter only accepts spill slots with **exactly one**
-`V6C_SPILL16` source (`E.Spills.size() != 1` is rejected), and the
+`V6CLANG_SPILL16` source (`E.Spills.size() != 1` is rejected), and the
 chooser never considers patching more than one reload per slot
 (`K ≤ 1` is hard-wired via a single-winner scan).
 
 Two categories of spill slots in real code are therefore left on the
 classical BSS path even though the cost model predicts a win:
 
-1. **Multi-source HL spills.** Slots with ≥ 2 `V6C_SPILL16` writing
+1. **Multi-source HL spills.** Slots with ≥ 2 `V6CLANG_SPILL16` writing
    the same FI (typical for vregs defined on diverging paths that
    join) are skipped outright. The Stage 2 feature test
-   [tests/features/35/v6llvmc.c](../tests/features/35/v6llvmc.c)
+   [tests/features/35/v6clang.c](../tests/features/35/v6clang.c)
    shows exactly this: `mixed_hl_de` and `main` both have two
    SHLDs into the same slot and Stage 2 correctly rejects them
    ("Stage 2 skipped: multi-source" in
@@ -61,7 +61,7 @@ classical BSS path even though the cost model predicts a win:
 ### Desired behavior
 
 For every static-stack-eligible function, for every spill slot whose
-sources are all `V6C_SPILL16` with src = `HL`:
+sources are all `V6CLANG_SPILL16` with src = `HL`:
 
 1. Compute Δ × BFreq for each reload (same table as Stage 2).
 2. Pick the **single** highest-scoring reload as the first winner
@@ -103,12 +103,12 @@ rewrite emitter.
 
 ## 2. Strategy
 
-### Approach: extend `V6CSpillPatchedReload` with a 2nd-patch chooser and a multi-source-aware spill emitter
+### Approach: extend `V6ClangSpillPatchedReload` with a 2nd-patch chooser and a multi-source-aware spill emitter
 
 All Stage 1/2 infrastructure stays:
 
-* `MO_PATCH_IMM` target flag (V6CInstrInfo.h, lowered in
-  `V6CMCInstLower.cpp` as `Sym + 1`).
+* `MO_PATCH_IMM` target flag (V6ClangInstrInfo.h, lowered in
+  `V6ClangMCInstLower.cpp` as `Sym + 1`).
 * Pre-instr label on the patched `LXI` (AsmPrinter emits it).
 * Constant-tracking opt-out (LoadImmCombine, AccumulatorPlanning)
   already routes through the non-imm path when the imm is an
@@ -117,7 +117,7 @@ All Stage 1/2 infrastructure stays:
   SHLD/LHLD → PUSH/POP fold leaves patched sites alone.
 
 Stage 3 changes inside
-`V6CSpillPatchedReload::runOnMachineFunction`:
+`V6ClangSpillPatchedReload::runOnMachineFunction`:
 
 1. **Filter relaxation.** Accept `E.Spills.size() >= 1` provided
    every spill source is HL. Reject otherwise.
@@ -184,7 +184,7 @@ Stage 3 changes inside
 ### Why not split the chooser into its own file
 
 Three reasons to keep the chooser inline in
-`V6CSpillPatchedReload.cpp`:
+`V6ClangSpillPatchedReload.cpp`:
 
 * The chooser is ~30 lines, trivially self-contained, and only
   called from one site.
@@ -200,7 +200,7 @@ Three reasons to keep the chooser inline in
 
 | Step | What | Where |
 |------|------|-------|
-| Relax spill-count filter | `E.Spills.size() >= 1 && all_of(Spills, isHLSrc)` (was: `size() == 1`) | `V6CSpillPatchedReload::runOnMachineFunction` |
+| Relax spill-count filter | `E.Spills.size() >= 1 && all_of(Spills, isHLSrc)` (was: `size() == 1`) | `V6ClangSpillPatchedReload::runOnMachineFunction` |
 | Extract chooser helper | `pickBestReload(Reloads, Excluded, AllowHL)` — returns index or `-1` | same file |
 | Pick 2nd winner when eligible | Call helper with `AllowHL=false, Excluded={winner1}` iff single-source and K=1 succeeded | same |
 | `Syms` vector | `SmallVector<MCSymbol *, 2>`, one per winner | same |
@@ -214,7 +214,7 @@ Three reasons to keep the chooser inline in
 | Feature test | `tests/features/36/` — multi-source + K=2 scenarios | `tests/features/36/` |
 | Lit test — Stage 2 regression | Existing `spill-patched-reload-de-bc.ll` must still pass (K=1 single-source single-reload case degenerates to Stage 2 output) | existing |
 
-No new CLI flag — `-mv6c-spill-patched-reload` continues to gate
+No new CLI flag — `-mv6clang-spill-patched-reload` continues to gate
 the pass; Stage 3 just expands what the gated pass does.
 
 ---
@@ -223,7 +223,7 @@ the pass; Stage 3 just expands what the gated pass does.
 
 ### Step 3.1 — Extract `pickBestReload` helper [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Anonymous-namespace helper that encapsulates the chooser scan used
 for both the 1st and 2nd winner picks. Signature:
@@ -265,7 +265,7 @@ if (E.Spills.size() == 1) {
 
 ### Step 3.2 — Allocate one Sym per winner [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Replace the single-symbol allocation with:
 
@@ -280,7 +280,7 @@ for (size_t i = 0; i < Winners.size(); ++i)
 
 ### Step 3.3 — Rewrite spills to write every Sym [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Replace the single `SHLD Sym+1` rewrite with a loop that handles
 K = 1 and K = 2 uniformly and preserves the kill flag only on the
@@ -293,9 +293,9 @@ for (MachineInstr *Spill : E.Spills) {
   bool IsKill = Spill->getOperand(0).isKill();
   for (size_t si = 0; si < Syms.size(); ++si) {
     bool Kill = IsKill && (si + 1 == Syms.size());
-    BuildMI(*MBB, Spill, DL, TII.get(V6C::SHLD))
-        .addReg(V6C::HL, getKillRegState(Kill))
-        .addSym(Syms[si], V6CII::MO_PATCH_IMM);
+    BuildMI(*MBB, Spill, DL, TII.get(V6CLANG::SHLD))
+        .addReg(V6CLANG::HL, getKillRegState(Kill))
+        .addSym(Syms[si], V6ClangII::MO_PATCH_IMM);
   }
   Spill->eraseFromParent();
 }
@@ -310,7 +310,7 @@ for (MachineInstr *Spill : E.Spills) {
 
 ### Step 3.4 — Patch each winner [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Replace the single winner rewrite with a loop:
 
@@ -321,10 +321,10 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
   DebugLoc DL = PR->getDebugLoc();
   Register Dst = PR->getOperand(0).getReg();
   MachineInstrBuilder NewLxi =
-      BuildMI(*MBB, PR, DL, TII.get(V6C::LXI))
+      BuildMI(*MBB, PR, DL, TII.get(V6CLANG::LXI))
           .addReg(Dst, RegState::Define)
           .addImm(0);
-  NewLxi->getOperand(1).setTargetFlags(V6CII::MO_PATCH_IMM);
+  NewLxi->getOperand(1).setTargetFlags(V6ClangII::MO_PATCH_IMM);
   NewLxi->setPreInstrSymbol(MF, Syms[wi]);
   PR->eraseFromParent();
 }
@@ -334,7 +334,7 @@ for (size_t wi = 0; wi < Winners.size(); ++wi) {
 
 ### Step 3.5 — Unpatched reload emitter reads from Syms[0] [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CSpillPatchedReload.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangSpillPatchedReload.cpp`
 
 Replace the Stage 2 single-Sym capture with a reference to
 `Syms[0]` in the unpatched-reload emitter. Also change the
@@ -369,7 +369,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 ### Step 3.7 — Lit test: K=2 and multi-source [x]
 
 **File**:
-`llvm-project/llvm/test/CodeGen/V6C/spill-patched-reload-k2.ll`
+`llvm-project/llvm/test/CodeGen/V6CLANG/spill-patched-reload-k2.ll`
 (new)
 
 Three cases:
@@ -412,9 +412,9 @@ python tests\run_all.py
 ### Step 3.10 — Verification assembly steps from `tests\features\README.md` [x]
 
 Test folder `tests/features/36/` (created in Phase 1). Compile
-`v6llvmc.c` with
-`-mllvm -mv6c-spill-patched-reload -mllvm -v6c-disable-shld-lhld-fold`
-into `v6llvmc_new01.asm`. Verify that multi-source and K=2
+`v6clang.c` with
+`-mllvm -mv6clang-spill-patched-reload -mllvm -v6clang-disable-shld-lhld-fold`
+into `v6clang_new01.asm`. Verify that multi-source and K=2
 patching fires where Stage 2 left the classical path in place.
 Iterate `_new02.asm`, `_new03.asm` … as needed.
 
@@ -423,8 +423,8 @@ Iterate `_new02.asm`, `_new03.asm` … as needed.
 ### Step 3.11 — Make sure result.txt is created (`tests\features\README.md`) [x]
 
 Per the test folder template: C source, c8080 reference body,
-c8080 stats, v6llvmc Stage 2 baseline, v6llvmc Stage 3 asm,
-v6llvmc stats, per-slot impact table for the K=2 / multi-source
+c8080 stats, v6clang Stage 2 baseline, v6clang Stage 3 asm,
+v6clang stats, per-slot impact table for the K=2 / multi-source
 scenarios, and the chooser log (which reload picked as 1st vs 2nd
 and why).
 
@@ -481,7 +481,7 @@ compound.
 ### Example 2 — multi-source K=1
 
 `mixed_hl_de` from
-[tests/features/35/v6llvmc.c](../tests/features/35/v6llvmc.c):
+[tests/features/35/v6clang.c](../tests/features/35/v6clang.c):
 two HL spills of the same vreg on diverging paths, one DE reload.
 
 **Stage 2**: rejected (multi-source filter). Classical BSS slot,
@@ -521,11 +521,11 @@ Stage 1 `spill-patched-reload-hl.ll` test.
 | Two `setPreInstrSymbol` calls collide if the underlying map rejects duplicates | Each winner is a distinct `MachineInstr`; each gets its own unique `.Lo61_N` symbol. No collision possible. |
 | Multi-source spill writes interleave with a reload between them | The patched LXI always reads the most recent bytes; interleaving is not a correctness issue — RA guarantees each reload is dominated by a spill on every reaching path, and all spills write identical bytes. Semantics match a classical BSS slot. |
 | K=2 picks a 2nd reload in a cold block, losing on aggregate | The chooser multiplies by `BlockFrequency`, so a cold candidate scores near zero and only wins when no hot candidate exists. Δ > 0 guard also prevents the degenerate case where the 2nd pick is net negative on its own. |
-| `Syms[0]` vs `Syms[1]` layout skew breaks linker relocations | MCSymbol operands lower via `MO_PATCH_IMM → Sym+1` in `V6CMCInstLower.cpp`; both symbols use the same lowering path. No relocation-layout sensitivity. |
+| `Syms[0]` vs `Syms[1]` layout skew breaks linker relocations | MCSymbol operands lower via `MO_PATCH_IMM → Sym+1` in `V6ClangMCInstLower.cpp`; both symbols use the same lowering path. No relocation-layout sensitivity. |
 | Second-patch rule gets stale as Stage 4 lands | `AllowHL=false` is the current one-flag encoding; Stage 4 can add `AllowA=false` without reworking the chooser surface. The Δ table remains the single source of truth. |
 | Chooser tie between two reloads in the same block | Program-order-first wins (the scan preserves insertion order into `E.Reloads`), matching Stage 2's tiebreaker. Deterministic. |
 | `MachineBlockFrequencyInfo` missing on functions with `cold` attribute oddities | Already handled in Stage 2 — `MBFI` always returns *some* frequency; ordering is what matters. |
-| O43 folds the spill SHLDs back into PUSH/POP, defeating the patch | `V6CPeephole::isSameAddress` returns false for MCSymbol operands, so adjacent `SHLD .Lo61_0+1`/`SHLD .Lo61_1+1` pairs are not foldable. Confirmed already by Stage 1's DISABLED prefix test. |
+| O43 folds the spill SHLDs back into PUSH/POP, defeating the patch | `V6ClangPeephole::isSameAddress` returns false for MCSymbol operands, so adjacent `SHLD .Lo61_0+1`/`SHLD .Lo61_1+1` pairs are not foldable. Confirmed already by Stage 1's DISABLED prefix test. |
 
 ---
 
@@ -579,7 +579,7 @@ Stage 1 `spill-patched-reload-hl.ll` test.
 * [O61 design doc](future_plans/O61_spill_in_reload_immediate.md) — the canonical cost model and staging plan.
 * [Stage 2 plan](plan_O61_spill_in_reload_immediate_stage2.md) — the immediate predecessor, Δ table and chooser infrastructure.
 * [Stage 1 plan](plan_O61_spill_in_reload_immediate.md) — end-to-end plumbing (`MO_PATCH_IMM`, MCSymbol lowering, AsmPrinter, constant-tracking opt-out).
-* [V6C Build Guide](../docs/V6CBuildGuide.md) — build commands and mirror sync procedure.
+* [V6CLANG Build Guide](../docs/V6ClangBuildGuide.md) — build commands and mirror sync procedure.
 * [Vector 06c CPU Timings](../docs/Vector_06c_instruction_timings.md) — canonical instruction cycle costs used in the Δ table.
 * [Feature Test Cases](../tests/features/README.md) — test folder structure and verification steps.
 * [Future Optimizations](future_plans/README.md) — feature backlog.

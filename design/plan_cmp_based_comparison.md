@@ -1,14 +1,14 @@
-# Plan: CMP-Based Non-Destructive 16-bit Comparison for V6C
+# Plan: CMP-Based Non-Destructive 16-bit Comparison for V6CLANG
 
 ## 1. Problem
 
 ### Current behavior
 
-The V6C_BR_CC16 pseudo expands EQ/NE 16-bit comparisons using a
+The V6CLANG_BR_CC16 pseudo expands EQ/NE 16-bit comparisons using a
 destructive XOR sequence that clobbers the LHS register pair:
 
 ```asm
-; V6C_BR_CC16 NE expansion (current): 48cc, clobbers LhsHi
+; V6CLANG_BR_CC16 NE expansion (current): 48cc, clobbers LhsHi
     MOV  A, B           ;  8cc  — LhsHi
     XRA  D              ;  4cc  — XOR with RhsHi
     MOV  B, A           ;  8cc  — clobber LhsHi with XOR result!
@@ -18,7 +18,7 @@ destructive XOR sequence that clobbers the LHS register pair:
     JNZ  Target         ; 12cc  — total 48cc
 ```
 
-Because the XOR clobbers LhsHi, V6C_BR_CC16 carries a tied-output
+Because the XOR clobbers LhsHi, V6CLANG_BR_CC16 carries a tied-output
 constraint (`$lhs = $lhs_wb`) that forces the register allocator to copy
 the LHS register pair before the comparison whenever LHS is still live.
 
@@ -54,7 +54,7 @@ conditional branch), but preserves all register values.
 The destructive comparison causes a **cascade of inefficiencies**:
 
 1. **Tied-output copy**: RA inserts `MOV H,B; MOV L,C` (16cc) to copy
-   BC to HL before the comparison — because V6C_BR_CC16 declares that
+   BC to HL before the comparison — because V6CLANG_BR_CC16 declares that
    it clobbers `$lhs`.
 
 2. **Comparison constant in register pair**: `LXI DE, array1+100` (12cc)
@@ -92,8 +92,8 @@ After fixing the comparison:
 
 ### Approach: CMP-based MBB splitting in expandPostRAPseudo
 
-The expansion remains in `V6CInstrInfo::expandPostRAPseudo()` where
-V6C_BR_CC16 is already handled, but the EQ/NE case is replaced with a
+The expansion remains in `V6ClangInstrInfo::expandPostRAPseudo()` where
+V6CLANG_BR_CC16 is already handled, but the EQ/NE case is replaced with a
 CMP-based sequence that splits the MBB into two blocks.
 
 **For NE (COND_NZ)** — both branches go to the same target:
@@ -133,7 +133,7 @@ analyzable by `analyzeBranch`, BranchFolding, and the custom BranchOpt.
 
 ### Why the XOR approach used to hang with MBB splitting
 
-A previous attempt at MBB splitting for V6C_BR_CC16 caused an infinite
+A previous attempt at MBB splitting for V6CLANG_BR_CC16 caused an infinite
 hang. The root cause was likely that the previous implementation didn't
 correctly handle successor lists or produced non-analyzable branch
 patterns. The CMP approach avoids this by producing strictly standard
@@ -145,19 +145,19 @@ optional unconditional branch — the normal Jcc / JMP pattern that
 
 | Step | What | Where |
 |------|------|-------|
-| Remove tied-output | `(outs)` instead of `(outs GR16:$lhs_wb)` | V6CInstrInfo.td |
-| Update ISel | Produce `MVT::Other` (no i16 result) | V6CISelDAGToDAG.cpp |
-| Update operand indices | Shift back by 1 (remove output operand) | V6CInstrInfo.cpp |
-| Implement CMP expansion | MBB splitting with CMP + Jcc for EQ/NE | V6CInstrInfo.cpp |
-| Keep SUB/SBB path | Non-EQ/NE conditions unchanged | V6CInstrInfo.cpp |
+| Remove tied-output | `(outs)` instead of `(outs GR16:$lhs_wb)` | V6ClangInstrInfo.td |
+| Update ISel | Produce `MVT::Other` (no i16 result) | V6ClangISelDAGToDAG.cpp |
+| Update operand indices | Shift back by 1 (remove output operand) | V6ClangInstrInfo.cpp |
+| Implement CMP expansion | MBB splitting with CMP + Jcc for EQ/NE | V6ClangInstrInfo.cpp |
+| Keep SUB/SBB path | Non-EQ/NE conditions unchanged | V6ClangInstrInfo.cpp |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Remove tied-output constraint from V6C_BR_CC16 [x]
+### Step 3.1 — Remove tied-output constraint from V6CLANG_BR_CC16 [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.td`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
 
 The CMP-based expansion is non-destructive — it doesn't modify LHS or
 RHS. The tied-output constraint is no longer needed.
@@ -166,7 +166,7 @@ Change:
 ```tablegen
 // Before:
 let isBranch = 1, isTerminator = 1, Defs = [A, FLAGS] in
-def V6C_BR_CC16 : V6CPseudo<(outs GR16:$lhs_wb),
+def V6CLANG_BR_CC16 : V6ClangPseudo<(outs GR16:$lhs_wb),
     (ins GR16:$lhs, GR16:$rhs, i8imm:$cc, brtarget:$dst),
     "# BR_CC16 $lhs, $rhs, $cc, $dst",
     []> {
@@ -175,7 +175,7 @@ def V6C_BR_CC16 : V6CPseudo<(outs GR16:$lhs_wb),
 
 // After:
 let isBranch = 1, isTerminator = 1, Defs = [A, FLAGS] in
-def V6C_BR_CC16 : V6CPseudo<(outs),
+def V6CLANG_BR_CC16 : V6ClangPseudo<(outs),
     (ins GR16:$lhs, GR16:$rhs, i8imm:$cc, brtarget:$dst),
     "# BR_CC16 $lhs, $rhs, $cc, $dst",
     []>;
@@ -188,13 +188,13 @@ def V6C_BR_CC16 : V6CPseudo<(outs),
 
 ### Step 3.2 — Update ISel: remove i16 output from SDNode [x]
 
-**File**: `llvm/lib/Target/V6C/V6CISelDAGToDAG.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangISelDAGToDAG.cpp`
 
-The V6C_BR_CC16 MachineInstr no longer has a register output. The
+The V6CLANG_BR_CC16 MachineInstr no longer has a register output. The
 SDNode should only produce a chain (MVT::Other):
 
 ```cpp
-  case V6CISD::BR_CC16: {
+  case V6ClangISD::BR_CC16: {
     SDValue Chain = N->getOperand(0);
     SDValue LHS   = N->getOperand(1);
     SDValue RHS   = N->getOperand(2);
@@ -210,7 +210,7 @@ SDNode should only produce a chain (MVT::Other):
 
     // No register output — only the chain.
     SDVTList VTs = CurDAG->getVTList(MVT::Other);
-    SDNode *BrCC = CurDAG->getMachineNode(V6C::V6C_BR_CC16, DL,
+    SDNode *BrCC = CurDAG->getMachineNode(V6CLANG::V6CLANG_BR_CC16, DL,
                                            VTs, Ops);
     ReplaceNode(N, BrCC);
     return;
@@ -223,7 +223,7 @@ SDNode should only produce a chain (MVT::Other):
 
 ### Step 3.3 — Update operand indices in expansion [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 With `(outs)` instead of `(outs GR16:$lhs_wb)`, the operand numbering
 shifts back by 1:
@@ -235,10 +235,10 @@ shifts back by 1:
 | `$cc`  | `MI.getOperand(3)` | `MI.getOperand(2)` |
 | `$dst` | `MI.getOperand(4)` | `MI.getOperand(3)` |
 
-Update the `case V6C::V6C_BR_CC16:` block:
+Update the `case V6CLANG::V6CLANG_BR_CC16:` block:
 
 ```cpp
-  case V6C::V6C_BR_CC16: {
+  case V6CLANG::V6CLANG_BR_CC16: {
     // Operand layout: 0=$lhs, 1=$rhs, 2=$cc, 3=$dst
     Register LhsReg = MI.getOperand(0).getReg();
     Register RhsReg = MI.getOperand(1).getReg();
@@ -249,24 +249,24 @@ Update the `case V6C::V6C_BR_CC16:` block:
 
 ### Step 3.4 — Implement CMP-based EQ/NE expansion with MBB splitting [x]
 
-**File**: `llvm/lib/Target/V6C/V6CInstrInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangInstrInfo.cpp`
 
 Replace the XOR-based EQ/NE block with a CMP-based MBB-splitting
 expansion. The SUB/SBB path for other condition codes remains unchanged.
 
 ```cpp
-  case V6C::V6C_BR_CC16: {
+  case V6CLANG::V6CLANG_BR_CC16: {
     Register LhsReg = MI.getOperand(0).getReg();
     Register RhsReg = MI.getOperand(1).getReg();
     int64_t CC = MI.getOperand(2).getImm();
     MachineBasicBlock *Target = MI.getOperand(3).getMBB();
 
-    MCRegister LhsLo = RI.getSubReg(LhsReg, V6C::sub_lo);
-    MCRegister LhsHi = RI.getSubReg(LhsReg, V6C::sub_hi);
-    MCRegister RhsLo = RI.getSubReg(RhsReg, V6C::sub_lo);
-    MCRegister RhsHi = RI.getSubReg(RhsReg, V6C::sub_hi);
+    MCRegister LhsLo = RI.getSubReg(LhsReg, V6CLANG::sub_lo);
+    MCRegister LhsHi = RI.getSubReg(LhsReg, V6CLANG::sub_hi);
+    MCRegister RhsLo = RI.getSubReg(RhsReg, V6CLANG::sub_lo);
+    MCRegister RhsHi = RI.getSubReg(RhsReg, V6CLANG::sub_hi);
 
-    if (CC == V6CCC::COND_Z || CC == V6CCC::COND_NZ) {
+    if (CC == V6ClangCC::COND_Z || CC == V6ClangCC::COND_NZ) {
       // --- CMP-based non-destructive expansion with MBB splitting ---
 
       // Find the fallthrough successor (the one that's not Target).
@@ -289,32 +289,32 @@ expansion. The SUB/SBB path for other condition codes remains unchanged.
           MF->CreateMachineBasicBlock(MBB.getBasicBlock());
       MF->insert(std::next(MBB.getIterator()), CompareHiMBB);
 
-      // Splice any instructions after V6C_BR_CC16 (e.g. JMP) into
+      // Splice any instructions after V6CLANG_BR_CC16 (e.g. JMP) into
       // CompareHiMBB. Transfer successors from MBB to CompareHiMBB.
       CompareHiMBB->splice(CompareHiMBB->end(), &MBB,
                            std::next(MI.getIterator()), MBB.end());
       CompareHiMBB->transferSuccessorsAndUpdatePHIs(&MBB);
 
-      if (CC == V6CCC::COND_NZ) {
+      if (CC == V6ClangCC::COND_NZ) {
         // NE: both JNZ go to Target.
         //   MBB: MOV A, LhsLo; CMP RhsLo; JNZ Target
         //   CompareHiMBB: MOV A, LhsHi; CMP RhsHi; JNZ Target
         //   (fall through = equal → don't branch)
 
-        BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsLo);
-        BuildMI(MBB, MI, DL, get(V6C::CMPr))
-            .addReg(V6C::A).addReg(RhsLo);
-        BuildMI(MBB, MI, DL, get(V6C::JNZ)).addMBB(Target);
+        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
+        BuildMI(MBB, MI, DL, get(V6CLANG::CMPr))
+            .addReg(V6CLANG::A).addReg(RhsLo);
+        BuildMI(MBB, MI, DL, get(V6CLANG::JNZ)).addMBB(Target);
 
         MBB.addSuccessor(Target);
         MBB.addSuccessor(CompareHiMBB);
 
         auto InsertPt = CompareHiMBB->begin();
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::MOVrr), V6C::A)
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::MOVrr), V6CLANG::A)
             .addReg(LhsHi);
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::CMPr))
-            .addReg(V6C::A).addReg(RhsHi);
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::JNZ)).addMBB(Target);
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::CMPr))
+            .addReg(V6CLANG::A).addReg(RhsHi);
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::JNZ)).addMBB(Target);
 
         // CompareHiMBB already has FallthroughMBB from transferSuccessors.
         // Add Target as additional successor.
@@ -326,20 +326,20 @@ expansion. The SUB/SBB path for other condition codes remains unchanged.
         //   CompareHiMBB: MOV A, LhsHi; CMP RhsHi; JZ Target
         //   (fall through from CompareHiMBB = not equal → don't branch)
 
-        BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(LhsLo);
-        BuildMI(MBB, MI, DL, get(V6C::CMPr))
-            .addReg(V6C::A).addReg(RhsLo);
-        BuildMI(MBB, MI, DL, get(V6C::JNZ)).addMBB(FallthroughMBB);
+        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(LhsLo);
+        BuildMI(MBB, MI, DL, get(V6CLANG::CMPr))
+            .addReg(V6CLANG::A).addReg(RhsLo);
+        BuildMI(MBB, MI, DL, get(V6CLANG::JNZ)).addMBB(FallthroughMBB);
 
         MBB.addSuccessor(FallthroughMBB);
         MBB.addSuccessor(CompareHiMBB);
 
         auto InsertPt = CompareHiMBB->begin();
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::MOVrr), V6C::A)
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::MOVrr), V6CLANG::A)
             .addReg(LhsHi);
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::CMPr))
-            .addReg(V6C::A).addReg(RhsHi);
-        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6C::JZ)).addMBB(Target);
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::CMPr))
+            .addReg(V6CLANG::A).addReg(RhsHi);
+        BuildMI(*CompareHiMBB, InsertPt, DL, get(V6CLANG::JZ)).addMBB(Target);
 
         // CompareHiMBB already has FallthroughMBB from transferSuccessors.
         // Add Target as additional successor.
@@ -402,15 +402,15 @@ expansion. The SUB/SBB path for other condition codes remains unchanged.
 cmd /c "call vcvars64.bat >nul 2>&1 && ninja -C llvm-build clang llc"
 ```
 
-Expected: clean build. The changes are confined to the V6C_BR_CC16
+Expected: clean build. The changes are confined to the V6CLANG_BR_CC16
 expansion path plus the .td definition and ISel node.
 
 ### Step 3.6 — Lit test: NE 16-bit comparison [x]
 
-**File**: `tests/lit/CodeGen/V6C/cmp-based-br-cc16.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/cmp-based-br-cc16.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 ; Test that 16-bit NE comparison uses CMP-based sequence, not XOR.
 define void @ne_branch(i16 %a, i16 %b) {
@@ -473,10 +473,10 @@ declare void @use()
 
 ### Step 3.7 — Lit test: loop with pointer comparison [x]
 
-**File**: `tests/lit/CodeGen/V6C/loop-cmp-no-spill.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/loop-cmp-no-spill.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 ; Verify that a two-pointer loop uses CMP for exit condition and does
 ; not spill registers to stack.
@@ -525,8 +525,8 @@ Update those CHECK lines accordingly.
 ### Step 3.9 — Verify assembly on array copy benchmark [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_cmp.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_cmp.asm
 ```
 
 Inspect the loop body. Target output (or close to it):
@@ -588,11 +588,11 @@ copy → eliminates cascading spill/reload overhead.
 
 ### Register allocation improvement
 
-Before: V6C_BR_CC16 declares tied output → RA reserves a register pair
+Before: V6CLANG_BR_CC16 declares tied output → RA reserves a register pair
 for the copy → with BC, DE, HL all under pressure → destination pointer
 spills to stack.
 
-After: V6C_BR_CC16 has no output → RA freely assigns BC=source, DE=dest,
+After: V6CLANG_BR_CC16 has no output → RA freely assigns BC=source, DE=dest,
 HL=constant → zero spills.
 
 ---
@@ -602,9 +602,9 @@ HL=constant → zero spills.
 | Risk | Mitigation |
 |------|------------|
 | MBB splitting confuses BranchFolding → infinite loop | Each new MBB has exactly one conditional branch + optional JMP — the standard pattern `analyzeBranch` handles. The previous hang was caused by the XOR approach's non-standard block structure, not by MBB splitting itself. |
-| `transferSuccessorsAndUpdatePHIs` misses a successor → broken CFG | V6C_BR_CC16 is a terminator at block end. After splicing and transferring, we explicitly add the correct successors. Post-RA there are no PHI nodes, but the call handles them if present. |
+| `transferSuccessorsAndUpdatePHIs` misses a successor → broken CFG | V6CLANG_BR_CC16 is a terminator at block end. After splicing and transferring, we explicitly add the correct successors. Post-RA there are no PHI nodes, but the call handles them if present. |
 | Removing tied-output breaks non-EQ/NE paths (SUB/SBB) | The SUB/SBB expansion for C/NC/M/P doesn't clobber LHS — it only uses A as temp. So the tied-output was never needed for these paths. We verify by checking all existing tests. |
-| `analyzeBranch` sees V6C_BR_CC16 before expansion → returns "can't analyze" | V6C_BR_CC16 is marked `isTerminator = 1, isBranch = 1`. Standard LLVM `analyzeBranch` dispatches to our override, which only recognizes physical Jcc/JMP opcodes, not pseudos. So V6C_BR_CC16 is always "unknown terminator" → analyzeBranch returns true (can't analyze). This hasn't been a problem because the pseudo is expanded before any pass that needs analyzeBranch on expanded code. |
+| `analyzeBranch` sees V6CLANG_BR_CC16 before expansion → returns "can't analyze" | V6CLANG_BR_CC16 is marked `isTerminator = 1, isBranch = 1`. Standard LLVM `analyzeBranch` dispatches to our override, which only recognizes physical Jcc/JMP opcodes, not pseudos. So V6CLANG_BR_CC16 is always "unknown terminator" → analyzeBranch returns true (can't analyze). This hasn't been a problem because the pseudo is expanded before any pass that needs analyzeBranch on expanded code. |
 | EQ case: `FallthroughMBB` is `nullptr` (single successor) | Safety check: if we can't identify the fallthrough block, fall back to the old XOR approach. In practice, a conditional branch always has two successors. |
 | Concurrent Target == FallthroughMBB (both successors the same) | Possible if the branch condition is irrelevant (dead code). The expansion still emits correct code — both JNZ and JZ go to the same block. BranchOpt may simplify later. |
 
@@ -620,7 +620,7 @@ This is improvement #2 of three identified for the array-copy loop:
    is blocked by spill-induced PUSH/POP breaking the LXI backward scan.
 
 2. **CMP-based 16-bit comparison** (this plan) — replaces the destructive
-   XOR-based V6C_BR_CC16 EQ/NE with non-destructive CMP + MBB splitting.
+   XOR-based V6CLANG_BR_CC16 EQ/NE with non-destructive CMP + MBB splitting.
    Eliminates tied-output copy, frees a register pair, prevents spills.
 
 3. **Spill elimination** — expected to follow **automatically** from #2.

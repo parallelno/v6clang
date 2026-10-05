@@ -108,47 +108,47 @@ main:                                   ; @main
 ; %bb.0:
 	LXI	H, 0x1235
 	CALL	and_lsb_branch
-	STA	__v6c_a.main
+	STA	__v6clang_a.main
 	LXI	H, 0xabcd
 	CALL	and_nibble
-	STA	__v6c_a.main+1
+	STA	__v6clang_a.main+1
 	LXI	H, 0x42
 	CALL	or_hi_bit
-	STA	__v6c_a.main+2
+	STA	__v6clang_a.main+2
 	LXI	H, 0xaa
 	CALL	xor_pattern
-	STA	__v6c_a.main+3
+	STA	__v6clang_a.main+3
 	LXI	H, 0xffff
 	CALL	and_wide
 	PUSH	H
 	LXI	H, 0xace1
 	CALL	lfsr_step
-	SHLD	__v6c_a.main+6
-	LDA	__v6c_a.main
-	LDA	__v6c_a.main+1
-	LDA	__v6c_a.main+2
-	LDA	__v6c_a.main+3
+	SHLD	__v6clang_a.main+6
+	LDA	__v6clang_a.main
+	LDA	__v6clang_a.main+1
+	LDA	__v6clang_a.main+2
+	LDA	__v6clang_a.main+3
 	POP	H
-	LHLD	__v6c_a.main+6
+	LHLD	__v6clang_a.main+6
 	LXI	H, 0
 	RET
                                         ; -- End function
-	.local	__v6c_a.main                    ; @__v6c_a.main
-	.comm	__v6c_a.main,8,1
+	.local	__v6clang_a.main                    ; @__v6clang_a.main
+	.comm	__v6clang_a.main,8,1
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3
 	.addrsig_sym __lshrhi3
 	.addrsig_sym __ashrhi3
-	.addrsig_sym __v6c_a.main
+	.addrsig_sym __v6clang_a.main

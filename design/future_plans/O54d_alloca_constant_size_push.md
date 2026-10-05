@@ -87,35 +87,35 @@ Standard tail:
 LXI  H, 0
 DAD  SP
 ```
-4B / 24cc. V6C has no "LD HL, SP" instruction, so this is the cheapest path.
+4B / 24cc. V6CLANG has no "LD HL, SP" instruction, so this is the cheapest path.
 The materialisation runs **after** the pushes, so HL is fine to clobber even
 if it was used as the dead pair for the pushes.
 
 ## Constraints
 
 - Size must be a `ConstantSDNode`, ≤6, even.
-- Alloca alignment must be ≤1 (always true on V6C — byte alignment).
+- Alloca alignment must be ≤1 (always true on V6CLANG — byte alignment).
 - Must not occur inside an outstanding `ADJCALLSTACK` window. ISel doesn't
   form such overlaps in practice (alloca is its own pseudo, separate from
   call sequences), but assert it.
 
 ## Implementation
 
-Custom lowering of `ISD::DYNAMIC_STACKALLOC` in `V6CISelLowering`. Pattern:
+Custom lowering of `ISD::DYNAMIC_STACKALLOC` in `V6ClangISelLowering`. Pattern:
 
 ```cpp
-SDValue V6CTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
+SDValue V6ClangTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
                                                    SelectionDAG &DAG) const {
   SDValue Size = Op.getOperand(1);
   if (auto *C = dyn_cast<ConstantSDNode>(Size)) {
     uint64_t N = C->getZExtValue();
     if (N > 0 && N <= 4 && (N % 2) == 0) {
-      // Emit V6C_PUSH_FOR_ALLOCA pseudo × N/2, then LXI 0; DAD SP.
+      // Emit V6CLANG_PUSH_FOR_ALLOCA pseudo × N/2, then LXI 0; DAD SP.
       // The pseudo is expanded post-RA into PUSH PSW / PUSH B / PUSH D
       // depending on the dead-pair choice.
       ...
     }
-    if (N == 6 && getV6COptMode(MF) == V6COptMode::Size) {
+    if (N == 6 && getV6ClangOptMode(MF) == V6ClangOptMode::Size) {
       // Same with N/2 = 3 pushes.
       ...
     }
@@ -125,7 +125,7 @@ SDValue V6CTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
 }
 ```
 
-The pseudo `V6C_PUSH_FOR_ALLOCA` is expanded post-RA via the same dead-pair
+The pseudo `V6CLANG_PUSH_FOR_ALLOCA` is expanded post-RA via the same dead-pair
 chooser as O54a/O54b.
 
 ## Impact

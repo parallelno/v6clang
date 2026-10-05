@@ -9,28 +9,28 @@ error_stack_arg:                        ; @error_stack_arg
 	;  arg3 = stack
 	;  arg4 = stack
 ; %bb.0:
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	D
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	B
 	XCHG
-	;--- V6C_LOAD16_FI ---
+	;--- V6CLANG_LOAD16_FI ---
 	LXI	H, 2
 	DAD	SP
 	MOV	C, M
 	INX	H
 	MOV	B, M
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	XCHG
 	DAD	B
 	XCHG
-	;--- V6C_LOAD16_FI ---
+	;--- V6CLANG_LOAD16_FI ---
 	LXI	H, 4
 	DAD	SP
 	MOV	C, M
 	INX	H
 	MOV	B, M
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	XCHG
 	DAD	B
 	RET
@@ -44,61 +44,61 @@ main:                                   ; @main
 ; %bb.0:
 	PUSH	PSW
 	PUSH	PSW
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	i_p
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	SHLD	.LLo61_0+1
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	i_p+2
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	SHLD	.LLo61_2+1
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	i_p+4
-	;--- V6C_SPILL16 ---
+	;--- V6CLANG_SPILL16 ---
 	SHLD	.LLo61_1+1
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	XCHG
 	LHLD	i_p+6
 	XCHG
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	i_p+8
 	MOV	B, H
 	MOV	C, L
 	LXI	H, 0
 	DAD	SP
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	M, E
 	INX	H
 	MOV	M, D
 	DCX	H
-	;--- V6C_INX16 ---
+	;--- V6CLANG_INX16 ---
 	INX	H
 	INX	H
-	;--- V6C_STORE16_P ---
+	;--- V6CLANG_STORE16_P ---
 	MOV	M, C
 	INX	H
 	MOV	M, B
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 .LLo61_0:
 	LXI	H, 0
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 .LLo61_2:
 	LXI	D, 0
-	;--- V6C_RELOAD16 ---
+	;--- V6CLANG_RELOAD16 ---
 .LLo61_1:
 	LXI	B, 0
 	CALL	error_stack_arg
 	MOV	A, L
 	OUT	0xed
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	LHLD	i_p
-	;--- V6C_LOAD16_G ---
+	;--- V6CLANG_LOAD16_G ---
 	XCHG
 	LHLD	i_p+2
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	H
 	XCHG
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	D
 	MOV	A, L
 	OUT	0xed
@@ -119,15 +119,15 @@ i_p:
 
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3

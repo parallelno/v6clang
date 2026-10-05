@@ -1,6 +1,6 @@
 /* O02: Sequential LXI -> INX folding (extended).
  *
- * Tests three pattern shapes that the current V6CLoadStoreOpt
+ * Tests three pattern shapes that the current V6ClangLoadStoreOpt
  * fails to fold:
  *   1) Chains of length > 2 (third LXI not folded).
  *   2) GlobalAddress operands (LXI H, g+1 etc.).
@@ -8,8 +8,8 @@
  *      MOV M / arith M (e.g. LDA, STA).
  *
  * Compile:
- *   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S \
- *       tests\features\50\v6llvmc.c -o tests\features\50\v6llvmc_new01.asm
+ *   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S \
+ *       tests\features\50\v6clang.c -o tests\features\50\v6clang_new01.asm
  */
 
 extern unsigned char ext_sink(unsigned char v);

@@ -3,7 +3,7 @@ O22 — TTI Cost Hooks Expansion
 
 Test sources
 ------------
-v6llvmc.c (and equivalent c8080.c):
+v6clang.c (and equivalent c8080.c):
 
     extern unsigned short ext_sink16(unsigned short v);
 
@@ -125,9 +125,9 @@ sum_array body : ~33 instrs / iter, static-stack spills throughout
 poly       body : ~38 instrs / iter, includes call to __o_shr_u16 each iter
 
 
-v6llvmc — BASELINE (BasicTTI defaults: -mllvm -v6c-tti-cost-hooks=0)
+v6clang — BASELINE (BasicTTI defaults: -mllvm -v6clang-tti-cost-hooks=0)
 -------------------------------------------------------------------
-v6llvmc_old.asm (also reproducible with hooks-off):
+v6clang_old.asm (also reproducible with hooks-off):
 total file = 147 lines
 
 sum_array inner loop body (.LBB0_2 .. JNZ): 33 lines
@@ -165,9 +165,9 @@ Per iter (baseline): 4 SHLD spills + PUSH/POP pair + i16 zero-test (3 instrs)
                      + 4 self-modifying LXI reloads.
 
 
-v6llvmc — WITH O22 HOOKS (default)
+v6clang — WITH O22 HOOKS (default)
 ----------------------------------
-v6llvmc_new01.asm:
+v6clang_new01.asm:
 total file = 128 lines (-19 lines, -13%)
 
 sum_array inner loop body (.LBB0_2 .. JNZ): 25 lines

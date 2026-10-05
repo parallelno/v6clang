@@ -136,10 +136,10 @@ main:                                   ; @main
 	XCHG
 	RET
                                         ; -- End function
-	.local	__v6c_ss.three_i8               ; @__v6c_ss.three_i8
-	.comm	__v6c_ss.three_i8,3,1
-	.local	__v6c_ss.four_i8                ; @__v6c_ss.four_i8
-	.comm	__v6c_ss.four_i8,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,7,1
+	.local	__v6clang_ss.three_i8               ; @__v6clang_ss.three_i8
+	.comm	__v6clang_ss.three_i8,3,1
+	.local	__v6clang_ss.four_i8                ; @__v6clang_ss.four_i8
+	.comm	__v6clang_ss.four_i8,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,7,1
 	.addrsig

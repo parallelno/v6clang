@@ -1,4 +1,4 @@
-/* O91: Elide V6C_CMP8_ZERO after flag-setting ALU op (MOV R,A bridge)
+/* O91: Elide V6CLANG_CMP8_ZERO after flag-setting ALU op (MOV R,A bridge)
  *
  * After O89 (dead hi-byte elision), the pattern:
  *
@@ -8,7 +8,7 @@
  *   XRA  A        ; ← CMP8_ZERO shape 2 start — REDUNDANT
  *   CMP  L        ; ← REDUNDANT
  *
- * O91 extends V6CRedundantFlagElim to recognize that XRA A + CMP R is
+ * O91 extends V6ClangRedundantFlagElim to recognize that XRA A + CMP R is
  * redundant when R holds A's value from the last flag-setting ALU op.
  * Result: the MOV L,A + XRA A + CMP L triple is eliminated (-16cc, -3B).
  *

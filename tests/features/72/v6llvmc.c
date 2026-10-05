@@ -2,9 +2,9 @@
  *
  * InstCombine removes (u8) casts on bitwise ops with small constants:
  *   u8 lsb = (u8)(x & 1);  →  icmp i16 (and i16 x, 1), 0
- * This forces V6C_AND16/OR16/XOR16 (6 insn each) instead of ANI/ORI/XRI (2B).
+ * This forces V6CLANG_AND16/OR16/XOR16 (6 insn each) instead of ANI/ORI/XRI (2B).
  *
- * V6CTypeNarrowing re-inserts the trunc before ISel, recovering ANI etc.
+ * V6ClangTypeNarrowing re-inserts the trunc before ISel, recovering ANI etc.
  * O90 fixes two gaps:
  *   1. PHI sibling guard was too conservative for pure zero-test uses.
  *   2. or/xor with small constants were not handled (only and was).
@@ -14,7 +14,7 @@ typedef unsigned short u16;
 
 /* 1. AND with small constant — pure zero-test (the lfsr16 pattern)
  * The result is only used for a branch; no need to persist in a register.
- * Before: LXI rp,1; V6C_AND16 (6 insn); SPILL; CMP16_ZERO  (~76cc)
+ * Before: LXI rp,1; V6CLANG_AND16 (6 insn); SPILL; CMP16_ZERO  (~76cc)
  * After:  MOV A,L; ANI 1                                     (16cc)
  */
 __attribute__((noinline)) u8 and_lsb_branch(u16 x) {
@@ -22,7 +22,7 @@ __attribute__((noinline)) u8 and_lsb_branch(u16 x) {
 }
 
 /* 2. AND with small constant — result returned as u8
- * Before: V6C_AND16 6 insn (36cc, 6B) + AccPlan reload
+ * Before: V6CLANG_AND16 6 insn (36cc, 6B) + AccPlan reload
  * After:  MOV A,L; ANI 0x0F  (16cc, 3B)
  */
 __attribute__((noinline)) u8 and_nibble(u16 x) {
@@ -30,7 +30,7 @@ __attribute__((noinline)) u8 and_nibble(u16 x) {
 }
 
 /* 3. OR with small constant — result returned as u8
- * Before: V6C_OR16 6 insn
+ * Before: V6CLANG_OR16 6 insn
  * After:  MOV A,L; ORI 0x80
  */
 __attribute__((noinline)) u8 or_hi_bit(u16 x) {
@@ -38,7 +38,7 @@ __attribute__((noinline)) u8 or_hi_bit(u16 x) {
 }
 
 /* 4. XOR with small constant — result returned as u8
- * Before: V6C_XOR16 6 insn
+ * Before: V6CLANG_XOR16 6 insn
  * After:  MOV A,L; XRI 0x55
  */
 __attribute__((noinline)) u8 xor_pattern(u16 x) {
@@ -47,7 +47,7 @@ __attribute__((noinline)) u8 xor_pattern(u16 x) {
 
 /* 5. AND with LARGE constant — must NOT narrow (C > 0xFF)
  * Control case: and i16 x, 0x0F0F is NOT a small constant.
- * Must still emit V6C_AND16.
+ * Must still emit V6CLANG_AND16.
  */
 __attribute__((noinline)) u16 and_wide(u16 x) {
     return x & 0x0F0F;

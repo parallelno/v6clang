@@ -23,20 +23,20 @@ using namespace object;
 StringRef llvm::object::getELFRelocationTypeName(uint32_t Machine,
                                                  uint32_t Type) {
   switch (Machine) {
-  case ELF::EM_V6C:
+  case ELF::EM_V6Clang:
     switch (Type) {
     case 0:
-      return "R_V6C_NONE";
+      return "R_V6CLANG_NONE";
     case 1:
-      return "R_V6C_8";
+      return "R_V6CLANG_8";
     case 2:
-      return "R_V6C_16";
+      return "R_V6CLANG_16";
     case 3:
-      return "R_V6C_LO8";
+      return "R_V6CLANG_LO8";
     case 4:
-      return "R_V6C_HI8";
+      return "R_V6CLANG_HI8";
     case 5:
-      return "R_V6C_32";
+      return "R_V6CLANG_32";
     default:
       break;
     }

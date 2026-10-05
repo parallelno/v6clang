@@ -1,4 +1,4 @@
-C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32-v6c
+C:\Work\Programming\v6clang\tests\features\83\contract-O1.elf:	file format elf32-v6clang
 
 .debug_info contents:
 0x00000000: Compile Unit: length = 0x0000020e, format = DWARF32, version = 0x0005, unit_type = DW_UT_compile, abbr_offset = 0x0000, addr_size = 0x02 (next unit at 0x00000212)
@@ -6,10 +6,10 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
 0x0000000c: DW_TAG_compile_unit
               DW_AT_producer	("clang version 18.1.0rc (https://github.com/llvm/llvm-project.git 461274b81d8641eab64d494accddc81d7db8a09e)")
               DW_AT_language	(DW_LANG_C11)
-              DW_AT_name	("C:\\Work\\Programming\\v6llvmc\\tests\\features\\83\\v6llvmc.c")
+              DW_AT_name	("C:\\Work\\Programming\\v6clang\\tests\\features\\83\\v6clang.c")
               DW_AT_str_offsets_base	(0x00000008)
               DW_AT_stmt_list	(0x00000000)
-              DW_AT_comp_dir	("C:\\Work\\Programming\\v6llvmc")
+              DW_AT_comp_dir	("C:\\Work\\Programming\\v6clang")
               DW_AT_low_pc	(0x0000)
               DW_AT_ranges	(indexed (0x0) rangelist = 0x00000010
                  [0x011f, 0x0128)
@@ -23,7 +23,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_name	("sink")
                 DW_AT_type	(0x00000034 "volatile int")
                 DW_AT_external	(true)
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(1)
                 DW_AT_location	(DW_OP_addrx 0x0)
 
@@ -41,7 +41,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__mulqi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(68)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000209 "unsigned char")
@@ -51,8 +51,8 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_high_pc	(0x00000013)
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_mulqihi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_mulqihi3")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(98)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -63,7 +63,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__mulhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(127)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -73,8 +73,8 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_high_pc	(0x0000002f)
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_udivmod16_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_udivmod16_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(168)
                 DW_AT_prototyped	(true)
 
@@ -84,7 +84,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__udivhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(218)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -95,7 +95,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__umodhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(231)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -106,7 +106,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__udivmodhi4")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(252)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -117,7 +117,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__divmodhi4")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(275)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -127,8 +127,8 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_high_pc	(0x00000008)
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_neg_hl_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_neg_hl_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(327)
                 DW_AT_prototyped	(true)
 
@@ -137,8 +137,8 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_high_pc	(0x00000008)
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
-                DW_AT_name	("__v6c_neg_de_body")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_name	("__v6clang_neg_de_body")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(344)
                 DW_AT_prototyped	(true)
 
@@ -148,7 +148,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__divhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(362)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -159,7 +159,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__modhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(394)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -170,7 +170,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__ashlhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(426)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -181,7 +181,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__lshrhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(452)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x0000020d "unsigned int")
@@ -192,14 +192,14 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("__ashrhi3")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6c\include\v6c_arith.h")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\llvm-build\bin\..\..\compiler-rt\lib\builtins\v6clang\include\v6clang_arith.h")
                 DW_AT_decl_line	(484)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
 
 0x00000147:   DW_TAG_subprogram
                 DW_AT_name	("inline_leaf")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(3)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -207,13 +207,13 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
 
 0x0000014f:     DW_TAG_formal_parameter
                   DW_AT_name	("value")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(3)
                   DW_AT_type	(0x00000039 "int")
 
 0x00000157:     DW_TAG_variable
                   DW_AT_name	("local")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(4)
                   DW_AT_type	(0x00000039 "int")
 
@@ -221,7 +221,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
 
 0x00000160:   DW_TAG_subprogram
                 DW_AT_name	("inline_outer")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(10)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -229,13 +229,13 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
 
 0x00000168:     DW_TAG_formal_parameter
                   DW_AT_name	("value")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(10)
                   DW_AT_type	(0x00000039 "int")
 
 0x00000170:     DW_TAG_variable
                   DW_AT_name	("local")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(11)
                   DW_AT_type	(0x00000039 "int")
 
@@ -247,25 +247,25 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("leaf")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(16)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
                 DW_AT_external	(true)
 
 0x0000018b:     DW_TAG_formal_parameter
-                  DW_AT_location	(indexed (0x0) loclist = 0x0000002c: 
+                  DW_AT_location	(indexed (0x0) loclist = 0x0000002c:
                      [0x011f, 0x0123): DW_OP_reg9 HL)
                   DW_AT_name	("parameter")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(16)
                   DW_AT_type	(0x00000039 "int")
 
 0x00000194:     DW_TAG_variable
-                  DW_AT_location	(indexed (0x3) loclist = 0x00000044: 
+                  DW_AT_location	(indexed (0x3) loclist = 0x00000044:
                      [0x011f, 0x0123): DW_OP_breg9 HL+256, DW_OP_stack_value)
                   DW_AT_name	("local")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(17)
                   DW_AT_type	(0x00000039 "int")
 
@@ -273,17 +273,17 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                   DW_AT_abstract_origin	(0x00000160 "inline_outer")
                   DW_AT_low_pc	(0x0122)
                   DW_AT_high_pc	(0x0127)
-                  DW_AT_call_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_call_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_call_line	(18)
                   DW_AT_call_column	(12)
 
 0x000001aa:       DW_TAG_formal_parameter
-                    DW_AT_location	(indexed (0x1) loclist = 0x00000032: 
+                    DW_AT_location	(indexed (0x1) loclist = 0x00000032:
                        [0x011f, 0x0123): DW_OP_breg9 HL+256, DW_OP_stack_value)
                     DW_AT_abstract_origin	(0x00000168 "value")
 
 0x000001b0:       DW_TAG_variable
-                    DW_AT_location	(indexed (0x4) loclist = 0x0000004d: 
+                    DW_AT_location	(indexed (0x4) loclist = 0x0000004d:
                        [0x011f, 0x0123): DW_OP_breg9 HL+272, DW_OP_stack_value)
                     DW_AT_abstract_origin	(0x00000170 "local")
 
@@ -291,17 +291,17 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                     DW_AT_abstract_origin	(0x00000147 "inline_leaf")
                     DW_AT_low_pc	(0x0122)
                     DW_AT_high_pc	(0x0127)
-                    DW_AT_call_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                    DW_AT_call_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                     DW_AT_call_line	(12)
                     DW_AT_call_column	(12)
 
 0x000001c3:         DW_TAG_formal_parameter
-                      DW_AT_location	(indexed (0x2) loclist = 0x0000003b: 
+                      DW_AT_location	(indexed (0x2) loclist = 0x0000003b:
                          [0x011f, 0x0123): DW_OP_breg9 HL+272, DW_OP_stack_value)
                       DW_AT_abstract_origin	(0x0000014f "value")
 
 0x000001c9:         DW_TAG_variable
-                      DW_AT_location	(indexed (0x5) loclist = 0x00000056: 
+                      DW_AT_location	(indexed (0x5) loclist = 0x00000056:
                          [0x0123, 0x0128): DW_OP_reg9 HL)
                       DW_AT_abstract_origin	(0x00000157 "local")
 
@@ -317,25 +317,25 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("middle")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(22)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
                 DW_AT_external	(true)
 
 0x000001e4:     DW_TAG_formal_parameter
-                  DW_AT_location	(indexed (0x6) loclist = 0x0000005e: 
+                  DW_AT_location	(indexed (0x6) loclist = 0x0000005e:
                      [0x0128, 0x012c): DW_OP_reg9 HL)
                   DW_AT_name	("parameter")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(22)
                   DW_AT_type	(0x00000039 "int")
 
 0x000001ed:     DW_TAG_variable
-                  DW_AT_location	(indexed (0x7) loclist = 0x00000064: 
+                  DW_AT_location	(indexed (0x7) loclist = 0x00000064:
                      [0x012c, 0x012f): DW_OP_reg9 HL)
                   DW_AT_name	("local")
-                  DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                  DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                   DW_AT_decl_line	(23)
                   DW_AT_type	(0x00000039 "int")
 
@@ -347,7 +347,7 @@ C:\Work\Programming\v6llvmc\tests\features\83\contract-O1.elf:	file format elf32
                 DW_AT_frame_base	(DW_OP_call_frame_cfa, DW_OP_consts -2, DW_OP_plus)
                 DW_AT_call_all_calls	(true)
                 DW_AT_name	("main")
-                DW_AT_decl_file	("C:\Work\Programming\v6llvmc\tests\features\83\v6llvmc.c")
+                DW_AT_decl_file	("C:\Work\Programming\v6clang\tests\features\83\v6clang.c")
                 DW_AT_decl_line	(27)
                 DW_AT_prototyped	(true)
                 DW_AT_type	(0x00000039 "int")
@@ -377,29 +377,29 @@ offsets: [
 0x00000052
 0x00000058
 ]
-0x0000002c: 
+0x0000002c:
             DW_LLE_startx_length   (0x0010, 0x0004): DW_OP_reg9 HL
 
-0x00000032: 
+0x00000032:
             DW_LLE_startx_length   (0x0010, 0x0004): DW_OP_breg9 HL+256, DW_OP_stack_value
 
-0x0000003b: 
+0x0000003b:
             DW_LLE_startx_length   (0x0010, 0x0004): DW_OP_breg9 HL+272, DW_OP_stack_value
 
-0x00000044: 
+0x00000044:
             DW_LLE_startx_length   (0x0010, 0x0004): DW_OP_breg9 HL+256, DW_OP_stack_value
 
-0x0000004d: 
+0x0000004d:
             DW_LLE_startx_length   (0x0010, 0x0004): DW_OP_breg9 HL+272, DW_OP_stack_value
 
-0x00000056: 
+0x00000056:
             DW_LLE_base_addressx   (0x0010)
             DW_LLE_offset_pair     (0x0004, 0x0009): DW_OP_reg9 HL
 
-0x0000005e: 
+0x0000005e:
             DW_LLE_startx_length   (0x0012, 0x0004): DW_OP_reg9 HL
 
-0x00000064: 
+0x00000064:
             DW_LLE_base_addressx   (0x0012)
             DW_LLE_offset_pair     (0x0004, 0x0007): DW_OP_reg9 HL
 

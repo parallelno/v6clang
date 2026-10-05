@@ -24,8 +24,8 @@
 // After O84 the four MOVs are simply dropped.
 //
 // Compile (baseline, before O84):
-//   llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-//       tests\features\65\v6llvmc.c -o tests\features\65\v6llvmc_old.asm
+//   llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+//       tests\features\65\v6clang.c -o tests\features\65\v6clang_old.asm
 
 typedef unsigned short u16;
 typedef unsigned char  u8;

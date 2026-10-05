@@ -320,10 +320,10 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
-  // Private/unassigned ID for the V6C (Vector-06c / Intel 8080) backend.
+  // Private/unassigned ID for the V6CLANG (Vector-06c / Intel 8080) backend.
   // 0x8080 chosen to mirror the i8080 CPU number; not registered with the
-  // official ELF e_machine registry. Used by V6C object files and ld.lld.
-  EM_V6C = 0x8080,
+  // official ELF e_machine registry. Used by V6CLANG object files and ld.lld.
+  EM_V6Clang = 0x8080,
 };
 
 // Object file classes.

@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Cut a V6C release: build, package, tag, and push to trigger the CI workflow.
+    Cut a V6CLANG release: build, package, tag, and push to trigger the CI workflow.
 
 .DESCRIPTION
-    Automates the release procedure in docs/V6CRelease.md:
+    Automates the release procedure in docs/V6ClangRelease.md:
         0. Provision the project-local Python environment (.venv) via
            scripts/setup_venv.ps1. Ninja and Python are never taken from the
            system; the build consumes .venv exclusively.
@@ -99,7 +99,7 @@ $DistVersion = $Version -replace '^v', ''
 & (Join-Path $PSScriptRoot 'make_dist.ps1') -Version $DistVersion
 if ($LASTEXITCODE -ne 0) { throw 'make_dist.ps1 failed' }
 
-$Stage = Join-Path $repoRoot "dist\v6c-$DistVersion-windows-x64"
+$Stage = Join-Path $repoRoot "dist\v6clang-$DistVersion-windows-x64"
 
 # --- 5. Smoke test ---
 Write-Host '--- Smoke test staged tree ---'
@@ -135,5 +135,5 @@ if ($DryRun) {
     Write-Host "Pushing tag '$Version' to origin (triggers release.yml)..."
     git push origin $Version
     if ($LASTEXITCODE -ne 0) { throw 'git push failed' }
-    Write-Host "Done. Monitor the workflow at: https://github.com/parallelno/v6llvmc/actions"
+    Write-Host "Done. Monitor the workflow at: https://github.com/parallelno/v6clang/actions"
 }

@@ -1,10 +1,10 @@
-# Plan: O70 — V6C Header-Only Math Runtime (`v6c_arith.h`)
+# Plan: O70 — V6CLANG Header-Only Math Runtime (`v6clang_arith.h`)
 
 ## 1. Problem
 
 ### Current behavior
 
-`clang -target i8080-unknown-v6c foo.c -o foo.rom` fails to link any C
+`clang -target i8080-unknown-v6clang foo.c -o foo.rom` fails to link any C
 program that uses `*`, `/`, `%`, or a variable-amount shift on `i16`:
 
 ```
@@ -14,9 +14,9 @@ ld.lld: error: undefined symbol: __udivhi3
 ```
 
 The libcall names are set by `setLibcallName` in
-`llvm/lib/Target/V6C/V6CISelLowering.cpp` (lines 178-185), but the
+`llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` (lines 178-185), but the
 corresponding object files are never produced or installed. The
-sources exist as `.s` files in `compiler-rt/lib/builtins/v6c/` but
+sources exist as `.s` files in `compiler-rt/lib/builtins/v6clang/` but
 they are not built into a library anywhere in the toolchain — the
 driver makes no attempt to link them.
 
@@ -31,18 +31,18 @@ multiply runs the 16-iteration `__mulhi3` algorithm even when an
 
 ### Desired behavior
 
-1. `clang -target i8080-unknown-v6c foo.c -o foo.rom` succeeds for
+1. `clang -target i8080-unknown-v6clang foo.c -o foo.rom` succeeds for
    any C program. No flags, no boilerplate.
 2. The runtime is **RA-aware**: i16 values live in HL/DE/BC across a
    `*`/`/`/`%`/shift call site survive without spilling, when the
    routine doesn't actually clobber them.
 3. Some routines expose a **custom calling convention** to eliminate
-   the HL/DE/BC reshuffle the V6C C ABI would otherwise force —
+   the HL/DE/BC reshuffle the V6CLANG C ABI would otherwise force —
    notably a combined `(quot, rem)` divmod that returns both pair
    values.
 4. `i8 * i8` lowers to a real `__mulqi3` (8 iterations), ~3× faster
    than the current `Promote` to `__mulhi3`.
-5. Users can opt out of the auto-include with `-fno-v6c-auto-include`
+5. Users can opt out of the auto-include with `-fno-v6clang-auto-include`
    and supply their own runtime.
 
 ### Root cause
@@ -56,7 +56,7 @@ gap has been hidden by users always linking `crt0.o` + their own
 A header-only design fixes the linkage cleanly (one `-include` flag),
 preserves the libcall symbol names so ISel changes are minimal, and
 unlocks two performance wins along the way (RA-awareness + custom CC)
-that the `.s`-based approach can't deliver because of V6C's empty
+that the `.s`-based approach can't deliver because of V6CLANG's empty
 `getCallPreservedMask`.
 
 ---
@@ -65,8 +65,8 @@ that the `.s`-based approach can't deliver because of V6C's empty
 
 ### Approach: header-only runtime with two implementation tiers
 
-Define every libcall the V6C backend can emit in one auto-included
-header, `v6c_arith.h`, in one of two forms:
+Define every libcall the V6CLANG backend can emit in one auto-included
+header, `v6clang_arith.h`, in one of two forms:
 
 - **Tier A — `static inline __attribute__((always_inline))`** with the
   full asm body. Body is pasted at every call site; RA sees the exact
@@ -77,15 +77,15 @@ header, `v6c_arith.h`, in one of two forms:
   real algorithm. RA trusts the wrapper's declared clobber list; the
   body executes once per program.
 
-Wire the driver to inject `-include v6c_arith.h` automatically on
-the V6C target (suppressible via `-fno-v6c-auto-include`).
+Wire the driver to inject `-include v6clang_arith.h` automatically on
+the V6CLANG target (suppressible via `-fno-v6clang-auto-include`).
 
 Change `MUL i8` from `Promote` to `LibCall` and add
 `setLibcallName(RTLIB::MUL_I8, "__mulqi3")`.
 
 ### Why this works
 
-The empirical RA experiment in `tests/v6c_lib/ra_clobber_lp.c`
+The empirical RA experiment in `tests/v6clang_lib/ra_clobber_lp.c`
 (captured below) proves all three claims:
 
 1. `static noinline` (asm body) — IPRA recovers the real clobber set;
@@ -107,29 +107,29 @@ inline-asm constraint list, not by the C ABI.
 
 ### Summary of changes
 
-- **Header.** `compiler-rt/lib/builtins/v6c/include/v6c_arith.h` — all
+- **Header.** `compiler-rt/lib/builtins/v6clang/include/v6clang_arith.h` — all
   routines per the inventory below. Tier A or Tier B per body size.
 - **ISel.** `MUL i8` action `Promote` → `LibCall`; add
   `setLibcallName(RTLIB::MUL_I8, "__mulqi3")`.
-- **Driver.** `clang/lib/Driver/ToolChains/V6C.cpp`:
-  `findV6CHeader()` helper (mirror of existing `findV6CRuntimeFile`);
-  `addClangTargetOptions` injects `-include v6c_arith.h`.
+- **Driver.** `clang/lib/Driver/ToolChains/V6Clang.cpp`:
+  `findV6ClangHeader()` helper (mirror of existing `findV6ClangRuntimeFile`);
+  `addClangTargetOptions` injects `-include v6clang_arith.h`.
 - **Driver flag.** `clang/include/clang/Driver/Options.td`:
-  `-fno-v6c-auto-include`.
-- **Doc.** `docs/V6CRuntimeAndInlineAsm.md` (new). Cross-link from
-  `docs/V6CBuildGuide.md`. Strip `-nodefaultlibs` from existing
+  `-fno-v6clang-auto-include`.
+- **Doc.** `docs/V6ClangRuntimeAndInlineAsm.md` (new). Cross-link from
+  `docs/V6ClangBuildGuide.md`. Strip `-nodefaultlibs` from existing
   examples.
-- **Tests.** `tests/v6c_lib/{linkage_smoke,divmod_combined,optout}.c`
+- **Tests.** `tests/v6clang_lib/{linkage_smoke,divmod_combined,optout}.c`
   added; `mul_bench.c` extended; `ra_clobber_lp.c` locked in as a
-  regression. `tests/features/52/` — feature-style c8080 ↔ v6llvmc
+  regression. `tests/features/52/` — feature-style c8080 ↔ v6clang
   comparison for `i8 * i8`.
-- **Lit.** `llvm/test/CodeGen/V6C/runtime_*.ll` (linkage smoke,
+- **Lit.** `llvm/test/CodeGen/V6CLANG/runtime_*.ll` (linkage smoke,
   i8 mul lowering, opt-out behavior).
 - **Backlog.** Mark O70 complete in `design/future_plans/README.md`.
 
 ### Empirical RA finding (drives the tier policy)
 
-Test `tests/v6c_lib/ra_clobber_lp.c`. A trivial i8 doubler
+Test `tests/v6clang_lib/ra_clobber_lp.c`. A trivial i8 doubler
 (`A=A+A`, clobbers `A,FLAGS` only) is defined five ways. Each is
 called from a low-pressure caller `(uint16_t hl_val, uint8_t d) ->
 uint16_t` that returns `hl_val` after invoking the doubler.
@@ -151,7 +151,7 @@ uint16_t` that returns `hl_val` after invoking the doubler.
 
 There is no "weak" path. Per-routine user override is **not**
 supported. The only override mechanism is the whole-runtime opt-out
-(`-fno-v6c-auto-include`).
+(`-fno-v6clang-auto-include`).
 
 ### Function inventory
 
@@ -174,15 +174,15 @@ Inline-only convenience helpers:
 
 | Symbol             | Signature      | Tier | Notes |
 |--------------------|----------------|------|-------|
-| `__v6c_mulqihi3`   | `u16 (u8, u8)` | A    | Thin alias around `__mulqi3`; documents intent |
-| `__v6c_udivmodhi3` | `(u16,u16) → quot in HL, rem in DE` | B | Custom CC: returns both pair values. One CALL replaces two. |
+| `__v6clang_mulqihi3`   | `u16 (u8, u8)` | A    | Thin alias around `__mulqi3`; documents intent |
+| `__v6clang_udivmodhi3` | `(u16,u16) → quot in HL, rem in DE` | B | Custom CC: returns both pair values. One CALL replaces two. |
 
 **`__mulqi3` returns u16, not u8** (libgcc divergence, accepted).
-V6C's i8 multiply produces the full i16 in HL for free. Choosing i16
+V6CLANG's i8 multiply produces the full i16 in HL for free. Choosing i16
 return lets ISel emit `i16 = __mulqi3(zext a, zext b)` followed by
 an i16→i8 truncate that elides when only the low byte survives DAG
-combine. V6C is freestanding (no external libgcc to clash with);
-divergence documented in `docs/V6CRuntimeAndInlineAsm.md`.
+combine. V6CLANG is freestanding (no external libgcc to clash with);
+divergence documented in `docs/V6ClangRuntimeAndInlineAsm.md`.
 
 ---
 
@@ -193,21 +193,21 @@ divergence documented in `docs/V6CRuntimeAndInlineAsm.md`.
 Read in this order:
 - `design/future_plans/O70_math_header.md` — feature description (this plan's source).
 - `design/plan_asm_interop_overhaul.md` — overlapping work; understand which pieces are shared so we don't conflict.
-- `docs/V6CBuildGuide.md` — build commands, mirror sync, driver flow.
+- `docs/V6ClangBuildGuide.md` — build commands, mirror sync, driver flow.
 - `docs/Vector_06c_instruction_timings.md` — for cycle-budget claims in the body sizing.
-- `clang/lib/Driver/ToolChains/V6C.cpp` — current driver shape; pattern for `findV6CRuntimeFile` / `addClangTargetOptions` / `AddClangSystemIncludeArgs`.
-- `llvm/lib/Target/V6C/V6CISelLowering.cpp` lines 55-185 — current libcall wiring, `MUL i8` action.
-- `compiler-rt/lib/builtins/v6c/*.s` — algorithm references.
+- `clang/lib/Driver/ToolChains/V6Clang.cpp` — current driver shape; pattern for `findV6ClangRuntimeFile` / `addClangTargetOptions` / `AddClangSystemIncludeArgs`.
+- `llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` lines 55-185 — current libcall wiring, `MUL i8` action.
+- `compiler-rt/lib/builtins/v6clang/*.s` — algorithm references.
 - Existing inline-asm test `tests/features/inline_asm_clobber/` — verify our assumptions about how RA reads clobber lists today.
 
 > **Implementation Notes**:
 
 ### Step 3.2 — Header skeleton (Tier A routines first) [ ]
 
-Create `compiler-rt/lib/builtins/v6c/include/v6c_arith.h`. Implement
+Create `compiler-rt/lib/builtins/v6clang/include/v6clang_arith.h`. Implement
 the small Tier A routines first (`__ashlhi3`, `__lshrhi3`, plus the
-`__v6c_mulqihi3` alias) with full asm bodies, `static inline
-always_inline`. Self-guard with `#ifndef V6C_ARITH_H_INCLUDED`.
+`__v6clang_mulqihi3` alias) with full asm bodies, `static inline
+always_inline`. Self-guard with `#ifndef V6CLANG_ARITH_H_INCLUDED`.
 
 For each routine: signature, full asm body, register-binding via
 `register T x __asm__("HL")` for inputs/outputs, accurate `clobber`
@@ -221,15 +221,15 @@ list. Include a one-line cycles-and-bytes comment per body.
 
 Implement `__mulqi3` per the body in the feature description: input
 `a` in `A`, `b` in `B`, returns full i16 in `HL`. Body name
-`__v6c_mulqi3_body` (`static __attribute__((noinline))`). Wrapper
+`__v6clang_mulqi3_body` (`static __attribute__((noinline))`). Wrapper
 named `__mulqi3` (the libgcc symbol — this is the entry point ISel
 resolves to). Wrapper is `static inline always_inline` with
 `register` declarations binding `a→A, b→B`, output `HL`, and the
-inline-asm `CALL __v6c_mulqi3_body` plus `clobber("C","D","E","FLAGS")`.
+inline-asm `CALL __v6clang_mulqi3_body` plus `clobber("C","D","E","FLAGS")`.
 
 Verify by manual asm inspection that:
 1. The wrapper inlines at the call site.
-2. The asm CALL emits as `CALL __v6c_mulqi3_body`.
+2. The asm CALL emits as `CALL __v6clang_mulqi3_body`.
 3. RA does not spill HL/DE/BC across the call site if they're live (test with a 1-line caller that returns its 16-bit input alongside `__mulqi3(a,b)`).
 
 > **Implementation Notes**:
@@ -238,20 +238,20 @@ Verify by manual asm inspection that:
 
 Implement `__mulhi3`, `__mulsi3`, `__udivhi3`, `__divhi3`,
 `__umodhi3`, `__modhi3`, `__ashrhi3`. Use the existing `.s` files in
-`compiler-rt/lib/builtins/v6c/` as algorithm reference. For each:
+`compiler-rt/lib/builtins/v6clang/` as algorithm reference. For each:
 
 - Wrapper name = libcall symbol (matches `setLibcallName` strings).
-- Wrapper signature matches the V6C C calling convention so
+- Wrapper signature matches the V6CLANG C calling convention so
   ISel-emitted CALLs Just Work.
 - If the algorithm naturally wants a non-default register layout,
   shuffle inside the wrapper before `CALL __body`.
 - Audit clobbers carefully — Tier B's RA contract is hand-maintained.
 
-> **Design Notes**: The V6C C ABI places the first i16 arg in HL and the second in DE (free-list CC). Most algorithms here want exactly that, so the wrapper degenerates to a straight `CALL __body` with no shuffle. Only `__v6c_udivmodhi3` (Step 3.5) realizes a custom-CC win.
+> **Design Notes**: The V6CLANG C ABI places the first i16 arg in HL and the second in DE (free-list CC). Most algorithms here want exactly that, so the wrapper degenerates to a straight `CALL __body` with no shuffle. Only `__v6clang_udivmodhi3` (Step 3.5) realizes a custom-CC win.
 
 > **Implementation Notes**:
 
-### Step 3.5 — `__v6c_udivmodhi3` (custom-CC headline routine) [ ]
+### Step 3.5 — `__v6clang_udivmodhi3` (custom-CC headline routine) [ ]
 
 The combined divmod helper. Returns quotient in HL **and**
 remainder in DE through a Tier B wrapper that declares two pair
@@ -259,17 +259,17 @@ outputs. C signature returns a struct (or uses out-pointers) at the
 source level; the wrapper's inline-asm constraints route both
 returns into registers.
 
-Verify the test `tests/v6c_lib/divmod_combined.c` lowers
+Verify the test `tests/v6clang_lib/divmod_combined.c` lowers
 `unsigned q=a/b, r=a%b;` to **exactly one** CALL (instead of the
 two CALLs the C ABI would force).
 
-> **Design Notes**: Returning two values in registers from C requires either (a) an out-pointer for the second value, with the inline-asm storing into the register the pointer eventually loads, or (b) a struct return that the V6C ABI happens to layout in HL+DE. Option (a) is simpler and portable; option (b) requires checking the V6C struct-return CC.
+> **Design Notes**: Returning two values in registers from C requires either (a) an out-pointer for the second value, with the inline-asm storing into the register the pointer eventually loads, or (b) a struct return that the V6CLANG ABI happens to layout in HL+DE. Option (a) is simpler and portable; option (b) requires checking the V6CLANG struct-return CC.
 
 > **Implementation Notes**:
 
 ### Step 3.6 — ISel: `MUL_I8 = LibCall` [ ]
 
-In `llvm-project/llvm/lib/Target/V6C/V6CISelLowering.cpp` change
+In `llvm-project/llvm/lib/Target/V6CLANG/V6ClangISelLowering.cpp` change
 line 59:
 
 ```cpp
@@ -288,14 +288,14 @@ trunc elides when only the low byte is consumed.
 
 > **Implementation Notes**:
 
-### Step 3.7 — Driver: `findV6CHeader` helper [ ]
+### Step 3.7 — Driver: `findV6ClangHeader` helper [ ]
 
-In `clang/lib/Driver/ToolChains/V6C.cpp` add `findV6CHeader(const
+In `clang/lib/Driver/ToolChains/V6Clang.cpp` add `findV6ClangHeader(const
 ToolChain &TC, StringRef Filename)` mirroring the existing
-`findV6CRuntimeFile` (line 63). Search order:
-1. `<resource-dir>/lib/v6c/include/<Filename>`
-2. `<bin>/../../compiler-rt/lib/builtins/v6c/include/<Filename>` (dev tree)
-3. `<bin>/../../llvm-project/compiler-rt/lib/builtins/v6c/include/<Filename>` (mirror)
+`findV6ClangRuntimeFile` (line 63). Search order:
+1. `<resource-dir>/lib/v6clang/include/<Filename>`
+2. `<bin>/../../compiler-rt/lib/builtins/v6clang/include/<Filename>` (dev tree)
+3. `<bin>/../../llvm-project/compiler-rt/lib/builtins/v6clang/include/<Filename>` (mirror)
 
 Returns empty string if not found. No error.
 
@@ -303,11 +303,11 @@ Returns empty string if not found. No error.
 
 ### Step 3.8 — Driver: auto-include in `addClangTargetOptions` [ ]
 
-In `V6CToolChain::addClangTargetOptions` (line 171), inject:
+In `V6ClangToolChain::addClangTargetOptions` (line 171), inject:
 
 ```cpp
-if (!Args.hasArg(options::OPT_fno_v6c_auto_include)) {
-    std::string Hdr = findV6CHeader(getToolChain(), "v6c_arith.h");
+if (!Args.hasArg(options::OPT_fno_v6clang_auto_include)) {
+    std::string Hdr = findV6ClangHeader(getToolChain(), "v6clang_arith.h");
     if (!Hdr.empty()) {
         CC1Args.push_back("-include");
         CC1Args.push_back(Args.MakeArgString(Hdr));
@@ -317,14 +317,14 @@ if (!Args.hasArg(options::OPT_fno_v6c_auto_include)) {
 
 > **Implementation Notes**:
 
-### Step 3.9 — Driver flag: `-fno-v6c-auto-include` [ ]
+### Step 3.9 — Driver flag: `-fno-v6clang-auto-include` [ ]
 
 In `clang/include/clang/Driver/Options.td`:
 
 ```td
-def fno_v6c_auto_include : Flag<["-"], "fno-v6c-auto-include">,
+def fno_v6clang_auto_include : Flag<["-"], "fno-v6clang-auto-include">,
     Group<f_Group>, Flags<[NoXarchOption]>,
-    HelpText<"Suppress auto-inclusion of v6c_arith.h on V6C targets">;
+    HelpText<"Suppress auto-inclusion of v6clang_arith.h on V6CLANG targets">;
 ```
 
 > **Implementation Notes**:
@@ -341,7 +341,7 @@ Diagnose and fix any build errors. Re-run until clean.
 
 ### Step 3.11 — Lit test: i8 mul lowers to `__mulqi3` [ ]
 
-Add `llvm-project/llvm/test/CodeGen/V6C/i8_mul_libcall.ll`. Verify:
+Add `llvm-project/llvm/test/CodeGen/V6CLANG/i8_mul_libcall.ll`. Verify:
 - `mul i8 %a, %b` lowers to `CALL __mulqi3`.
 - The trunc after the libcall elides when only the low byte is used.
 
@@ -349,35 +349,35 @@ Add `llvm-project/llvm/test/CodeGen/V6C/i8_mul_libcall.ll`. Verify:
 
 ### Step 3.12 — Lit test: linkage smoke (auto-include works) [ ]
 
-Add `llvm-project/clang/test/Driver/v6c-auto-include.c`. Verify
-`clang -target i8080-unknown-v6c -###` shows `-include
-.../v6c_arith.h`, and that `-fno-v6c-auto-include` removes it.
+Add `llvm-project/clang/test/Driver/v6clang-auto-include.c`. Verify
+`clang -target i8080-unknown-v6clang -###` shows `-include
+.../v6clang_arith.h`, and that `-fno-v6clang-auto-include` removes it.
 
 > **Implementation Notes**:
 
-### Step 3.13 — Test: `tests/v6c_lib/linkage_smoke.c` [ ]
+### Step 3.13 — Test: `tests/v6clang_lib/linkage_smoke.c` [ ]
 
 Standalone C program exercising every operator the header replaces
 (`* / % << >> i16`, `* i8`). Build with bare:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 linkage_smoke.c -o linkage_smoke.rom
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 linkage_smoke.c -o linkage_smoke.rom
 ```
 
 Run in `v6emul`. Verify no link errors, correct output checksum.
 
 > **Implementation Notes**:
 
-### Step 3.14 — Test: `tests/v6c_lib/divmod_combined.c` [ ]
+### Step 3.14 — Test: `tests/v6clang_lib/divmod_combined.c` [ ]
 
-Verifies `__v6c_udivmodhi3` lowers `unsigned q=a/b, r=a%b;` to one
+Verifies `__v6clang_udivmodhi3` lowers `unsigned q=a/b, r=a%b;` to one
 CALL.
 
 > **Implementation Notes**:
 
-### Step 3.15 — Test: `tests/v6c_lib/optout.c` [ ]
+### Step 3.15 — Test: `tests/v6clang_lib/optout.c` [ ]
 
-Compile with `-fno-v6c-auto-include` and `*` in the source.
+Compile with `-fno-v6clang-auto-include` and `*` in the source.
 Expected: `ld.lld: error: undefined symbol: __mulhi3`. Documents
 the opt-out semantics.
 
@@ -405,7 +405,7 @@ mul change may shift `fib_crc` cycles slightly — record the delta.
 ### Step 3.18 — Verification assembly steps from `tests\features\README.md` [ ]
 
 For `tests/features/52/` (i8 multiply): compile c8080 reference
-and v6llvmc. Compare `main`/test-function asm. Document the
+and v6clang. Compare `main`/test-function asm. Document the
 `__mulqi3` (8-iteration) vs the old `__mulhi3`-via-`Promote`
 (16-iteration) cycle difference.
 
@@ -419,16 +419,16 @@ and v6llvmc. Compare `main`/test-function asm. Document the
 
 ### Step 3.20 — Documentation [ ]
 
-Create `docs/V6CRuntimeAndInlineAsm.md` covering:
+Create `docs/V6ClangRuntimeAndInlineAsm.md` covering:
 1. The runtime header — what, why, opt-out.
 2. Function reference for every routine.
-3. Inline-asm syntax for V6C.
+3. Inline-asm syntax for V6CLANG.
 4. Tier A vs Tier B; when to use each.
 5. The Tier B contract (wrapper clobber list = superset of body's real clobbers).
 6. End-to-end example.
-7. Future work: `libv6c-builtins.a` archive migration if per-program ROM duplication ever bites.
+7. Future work: `libv6clang-builtins.a` archive migration if per-program ROM duplication ever bites.
 
-Cross-link from `docs/V6CBuildGuide.md`. Strip `-nodefaultlibs` from any user-facing example in existing docs (V6C has no default libs to suppress).
+Cross-link from `docs/V6ClangBuildGuide.md`. Strip `-nodefaultlibs` from any user-facing example in existing docs (V6CLANG has no default libs to suppress).
 
 > **Implementation Notes**:
 
@@ -475,7 +475,7 @@ unsigned f(unsigned hl_val, unsigned a, unsigned b) {
 Today: `__mulhi3` is not even resolved, so it doesn't link. If we
 imagine the legacy `.s` form linked in, RA would still spill HL via
 `SHLD/LHLD` because of the empty `getCallPreservedMask`.
-After O70: caller body is `CALL __v6c_mulhi3_body; SHLD sink; RET`
+After O70: caller body is `CALL __v6clang_mulhi3_body; SHLD sink; RET`
 — HL is preserved across the call because the wrapper's clobber
 list includes only `A,B,C,FLAGS` (and DE, the multiplier).
 
@@ -488,7 +488,7 @@ void divmod(unsigned a, unsigned b) { q = a / b; r = a % b; }
 
 Today: two separate CALLs (`__udivhi3` then `__umodhi3`), each
 recomputing the same algorithm.
-After O70: one CALL to `__v6c_udivmodhi3_body`; quotient stored
+After O70: one CALL to `__v6clang_udivmodhi3_body`; quotient stored
 from HL, remainder from DE. ~½ cycle cost.
 
 ### Example 4 — i8 multiply 3× faster
@@ -507,12 +507,12 @@ After O70: `__mulqi3` (8 iterations). ~3× cycle reduction.
 
 | Risk | Mitigation |
 |------|------------|
-| `__mulqi3` returning i16 deviates from libgcc convention | V6C is freestanding — no external libgcc to clash with. Document loudly in `docs/V6CRuntimeAndInlineAsm.md`. |
-| Per-TU duplication of Tier B bodies bloats ROM | Bound is ~1.5KB worst-case (all 10 routines used in a 1-3 TU program). Acceptable vs. typical 32K-64K V6C ROM. Future-work archive migration documented. |
-| Tier B wrapper-clobber contract is not compiler-checked; a body refactor that adds a clobber silently corrupts callers | Lit tests lock down each body's exact written-register set; mandatory wrapper review when a body changes. Document the contract as a stability requirement in `docs/V6CRuntimeAndInlineAsm.md`. |
-| `-include v6c_arith.h` runs before user `#include`s, so user `#define __mulhi3 my_mul` cannot redirect | Documented; users who want per-routine override use `-fno-v6c-auto-include` and supply their own header. |
-| `findV6CHeader` returns empty (broken install) → user sees generic "undefined symbol" link error | Acceptable; matches existing `crt0.o` behavior. Future enhancement: driver warning. |
-| Conflict with `plan_asm_interop_overhaul.md` (O-AsmInterop) which also creates a V6C resource-dir include directory | The directory layout is identical (`<resource-dir>/lib/v6c/include/`). O70 lands first; O-AsmInterop's Phase 5 then adds `string.h`/`stdlib.h`/`v6c.h` to the same directory and removes any duplicated logic. Document the shared infrastructure in both plans' "Relationship" sections. |
+| `__mulqi3` returning i16 deviates from libgcc convention | V6CLANG is freestanding — no external libgcc to clash with. Document loudly in `docs/V6ClangRuntimeAndInlineAsm.md`. |
+| Per-TU duplication of Tier B bodies bloats ROM | Bound is ~1.5KB worst-case (all 10 routines used in a 1-3 TU program). Acceptable vs. typical 32K-64K V6CLANG ROM. Future-work archive migration documented. |
+| Tier B wrapper-clobber contract is not compiler-checked; a body refactor that adds a clobber silently corrupts callers | Lit tests lock down each body's exact written-register set; mandatory wrapper review when a body changes. Document the contract as a stability requirement in `docs/V6ClangRuntimeAndInlineAsm.md`. |
+| `-include v6clang_arith.h` runs before user `#include`s, so user `#define __mulhi3 my_mul` cannot redirect | Documented; users who want per-routine override use `-fno-v6clang-auto-include` and supply their own header. |
+| `findV6ClangHeader` returns empty (broken install) → user sees generic "undefined symbol" link error | Acceptable; matches existing `crt0.o` behavior. Future enhancement: driver warning. |
+| Conflict with `plan_asm_interop_overhaul.md` (O-AsmInterop) which also creates a V6CLANG resource-dir include directory | The directory layout is identical (`<resource-dir>/lib/v6clang/include/`). O70 lands first; O-AsmInterop's Phase 5 then adds `string.h`/`stdlib.h`/`v6clang.h` to the same directory and removes any duplicated logic. Document the shared infrastructure in both plans' "Relationship" sections. |
 | IPRA changes in the future could weaken Tier B's wrapper-clobber claim | The wrapper's clobber list is asm-level, not IPRA-derived; unaffected by IPRA changes. Verified via `ra_clobber_lp.c` regression test. |
 
 ---
@@ -520,10 +520,10 @@ After O70: `__mulqi3` (8 iterations). ~3× cycle reduction.
 ## 6. Relationship to Other Improvements
 
 - **O-AsmInterop (`plan_asm_interop_overhaul.md`)** — significant
-  overlap. That plan ships `<resource-dir>/lib/v6c/include/{string.h,
-  stdlib.h, v6c.h}` and retires `libv6c-builtins.a`. O70 ships
-  `v6c_arith.h` to the **same directory**, requires the same
-  `findV6CHeader` helper, and has the same "no `libv6c-builtins.a`"
+  overlap. That plan ships `<resource-dir>/lib/v6clang/include/{string.h,
+  stdlib.h, v6clang.h}` and retires `libv6clang-builtins.a`. O70 ships
+  `v6clang_arith.h` to the **same directory**, requires the same
+  `findV6ClangHeader` helper, and has the same "no `libv6clang-builtins.a`"
   outcome. Plan: O70 lands first (it's the smallest viable slice that
   makes `clang foo.c` work end-to-end); O-AsmInterop's Phase 5 then
   adds the additional headers reusing the helper.
@@ -543,26 +543,26 @@ After O70: `__mulqi3` (8 iterations). ~3× cycle reduction.
 
 ## 7. Future Enhancements
 
-- **`libv6c-builtins.a` archive migration.** If per-program ROM
+- **`libv6clang-builtins.a` archive migration.** If per-program ROM
   duplication of Tier B bodies ever becomes a measurable problem
   (programs with many TUs each touching every operator), build the
-  `.s` files into a single static archive, change `v6c_arith.h` so
+  `.s` files into a single static archive, change `v6clang_arith.h` so
   bodies become `extern` declarations, and have the driver pass the
   archive on the link line. The user-facing API does not change.
 - **Per-call `RegMask` operands** for any future ISel-materialized
   CALL that does not route through a wrapper — would let RA see the
   actual preserved-reg set per callee. Subsumed by Tier B for
   header-routed calls.
-- **Driver warning when `findV6CHeader` returns empty** — better
+- **Driver warning when `findV6ClangHeader` returns empty** — better
   diagnostic than the link-time "undefined symbol" message.
-- **Optional `__v6c_smulqihi3`** (signed i8 → i16 multiply) if any
+- **Optional `__v6clang_smulqihi3`** (signed i8 → i16 multiply) if any
   benchmark surfaces a need.
 
 ---
 
 ## 8. References
 
-- [V6C Build Guide](docs\V6CBuildGuide.md)
+- [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 - [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 - [Future Improvements](design\future_plans\README.md)
 - [O70 Feature Description](design\future_plans\O70_math_header.md)

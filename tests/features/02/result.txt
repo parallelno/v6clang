@@ -52,7 +52,7 @@ c8080 stats:
   countdown loop body: ~80cc/iter, function: ~40B
   count_down loop body: ~48cc/iter, function: ~20B
 
-== v6llvmc assembly (before optimization) ==
+== v6clang assembly (before optimization) ==
 
 countdown:
     ORA  A              ;   4cc
@@ -67,7 +67,7 @@ countdown:
 ; Loop overhead per iteration: 40cc (STA 16 + DCR 8 + ORA 4 + JNZ 12)
 ; Function: 12B
 
-== v6llvmc assembly (after O18 optimization) ==
+== v6clang assembly (after O18 optimization) ==
 
 countdown:
     ORA  A              ;   4cc
@@ -81,10 +81,10 @@ countdown:
 ; Loop overhead per iteration: 36cc (STA 16 + DCR 8 + JNZ 12)
 ; Function: 11B
 
-v6llvmc stats (before):
+v6clang stats (before):
   countdown loop body: 40cc/iter, function: 12B
 
-v6llvmc stats (after):
+v6clang stats (after):
   countdown loop body: 36cc/iter, function: 11B
 
 == Improvement ==
@@ -92,7 +92,7 @@ v6llvmc stats (after):
   Savings per iteration: 4cc + 1B (ORA A eliminated)
   Pattern A fired: DCR A; CPI 0; JNZ → DCR A; JNZ
 
-  v6llvmc vs c8080 countdown loop:
-    v6llvmc: 36cc/iter (after O18)
+  v6clang vs c8080 countdown loop:
+    v6clang: 36cc/iter (after O18)
     c8080:   80cc/iter (static stack stores on every iteration)
-    v6llvmc is 2.2× faster per iteration
+    v6clang is 2.2× faster per iteration

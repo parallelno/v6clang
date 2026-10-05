@@ -38,8 +38,8 @@ def word(memory, address):
 rom = HERE / "optimized.rom"
 elf = HERE / "optimized.elf"
 run([
-    str(CLANG), "-target", "i8080-unknown-v6c", "-O2", "-g",
-    str(HERE / "v6llvmc.c"), "-o", str(rom),
+    str(CLANG), "-target", "i8080-unknown-v6clang", "-O2", "-g",
+    str(HERE / "v6clang.c"), "-o", str(rom),
 ])
 run([str(DWARFDUMP), "--verify", str(elf)])
 dwarf = run([str(DWARFDUMP), "--debug-info", "--debug-loclists", "--debug-addr", str(elf)])

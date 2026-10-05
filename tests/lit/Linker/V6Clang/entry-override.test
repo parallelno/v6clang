@@ -1,0 +1,47 @@
+# RUN: rm -rf %t && mkdir -p %t && split-file %s %t
+# RUN: llc -mtriple=i8080-unknown-v6clang -filetype=obj -o %t/main.o %t/main.ll
+# RUN: llc -mtriple=i8080-unknown-v6clang -filetype=obj -o %t/alt.o %t/alt.ll
+
+## Test A — default: PROVIDE(__entry = main) in v6clang.ld makes __entry an alias
+## for main when no --defsym=__entry is given.  --undefined=__entry forces a
+## reference (crt0 supplies this in real links) so the PROVIDE materializes.
+# RUN: ld.lld -m elf32v6clang -T %v6clang_ld_script --defsym=_start=main \
+# RUN:        --undefined=__entry \
+# RUN:        -o %t/default.elf %t/main.o %t/alt.o
+# RUN: llvm-nm --defined-only %t/default.elf > %t/default.syms
+# RUN: FileCheck %s --input-file=%t/default.syms --check-prefix=DEF
+# RUN: python -c "import re,sys; d={m[1]:m[0] for m in re.findall(r'([0-9a-f]+) . (\S+)',open(sys.argv[1]).read())}; assert d['__entry']==d['main'], repr(d)" %t/default.syms
+
+## Test B — override: --defsym=__entry=alt overrides PROVIDE, so __entry
+## points to alt instead of main.
+# RUN: ld.lld -m elf32v6clang -T %v6clang_ld_script --defsym=_start=main \
+# RUN:        --undefined=__entry --defsym=__entry=alt \
+# RUN:        -o %t/override.elf %t/main.o %t/alt.o
+# RUN: llvm-nm --defined-only %t/override.elf > %t/override.syms
+# RUN: FileCheck %s --input-file=%t/override.syms --check-prefix=OVR
+# RUN: python -c "import re,sys; d={m[1]:m[0] for m in re.findall(r'([0-9a-f]+) . (\S+)',open(sys.argv[1]).read())}; assert d['__entry']==d['alt'], repr(d)" %t/override.syms
+
+## Test A checks: __entry and main are both present in the symbol table.
+# DEF-DAG: __entry
+# DEF-DAG: main
+
+## Test B checks: __entry, alt, and main (kept live by PROVIDE) all present.
+# OVR-DAG: __entry
+# OVR-DAG: alt
+# OVR-DAG: main
+
+#--- main.ll
+target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"
+target triple = "i8080-unknown-v6clang"
+
+define i8 @main() section ".text._start" {
+  ret i8 0
+}
+
+#--- alt.ll
+target datalayout = "e-p:16:8-i1:8-i8:8-i16:8-i32:8-i64:8-n8:16-S8"
+target triple = "i8080-unknown-v6clang"
+
+define i8 @alt() {
+  ret i8 1
+}

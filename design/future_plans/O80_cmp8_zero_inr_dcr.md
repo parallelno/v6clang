@@ -14,13 +14,13 @@ When `A` is live across the compare (a very common shape — A is the most
 popular accumulator and routinely holds a value used after the branch), the
 register allocator has to rescue `A` by routing it through another GR8 or
 through the stack. The typical resulting sequence (observed in
-[tests/features/37/v6llvmc.s](tests/features/37/v6llvmc.s) line 76):
+[tests/features/37/v6clang.s](tests/features/37/v6clang.s) line 76):
 
 ```asm
 MOV  L, A      ; save A          (1B / 8cc)
 MOV  A, C      ; zero-test idiom (1B / 8cc)
 ORA  A         ;                 (1B / 4cc)
-;--- V6C_BRCOND ---
+;--- V6CLANG_BRCOND ---
 JZ   .LBB17_2
 ; %bb.1:
 MOV  A, L      ; restore A       (1B / 8cc)
@@ -37,7 +37,7 @@ sequence given the live-A and src-equals-A states.
 
 ## Problem
 
-The current ISel lowering of `V6CISD::CMP %r8, 0` is a fixed `MOVrr A, src` +
+The current ISel lowering of `V6ClangISD::CMP %r8, 0` is a fixed `MOVrr A, src` +
 `ORAr A` regardless of liveness. Three shapes exist in practice:
 
 |#|shape                     |today's expansion                                 |siz/ccs|
@@ -46,7 +46,7 @@ The current ISel lowering of `V6CISD::CMP %r8, 0` is a fixed `MOVrr A, src` +
 |2|`src ≠ A`, A dead         |`MOV A,src; ORA A`                                |2B/12cc|
 |3|`src ≠ A`, A live         |`MOV scratch,A; MOV A,src; ORA A; … MOV A,scratch`|4B/28cc|
 
-(Per [docs/V6CInstructionTimings.md](docs/V6CInstructionTimings.md):
+(Per [docs/V6ClangInstructionTimings.md](docs/V6ClangInstructionTimings.md):
 `MOV r,r` = 1B / 8cc `WriteMOV8`; `ORA r` = 1B / 4cc `WriteALU4`. Vector-06c
 costs MOV r,r the same as MOV r,M, unlike the classic 8080.)
 
@@ -71,7 +71,7 @@ which can transitively avoid spills in tight loops — see tests/features/43).
 
 ## Why `INR/DCR` is correct as a zero-test
 
-The semantics of `V6CISD::CMP %r8, 0` is "set FLAGS from `%r8`":
+The semantics of `V6ClangISD::CMP %r8, 0` is "set FLAGS from `%r8`":
 
 | flag | `ORA A` value          | `INR r; DCR r` value     | match |
 |------|------------------------|--------------------------|-------|
@@ -82,7 +82,7 @@ The semantics of `V6CISD::CMP %r8, 0` is "set FLAGS from `%r8`":
 | CY   | 0 (ORA clears it)      | unchanged                | ✗ (different value) |
 
 The CMP-against-zero callers we care about are i8 conditional branches
-emitted via `V6Cbrcond` / `V6CCC::COND_Z` / `COND_NZ` / `COND_P` / `COND_M` /
+emitted via `V6Clangbrcond` / `V6ClangCC::COND_Z` / `COND_NZ` / `COND_P` / `COND_M` /
 `COND_PE` / `COND_PO`. None of these CCs reads `AC` or `CY`. Branching on
 `COND_C` / `COND_NC` after a CMP-against-zero would be ill-formed (the
 zero-test never produced carry under either lowering), so absence of carry
@@ -94,28 +94,28 @@ equivalent over the actual consumer set.
 
 ## Proposed design
 
-### 1. New pseudo `V6C_CMP8_ZERO`
+### 1. New pseudo `V6CLANG_CMP8_ZERO`
 
-Mirror the existing `V6C_CMP16_ZERO`:
+Mirror the existing `V6CLANG_CMP16_ZERO`:
 
 ```tablegen
-// V6C_CMP8_ZERO — Set FLAGS from i8 source against zero.
-// Consumed by V6C_BRCOND / V6C_SELECT_CC.
+// V6CLANG_CMP8_ZERO — Set FLAGS from i8 source against zero.
+// Consumed by V6CLANG_BRCOND / V6CLANG_SELECT_CC.
 let Defs = [FLAGS] in
-def V6C_CMP8_ZERO : V6CPseudo<(outs), (ins GR8:$src),
-    "# V6C_CMP8_ZERO $src",
-    [(set FLAGS, (V6Ccmp i8:$src, (i8 0)))]>;
+def V6CLANG_CMP8_ZERO : V6ClangPseudo<(outs), (ins GR8:$src),
+    "# V6CLANG_CMP8_ZERO $src",
+    [(set FLAGS, (V6Clangcmp i8:$src, (i8 0)))]>;
 ```
 
-Pattern preference: the existing match for `(V6Ccmp i8:$src, (i8 imm:$cst))`
-must be sharpened so the literal-zero case picks `V6C_CMP8_ZERO` and the
+Pattern preference: the existing match for `(V6Clangcmp i8:$src, (i8 imm:$cst))`
+must be sharpened so the literal-zero case picks `V6CLANG_CMP8_ZERO` and the
 non-zero case continues to lower to `CPI imm` (today's path is already
 shape-aware for i16; this just extends the i16 zero-test discrimination to
 i8).
 
 ### 2. Post-RA expansion
 
-Single new `case` in `V6CInstrInfo::expandPostRAPseudo`:
+Single new `case` in `V6ClangInstrInfo::expandPostRAPseudo`:
 
 |#|src  |A-liveness| expansion          |size/cycles|
 |-|-----|----------|--------------------|-----------|
@@ -130,28 +130,28 @@ is live (it is then strictly better than today's 28cc save/restore).
 
 
 ```cpp
-case V6C::V6C_CMP8_ZERO: {
+case V6CLANG::V6CLANG_CMP8_ZERO: {
     Register Src = MI.getOperand(0).getReg();
-    if (Src == V6C::A) {
+    if (Src == V6CLANG::A) {
         // Priority 1: src already in A.
-        BuildMI(MBB, MI, DL, get(V6C::ORAr))
-            .addReg(V6C::A, RegState::Define)
-            .addReg(V6C::A);
-    } else if (isRegDeadAtMI(V6C::A, MI, MBB, &RI)) {
+        BuildMI(MBB, MI, DL, get(V6CLANG::ORAr))
+            .addReg(V6CLANG::A, RegState::Define)
+            .addReg(V6CLANG::A);
+    } else if (isRegDeadAtMI(V6CLANG::A, MI, MBB, &RI)) {
         // Priority 2: A is dead — clobber it for free.
-        BuildMI(MBB, MI, DL, get(V6C::MOVrr), V6C::A).addReg(Src);
-        BuildMI(MBB, MI, DL, get(V6C::ORAr))
-            .addReg(V6C::A, RegState::Define)
-            .addReg(V6C::A);
+        BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr), V6CLANG::A).addReg(Src);
+        BuildMI(MBB, MI, DL, get(V6CLANG::ORAr))
+            .addReg(V6CLANG::A, RegState::Define)
+            .addReg(V6CLANG::A);
     } else {
         // Priority 3: A is live — A-preserving zero test via INR/DCR.
         // Both INR and DCR write Src; mark the second as kill if the
         // original $src was killed by the pseudo.
         bool SrcKilled = MI.getOperand(0).isKill();
-        BuildMI(MBB, MI, DL, get(V6C::INR))
+        BuildMI(MBB, MI, DL, get(V6CLANG::INR))
             .addReg(Src, RegState::Define)
             .addReg(Src);
-        BuildMI(MBB, MI, DL, get(V6C::DCR))
+        BuildMI(MBB, MI, DL, get(V6CLANG::DCR))
             .addReg(Src, RegState::Define)
             .addReg(Src, getKillRegState(SrcKilled));
     }
@@ -160,13 +160,13 @@ case V6C::V6C_CMP8_ZERO: {
 }
 ```
 
-The `isRegDeadAtMI` helper is the same one used by O76 / `V6C_LOAD8_P` and
-the BC-swap path in `V6CInstrInfo.cpp`; A's post-RA liveness is reliable
-because `MachineFunctionProperties::TracksLiveness` is set for V6C.
+The `isRegDeadAtMI` helper is the same one used by O76 / `V6CLANG_LOAD8_P` and
+the BC-swap path in `V6ClangInstrInfo.cpp`; A's post-RA liveness is reliable
+because `MachineFunctionProperties::TracksLiveness` is set for V6CLANG.
 
 ### 3. Allocator hint (optional, follow-up)
 
-Once `V6C_CMP8_ZERO` exists as a real pseudo with a single GR8 input, ISel
+Once `V6CLANG_CMP8_ZERO` exists as a real pseudo with a single GR8 input, ISel
 can attach an A-preference hint to the input vreg. RA will then route the
 producing value through `A` when free, collapsing shape 2 into shape 1
 (`MOV A,src` becomes a no-op because the producer already targets A). This
@@ -194,17 +194,17 @@ reductions on bsort, sieve, and fib_crc.
 
 ## Verification plan
 
-- Lit test `tests/lit/CodeGen/V6C/cmp8-zero-inr-dcr.ll` covering all three
+- Lit test `tests/lit/CodeGen/V6CLANG/cmp8-zero-inr-dcr.ll` covering all three
   shapes. Use IR + `register asm` pinning of the source operand and an
   A-live-after pattern to deterministically materialise each row. Verify
   that the `INR/DCR` pair appears for shape 3 and that the surrounding
   `MOV scratch,A; ... ; MOV A,scratch` save/restore is gone.
-- Annotation regression: `-mllvm -mv6c-annotate-pseudos` must now print
-  `;--- V6C_CMP8_ZERO ---` before the expansion (resolves the
+- Annotation regression: `-mllvm -mv6clang-annotate-pseudos` must now print
+  `;--- V6CLANG_CMP8_ZERO ---` before the expansion (resolves the
   unannotated `MOV A,C; ORA A` sequence noted in
-  [tests/features/37/v6llvmc.s](tests/features/37/v6llvmc.s) line 77).
-- Update the opcode→name map in `V6CInstrInfo.cpp` so the annotator
-  recognises `V6C_CMP8_ZERO`.
+  [tests/features/37/v6clang.s](tests/features/37/v6clang.s) line 77).
+- Update the opcode→name map in `V6ClangInstrInfo.cpp` so the annotator
+  recognises `V6CLANG_CMP8_ZERO`.
 - Existing benchmark golden files: regenerate; expect strict improvement
   (or no change) on every entry. Any regression is a bug.
 - 133/133 lit + golden + benchmark checksums must remain green.
@@ -212,14 +212,14 @@ reductions on bsort, sieve, and fib_crc.
 ## Risk surface
 
 - **`AC`/`CY` divergence**. The replacement does not match `ORA A` on `AC`
-  and `CY`. As argued above, no zero-test consumer in the V6C pipeline
+  and `CY`. As argued above, no zero-test consumer in the V6CLANG pipeline
   reads either flag. Add a comment in the pseudo's TableGen doc and a
   `// AC/CY divergence: only Z/S/P consumers permitted` assertion guard
-  near `V6C_BRCOND`'s CC validation to harden against future changes that
-  introduce a `COND_C` / `COND_NC` consumer of `V6CISD::CMP_ZERO`.
+  near `V6CLANG_BRCOND`'s CC validation to harden against future changes that
+  introduce a `COND_C` / `COND_NC` consumer of `V6ClangISD::CMP_ZERO`.
 - **Verifier on twin-def of `Src`**. Both `INR` and `DCR` define `Src`.
   Mark the first as a regular def and the second with the kill flag from
-  the original `V6C_CMP8_ZERO` operand to keep MIR-verifier happy.
+  the original `V6CLANG_CMP8_ZERO` operand to keep MIR-verifier happy.
 - **Interaction with `INX/DCX` peepholes (O41)**. The 8-bit `INR/DCR`
   pair is not a target of `pre_ra_inx_dcx_pseudo`; verify that no
   post-RA peephole tries to fold `INR r; DCR r` into nothing on the
@@ -230,12 +230,12 @@ reductions on bsort, sieve, and fib_crc.
 
 ## Open questions / non-goals
 
-- **`V6C_CMP8` (against an immediate)**. The general i8 compare against a
+- **`V6CLANG_CMP8` (against an immediate)**. The general i8 compare against a
   non-zero immediate already lowers to `CPI imm` (1 byte for the imm).
   This plan does not touch it.
 - **i8 register-vs-register compare**. Out of scope — the win is specific
   to the zero comparand because `INR`/`DCR` reify a unary flag-set.
-- **Shape symmetry with i16**. `V6C_CMP16_ZERO` already exists; this plan
+- **Shape symmetry with i16**. `V6CLANG_CMP16_ZERO` already exists; this plan
   is the i8 analogue. No further symmetry work needed.
 - **A-preference allocator hint** (see §3). Worth doing as a follow-up
   but separable; included here for visibility, not in scope.

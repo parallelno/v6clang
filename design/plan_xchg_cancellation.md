@@ -10,7 +10,7 @@ their trailing/leading XCHGs become consecutive in the final instruction
 stream:
 
 ```asm
-SHLD  __v6c_ss.sumarray+2    ; spill arr1_ptr (DE via XCHG+SHLD+XCHG)
+SHLD  __v6clang_ss.sumarray+2    ; spill arr1_ptr (DE via XCHG+SHLD+XCHG)
 XCHG                          ; ← trailing from SPILL16 DE
 XCHG                          ; ← leading from LOAD16_P DE
 MOV   E, M                    ; load arr1[i] lo
@@ -24,7 +24,7 @@ Cost: 8cc and 2B per pair for zero net effect.
 ### Desired behavior
 
 ```asm
-SHLD  __v6c_ss.sumarray+2    ; spill arr1_ptr
+SHLD  __v6clang_ss.sumarray+2    ; spill arr1_ptr
                                ; (two XCHGs cancelled — 8cc, 2B saved)
 MOV   E, M
 INX   HL
@@ -44,9 +44,9 @@ coupling between independent expansions.
 
 ## 2. Strategy
 
-### Approach: Post-expansion peephole in V6CPeepholePass
+### Approach: Post-expansion peephole in V6ClangPeepholePass
 
-Add a new pattern method `cancelAdjacentXchg()` to `V6CPeephole.cpp`.
+Add a new pattern method `cancelAdjacentXchg()` to `V6ClangPeephole.cpp`.
 Single linear scan over each MBB looking for XCHG pairs that cancel out.
 Two modes:
 
@@ -69,16 +69,16 @@ Two modes:
 
 | File | Change |
 |------|--------|
-| V6CPeephole.cpp | Add `cancelAdjacentXchg()` method + `touchesDEorHL()` helper, call first in `runOnMachineFunction` |
-| V6CXchgOpt.cpp | Add adjacent XCHG cancellation cleanup loop after MOV→XCHG conversion |
+| V6ClangPeephole.cpp | Add `cancelAdjacentXchg()` method + `touchesDEorHL()` helper, call first in `runOnMachineFunction` |
+| V6ClangXchgOpt.cpp | Add adjacent XCHG cancellation cleanup loop after MOV→XCHG conversion |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Add `cancelAdjacentXchg()` to V6CPeephole.cpp [x]
+### Step 3.1 — Add `cancelAdjacentXchg()` to V6ClangPeephole.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add a new private method `cancelAdjacentXchg(MachineBasicBlock &MBB)`:
 
@@ -90,7 +90,7 @@ static bool touchesDEorHL(const MachineInstr &MI,
     if (!MO.isReg())
       continue;
     Register Reg = MO.getReg();
-    if (TRI->regsOverlap(Reg, V6C::DE) || TRI->regsOverlap(Reg, V6C::HL))
+    if (TRI->regsOverlap(Reg, V6CLANG::DE) || TRI->regsOverlap(Reg, V6CLANG::HL))
       return true;
   }
   return false;
@@ -101,13 +101,13 @@ static bool touchesDEorHL(const MachineInstr &MI,
 /// Safe when all intervening instructions are DE/HL-agnostic (don't
 /// read or write D, E, H, L, DE, or HL). Also handles the simple
 /// adjacent case (no intervening instructions). Skips debug instrs.
-bool V6CPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
   bool Changed = false;
   const TargetRegisterInfo *TRI =
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
-    if (I->getOpcode() != V6C::XCHG) {
+    if (I->getOpcode() != V6CLANG::XCHG) {
       ++I;
       continue;
     }
@@ -119,7 +119,7 @@ bool V6CPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
         ++J;
         continue;
       }
-      if (J->getOpcode() == V6C::XCHG)
+      if (J->getOpcode() == V6CLANG::XCHG)
         break; // Found matching XCHG.
       if (touchesDEorHL(*J, TRI)) {
         CanCancel = false;
@@ -127,7 +127,7 @@ bool V6CPeephole::cancelAdjacentXchg(MachineBasicBlock &MBB) {
       }
       ++J;
     }
-    if (CanCancel && J != E && J->getOpcode() == V6C::XCHG) {
+    if (CanCancel && J != E && J->getOpcode() == V6CLANG::XCHG) {
       // XCHG pair found — delete both.
       MBB.erase(J);        // erase second XCHG
       I = MBB.erase(I);    // erase first XCHG, I now points to next
@@ -144,7 +144,7 @@ Call it first in `runOnMachineFunction` (before other peephole patterns
 so they see cleaner code):
 
 ```cpp
-bool V6CPeephole::runOnMachineFunction(MachineFunction &MF) {
+bool V6ClangPeephole::runOnMachineFunction(MachineFunction &MF) {
   if (DisablePeephole)
     return false;
   bool Changed = false;
@@ -171,7 +171,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.3 — Lit test: `xchg-cancel-peephole.ll` [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/xchg-cancel-peephole.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/xchg-cancel-peephole.ll`
 
 Create a lit test that checks adjacent XCHG pairs are removed from
 the output assembly. Use a function with adjacent DE spill/reload
@@ -256,7 +256,7 @@ None identified.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O44 Design](design\future_plans\O44_xchg_cancellation.md)

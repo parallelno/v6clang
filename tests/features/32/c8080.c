@@ -7,8 +7,8 @@ void u16_srl10(unsigned int  x, unsigned int  *p, unsigned int  *q) { *p = x; *q
 
 // NOTE: i16_shl8/shl10 are intentionally omitted from the c8080
 // reference — c8080 lowers signed 16-bit left shifts via __mulhi3
-// and asserts on signed mul (OutMul16.cpp:26). v6llvmc.c keeps them
-// because they exercise V6C_SHL16, the O62 target.
+// and asserts on signed mul (OutMul16.cpp:26). v6clang.c keeps them
+// because they exercise V6CLANG_SHL16, the O62 target.
 void i16_sra8 (         int  x,          int  *p,          int  *q) { *p = x; *q = x >> 8;  }
 void i16_sra10(         int  x,          int  *p,          int  *q) { *p = x; *q = x >> 10; }
 

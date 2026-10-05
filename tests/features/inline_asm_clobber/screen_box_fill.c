@@ -7,16 +7,16 @@
 #define SCR_BYTES_H      SCR_HEIGHT
 #define SCR_BYTES_W      (SCR_WIDTH >> 3)
 
-#define V6C_RT static __attribute__((noinline, used))
+#define V6CLANG_RT static __attribute__((noinline, used))
 
-V6C_RT void reset_int() {
+V6CLANG_RT void reset_int() {
     __asm__ volatile (
         "mvi a, 0xC9 \n\t"
         "sta 0x38    \n\t"
     );
 }
 
-V6C_RT void palette_init(uint8_t* palette)
+V6CLANG_RT void palette_init(uint8_t* palette)
 {
     // PORT0_OUT_OUT = 0x88
     // PALETTE_LEN = 16
@@ -107,7 +107,7 @@ uint8_t font[FONT_NUM_GLYPHS * FONT_GLYPH_BYTES] = {
 /*Z*/0x00, 0x7E, 0x04, 0x08, 0x10, 0x20, 0x7E, 0x00,
 };
 
-V6C_RT void draw_char(char c, uint8_t* scr_addr) {
+V6CLANG_RT void draw_char(char c, uint8_t* scr_addr) {
     uint8_t* char_data = font + (uint16_t)(c - 'A') * 8;
     for (uint8_t i = 0; i < FONT_GLYPH_BYTES; ++i) {
         *scr_addr = *char_data;
@@ -116,7 +116,7 @@ V6C_RT void draw_char(char c, uint8_t* scr_addr) {
     }
 }
 
-V6C_RT void draw_text(const char* text, uint8_t addr_x, uint8_t y) {
+V6CLANG_RT void draw_text(const char* text, uint8_t addr_x, uint8_t y) {
     char c;
     uint8_t* scr_addr = (uint8_t*)(SCR_ADDR + ((uint16_t)addr_x << 8) + y);
     while ((c = *text++) != 0)
@@ -135,7 +135,7 @@ uint8_t palette[16] = {
 
 void main(){
 
-    __builtin_v6c_ei();
+    __builtin_v6clang_ei();
     reset_int();
     palette_init(palette);
 
@@ -145,6 +145,6 @@ void main(){
     // uint8_t* scr_pos = (uint8_t*)(SCR_ADDR + ((uint16_t)10 << 8) + 10);
     // draw_char('A', scr_pos);
 
-    __builtin_v6c_di();
-    __builtin_v6c_hlt();
+    __builtin_v6clang_di();
+    __builtin_v6clang_hlt();
 }

@@ -25,12 +25,12 @@ __init_loop:
 ; 35         add  hl, de
 ; 36         jp   nc, __init_loop
 ; 37     }
-; 38 
+; 38
 ; 39     /* Init stack */
 ; 40 #if __has_include(<c8080/initstack.inc>) && !defined(ARCH_CPM_CCP) && !defined(ARCH_CPM_BDOS) && !defined(ARCH_CPM_BIOS)
 ; 41 #include <c8080/initstack.inc>
 ; 42 #endif
-; 43 
+; 43
 ; 44 #ifdef ARCH_CPM_CCP /* CCP remains in memory */
 ; 45     // clang-format off
 ; 46     asm {
@@ -44,7 +44,7 @@ __init_loop:
 ; 54     }
 ; 55     // clang-format on
 ; 56 #endif
-; 57 
+; 57
 ; 58 #ifdef ARCH_CPM_BDOS /* BDOS remains in memory */
 ; 59     asm {
 ; 60         ld   a, (7)
@@ -55,11 +55,11 @@ __init_loop:
 ; 65         push hl
 ; 66     }
 ; 67 #endif
-; 68 
+; 68
 ; 69 #ifdef ARCH_CPM_BIOS /* BIOS remains in memory */
 ; 70 #error TODO
 ; 71 #endif
-; 72 
+; 72
 ; 73     main(0, NULL);
 	ld hl, 0
 	ld (__a_1_main), hl
@@ -67,7 +67,7 @@ main:
 ; 20 int main(int argc, char **argv) {
 	ld (__a_2_main), hl
 ; 21     (void)argc; (void)argv;
-; 22 
+; 22
 ; 23     /* Volatile seed defeats constant-folding of the whole loop. */
 ; 24     volatile u16 init = 0xACE1;
 	ld hl, 44257
@@ -78,7 +78,7 @@ main:
 	ld hl, 0
 	ld (main_acc), hl
 ; 27     u16 i;
-; 28 
+; 28
 ; 29     for (i = 0; i < ITERS; i++) {
 	ld (main_i), hl
 l_0:
@@ -117,7 +117,7 @@ l_3:
 	jp l_0
 l_2:
 ; 34     }
-; 35 
+; 35
 ; 36     bench_finish((u8)((u8)acc ^ (u8)(acc >> 8)));
 	ld a, (main_acc)
 	ld hl, (main_acc)
@@ -210,4 +210,4 @@ __a_1_bench_finish equ __s_bench_finish + 0
 __s___o_shr_u16 equ __static_stack + 0
 __s___o_xor_32 equ __static_stack + 0
 __s___o_xor_16 equ __static_stack + 0
-    savebin "C:\Work\Programming\v6llvmc\tests\benchmarks_c\build\c8080_lfsr16.com", __begin, __bss - __begin
+    savebin "C:\Work\Programming\v6clang\tests\benchmarks_c\build\c8080_lfsr16.com", __begin, __bss - __begin

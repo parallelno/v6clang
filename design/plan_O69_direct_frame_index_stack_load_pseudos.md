@@ -3,15 +3,15 @@
 ## 1. Problem
 
 ### Current behavior
-Stack-relative loads/stores selected through a frame index currently lower as `V6C_LEA_FI` followed by `V6C_LOAD*_P` or `V6C_STORE*_P`. This creates a temporary address register before register allocation and can emit redundant address copies such as `HL -> BC -> HL`.
+Stack-relative loads/stores selected through a frame index currently lower as `V6CLANG_LEA_FI` followed by `V6CLANG_LOAD*_P` or `V6CLANG_STORE*_P`. This creates a temporary address register before register allocation and can emit redundant address copies such as `HL -> BC -> HL`.
 
 ### Desired behavior
 Select direct frame-index memory pseudos before register allocation:
 
-- `V6C_LOAD8_FI`
-- `V6C_LOAD16_FI`
-- `V6C_STORE8_FI`
-- `V6C_STORE16_FI`
+- `V6CLANG_LOAD8_FI`
+- `V6CLANG_LOAD16_FI`
+- `V6CLANG_STORE8_FI`
+- `V6CLANG_STORE16_FI`
 
 These pseudos compute the stack-relative address internally with `LXI H, Offset; DAD SP` and perform the memory operation directly.
 
@@ -21,7 +21,7 @@ The existing selection pipeline treats the frame-index address as an ordinary `G
 ## 2. Strategy
 
 ### Approach
-Add direct FI pseudos to `V6CInstrInfo.td`, select them in `V6CISelDAGToDAG.cpp` for `ISD::LOAD/STORE` whose base pointer is `ISD::FrameIndex`, and expand them in `V6CRegisterInfo::eliminateFrameIndex`.
+Add direct FI pseudos to `V6ClangInstrInfo.td`, select them in `V6ClangISelDAGToDAG.cpp` for `ISD::LOAD/STORE` whose base pointer is `ISD::FrameIndex`, and expand them in `V6ClangRegisterInfo::eliminateFrameIndex`.
 
 ### Why this works
 The address temporary disappears before RA. The pseudos model `HL` and `FLAGS` clobbers honestly, allowing RA to copy values when needed instead of forcing spill/reload-style internal preservation.
@@ -36,46 +36,46 @@ The address temporary disappears before RA. The pseudos model `HL` and `FLAGS` c
 ## 3. Implementation Steps
 
 ### Step 3.1 — Add register class and pseudos [x]
-Add `GR8NoHL` and the four `V6C_*_FI` pseudos.
+Add `GR8NoHL` and the four `V6CLANG_*_FI` pseudos.
 
 > **Implementation Notes**:
-> Added `GR8NoHL` plus `V6C_LOAD8_FI`, `V6C_LOAD16_FI`, `V6C_STORE8_FI`, and `V6C_STORE16_FI` in the V6C TableGen files. The direct FI pseudos model `HL` and `FLAGS` clobbers.
+> Added `GR8NoHL` plus `V6CLANG_LOAD8_FI`, `V6CLANG_LOAD16_FI`, `V6CLANG_STORE8_FI`, and `V6CLANG_STORE16_FI` in the V6CLANG TableGen files. The direct FI pseudos model `HL` and `FLAGS` clobbers.
 
 ### Step 3.2 — Select FI loads/stores [x]
-Teach `V6CISelDAGToDAG.cpp` to select direct FI pseudos for non-extending i8/i16 loads and i8/i16 stores whose base is a frame index.
+Teach `V6ClangISelDAGToDAG.cpp` to select direct FI pseudos for non-extending i8/i16 loads and i8/i16 stores whose base is a frame index.
 
 > **Implementation Notes**:
 > Added `ISD::LOAD` and `ISD::STORE` manual selection for frame-index bases, preserving chains and memory operands.
 
 ### Step 3.3 — Expand FI pseudos [x]
-Expand direct FI pseudos in `V6CRegisterInfo::eliminateFrameIndex` using the existing offset model.
+Expand direct FI pseudos in `V6ClangRegisterInfo::eliminateFrameIndex` using the existing offset model.
 
 > **Implementation Notes**:
-> Added PEI expansion for all four pseudos. Also changed the `V6C_LEA_FI dst=DE` expansion from `XCHG` to `MOV D,H; MOV E,L` so the expansion does not read an undefined old `DE` value.
+> Added PEI expansion for all four pseudos. Also changed the `V6CLANG_LEA_FI dst=DE` expansion from `XCHG` to `MOV D,H; MOV E,L` so the expansion does not read an undefined old `DE` value.
 
 ### Step 3.4 — Build [x]
 Run `ninja -C llvm-build clang llc` through the MSVC developer environment.
 
 > **Implementation Notes**:
-> Passed: `ninja -C llvm-build clang llc`, then passed again after the `V6C_LEA_FI` verifier cleanup.
+> Passed: `ninja -C llvm-build clang llc`, then passed again after the `V6CLANG_LEA_FI` verifier cleanup.
 
 ### Step 3.5 — Lit tests [x]
-Add and run CodeGen lit coverage for `V6C_LOAD8_FI`, `V6C_LOAD16_FI`, `V6C_STORE8_FI`, and `V6C_STORE16_FI`.
+Add and run CodeGen lit coverage for `V6CLANG_LOAD8_FI`, `V6CLANG_LOAD16_FI`, `V6CLANG_STORE8_FI`, and `V6CLANG_STORE16_FI`.
 
 > **Implementation Notes**:
-> Added `llvm-project/llvm/test/CodeGen/V6C/frame-index-direct-fi.ll`. Targeted run passed: 1/1.
+> Added `llvm-project/llvm/test/CodeGen/V6CLANG/frame-index-direct-fi.ll`. Targeted run passed: 1/1.
 
 ### Step 3.6 — Feature verification [x]
 Create/compile the O69 feature test and compare old/new assembly per `tests\features\README.md`.
 
 > **Implementation Notes**:
-> Added `tests/features/48` with c8080 and v6llvmc sources plus assembly artifacts. `v6llvmc_new01.asm` contains all four direct FI pseudo shapes.
+> Added `tests/features/48` with c8080 and v6clang sources plus assembly artifacts. `v6clang_new01.asm` contains all four direct FI pseudo shapes.
 
 ### Step 3.7 — Regression tests [x]
 Run `python tests\run_all.py`.
 
 > **Implementation Notes**:
-> Golden tests passed 16/16. Lit passed 121/122; the remaining failure is the unrelated existing `lsr-strategy-size.ll` `.comm __v6c_ss.axpy3` expectation (`10` expected, `12` emitted).
+> Golden tests passed 16/16. Lit passed 121/122; the remaining failure is the unrelated existing `lsr-strategy-size.ll` `.comm __v6clang_ss.axpy3` expectation (`10` expected, `12` emitted).
 
 ### Step 3.8 — Sync mirror [x]
 Run `powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1`.
@@ -113,4 +113,4 @@ Complements O54/O54c stack-argument work and O49 direct memory operations by mak
 - `design\future_plans\O69_lea_fi_pointer_use_folding.md`
 - `design\pipeline_feature.md`
 - `tests\features\README.md`
-- `docs\V6CBuildGuide.md`
+- `docs\V6ClangBuildGuide.md`

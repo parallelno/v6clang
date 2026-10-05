@@ -1,7 +1,7 @@
 // O85 feature test — TypeNarrowing: narrow i16 up-counter when IV has arithmetic users.
 // Used for:
-//   Baseline:  llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S -mllvm --v6c-disable-type-narrowing tests\features\67\v6llvmc.c -o tests\features\67\v6llvmc_old.asm
-//   Post-O85:  llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\67\v6llvmc.c -o tests\features\67\v6llvmc_new01.asm
+//   Baseline:  llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S -mllvm --v6clang-disable-type-narrowing tests\features\67\v6clang.c -o tests\features\67\v6clang_old.asm
+//   Post-O85:  llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\67\v6clang.c -o tests\features\67\v6clang_new01.asm
 //
 // BEFORE O85: i16 counter stays i16; zext of i keeps D (hi-byte) in loop body.
 //             exit check uses two-byte compare.

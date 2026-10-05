@@ -1,4 +1,4 @@
-# Plan: Loop Strength Reduction for V6C Target
+# Plan: Loop Strength Reduction for V6CLANG Target
 
 **Reference**: [design_improve_spilling.md](design_improve_spilling.md), [design.md](design.md) §8
 
@@ -6,7 +6,7 @@
 
 ## 1. Problem
 
-The V6C backend generates `base + i` address recomputation on every loop
+The V6CLANG backend generates `base + i` address recomputation on every loop
 iteration instead of maintaining and incrementing a pointer. For a simple
 array copy:
 
@@ -49,7 +49,7 @@ Savings: ~120+ cc per iteration (~3× faster loop body).
 ### Root Cause
 
 LLVM has a built-in Loop Strength Reduction pass (`-loop-reduce`), but it
-makes cost decisions through `TargetTransformInfo` (TTI) hooks. V6C has
+makes cost decisions through `TargetTransformInfo` (TTI) hooks. V6CLANG has
 **no TTI implementation** — it falls back to `TargetTransformInfoImplBase`
 defaults, which assume reg+reg addressing is free (cost 0) and that the
 target has 32-bit registers with plentiful register files. These defaults
@@ -60,14 +60,14 @@ choices for the 8080's extremely constrained register set.
 
 ## 2. Strategy
 
-Implement a V6C-specific TTI class that teaches LLVM's existing LSR pass
+Implement a V6CLANG-specific TTI class that teaches LLVM's existing LSR pass
 about the 8080's addressing model and register constraints. This avoids
 writing a custom LSR pass — the built-in one is mature and correct; it
 just needs accurate cost information.
 
 Key TTI hooks to implement:
 
-| Hook | Purpose | V6C Value | Tunable? |
+| Hook | Purpose | V6CLANG Value | Tunable? |
 |------|---------|-----------|----------|
 | `isLegalAddressingMode()` | Only reg indirect (no offset) | `true` only for `Scale==0, BaseOffset==0, HasBaseReg, !BaseGV` | No — architectural fact |
 | `getAddressComputationCost()` | Cost of GEP in a loop | Non-zero (initial: 2) | Yes — see Step 3.9 |
@@ -80,33 +80,33 @@ Key TTI hooks to implement:
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CTargetTransformInfo.h [x]
+### Step 3.1 — Create V6ClangTargetTransformInfo.h [x]
 
-**File**: `llvm/lib/Target/V6C/V6CTargetTransformInfo.h`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h`
 
 ```cpp
-#ifndef LLVM_LIB_TARGET_V6C_V6CTARGETTRANSFORMINFO_H
-#define LLVM_LIB_TARGET_V6C_V6CTARGETTRANSFORMINFO_H
+#ifndef LLVM_LIB_TARGET_V6CLANG_V6ClangTARGETTRANSFORMINFO_H
+#define LLVM_LIB_TARGET_V6CLANG_V6ClangTARGETTRANSFORMINFO_H
 
-#include "V6CTargetMachine.h"
+#include "V6ClangTargetMachine.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
 
 namespace llvm {
 
-class V6CTTIImpl : public BasicTTIImplBase<V6CTTIImpl> {
-  using BaseT = BasicTTIImplBase<V6CTTIImpl>;
+class V6ClangTTIImpl : public BasicTTIImplBase<V6ClangTTIImpl> {
+  using BaseT = BasicTTIImplBase<V6ClangTTIImpl>;
   using TTI = TargetTransformInfo;
   friend BaseT;
 
-  const V6CSubtarget *ST;
-  const V6CTargetLowering *TLI;
+  const V6ClangSubtarget *ST;
+  const V6ClangTargetLowering *TLI;
 
-  const V6CSubtarget *getST() const { return ST; }
-  const V6CTargetLowering *getTLI() const { return TLI; }
+  const V6ClangSubtarget *getST() const { return ST; }
+  const V6ClangTargetLowering *getTLI() const { return TLI; }
 
 public:
-  explicit V6CTTIImpl(const V6CTargetMachine *TM, const Function &F)
+  explicit V6ClangTTIImpl(const V6ClangTargetMachine *TM, const Function &F)
       : BaseT(TM, F.getParent()->getDataLayout()),
         ST(TM->getSubtargetImpl(F)),
         TLI(ST->getTargetLowering()) {}
@@ -134,27 +134,27 @@ public:
 #endif
 ```
 
-### Step 3.2 — Create V6CTargetTransformInfo.cpp [x]
+### Step 3.2 — Create V6ClangTargetTransformInfo.cpp [x]
 
-**File**: `llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp`
 
 ```cpp
-#include "V6CTargetTransformInfo.h"
+#include "V6ClangTargetTransformInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 
 using namespace llvm;
 
-unsigned V6CTTIImpl::getNumberOfRegisters(unsigned ClassID) const {
+unsigned V6ClangTTIImpl::getNumberOfRegisters(unsigned ClassID) const {
   // ClassID 0 = scalar (general purpose register pairs: BC, DE, HL)
   // ClassID 1 = vector (none)
   return ClassID == 0 ? 3 : 0;
 }
 
-TypeSize V6CTTIImpl::getRegisterBitWidth(TTI::RegisterKind K) const {
+TypeSize V6ClangTTIImpl::getRegisterBitWidth(TTI::RegisterKind K) const {
   return TypeSize::getFixed(16);
 }
 
-bool V6CTTIImpl::isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
+bool V6ClangTTIImpl::isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
                                         int64_t BaseOffset, bool HasBaseReg,
                                         int64_t Scale, unsigned AddrSpace,
                                         Instruction *I) const {
@@ -172,7 +172,7 @@ bool V6CTTIImpl::isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
   return true;
 }
 
-InstructionCost V6CTTIImpl::getAddressComputationCost(Type *Ty,
+InstructionCost V6ClangTTIImpl::getAddressComputationCost(Type *Ty,
                                                        ScalarEvolution *SE,
                                                        const SCEV *Ptr) const {
   // Address computation on 8080 is expensive: LXI (12cc) + DAD (12cc) = 24cc
@@ -181,7 +181,7 @@ InstructionCost V6CTTIImpl::getAddressComputationCost(Type *Ty,
   return 2;
 }
 
-bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
+bool V6ClangTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
                                 const TTI::LSRCost &C2) const {
   // On the 8080, register pressure is the dominant constraint.
   // Prefer fewer registers first, then fewer instructions.
@@ -200,8 +200,8 @@ bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
   indirect is legal, it is forced to maintain separate induction variables
   as running pointers (the profitable form). LSR doesn't need to distinguish
   HL vs BC vs DE — that's the register allocator's job. The backend already
-  optimizes LDAX/STAX selection in `V6CInstrInfo.cpp` (V6C_LOAD8_P /
-  V6C_STORE8_P expansion): when RA assigns a pointer to BC or DE with value
+  optimizes LDAX/STAX selection in `V6ClangInstrInfo.cpp` (V6CLANG_LOAD8_P /
+  V6CLANG_STORE8_P expansion): when RA assigns a pointer to BC or DE with value
   in A, the expansion emits LDAX/STAX (8cc) instead of copying to HL (24cc).
 
 - **`getAddressComputationCost`**: Returning non-zero (initial value: 2)
@@ -217,9 +217,9 @@ bool V6CTTIImpl::isLSRCostLess(const TTI::LSRCost &C1,
   put `NumRegs` first (same as default) but adds `Insns` second, giving
   instruction count more weight than in the base implementation.
 
-### Step 3.3 — Register TTI in V6CTargetMachine [x]
+### Step 3.3 — Register TTI in V6ClangTargetMachine [x]
 
-**File**: `llvm/lib/Target/V6C/V6CTargetMachine.h`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.h`
 
 Add override declaration:
 
@@ -227,32 +227,32 @@ Add override declaration:
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
 ```
 
-**File**: `llvm/lib/Target/V6C/V6CTargetMachine.cpp`
+**File**: `llvm/lib/Target/V6CLANG/V6ClangTargetMachine.cpp`
 
 Add include and implementation:
 
 ```cpp
-#include "V6CTargetTransformInfo.h"
+#include "V6ClangTargetTransformInfo.h"
 
-// ... after existing code, before LLVMInitializeV6CTarget ...
+// ... after existing code, before LLVMInitializeV6ClangTarget ...
 
 TargetTransformInfo
-V6CTargetMachine::getTargetTransformInfo(const Function &F) const {
-  return TargetTransformInfo(V6CTTIImpl(this, F));
+V6ClangTargetMachine::getTargetTransformInfo(const Function &F) const {
+  return TargetTransformInfo(V6ClangTTIImpl(this, F));
 }
 ```
 
 ### Step 3.4 — Add to CMakeLists.txt [x]
 
-**File**: `llvm/lib/Target/V6C/CMakeLists.txt`
+**File**: `llvm/lib/Target/V6CLANG/CMakeLists.txt`
 
-Add `V6CTargetTransformInfo.cpp` to the source list in `V6CCodeGen`:
+Add `V6ClangTargetTransformInfo.cpp` to the source list in `V6ClangCodeGen`:
 
 ```cmake
-add_llvm_target(V6CCodeGen
-  V6CAccumulatorPlanning.cpp
+add_llvm_target(V6ClangCodeGen
+  V6ClangAccumulatorPlanning.cpp
   ...
-  V6CTargetTransformInfo.cpp   # ← add
+  V6ClangTargetTransformInfo.cpp   # ← add
   ...
 )
 ```
@@ -264,15 +264,15 @@ ninja -C llvm-build clang llc
 ```
 
 Fix any compilation errors. The TTI header uses CRTP
-(`BasicTTIImplBase<V6CTTIImpl>`), so method signatures must match exactly.
+(`BasicTTIImplBase<V6ClangTTIImpl>`), so method signatures must match exactly.
 
 ### Step 3.6 — Verify IR: LSR transforms the loop [x]
 
 Compile the array copy test and inspect the IR before/after LSR:
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S -emit-llvm ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_lsr.ll
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S -emit-llvm ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_lsr.ll
 ```
 
 Expected: the loop body should use `getelementptr ... %ptr` with
@@ -284,8 +284,8 @@ Optional: use `-mllvm -debug-only=loop-reduce` to see LSR's decision log.
 ### Step 3.7 — Verify assembly: pointer increment pattern [x]
 
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_lsr.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_lsr.asm
 ```
 
 Expected in the loop body:
@@ -298,10 +298,10 @@ Expected in the loop body:
 
 ### Step 3.8 — Lit test for LSR behavior [x]
 
-**File**: `tests/lit/CodeGen/V6C/loop-strength-reduce.ll`
+**File**: `tests/lit/CodeGen/V6CLANG/loop-strength-reduce.ll`
 
 ```llvm
-; RUN: llc -mtriple=i8080-unknown-v6c -O2 < %s | FileCheck %s
+; RUN: llc -mtriple=i8080-unknown-v6clang -O2 < %s | FileCheck %s
 
 @src = global [100 x i8] zeroinitializer
 @dst = global [100 x i8] zeroinitializer
@@ -339,9 +339,9 @@ ranking order) are educated guesses. They must be validated empirically.
 
 **Diagnostic command**:
 ```bash
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S -emit-llvm ^
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S -emit-llvm ^
     -mllvm -debug-only=loop-reduce ^
-    temp\compare\03\v6llvmc2.c -o temp\compare\03\v6llvmc2_lsr.ll 2>&1 ^
+    temp\compare\03\v6clang2.c -o temp\compare\03\v6clang2_lsr.ll 2>&1 ^
     | findstr /i "formula cost"
 ```
 
@@ -360,13 +360,13 @@ This shows the LSR candidates and their costs. Verify that:
 | No LSR activity at all | Verify pass runs: `-mllvm -debug-only=loop-reduce` should show output |
 
 **Test cases for tuning** (compile each, inspect ASM):
-- `temp/compare/03/v6llvmc2.c` — two-array copy (primary)
+- `temp/compare/03/v6clang2.c` — two-array copy (primary)
 - Single-array traversal (memset-like)
 - Nested loop with one array
 - Loop with non-unit stride (`i += 2`)
 
 Iterate until the array copy produces the INX-based pointer pattern.
-Document final chosen values in a comment in `V6CTargetTransformInfo.cpp`.
+Document final chosen values in a comment in `V6ClangTargetTransformInfo.cpp`.
 
 ### Step 3.10 — Regression tests [x]
 
@@ -387,7 +387,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sync_llvm_mirror.ps1
 
 ## 4. Expected Results
 
-### Array copy loop (temp\compare\03\v6llvmc2.c)
+### Array copy loop (temp\compare\03\v6clang2.c)
 
 Before (no TTI, base+i recomputation):
 - ~55 instructions per iteration
@@ -434,7 +434,7 @@ LSR operates at the IR level where there are no physical registers.
 It transforms `base + i` into a running pointer — a purely structural
 change. The choice of which register pair holds that pointer is made
 later by the register allocator. The backend already has LDAX/STAX
-selection logic in `V6CInstrInfo.cpp` that fires when RA happens to
+selection logic in `V6ClangInstrInfo.cpp` that fires when RA happens to
 assign the pointer to BC/DE with the value in A.
 
 LSR + TTI makes LDAX/STAX **more likely** to fire, because:

@@ -5,7 +5,7 @@
 
 ## Problem
 
-V6C's current peephole (`V6CPeephole.cpp`) only analyzes within a single
+V6CLANG's current peephole (`V6ClangPeephole.cpp`) only analyzes within a single
 basic block. Copy chains that span basic blocks — common after register
 allocation when values flow through multiple blocks via copies — are missed.
 
@@ -25,11 +25,11 @@ Uses `findReachingDefs()` — backward walk through predecessor blocks with
 visited-set tracking — and `isClobbered()` — forward walk from each reaching
 def to verify the new source isn't modified along any path.
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
-- Replace the COPY-centric logic with `MOV`-centric logic for V6C physical
+- Replace the COPY-centric logic with `MOV`-centric logic for V6CLANG physical
   registers (post-RA, all registers are physical).
-- Use `V6CInstrCost` ([O11](O11_dual_cost_model.md)) for copy cost comparisons.
+- Use `V6ClangInstrCost` ([O11](O11_dual_cost_model.md)) for copy cost comparisons.
 - The reaching-def infrastructure translates directly — `modifiesRegister()`
   with TRI works the same way.
 - **Supersedes O1** (single-BB redundant MOV elimination) — O12 catches
@@ -67,12 +67,12 @@ Low. Only rewrites when provably cheaper and not clobbered along any path.
 After eight C variants and four hand-written `.ll` variants, **no test
 case produced a redundant cross-BB MVI/MOV that would benefit from O12**.
 Every "obvious" pattern was already collapsed by either LLVM's stock
-SSA + regalloc + branch-folder + sink, or by an existing V6C pass.
+SSA + regalloc + branch-folder + sink, or by an existing V6CLANG pass.
 
 The original O12 plan (drafted before O11/O17/O27/O28/O29/O36/O17 etc.
 were implemented) cited "very high frequency" of cross-BB copy chains.
 That assessment was based on llvm-mos's pre-existing pipeline, which
-lacks several of the passes V6C now has. On the current V6C pipeline,
+lacks several of the passes V6CLANG now has. On the current V6CLANG pipeline,
 the residual opportunity is empirically near zero.
 
 **Recommendation:** Move `O12_global_copy_optimization.md` to

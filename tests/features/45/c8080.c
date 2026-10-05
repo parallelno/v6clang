@@ -1,5 +1,5 @@
 // c8080 reference for O68 Phase 2 — rotl i16 by 1 test.
-// Same shape as v6llvmc.c.
+// Same shape as v6clang.c.
 
 typedef unsigned short u16;
 typedef unsigned char  u8;

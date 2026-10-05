@@ -23,7 +23,7 @@ Without accurate costs, LLVM may:
 
 ## Implementation
 
-Add TTI hooks in `V6CTargetTransformInfo.h/.cpp`:
+Add TTI hooks in `V6ClangTargetTransformInfo.h/.cpp`:
 
 ### getArithmeticInstrCost()
 ```cpp
@@ -100,12 +100,12 @@ shift the regression corpus by hundreds of bytes in either direction.
 ### Opt-out flag (mandatory)
 
 Implementation **must** add a hidden `cl::opt` to disable the new hooks
-wholesale, mirroring the existing `-v6c-lsr-strategy` pattern:
+wholesale, mirroring the existing `-v6clang-lsr-strategy` pattern:
 
 ```cpp
-static cl::opt<bool> EnableV6CTTICosts(
-    "v6c-tti-cost-hooks",
-    cl::desc("Enable V6C-specific TTI cost hooks (arith/mem/cmp/scaling). "
+static cl::opt<bool> EnableV6ClangTTICosts(
+    "v6clang-tti-cost-hooks",
+    cl::desc("Enable V6CLANG-specific TTI cost hooks (arith/mem/cmp/scaling). "
              "Disable to fall back to BasicTTI defaults."),
     cl::init(true), cl::Hidden);
 ```
@@ -113,13 +113,13 @@ static cl::opt<bool> EnableV6CTTICosts(
 Each hook checks the flag first and falls back to `BaseT::...` when off.
 This lets us:
 
-1. Bisect regressions per-function via `-mllvm -v6c-tti-cost-hooks=0`.
+1. Bisect regressions per-function via `-mllvm -v6clang-tti-cost-hooks=0`.
 2. Disable globally if a corpus-wide regression is found late.
 3. A/B compare on the regression suite without rebuilding.
 
 Consider also per-hook flags
-(`-v6c-tti-cost-arith`, `-v6c-tti-cost-mem`, `-v6c-tti-cost-cmp`,
-`-v6c-tti-cost-scaling`) so individual hooks can be toggled when
+(`-v6clang-tti-cost-arith`, `-v6clang-tti-cost-mem`, `-v6clang-tti-cost-cmp`,
+`-v6clang-tti-cost-scaling`) so individual hooks can be toggled when
 narrowing down a regression.
 
 ## Dependencies

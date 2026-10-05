@@ -6,34 +6,34 @@ Purpose
 Exercise direct stack-relative i8/i16 loads and stores selected before
 register allocation:
 
-  - V6C_LOAD8_FI
-  - V6C_LOAD16_FI
-  - V6C_STORE8_FI
-  - V6C_STORE16_FI
+  - V6CLANG_LOAD8_FI
+  - V6CLANG_LOAD16_FI
+  - V6CLANG_STORE8_FI
+  - V6CLANG_STORE16_FI
 
 The "old" baseline is produced with the O69 selector hooks
-(`ISD::LOAD`/`ISD::STORE` cases in `V6CISelDAGToDAG.cpp`) temporarily
+(`ISD::LOAD`/`ISD::STORE` cases in `V6ClangISelDAGToDAG.cpp`) temporarily
 disabled so that frame-index loads and stores fall back to the prior
-`V6C_LEA_FI` + `V6C_LOAD*_P` / `V6C_STORE*_P` shape.
+`V6CLANG_LEA_FI` + `V6CLANG_LOAD*_P` / `V6CLANG_STORE*_P` shape.
 
 Build commands
 --------------
 Reference c8080 assembly:
   tools\c8080\c8080.exe tests\features\48\c8080.c -a tests\features\48\c8080.asm
 
-V6C with O69 disabled:
-  llvm-build\bin\clang -target i8080-unknown-v6c -O3 -S \
-      tests\features\48\v6llvmc.c -o tests\features\48\v6llvmc_old.asm \
-      -mllvm -mv6c-annotate-pseudos \
-      -mllvm -v6c-disable-alloca-promote \
-      -mllvm -v6c-disable-static-stack-alloc
+V6CLANG with O69 disabled:
+  llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S \
+      tests\features\48\v6clang.c -o tests\features\48\v6clang_old.asm \
+      -mllvm -mv6clang-annotate-pseudos \
+      -mllvm -v6clang-disable-alloca-promote \
+      -mllvm -v6clang-disable-static-stack-alloc
 
-V6C with O69 enabled:
-  llvm-build\bin\clang -target i8080-unknown-v6c -O3 -S \
-      tests\features\48\v6llvmc.c -o tests\features\48\v6llvmc_new01.asm \
-      -mllvm -mv6c-annotate-pseudos \
-      -mllvm -v6c-disable-alloca-promote \
-      -mllvm -v6c-disable-static-stack-alloc
+V6CLANG with O69 enabled:
+  llvm-build\bin\clang -target i8080-unknown-v6clang -O3 -S \
+      tests\features\48\v6clang.c -o tests\features\48\v6clang_new01.asm \
+      -mllvm -mv6clang-annotate-pseudos \
+      -mllvm -v6clang-disable-alloca-promote \
+      -mllvm -v6clang-disable-static-stack-alloc
 
 C test case
 -----------
@@ -73,9 +73,9 @@ int main(int argc, char **argv) {
     g16 = load16_stack_arg(1, 2, 3, 4);
     g8  = store8_local(g8);
     g16 = store16_local(g16);
-    __builtin_v6c_out(0xED, g8);
-    __builtin_v6c_out(0xED, (unsigned char)g16);
-    __builtin_v6c_hlt();
+    __builtin_v6clang_out(0xED, g8);
+    __builtin_v6clang_out(0xED, (unsigned char)g16);
+    __builtin_v6clang_hlt();
     return 0;
 }
 
@@ -147,28 +147,28 @@ main:
     LXI  H, 0
     RET
 
-v6llvmc OLD (O69 disabled)
+v6clang OLD (O69 disabled)
 --------------------------
 load8_stack_arg:
-    ;--- V6C_LEA_FI ---
+    ;--- V6CLANG_LEA_FI ---
     LXI  H, 2
     DAD  SP
     XCHG
-    ;--- V6C_LOAD8_P ---
+    ;--- V6CLANG_LOAD8_P ---
     LDAX D
     RET
 
 load16_stack_arg:
-    ;--- V6C_ADD16 ---
+    ;--- V6CLANG_ADD16 ---
     DAD  D
     DAD  B
     XCHG
-    ;--- V6C_LEA_FI ---
+    ;--- V6CLANG_LEA_FI ---
     LXI  H, 2
     DAD  SP
     MOV  B, H
     MOV  C, L
-    ;--- V6C_LOAD16_P ---
+    ;--- V6CLANG_LOAD16_P ---
     LDAX B
     MOV  L, A
     INX  B
@@ -181,13 +181,13 @@ store8_local:
     LXI  H, 0xffff
     DAD  SP
     SPHL
-    ;--- V6C_LEA_FI ---
+    ;--- V6CLANG_LEA_FI ---
     LXI  H, 0
     DAD  SP
     XCHG
-    ;--- V6C_STORE8_P ---
+    ;--- V6CLANG_STORE8_P ---
     STAX D
-    ;--- V6C_LOAD8_P ---
+    ;--- V6CLANG_LOAD8_P ---
     LDAX D
     LXI  H, 1
     DAD  SP
@@ -197,19 +197,19 @@ store8_local:
 store16_local:
     PUSH PSW
     XCHG
-    ;--- V6C_LEA_FI ---
+    ;--- V6CLANG_LEA_FI ---
     LXI  H, 0
     DAD  SP
     MOV  B, H
     MOV  C, L
-    ;--- V6C_STORE16_P ---
+    ;--- V6CLANG_STORE16_P ---
     MOV  A, E
     STAX B
     INX  B
     MOV  A, D
     STAX B
     DCX  B
-    ;--- V6C_LOAD16_P ---
+    ;--- V6CLANG_LOAD16_P ---
     LDAX B
     MOV  L, A
     INX  B
@@ -218,21 +218,21 @@ store16_local:
     POP  PSW
     RET
 
-v6llvmc NEW (O69 enabled)
+v6clang NEW (O69 enabled)
 -------------------------
 load8_stack_arg:
-    ;--- V6C_LOAD8_FI ---
+    ;--- V6CLANG_LOAD8_FI ---
     LXI  H, 2
     DAD  SP
     MOV  A, M
     RET
 
 load16_stack_arg:
-    ;--- V6C_ADD16 ---
+    ;--- V6CLANG_ADD16 ---
     DAD  D
     DAD  B
     XCHG
-    ;--- V6C_LOAD16_FI ---
+    ;--- V6CLANG_LOAD16_FI ---
     LXI  H, 2
     DAD  SP
     MOV  C, M
@@ -246,11 +246,11 @@ store8_local:
     LXI  H, 0xffff
     DAD  SP
     SPHL
-    ;--- V6C_STORE8_FI ---
+    ;--- V6CLANG_STORE8_FI ---
     LXI  H, 0
     DAD  SP
     MOV  M, A
-    ;--- V6C_LOAD8_FI ---
+    ;--- V6CLANG_LOAD8_FI ---
     LXI  H, 0
     DAD  SP
     MOV  A, M
@@ -263,13 +263,13 @@ store16_local:
     PUSH PSW
     MOV  B, H
     MOV  C, L
-    ;--- V6C_STORE16_FI ---
+    ;--- V6CLANG_STORE16_FI ---
     LXI  H, 0
     DAD  SP
     MOV  M, C
     INX  H
     MOV  M, B
-    ;--- V6C_LOAD16_FI ---
+    ;--- V6CLANG_LOAD16_FI ---
     LXI  H, 0
     DAD  SP
     MOV  E, M
@@ -281,7 +281,7 @@ store16_local:
 
 Per-function comparison (i8080 reference timings)
 -------------------------------------------------
-                       c8080            v6llvmc OLD       v6llvmc NEW       NEW vs OLD
+                       c8080            v6clang OLD       v6clang NEW       NEW vs OLD
 function               bytes  cycles    bytes  cycles     bytes  cycles     dB    dcc
 load8_stack_arg          4      23        7      41          6      37      -1     -4
 load16_stack_arg        22     132       15     103         12      87      -3    -16
@@ -312,19 +312,19 @@ Notes
   direct `MOV M,C/B` + `MOV E,M / MOV D,M` over HL. One XCHG remains
   to deliver the loaded value into HL for the return. Net -1B/-5cc.
 - main is identical in both builds (no frame-index loads/stores in
-  main itself; the volatile globals route through V6C_LOAD16_G /
-  V6C_STORE16_G).
+  main itself; the volatile globals route through V6CLANG_LOAD16_G /
+  V6CLANG_STORE16_G).
 
-Direct FI pseudo coverage in v6llvmc_new01.asm
+Direct FI pseudo coverage in v6clang_new01.asm
 ----------------------------------------------
-  V6C_LOAD8_FI    in load8_stack_arg, store8_local (reload)
-  V6C_LOAD16_FI   in load16_stack_arg, store16_local (reload)
-  V6C_STORE8_FI   in store8_local
-  V6C_STORE16_FI  in store16_local
+  V6CLANG_LOAD8_FI    in load8_stack_arg, store8_local (reload)
+  V6CLANG_LOAD16_FI   in load16_stack_arg, store16_local (reload)
+  V6CLANG_STORE8_FI   in store8_local
+  V6CLANG_STORE16_FI  in store16_local
 
 Verification of "files differ"
 ------------------------------
 File hashes after rebuilds:
-  v6llvmc_old.asm   171 lines (O69 selectors stubbed `break;` early)
-  v6llvmc_new01.asm 161 lines (O69 enabled)
+  v6clang_old.asm   171 lines (O69 selectors stubbed `break;` early)
+  v6clang_new01.asm 161 lines (O69 enabled)
   -> the two files now differ as expected.

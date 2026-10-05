@@ -6,7 +6,7 @@
 
 The 8080 has 11 instructions that operate directly on memory at `[HL]`
 without going through a register. The compiler never generates any of them —
-all have empty ISel patterns (`[]`) in `V6CInstrInfo.td`. Instead, ISel
+all have empty ISel patterns (`[]`) in `V6ClangInstrInfo.td`. Instead, ISel
 materializes values into registers and operates on registers.
 
 ### All unused M-operand instructions
@@ -29,12 +29,12 @@ materializes values into registers and operates on registers.
 
 ```asm
 ; Current:
-LXI   HL, __v6c_ss.multi_live
+LXI   HL, __v6clang_ss.multi_live
 MOV   L, M        ; load *HL into L
 ADD   L            ; A += L (12cc, 2B)
 
 ; With O49:
-LXI   HL, __v6c_ss.multi_live
+LXI   HL, __v6clang_ss.multi_live
 ADD   M            ; A += *HL directly (8cc, 1B)
 ```
 
@@ -52,7 +52,7 @@ operation at the DAG level, so no intermediate register is ever allocated.
 
 ## Solution: ISel pseudos with post-RA expansion
 
-### Step 1 — Define pseudos in `V6CInstrInfo.td`
+### Step 1 — Define pseudos in `V6ClangInstrInfo.td`
 
 Each M-operand instruction gets a pseudo that takes a virtual `GR16`
 address register:
@@ -60,7 +60,7 @@ address register:
 **ALU read group** (ADD, ADC, SUB, SBB, ANA, ORA, XRA):
 ```tablegen
 let mayLoad = 1 in {
-  def V6C_ADD_M_P : V6CPseudo<(outs Acc:$dst), (ins Acc:$lhs, GR16:$addr),
+  def V6CLANG_ADD_M_P : V6ClangPseudo<(outs Acc:$dst), (ins Acc:$lhs, GR16:$addr),
       "# ADD_M_P ($addr)",
       [(set Acc:$dst, (add Acc:$lhs, (i8 (load i16:$addr))))]>;
   // ... same pattern for ADC, SUB, SBB, ANA, ORA, XRA
@@ -70,15 +70,15 @@ let mayLoad = 1 in {
 **CMP M:**
 ```tablegen
 let mayLoad = 1 in
-def V6C_CMP_M_P : V6CPseudo<(outs), (ins Acc:$lhs, GR16:$addr),
+def V6CLANG_CMP_M_P : V6ClangPseudo<(outs), (ins Acc:$lhs, GR16:$addr),
     "# CMP_M_P ($addr)",
-    [(V6Ccmp Acc:$lhs, (i8 (load i16:$addr)))]>;
+    [(V6Clangcmp Acc:$lhs, (i8 (load i16:$addr)))]>;
 ```
 
 **MVI M:**
 ```tablegen
 let mayStore = 1 in
-def V6C_STORE8_IMM_P : V6CPseudo<(outs), (ins imm8:$imm, GR16:$addr),
+def V6CLANG_STORE8_IMM_P : V6ClangPseudo<(outs), (ins imm8:$imm, GR16:$addr),
     "# STORE8_IMM_P $imm, ($addr)",
     [(store (i8 imm:$imm), i16:$addr)]>;
 ```
@@ -86,10 +86,10 @@ def V6C_STORE8_IMM_P : V6CPseudo<(outs), (ins imm8:$imm, GR16:$addr),
 **INR M / DCR M:**
 ```tablegen
 let mayLoad = 1, mayStore = 1 in {
-  def V6C_INR_M_P : V6CPseudo<(outs), (ins GR16:$addr),
+  def V6CLANG_INR_M_P : V6ClangPseudo<(outs), (ins GR16:$addr),
       "# INR_M_P ($addr)",
       [(store (add (i8 (load i16:$addr)), 1), i16:$addr)]>;
-  def V6C_DCR_M_P : V6CPseudo<(outs), (ins GR16:$addr),
+  def V6CLANG_DCR_M_P : V6ClangPseudo<(outs), (ins GR16:$addr),
       "# DCR_M_P ($addr)",
       [(store (add (i8 (load i16:$addr)), -1), i16:$addr)]>;
 }
@@ -105,22 +105,22 @@ One function handles all 11 pseudos:
 /// HL preservation (PUSH/POP) is handled by the scavenger (O48),
 /// NOT by this function.
 static bool expandMemOpM(MachineBasicBlock &MBB, MachineInstr &MI,
-                         const V6CInstrInfo &TII, unsigned MOpcode,
+                         const V6ClangInstrInfo &TII, unsigned MOpcode,
                          Register AddrReg) {
   DebugLoc DL = MI.getDebugLoc();
-  if (AddrReg == V6C::HL) {
+  if (AddrReg == V6CLANG::HL) {
     // Direct
     BuildMI(MBB, MI, DL, TII.get(MOpcode));
-  } else if (AddrReg == V6C::DE) {
+  } else if (AddrReg == V6CLANG::DE) {
     // XCHG; OP M; XCHG — 8cc + 2B overhead
-    BuildMI(MBB, MI, DL, TII.get(V6C::XCHG));
+    BuildMI(MBB, MI, DL, TII.get(V6CLANG::XCHG));
     BuildMI(MBB, MI, DL, TII.get(MOpcode));
-    BuildMI(MBB, MI, DL, TII.get(V6C::XCHG));
+    BuildMI(MBB, MI, DL, TII.get(V6CLANG::XCHG));
   } else {
     // BC — no swap instruction. MOV L,C; MOV H,B; OP M
     // HL preservation is the scavenger's responsibility (O48).
-    BuildMI(MBB, MI, DL, TII.get(V6C::MOVrr), V6C::L).addReg(V6C::C);
-    BuildMI(MBB, MI, DL, TII.get(V6C::MOVrr), V6C::H).addReg(V6C::B);
+    BuildMI(MBB, MI, DL, TII.get(V6CLANG::MOVrr), V6CLANG::L).addReg(V6CLANG::C);
+    BuildMI(MBB, MI, DL, TII.get(V6CLANG::MOVrr), V6CLANG::H).addReg(V6CLANG::B);
     BuildMI(MBB, MI, DL, TII.get(MOpcode));
   }
   MI.eraseFromParent();
@@ -131,10 +131,10 @@ static bool expandMemOpM(MachineBasicBlock &MBB, MachineInstr &MI,
 Each pseudo's `expandPostRAPseudo` case is a one-liner:
 
 ```cpp
-case V6C::V6C_ADD_M_P:
-  return expandMemOpM(MBB, MI, *this, V6C::ADDM, MI.getOperand(2).getReg());
-case V6C::V6C_SUB_M_P:
-  return expandMemOpM(MBB, MI, *this, V6C::SUBM, MI.getOperand(2).getReg());
+case V6CLANG::V6CLANG_ADD_M_P:
+  return expandMemOpM(MBB, MI, *this, V6CLANG::ADDM, MI.getOperand(2).getReg());
+case V6CLANG::V6CLANG_SUB_M_P:
+  return expandMemOpM(MBB, MI, *this, V6CLANG::SUBM, MI.getOperand(2).getReg());
 // ... etc.
 ```
 

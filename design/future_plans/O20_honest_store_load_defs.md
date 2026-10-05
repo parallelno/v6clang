@@ -5,15 +5,15 @@ store loop generates unnecessary DE→HL copy every iteration.*
 
 ## Problem
 
-`V6C_STORE8_P` and `V6C_LOAD8_P` are defined with `Defs = [HL]`,
+`V6CLANG_STORE8_P` and `V6CLANG_LOAD8_P` are defined with `Defs = [HL]`,
 telling the register allocator that HL is always clobbered:
 
 ```tablegen
 let mayStore = 1, Defs = [HL] in
-def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
+def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
 
 let mayLoad = 1, Defs = [HL] in
-def V6C_LOAD8_P : V6CPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
+def V6CLANG_LOAD8_P : V6ClangPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
 ```
 
 The RA sees `Defs = [HL]` and avoids allocating HL for a pointer that
@@ -25,7 +25,7 @@ NOT clobbered. But the RA can't know this; `Defs` is unconditional.
 
 ### Example: single-pointer store loop
 
-**Source** (`temp/compare/06/v6llvmc.c`):
+**Source** (`temp/compare/06/v6clang.c`):
 ```c
 uint8_t v = 42;
 for (int i = 0; i < LEN; ++i)
@@ -71,15 +71,15 @@ HL in every code path**. The RA then freely allocates HL for pointers
 ```tablegen
 // Remove Defs = [HL]
 let mayStore = 1 in
-def V6C_STORE8_P : V6CPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
+def V6CLANG_STORE8_P : V6ClangPseudo<(outs), (ins GR8:$src, GR16:$addr), ...>;
 
 let mayLoad = 1 in
-def V6C_LOAD8_P : V6CPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
+def V6CLANG_LOAD8_P : V6ClangPseudo<(outs GR8:$dst), (ins GR16:$addr), ...>;
 ```
 
-### Expansion priority chain — V6C_STORE8_P
+### Expansion priority chain — V6CLANG_STORE8_P
 
-In `V6CInstrInfo.cpp` `expandPostRAPseudo()`:
+In `V6ClangInstrInfo.cpp` `expandPostRAPseudo()`:
 
 | Priority | Condition | Emitted code | Cost | HL preserved? |
 |----------|-----------|-------------|------|---------------|
@@ -90,44 +90,44 @@ In `V6CInstrInfo.cpp` `expandPostRAPseudo()`:
 
 Pseudocode:
 ```cpp
-case V6C::V6C_STORE8_P: {
+case V6CLANG::V6CLANG_STORE8_P: {
   Register SrcReg = MI.getOperand(0).getReg();
   Register AddrReg = MI.getOperand(1).getReg();
 
-  if (AddrReg == V6C::HL) {
+  if (AddrReg == V6CLANG::HL) {
     // Priority 1: addr is HL — just store
-    BuildMI(MBB, MI, DL, get(V6C::MOVMr)).addReg(SrcReg);
-  } else if (SrcReg == V6C::A &&
-             (AddrReg == V6C::BC || AddrReg == V6C::DE)) {
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(SrcReg);
+  } else if (SrcReg == V6CLANG::A &&
+             (AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE)) {
     // Priority 2: STAX — src already in A
-    BuildMI(MBB, MI, DL, get(V6C::STAX))
+    BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
         .addReg(SrcReg).addReg(AddrReg);
-  } else if ((AddrReg == V6C::BC || AddrReg == V6C::DE) &&
-             isRegDeadAt(V6C::A, MI, MBB)) {
+  } else if ((AddrReg == V6CLANG::BC || AddrReg == V6CLANG::DE) &&
+             isRegDeadAt(V6CLANG::A, MI, MBB)) {
     // Priority 3: route through A for STAX — A is dead
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-        .addReg(V6C::A, RegState::Define).addReg(SrcReg);
-    BuildMI(MBB, MI, DL, get(V6C::STAX))
-        .addReg(V6C::A).addReg(AddrReg);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+        .addReg(V6CLANG::A, RegState::Define).addReg(SrcReg);
+    BuildMI(MBB, MI, DL, get(V6CLANG::STAX))
+        .addReg(V6CLANG::A).addReg(AddrReg);
   } else {
     // Priority 4: fallback — save/restore HL
-    BuildMI(MBB, MI, DL, get(V6C::PUSH)).addReg(V6C::HL);
-    MCRegister Hi = RI.getSubReg(AddrReg, V6C::sub_hi);
-    MCRegister Lo = RI.getSubReg(AddrReg, V6C::sub_lo);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-        .addReg(V6C::H, RegState::Define).addReg(Hi);
-    BuildMI(MBB, MI, DL, get(V6C::MOVrr))
-        .addReg(V6C::L, RegState::Define).addReg(Lo);
-    BuildMI(MBB, MI, DL, get(V6C::MOVMr)).addReg(SrcReg);
-    BuildMI(MBB, MI, DL, get(V6C::POP))
-        .addDef(V6C::HL);
+    BuildMI(MBB, MI, DL, get(V6CLANG::PUSH)).addReg(V6CLANG::HL);
+    MCRegister Hi = RI.getSubReg(AddrReg, V6CLANG::sub_hi);
+    MCRegister Lo = RI.getSubReg(AddrReg, V6CLANG::sub_lo);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+        .addReg(V6CLANG::H, RegState::Define).addReg(Hi);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVrr))
+        .addReg(V6CLANG::L, RegState::Define).addReg(Lo);
+    BuildMI(MBB, MI, DL, get(V6CLANG::MOVMr)).addReg(SrcReg);
+    BuildMI(MBB, MI, DL, get(V6CLANG::POP))
+        .addDef(V6CLANG::HL);
   }
   MI.eraseFromParent();
   return true;
 }
 ```
 
-### Expansion priority chain — V6C_LOAD8_P
+### Expansion priority chain — V6CLANG_LOAD8_P
 
 | Priority | Condition | Emitted code | Cost | HL preserved? |
 |----------|-----------|-------------|------|---------------|
@@ -143,13 +143,13 @@ Add `isRegDeadAt(Register Reg, MachineInstr &MI, MachineBasicBlock &MBB)`:
 - If next reference is a def (or no reference + not in successor liveins) → dead
 - If next reference is a use → live
 
-Similar logic already exists in `V6CXchgOpt::isRegDeadAfter()` — can be
+Similar logic already exists in `V6ClangXchgOpt::isRegDeadAfter()` — can be
 extracted to a shared utility or duplicated.
 
 ## Files to modify
 
-1. **`V6CInstrInfo.td`** — Remove `Defs = [HL]` from V6C_STORE8_P and V6C_LOAD8_P
-2. **`V6CInstrInfo.cpp`** — Rewrite expandPostRAPseudo cases with priority chains
+1. **`V6ClangInstrInfo.td`** — Remove `Defs = [HL]` from V6CLANG_STORE8_P and V6CLANG_LOAD8_P
+2. **`V6ClangInstrInfo.cpp`** — Rewrite expandPostRAPseudo cases with priority chains
 3. **No ISel changes** — GR16 address operand stays, RA gets honest Defs info
 
 ## Impact on existing patterns
@@ -210,8 +210,8 @@ Low-Medium.
 
 ## Testing
 
-1. Recompile `temp/compare/06/v6llvmc.c` — verify HL allocation and no DE→HL copy
-2. Recompile `temp/compare/03/v6llvmc2.c` — verify memcpy quality unchanged
+1. Recompile `temp/compare/06/v6clang.c` — verify HL allocation and no DE→HL copy
+2. Recompile `temp/compare/03/v6clang2.c` — verify memcpy quality unchanged
 3. Full lit test suite (all CodeGen tests)
 4. Full golden test suite (15 programs)
 5. `-verify-machineinstrs` sweep on all tests

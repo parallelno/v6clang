@@ -1,8 +1,8 @@
 O51 -- LSR Cost Tuning (isLSRCostLess Insns-First Ordering) -- feature test 43
 ==============================================================================
 
-Adds a target hook flag `-v6c-lsr-strategy={auto,insns-first,regs-first}`
-in V6CTargetTransformInfo that selects how `V6CTTIImpl::isLSRCostLess`
+Adds a target hook flag `-v6clang-lsr-strategy={auto,insns-first,regs-first}`
+in V6ClangTargetTransformInfo that selects how `V6ClangTTIImpl::isLSRCostLess`
 breaks ties between LSR formulas. Two lexicographic orderings over the
 same generic `LSRCost` fields are wired up:
 
@@ -19,12 +19,12 @@ shows insns-first **does not win** on this corpus, so it was demoted to
 opt-in only. See "Decision" below.
 
 Implementation: `LSRStrategyOpt` cl::opt + `insnsFirstLess` and
-`regsFirstLess` static helpers in V6CTargetTransformInfo.cpp. The TTI
+`regsFirstLess` static helpers in V6ClangTargetTransformInfo.cpp. The TTI
 constructor captures `const Function *Func` so future per-function
 auto-dispatch (e.g. attribute-driven) can reuse the same plumbing.
 
 
-## C source (tests/features/43/v6llvmc.c -- c8080.c is the same shape)
+## C source (tests/features/43/v6clang.c -- c8080.c is the same shape)
 
     #define N 8
     int OUT[N], A[N], B[N], C[N], D1[N], D2[N];
@@ -52,26 +52,26 @@ auto-dispatch (e.g. attribute-driven) can reuse the same plumbing.
 
 ## Assembly outputs
 
-  v6llvmc_old.asm          baseline before O51 (regs-first, current default)
-  v6llvmc_new01.asm        -O2, auto-dispatch (regs-first)        -- byte-identical to old.asm
-  v6llvmc_new02.asm        -Os, auto-dispatch (regs-first)
-  v6llvmc_new03.asm        -O2 -mllvm -v6c-lsr-strategy=insns-first  (opt-in)
+  v6clang_old.asm          baseline before O51 (regs-first, current default)
+  v6clang_new01.asm        -O2, auto-dispatch (regs-first)        -- byte-identical to old.asm
+  v6clang_new02.asm        -Os, auto-dispatch (regs-first)
+  v6clang_new03.asm        -O2 -mllvm -v6clang-lsr-strategy=insns-first  (opt-in)
 
 
 ## Sizes
 
-  v6llvmc_old.asm   6078 B
-  v6llvmc_new01.asm 6078 B   <-- identical to old (auto=regs-first preserves baseline)
-  v6llvmc_new02.asm 8783 B   <-- Os has unrelated size-mode codegen differences
-  v6llvmc_new03.asm 6131 B   <-- +53 B vs new01 (extra spill slot at __v6c_ss.axpy3+10)
+  v6clang_old.asm   6078 B
+  v6clang_new01.asm 6078 B   <-- identical to old (auto=regs-first preserves baseline)
+  v6clang_new02.asm 8783 B   <-- Os has unrelated size-mode codegen differences
+  v6clang_new03.asm 6131 B   <-- +53 B vs new01 (extra spill slot at __v6clang_ss.axpy3+10)
 
 
 ## Inner-loop shape difference (axpy3, regs-first vs insns-first)
 
-  regs-first  static spill area: __v6c_ss.axpy3 = 10 B  (slots +0,+2,+4,+6,+8)
+  regs-first  static spill area: __v6clang_ss.axpy3 = 10 B  (slots +0,+2,+4,+6,+8)
               inner loop body:  ~71 instr      DAD  DE     used as second addend
 
-  insns-first static spill area: __v6c_ss.axpy3 = 12 B  (adds slot +10)
+  insns-first static spill area: __v6clang_ss.axpy3 = 12 B  (adds slot +10)
               inner loop body:  ~80 instr      DAD  BC + extra LXI/MOV reload
                                                sequence to swap an IV through +10.
 
@@ -84,7 +84,7 @@ stack on every iteration.
 
 ## Decision (Step 3.7)
 
-A/B measurement across all `tests/features/*/v6llvmc.c` at -O2:
+A/B measurement across all `tests/features/*/v6clang.c` at -O2:
 
     auto vs insns vs regs (sizes in bytes; counts: 0 wins for insns-first;
     3 regressions where insns-first is 53-315 B larger; 39 ties)
@@ -96,7 +96,7 @@ A/B measurement across all `tests/features/*/v6llvmc.c` at -O2:
 
 `auto` was therefore set to **regs-first** unconditionally (preserving
 the historical default and the 6078-byte baseline byte-for-byte). The
-`-v6c-lsr-strategy=insns-first` override stays available for future
+`-v6clang-lsr-strategy=insns-first` override stays available for future
 targeted use (e.g. if loop-shape heuristics later identify a class of
 loops that benefit, or to A/B re-test on a different corpus).
 
@@ -112,10 +112,10 @@ loops that benefit, or to A/B re-test on a different corpus).
 
 ## Files added/modified
 
-  llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.h       (Func member)
-  llvm-project/llvm/lib/Target/V6C/V6CTargetTransformInfo.cpp     (cl::opt + helpers)
-  llvm-project/llvm/test/CodeGen/V6C/lsr-strategy-speed.ll        (opt-in path)
-  llvm-project/llvm/test/CodeGen/V6C/lsr-strategy-size.ll         (auto path)
+  llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.h       (Func member)
+  llvm-project/llvm/lib/Target/V6CLANG/V6ClangTargetTransformInfo.cpp     (cl::opt + helpers)
+  llvm-project/llvm/test/CodeGen/V6CLANG/lsr-strategy-speed.ll        (opt-in path)
+  llvm-project/llvm/test/CodeGen/V6CLANG/lsr-strategy-size.ll         (auto path)
   tests/features/43/                                              (this dir)
   scripts/o51_ab_measure.py                                       (A/B harness)
   design/plan_O51_lsr_cost_tuning.md                              (this plan)

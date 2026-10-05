@@ -64,20 +64,20 @@ spill_pressure:                         ; @spill_pressure
 	;  arg2 = C
 	;  arg3 = stack
 ; %bb.0:
-	;--- V6C_SPILL8 ---
-	LXI	HL, __v6c_ss.spill_pressure
+	;--- V6CLANG_SPILL8 ---
+	LXI	HL, __v6clang_ss.spill_pressure
 	MOV	M, E
 	MOV	B, A
-	;--- V6C_LEA_FI ---
+	;--- V6CLANG_LEA_FI ---
 	LXI	HL, 0
 	DAD	SP
 	XCHG
-	;--- V6C_LOAD8_P ---
+	;--- V6CLANG_LOAD8_P ---
 	LDAX	DE
 	ADD	C
 	STA	g_sink8
-	;--- V6C_RELOAD8 ---
-	LDA	__v6c_ss.spill_pressure
+	;--- V6CLANG_RELOAD8 ---
+	LDA	__v6clang_ss.spill_pressure
 	ADD	B
 	RET
                                         ; -- End function
@@ -87,7 +87,7 @@ sum16:                                  ; @sum16
 	;  arg0 = HL
 	;  arg1 = DE
 ; %bb.0:
-	;--- V6C_ADD16 ---
+	;--- V6CLANG_ADD16 ---
 	DAD	DE
 	RET
                                         ; -- End function
@@ -123,7 +123,7 @@ main:                                   ; @main
 g_sink8:
 	DB	0                               ; 0x0
 
-	.local	__v6c_ss.spill_pressure         ; @__v6c_ss.spill_pressure
-	.comm	__v6c_ss.spill_pressure,1,1
+	.local	__v6clang_ss.spill_pressure         ; @__v6clang_ss.spill_pressure
+	.comm	__v6clang_ss.spill_pressure,1,1
 	.addrsig
 	.addrsig_sym g_sink8

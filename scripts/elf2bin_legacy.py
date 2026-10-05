@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a V6C ELF object (.o) to a flat binary (.bin).
+"""Convert a V6CLANG ELF object (.o) to a flat binary (.bin).
 
 Reads ELF32 little-endian, extracts PROGBITS sections (.text, .rodata, .data),
 applies RELA relocations, and writes contiguous flat binary starting at a
@@ -188,9 +188,9 @@ def elf_to_bin(input_path, output_path, base_addr=0):
 
             # Apply fixup at target_base + r_offset
             patch_offset = target_base + r_offset
-            # For V6C, all fixups are absolute (not PC-relative).
+            # For V6CLANG, all fixups are absolute (not PC-relative).
             # Determine size from the space available (heuristic: check context)
-            # RELA type 0 with 2-byte fixup is typical for V6C 16-bit addresses
+            # RELA type 0 with 2-byte fixup is typical for V6CLANG 16-bit addresses
             if patch_offset + 1 < total_size:
                 # 16-bit little-endian
                 output[patch_offset] = value & 0xFF
@@ -221,7 +221,7 @@ def bin_to_intel_hex(data, base_addr=0, bytes_per_line=16):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert V6C ELF to flat binary')
+    parser = argparse.ArgumentParser(description='Convert V6CLANG ELF to flat binary')
     parser.add_argument('input', help='Input ELF .o file')
     parser.add_argument('-o', '--output', required=True, help='Output .bin file')
     parser.add_argument('--base', type=lambda x: int(x, 0), default=0,

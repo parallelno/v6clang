@@ -17,16 +17,16 @@ immediately discarded, and the `PUSH` stores a value that is never consumed.
 The net effect on the stack and on every register is zero, yet they remain in
 the output, wasting 22 cycles and 2 bytes per occurrence.
 
-### Concrete evidence (`tests/benchmarks_c/asm/v6llvmc_sieve_O2.s`, block `.LBB15_8`)
+### Concrete evidence (`tests/benchmarks_c/asm/v6clang_sieve_O2.s`, block `.LBB15_8`)
 
 ```asm
 ; Case 1 — trivially adjacent (ELIMINABLE):
-        PUSH H               ; V6C_ADD16 preamble: save HL
+        PUSH H               ; V6CLANG_ADD16 preamble: save HL
         DAD  B               ; HL += BC
         MOV  B, H
         MOV  C, L
         POP  H               ; ADD16 epilogue: restore HL       ← POP
-        ;--- V6C_SPILL16 ---
+        ;--- V6CLANG_SPILL16 ---
         PUSH H               ; spill HL to stack slot            ← PUSH (redundant)
         MOV  L, C            ; HL immediately overwritten
         MOV  H, B
@@ -42,7 +42,7 @@ the output, wasting 22 cycles and 2 bytes per occurrence.
 ; Case 3 — valid: intervening instruction does not touch rp (ELIMINABLE):
         POP  H               ; reload preamble: save outer HL   ← POP
         INX  B               ; modifies BC, not HL  ✓
-        ;--- V6C_SPILL16 ---
+        ;--- V6CLANG_SPILL16 ---
         PUSH H               ; spill HL (immediately overwritten)← PUSH (redundant)
         MOV  L, C
         MOV  H, B
@@ -57,7 +57,7 @@ erased; the instructions between them (if any) are kept intact.
 
 ### Root cause
 
-The `V6CPeephole` pass has no pattern for this class of redundancy. The POP
+The `V6ClangPeephole` pass has no pattern for this class of redundancy. The POP
 comes from one pseudo expansion (ADD16 epilogue or RELOAD16 epilogue), and the
 PUSH comes from the next pseudo expansion (SPILL16 prologue). Neither expansion
 has visibility into the other's intent, so both instructions survive.
@@ -66,9 +66,9 @@ has visibility into the other's intent, so both instructions survive.
 
 ## 2. Strategy
 
-### Approach: New `eliminateDeadPopPush()` method in `V6CPeephole`
+### Approach: New `eliminateDeadPopPush()` method in `V6ClangPeephole`
 
-Add a single forward-scan method to the existing `V6CPeephole` pass. The scan
+Add a single forward-scan method to the existing `V6ClangPeephole` pass. The scan
 is O(n) per basic block and requires no new passes or infrastructure.
 
 For each `POP rp` found:
@@ -99,8 +99,8 @@ to nearly every ALU instruction, making condition 2 almost never satisfiable.
 
 | File | Change |
 |------|--------|
-| `V6CPeephole.cpp` | Add `DisablePopPushElim` flag, `eliminateDeadPopPush()` method, call site in `runOnMachineFunction()` |
-| `tests/lit/CodeGen/V6C/peephole-pop-push-elim.ll` | New lit test (positive + negative + disabled-flag cases) |
+| `V6ClangPeephole.cpp` | Add `DisablePopPushElim` flag, `eliminateDeadPopPush()` method, call site in `runOnMachineFunction()` |
+| `tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll` | New lit test (positive + negative + disabled-flag cases) |
 
 ---
 
@@ -108,7 +108,7 @@ to nearly every ALU instruction, making condition 2 almost never satisfiable.
 
 ### Step 3.1 — Create test folder and baseline assembly [ ]
 
-Create `tests/features/64/` with `v6llvmc.c`, `c8080.c`, and baseline assembly.
+Create `tests/features/64/` with `v6clang.c`, `c8080.c`, and baseline assembly.
 
 See **Preparation steps** from `tests/features/README.md`.
 
@@ -123,13 +123,13 @@ See **Preparation steps** from `tests/features/README.md`.
 
 ### Step 3.2 — Add `DisablePopPushElim` command-line flag [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 After the existing `DisableMviAluFold` flag (around line 47), add:
 
 ```cpp
 static cl::opt<bool> DisablePopPushElim(
-    "v6c-disable-pop-push-elim",
+    "v6clang-disable-pop-push-elim",
     cl::desc("Disable POP/PUSH pair elimination (O83)"),
     cl::init(false), cl::Hidden);
 ```
@@ -139,11 +139,11 @@ static cl::opt<bool> DisablePopPushElim(
 
 ---
 
-### Step 3.3 — Add method declaration to `V6CPeephole` class [ ]
+### Step 3.3 — Add method declaration to `V6ClangPeephole` class [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
-In the `V6CPeephole` class private section (around line 88), add:
+In the `V6ClangPeephole` class private section (around line 88), add:
 
 ```cpp
 bool eliminateDeadPopPush(MachineBasicBlock &MBB);
@@ -155,7 +155,7 @@ bool eliminateDeadPopPush(MachineBasicBlock &MBB);
 
 ### Step 3.4 — Implement `eliminateDeadPopPush()` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 Add the method before `runOnMachineFunction`. Full body:
 
@@ -171,7 +171,7 @@ Add the method before `runOnMachineFunction`. Full body:
 ///
 /// PSW (A+FLAGS) is excluded because FLAGS is an implicit operand of almost
 /// every ALU instruction, making condition 2 virtually unsatisfiable.
-bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
+bool V6ClangPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
   if (DisablePopPushElim)
     return false;
   bool Changed = false;
@@ -179,14 +179,14 @@ bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
       MBB.getParent()->getSubtarget().getRegisterInfo();
 
   for (auto I = MBB.begin(), E = MBB.end(); I != E; ) {
-    if (I->getOpcode() != V6C::POP) {
+    if (I->getOpcode() != V6CLANG::POP) {
       ++I;
       continue;
     }
     Register Rp = I->getOperand(0).getReg();
 
     // Skip PSW: FLAGS is implicitly live through most instructions.
-    if (TRI->regsOverlap(Rp, V6C::PSW)) {
+    if (TRI->regsOverlap(Rp, V6CLANG::PSW)) {
       ++I;
       continue;
     }
@@ -200,7 +200,7 @@ bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
         continue;
 
       // Found matching PUSH rp — candidate.
-      if (J->getOpcode() == V6C::PUSH &&
+      if (J->getOpcode() == V6CLANG::PUSH &&
           J->getOperand(0).getReg() == Rp) {
         PushIt = J;
         break;
@@ -227,13 +227,13 @@ bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
         break;
       }
       unsigned Opc = J->getOpcode();
-      if (Opc == V6C::PUSH || Opc == V6C::POP ||
-          Opc == V6C::XTHL || Opc == V6C::SPHL) {
+      if (Opc == V6CLANG::PUSH || Opc == V6CLANG::POP ||
+          Opc == V6CLANG::XTHL || Opc == V6CLANG::SPHL) {
         CanElim = false;
         break;
       }
       // Catch any other SP-def (LXI SP, INX SP, DCX SP, ...).
-      if (J->modifiesRegister(V6C::SP, TRI)) {
+      if (J->modifiesRegister(V6CLANG::SP, TRI)) {
         CanElim = false;
         break;
       }
@@ -261,7 +261,7 @@ bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
 ```
 
 > **Design Notes**:
-> - `J->modifiesRegister(V6C::SP, TRI)` catches `LXI SP`, `INX SP`, `DCX SP`
+> - `J->modifiesRegister(V6CLANG::SP, TRI)` catches `LXI SP`, `INX SP`, `DCX SP`
 >   (all of which have `Defs = [SP]`). The explicit opcode checks for PUSH/POP
 >   are still needed first because `modifiesRegister` could be slow on a full
 >   scan.
@@ -277,7 +277,7 @@ bool V6CPeephole::eliminateDeadPopPush(MachineBasicBlock &MBB) {
 
 ### Step 3.5 — Call from `runOnMachineFunction()` [ ]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CPeephole.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangPeephole.cpp`
 
 In `runOnMachineFunction`, add the call after `foldShldLhldToPushPop` (O43
 produces the PUSH/POP pairs that O83 then eliminates):
@@ -307,7 +307,7 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 
 ### Step 3.7 — Lit test: `peephole-pop-push-elim.ll` [ ]
 
-Create `tests/lit/CodeGen/V6C/peephole-pop-push-elim.ll`.
+Create `tests/lit/CodeGen/V6CLANG/peephole-pop-push-elim.ll`.
 
 The test uses a register-pressure-heavy loop (sieve inner kernel) and checks:
 - **Positive (enabled)**: the output contains no adjacent `POP H` + `PUSH H`
@@ -317,7 +317,7 @@ The test uses a register-pressure-heavy loop (sieve inner kernel) and checks:
 
 Run the lit test:
 ```
-llvm-build\bin\llvm-lit tests\lit\CodeGen\V6C\peephole-pop-push-elim.ll -v
+llvm-build\bin\llvm-lit tests\lit\CodeGen\V6CLANG\peephole-pop-push-elim.ll -v
 ```
 
 > **Implementation Notes**: <empty>
@@ -341,8 +341,8 @@ Verify all existing tests pass.
 Follow **Verification assembly steps** from `tests/features/README.md`:
 
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S ^
-    tests\features\64\v6llvmc.c -o tests\features\64\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S ^
+    tests\features\64\v6clang.c -o tests\features\64\v6clang_new01.asm
 ```
 
 Analyze the output: the three evidence cases from Case 1 and Case 3 in the
@@ -360,7 +360,7 @@ loop iteration.
 
 Follow `tests/features/result.md` to create `tests/features/64/result.txt`
 containing: C source, c8080 main-func ASM (i8080 form), c8080 stats,
-v6llvmc old ASM, v6llvmc new ASM, comparison table.
+v6clang old ASM, v6clang new ASM, comparison table.
 
 > **Implementation Notes**: <empty>
 
@@ -446,7 +446,7 @@ iteration.
 ## 8. References
 
 * [Feature Description](design/future_plans/O83_pop_push_pair_elimination.md)
-* [V6C Build Guide](docs/V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs/V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs/Vector_06c_instruction_timings.md)
 * [Future Improvements](design/future_plans/README.md)
 * [Plan Format Reference](design/plan_cmp_based_comparison.md)

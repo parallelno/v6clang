@@ -1,6 +1,6 @@
 # O64 — Liveness-Aware i8 Spill/Reload Lowering (Static-Stack Shapes B & C)
 
-**Source:** V6C
+**Source:** V6CLANG
 **Savings:** 8–28 cc per i8 spill/reload site, depending on the live
           state of HL, A, and spare GPRs. Pure win over the current
           pessimistic `[PUSH HL] ... [POP HL]` and DE-detour shapes.
@@ -18,8 +18,8 @@
 
 ## Problem
 
-`V6CRegisterInfo::eliminateFrameIndex` (static-stack branch, lines
-~143–250) lowers `V6C_SPILL8` / `V6C_RELOAD8` using only **one**
+`V6ClangRegisterInfo::eliminateFrameIndex` (static-stack branch, lines
+~143–250) lowers `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` using only **one**
 secondary strategy when the data register is not A: route through HL.
 Routing through HL has to be protected whenever HL is live across the
 site, producing a `PUSH HL` / `POP HL` wrap. That wrap is expensive.
@@ -54,7 +54,7 @@ is dead (or cheaply freed up), eliminating the PUSH/POP HL wrap.
 
 ## Proposed solution
 
-Turn each of `V6C_SPILL8` / `V6C_RELOAD8` expansions into a small
+Turn each of `V6CLANG_SPILL8` / `V6CLANG_RELOAD8` expansions into a small
 **cost-model decision list** driven by `isRegDeadAfterMI` queries
 against HL, A, and the set of GPRs (B, C, D, E). Pick the cheapest
 shape at lowering time. No IR-level changes; no TableGen changes.
@@ -105,7 +105,7 @@ L symmetrically avoids having to save H.
 | 4 | A live, no spare GPR dead                      | `PUSH PSW; LDA addr; MOV H/L, A; POP PSW`         | 52 cc, 5 B  |
 
 > **Timing note.** Cycle numbers use the authoritative
-> `docs/V6CInstructionTimings.md` (cross-checked against
+> `docs/V6ClangInstructionTimings.md` (cross-checked against
 > `docs/Vector_06c_instruction_timings.md`): `MOV r,r` = 8cc,
 > `MOV r,M` / `MOV M,r` = 8cc, `LXI` = 12cc, `STA`/`LDA` = 16cc,
 > `PUSH` = 16cc, `POP` = 12cc. The *ordering* of the rows (row N is
@@ -130,7 +130,7 @@ L symmetrically avoids having to save H.
 
 ## Implementation sketch
 
-1. **New shared module** `V6CSpillExpand.{h,cpp}` hosts the ladder
+1. **New shared module** `V6ClangSpillExpand.{h,cpp}` hosts the ladder
    and its helpers (`isRegDeadAfterMI` moved from its two duplicate
    static definitions, plus a new `findDeadSpareGPR8` walking
    `{B, C, D, E}` minus any overlap with an "excluded" register).
@@ -160,8 +160,8 @@ L symmetrically avoids having to save H.
    form). Shape A (`A` src/dst) is trivially handled inline by each
    caller — no need for the helper to know about it.
 
-2. **`V6CRegisterInfo::eliminateFrameIndex`**, `V6C_SPILL8` /
-   `V6C_RELOAD8` static-stack branch:
+2. **`V6ClangRegisterInfo::eliminateFrameIndex`**, `V6CLANG_SPILL8` /
+   `V6CLANG_RELOAD8` static-stack branch:
    * For `A`, stay inline (`STA` / `LDA`).
    * Otherwise, call the shared helper with an appender that emits
      `addGlobalAddress(GV, StaticOffset)`.
@@ -169,10 +169,10 @@ L symmetrically avoids having to save H.
      strictly better code in every case (row 2's Tmp pick will prefer
      D or E when both are dead).
 
-3. **`V6CSpillPatchedReload`**, non-winner i8 reload loop:
+3. **`V6ClangSpillPatchedReload`**, non-winner i8 reload loop:
    * For `A`, stay inline (`LDA Sym+1`, unchanged).
    * Otherwise, call the shared `expandReload8Static` with an
-     appender that emits `addSym(Syms[0], V6CII::MO_PATCH_IMM)`.
+     appender that emits `addSym(Syms[0], V6ClangII::MO_PATCH_IMM)`.
    * Winner emission (`MVI r, 0` + pre-instr label) and spill
      rewrite (`STA Sym+1` per winner) are unchanged.
 
@@ -180,7 +180,7 @@ L symmetrically avoids having to save H.
    the pseudo's original MI position and its eraseFromParent, so
    scheduling boundaries are unchanged.
 
-5. **Annotation** (optional): when `-mv6c-annotate-pseudos` is on,
+5. **Annotation** (optional): when `-mv6clang-annotate-pseudos` is on,
    emit a comment tag showing which row fired — useful for measuring
    row distribution on real code.
 
@@ -190,8 +190,8 @@ O61 rewrites a spill *source* of `A` into `STA .LLo61_N+1` (shape A),
 unaffected. The patched *reload* site emits `MVI r, 0` (8 cc, 2 B),
 which is *cheaper* than any row here, so O61's patched shape always
 wins where it applies. For the non-winner reloads O61 does not
-patch, both `V6CRegisterInfo::eliminateFrameIndex` and
-`V6CSpillPatchedReload` call the shared `expandReload8Static` helper,
+patch, both `V6ClangRegisterInfo::eliminateFrameIndex` and
+`V6ClangSpillPatchedReload` call the shared `expandReload8Static` helper,
 so those reloads get the same ladder.
 
 ### Interaction with O42
@@ -230,13 +230,13 @@ path O61 targets.
 
 ## Testing
 
-1. **Lit tests** under `llvm/test/CodeGen/V6C/spill-reload-i8-*.ll`:
+1. **Lit tests** under `llvm/test/CodeGen/V6CLANG/spill-reload-i8-*.ll`:
    one function per decision row, with `CHECK` lines asserting the
    exact sequence.
 2. **Regression** — all existing O42 / O43 / O61 lit tests must still
    pass unmodified (expected output may tighten in a few cases;
    update the CHECK lines to the shorter sequences).
-3. **Feature tests** — re-generate every `tests/features/NN/v6llvmc.asm`
+3. **Feature tests** — re-generate every `tests/features/NN/v6clang.asm`
    touching i8 spill/reload and update `result.txt`. Expect strictly
    fewer bytes / cycles in every affected function.
 
@@ -251,21 +251,21 @@ path O61 targets.
   vs row 4's 6 B — identical bytes, −8 cc. No size regression.
 * **Cost-model mis-ordering** if the Vector-06c timings differ
   materially from the numbers used above. Resolve by table-driving
-  row selection from `V6CInstructionTimings.md`-sourced constants.
+  row selection from `V6ClangInstructionTimings.md`-sourced constants.
 
 
 ## References
 
 * Current lowering —
-  `llvm-project/llvm/lib/Target/V6C/V6CRegisterInfo.cpp` lines ~143–250
-  and `V6CSpillPatchedReload.cpp` non-winner i8 reload loop
+  `llvm-project/llvm/lib/Target/V6CLANG/V6ClangRegisterInfo.cpp` lines ~143–250
+  and `V6ClangSpillPatchedReload.cpp` non-winner i8 reload loop
   (lines ~474–534).
 * Liveness helper — `isRegDeadAfterMI` (currently duplicated in
-  both files above; consolidated into the new `V6CSpillExpand.h`).
-* Pseudo defs — `llvm-project/llvm/lib/Target/V6C/V6CInstrInfo.td`
-  (`V6C_SPILL8`, `V6C_RELOAD8`). No changes needed unless O63 lands
+  both files above; consolidated into the new `V6ClangSpillExpand.h`).
+* Pseudo defs — `llvm-project/llvm/lib/Target/V6CLANG/V6ClangInstrInfo.td`
+  (`V6CLANG_SPILL8`, `V6CLANG_RELOAD8`). No changes needed unless O63 lands
   first.
-* Timings — `docs/V6CInstructionTimings.md`.
+* Timings — `docs/V6ClangInstructionTimings.md`.
 * Related design:
   * `design/future_plans/O42_liveness_aware_expansion.md` — prior art
     for HL liveness querying at the expansion site.

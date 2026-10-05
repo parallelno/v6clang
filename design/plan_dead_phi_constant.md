@@ -27,7 +27,7 @@ ISel materializes the constant `0` in the entry block:
 bb.0 (entry):
   %2:gr16 = COPY $hl            ; x
   %3:gr16 = LXI 0               ; ← constant for PHI
-  V6C_BR_CC16_IMM %2, 0, COND_Z, %bb.2
+  V6CLANG_BR_CC16_IMM %2, 0, COND_Z, %bb.2
   JMP %bb.1
 
 bb.2 (merge):
@@ -88,12 +88,12 @@ The problem chain:
 
 ### Approach: Pre-RA MachineFunctionPass
 
-A pre-RA pass in `V6CDeadPhiConst.cpp` running after ISel (via
+A pre-RA pass in `V6ClangDeadPhiConst.cpp` running after ISel (via
 `addPreRegAlloc()`) that recognizes:
 
 ```
 %const = LXI <imm>
-V6C_BR_CC16_IMM %reg, <imm>, <cc>, %target
+V6CLANG_BR_CC16_IMM %reg, <imm>, <cc>, %target
 ...
 %target (or fallthrough):
   PHI %const, %pred, ...
@@ -105,7 +105,7 @@ path, replace the PHI operand with `%reg`:
 
 ```
 ; %const = LXI 0        ← becomes dead, DCE removes it
-V6C_BR_CC16_IMM %reg, 0, COND_Z, %target
+V6CLANG_BR_CC16_IMM %reg, 0, COND_Z, %target
 ...
 %target:
   PHI %reg, %pred, ...  ← uses %reg (proven == 0 on this edge)
@@ -115,7 +115,7 @@ V6C_BR_CC16_IMM %reg, 0, COND_Z, %target
 
 1. **PHI nodes exist pre-RA** — after ISel, before PHI elimination.
    `addPreRegAlloc()` runs before PHIElimination, so PHIs are intact.
-2. **V6C_BR_CC16_IMM is selected** — ISel already chose the IMM variant
+2. **V6CLANG_BR_CC16_IMM is selected** — ISel already chose the IMM variant
    for constant comparisons, so the immediate is in the instruction.
 3. **Replacement is safe** — on the proven-equal edge, `%reg` holds
    the same value as `<imm>`. The PHI was receiving `<imm>` from this
@@ -137,22 +137,22 @@ For `COND_NZ`: replace in the **fallthrough** MBB's PHI.
 
 | Step | What | Where |
 |------|------|-------|
-| New pass | `V6CDeadPhiConst.cpp` | `llvm-project/llvm/lib/Target/V6C/` |
-| Declaration | `createV6CDeadPhiConstPass()` | `V6C.h` |
-| Registration | `addPreRegAlloc()` | `V6CTargetMachine.cpp` |
+| New pass | `V6ClangDeadPhiConst.cpp` | `llvm-project/llvm/lib/Target/V6CLANG/` |
+| Declaration | `createV6ClangDeadPhiConstPass()` | `V6Clang.h` |
+| Registration | `addPreRegAlloc()` | `V6ClangTargetMachine.cpp` |
 | Build list | Add source file | `CMakeLists.txt` |
 
 ---
 
 ## 3. Implementation Steps
 
-### Step 3.1 — Create V6CDeadPhiConst.cpp [x]
+### Step 3.1 — Create V6ClangDeadPhiConst.cpp [x]
 
-**File**: `llvm-project/llvm/lib/Target/V6C/V6CDeadPhiConst.cpp`
+**File**: `llvm-project/llvm/lib/Target/V6CLANG/V6ClangDeadPhiConst.cpp`
 
 A `MachineFunctionPass` that:
 - Iterates all basic blocks.
-- For each block, scans terminators for `V6C_BR_CC16_IMM`.
+- For each block, scans terminators for `V6CLANG_BR_CC16_IMM`.
 - Determines the "proven equal" successor edge based on condition code.
 - Scans PHI nodes in the proven-equal MBB.
 - For each PHI incoming value from the branch's MBB: checks if it's
@@ -163,7 +163,7 @@ Algorithm:
 ```
 for each MBB:
   for each terminator MI in MBB:
-    if MI is not V6C_BR_CC16_IMM: continue
+    if MI is not V6CLANG_BR_CC16_IMM: continue
     LhsReg = MI.operand(0).getReg()
     RhsOp  = MI.operand(1)
     CC     = MI.operand(2).getImm()
@@ -184,7 +184,7 @@ for each MBB:
           Changed = true
 ```
 
-CLI toggle: `-v6c-disable-dead-phi-const`
+CLI toggle: `-v6clang-disable-dead-phi-const`
 
 > **Design Notes**: The pass runs at `addPreRegAlloc()`, after machine
 > SSA optimization but before PHI elimination. PHI nodes are intact.
@@ -199,15 +199,15 @@ CLI toggle: `-v6c-disable-dead-phi-const`
 
 ### Step 3.2 — Register the pass [x]
 
-**Files**: `V6C.h`, `V6CTargetMachine.cpp`, `CMakeLists.txt`
+**Files**: `V6Clang.h`, `V6ClangTargetMachine.cpp`, `CMakeLists.txt`
 
-1. **V6C.h**: Add declaration `FunctionPass *createV6CDeadPhiConstPass();`
-2. **V6CTargetMachine.cpp**: Add `addPreRegAlloc()` override that calls
-   `addPass(createV6CDeadPhiConstPass());`
-3. **CMakeLists.txt**: Add `V6CDeadPhiConst.cpp` to the source list.
+1. **V6Clang.h**: Add declaration `FunctionPass *createV6ClangDeadPhiConstPass();`
+2. **V6ClangTargetMachine.cpp**: Add `addPreRegAlloc()` override that calls
+   `addPass(createV6ClangDeadPhiConstPass());`
+3. **CMakeLists.txt**: Add `V6ClangDeadPhiConst.cpp` to the source list.
 
-> **Implementation Notes**: Added `createV6CDeadPhiConstPass()` to V6C.h,
-> `addPreRegAlloc()` override in V6CTargetMachine.cpp, and source file
+> **Implementation Notes**: Added `createV6ClangDeadPhiConstPass()` to V6Clang.h,
+> `addPreRegAlloc()` override in V6ClangTargetMachine.cpp, and source file
 > to CMakeLists.txt.
 
 ### Step 3.3 — Build [x]
@@ -222,7 +222,7 @@ Expected: clean build.
 
 ### Step 3.4 — Lit test: dead PHI constant elimination [x]
 
-**File**: `llvm-project/llvm/test/CodeGen/V6C/dead-phi-const.ll`
+**File**: `llvm-project/llvm/test/CodeGen/V6CLANG/dead-phi-const.ll`
 
 Test cases:
 1. `phi [0, entry]` + `br eq 0` (COND_Z, taken edge) → constant eliminated
@@ -252,7 +252,7 @@ All existing tests must pass.
 
 Compile the feature test case:
 ```
-llvm-build\bin\clang -target i8080-unknown-v6c -O2 -S tests\features\09\v6llvmc.c -o tests\features\09\v6llvmc_new01.asm
+llvm-build\bin\clang -target i8080-unknown-v6clang -O2 -S tests\features\09\v6clang.c -o tests\features\09\v6clang_new01.asm
 ```
 
 Analyze: `test_ne_zero` should show MOV A,H; ORA L; JZ/JMP without
@@ -266,10 +266,10 @@ the MOV D,H; MOV E,L; LXI HL,0 shuffle. Similar improvements in
 ### Step 3.7 — Make sure result.txt is created. `tests\features\README.md` [x]
 
 Create `tests\features\09\result.txt` with C source, c8080 asm,
-v6llvmc asm, and cycle/byte counts.
+v6clang asm, and cycle/byte counts.
 
 > **Implementation Notes**: Created with C source, c8080 i8080 asm,
-> v6llvmc asm, and per-function cycle/byte comparison.
+> v6clang asm, and per-function cycle/byte comparison.
 
 ### Step 3.8 — Sync mirror [x]
 
@@ -309,9 +309,9 @@ the LXI 42 and register shuffle, though this pattern is less common.
 |------|------------|
 | Pass runs too early, PHIs moved/removed | `addPreRegAlloc()` is after machine SSA opts, before PHI elimination. PHIs are guaranteed present. |
 | LXI has other uses beyond the PHI | Only replace the PHI operand. LXI stays alive if it has other uses. Only becomes dead if the PHI was its sole use, in which case DCE removes it. |
-| `%reg` not live at the PHI predecessor | `%reg` is used by `V6C_BR_CC16_IMM` in the predecessor, so it's live at the predecessor's terminator — guaranteed to dominate the PHI. |
+| `%reg` not live at the PHI predecessor | `%reg` is used by `V6CLANG_BR_CC16_IMM` in the predecessor, so it's live at the predecessor's terminator — guaranteed to dominate the PHI. |
 | Matching global address operands | Start with integer immediates (`isImm()`). Global addresses (`isGlobal()`) matched by comparing `getGlobal()` + `getOffset()`. |
-| V6C_BR_CC16_IMM not present (BR_CC16 used for reg-reg) | Pass only matches `V6C_BR_CC16_IMM`. Register-register comparisons don't have an immediate RHS to match against — they are skipped. |
+| V6CLANG_BR_CC16_IMM not present (BR_CC16 used for reg-reg) | Pass only matches `V6CLANG_BR_CC16_IMM`. Register-register comparisons don't have an immediate RHS to match against — they are skipped. |
 
 ---
 
@@ -331,11 +331,11 @@ the LXI 42 and register shuffle, though this pattern is less common.
 
 ## 7. Future Enhancements
 
-- **V6C_BR_CC16 (register-register)**: Extend to reg-reg comparisons
+- **V6CLANG_BR_CC16 (register-register)**: Extend to reg-reg comparisons
   where the RHS register is known to hold a constant (would need value
-  tracking). Lower priority since `V6C_BR_CC16_IMM` covers most cases.
+  tracking). Lower priority since `V6CLANG_BR_CC16_IMM` covers most cases.
 - **8-bit comparisons**: Same pattern may appear with future
-  `V6C_BR_CC8_IMM` pseudo. The pass can be extended trivially.
+  `V6CLANG_BR_CC8_IMM` pseudo. The pass can be extended trivially.
 - **Multiple PHI replacements per block**: Currently handles all PHIs
   in the proven-equal MBB. If a block has multiple PHIs with matching
   constants from the same edge, all are replaced in one pass.
@@ -344,7 +344,7 @@ the LXI 42 and register shuffle, though this pattern is less common.
 
 ## 8. References
 
-* [V6C Build Guide](docs\V6CBuildGuide.md)
+* [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 * [Future Improvements](design\future_plans\README.md)
 * [O31 Feature Description](design\future_plans\O31_dead_phi_constant.md)

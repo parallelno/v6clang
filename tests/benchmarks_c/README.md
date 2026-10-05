@@ -1,6 +1,6 @@
-# V6C C-compiler benchmarks
+# V6CLANG C-compiler benchmarks
 
-Head-to-head cycle-count comparison of **v6llvmc** (this repo) against other
+Head-to-head cycle-count comparison of **v6clang** (this repo) against other
 i8080-capable C compilers, run on the cycle-accurate `v6emul` emulator.
 
 See [docs/benchmarks.md](../../docs/benchmarks.md) for the latest results.
@@ -9,7 +9,7 @@ See [docs/benchmarks.md](../../docs/benchmarks.md) for the latest results.
 
 | Compiler | Source | Acquisition |
 |---|---|---|
-| v6llvmc  | this repo | already built; uses `dist/v6c-2026.04.27-windows-x64/bin/clang.exe` |
+| v6clang  | this repo | already built; uses `dist/v6clang-2026.04.27-windows-x64/bin/clang.exe` |
 | c8080    | https://github.com/Aleksey-F-Morozov/c8080 | separately installed executable configured by `C8080` |
 | z88dk    | https://github.com/z88dk/z88dk             | optional installation root configured by `Z88DK`; skipped if unavailable |
 | ACK      | https://github.com/davidgiven/ack          | not yet integrated (Windows build is non-trivial) |
@@ -41,13 +41,13 @@ each program (`bsort`=0x98, `sieve`=0xEC, `fib_crc`=0x2B, `fannkuch`=0x10,
 [src/bench.h](src/bench.h) selects a `bench_finish()` definition based on the
 active compiler:
 
-* `__V6C__` — uses `__builtin_v6c_out(0xED, ...)` + `__builtin_v6c_hlt()`.
+* `__V6CLANG__` — uses `__builtin_v6clang_out(0xED, ...)` + `__builtin_v6clang_hlt()`.
 * `__C8080_COMPILER` — `__global` function, `out (0xED), a; halt` in inline asm.
 * `__SCCZ80` / `__Z88DK` — pops the stack-passed argument and emits `OUT` + `HLT` via `#asm`.
 
 ROM packaging:
 
-* **v6llvmc** emits a flat ROM that loads at 0x0100 directly; `crt0.s` from
+* **v6clang** emits a flat ROM that loads at 0x0100 directly; `crt0.s` from
   compiler-rt zeroes BSS, sets SP, calls `main`, and HLTs on return.
 * **c8080** emits a CP/M `.COM` (ORG=0x0100). The runner loads it at 0x0100
   directly; the c8080 crt does not use BDOS for our programs.
@@ -68,14 +68,14 @@ through `v6emul`, validates checksums, and writes the result table to
 The driver also emits one assembly listing per (compiler × opt-level) pair
 into `tests/benchmarks_c/asm/` for side-by-side analysis:
 
-* `v6llvmc_<prog>_<O1|O2|Os>.s` — clang `-S` output.
+* `v6clang_<prog>_<O1|O2|Os>.s` — clang `-S` output.
 * `c8080_<prog>.asm` — c8080 native listing (`-a`).
 * `z88dk_<prog>.asm` — sccz80 output (`-S`).
 
 Prerequisites:
 
 * Python 3.9+
-* `dist/v6c-2026.04.27-windows-x64/bin/clang.exe` exists (build the dist target if needed)
+* `dist/v6clang-2026.04.27-windows-x64/bin/clang.exe` exists (build the dist target if needed)
 * `C8080` points to the installed `c8080.exe`
 * `V6EMUL` points to the installed `v6emul.exe`
 * Optional: `Z88DK` points to the installation root containing `bin/zcc.exe` and `lib/config`; if absent, the runner skips only the z88dk submatrix
@@ -99,16 +99,16 @@ Prerequisites:
 2. Add `<name>` to the `PROGRAMS` list and its expected checksum to `EXPECTED`
    in [run_benchmarks.py](run_benchmarks.py).
 
-## Backend notes (v6llvmc gotchas observed)
+## Backend notes (v6clang gotchas observed)
 
 Workarounds applied while authoring the benchmarks. These also live in
-`/memories/repo/v6c-backend.md`:
+`/memories/repo/v6clang-backend.md`:
 
 * `int` loop counters where the loop range fits in 8 bits push the i8080 GPR
   set hard. Prefer `u8` indices.
 * Helper functions that LLVM might inline back together can blow regalloc;
   `__attribute__((noinline))` (guarded by
-  `defined(__V6C__) || __GNUC__ || __clang__`) keeps live ranges short.
+  `defined(__V6CLANG__) || __GNUC__ || __clang__`) keeps live ranges short.
 * Computing `j + p` and storing back as `u8` may trigger an `__mulhi3`
   reference in the current toolchain — use a `u16` loop variable instead.
 * Heavy constant folding at -O2 can collapse a whole benchmark to a single

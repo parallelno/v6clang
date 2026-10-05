@@ -1,7 +1,7 @@
 /* O89: Dead high-byte elision — c8080 reference
  * c8080 works natively with 8-bit values and its arithmetic never generates
  * a 16-bit pseudo for a truncated-to-u8 result. This is the expected baseline
- * for comparison with v6llvmc's improved output after O89.
+ * for comparison with v6clang's improved output after O89.
  *
  * NOTE: c8080 uses 'unsigned int' for 16-bit and 'unsigned char' for 8-bit.
  *       Explicit casts to unsigned char select 8-bit operations directly.

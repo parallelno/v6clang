@@ -17,7 +17,7 @@ each register (A, X, Y). When a load-immediate is encountered:
 2. If a register holds value ± 1 → replace with INX/DEX/INY/DEY
 3. Track transfers (TAX, TAY) to propagate known values across registers
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
 Track known values in all 7 registers (A, B, C, D, E, H, L). Replacements:
 - `MVI r, imm` → `MOV r, r'` when r' holds imm (saves 1 byte, same 8cc)

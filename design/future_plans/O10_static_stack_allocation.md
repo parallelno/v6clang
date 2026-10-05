@@ -25,10 +25,10 @@ Two passes working together:
    a single global `static_stack` array and per-function aliases into it.
    Rewrites all `TargetIndex` operands to `GlobalAddress`.
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
 - The NonReentrant analysis is **target-independent** — reusable as-is.
-- StaticStackAlloc needs adaptation for V6C frame lowering (different pseudo
+- StaticStackAlloc needs adaptation for V6CLANG frame lowering (different pseudo
   names, `MachineFrameInfo` conventions), but the SCC offset algorithm is
   directly reusable.
 - **Supersedes O8 T2** (ad-hoc global bss variables) with automatic,

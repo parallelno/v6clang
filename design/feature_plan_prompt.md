@@ -42,7 +42,7 @@ Address development sequencing, dependency management, validation strategies, re
 - ## 6. Relationship to Other Improvements
 - ## 7. Future Enhancements
 - ## 8. References
-- * [V6C Build Guide](docs\V6CBuildGuide.md)
+- * [V6CLANG Build Guide](docs\V6ClangBuildGuide.md)
 - * [Vector 06c CPU Timings](docs\Vector_06c_instruction_timings.md)
 - * [Future Improvements](design\future_plans\README.md)
 

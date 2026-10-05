@@ -27,11 +27,11 @@ mixed_hl_de:                            ; @mixed_hl_de
 	POP	HL
 	XCHG
 	DAD	DE
-	SHLD	__v6c_ss.mixed_hl_de+2
+	SHLD	__v6clang_ss.mixed_hl_de+2
 	POP	HL
 	CALL	op2
 	XCHG
-	LHLD	__v6c_ss.mixed_hl_de+2
+	LHLD	__v6clang_ss.mixed_hl_de+2
 	DAD	DE
 	RET
                                         ; -- End function
@@ -75,10 +75,10 @@ g1:
 g2:
 	DW	0                               ; 0x0
 
-	.local	__v6c_ss.de_one_reload          ; @__v6c_ss.de_one_reload
-	.comm	__v6c_ss.de_one_reload,4,1
-	.local	__v6c_ss.mixed_hl_de            ; @__v6c_ss.mixed_hl_de
-	.comm	__v6c_ss.mixed_hl_de,4,1
-	.local	__v6c_ss.main                   ; @__v6c_ss.main
-	.comm	__v6c_ss.main,2,1
+	.local	__v6clang_ss.de_one_reload          ; @__v6clang_ss.de_one_reload
+	.comm	__v6clang_ss.de_one_reload,4,1
+	.local	__v6clang_ss.mixed_hl_de            ; @__v6clang_ss.mixed_hl_de
+	.comm	__v6clang_ss.mixed_hl_de,4,1
+	.local	__v6clang_ss.main                   ; @__v6clang_ss.main
+	.comm	__v6clang_ss.main,2,1
 	.addrsig

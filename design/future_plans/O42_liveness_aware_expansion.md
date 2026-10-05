@@ -29,7 +29,7 @@ the expansion point. The PUSH/POP is wasted.
 
 ### Scope of affected expansions
 
-#### `eliminateFrameIndex` (V6CRegisterInfo.cpp) — static stack
+#### `eliminateFrameIndex` (V6ClangRegisterInfo.cpp) — static stack
 
 | Line | Pseudo | Preserves | Current | If dead |
 |------|--------|-----------|---------|---------|
@@ -40,7 +40,7 @@ the expansion point. The PUSH/POP is wasted.
 | 202 | **SPILL16 (BC)** | HL | PUSH HL; LXI; MOV M,C; INX; MOV M,B; POP HL | MOV L,C; MOV H,B; SHLD addr (5B 26cc vs 8B 50cc) |
 | 233 | **RELOAD16 (BC)** | HL | PUSH HL; LXI; MOV C,M; INX; MOV B,M; POP HL | LHLD addr; MOV C,L; MOV B,H (5B 26cc vs 8B 50cc) |
 
-#### `eliminateFrameIndex` (V6CRegisterInfo.cpp) — dynamic stack
+#### `eliminateFrameIndex` (V6ClangRegisterInfo.cpp) — dynamic stack
 
 | Line | Pseudo | Preserves | Current | If dead |
 |------|--------|-----------|---------|---------|
@@ -53,7 +53,7 @@ the expansion point. The PUSH/POP is wasted.
 | 401 | RELOAD16 (HL) | DE | PUSH DE; LXI; DAD SP; load; copy; POP DE | Skip PUSH/POP |
 | 419 | RELOAD16 (DE/BC) | HL | PUSH HL; LXI; DAD SP; load; POP HL | Skip PUSH/POP |
 
-#### `expandPostRAPseudo` (V6CInstrInfo.cpp) — pseudo instructions
+#### `expandPostRAPseudo` (V6ClangInstrInfo.cpp) — pseudo instructions
 
 | Line | Pseudo | Preserves | When |
 |------|--------|-----------|------|
@@ -72,15 +72,15 @@ At each expansion point, query whether the preserved register is dead
 using `LiveRegUnits` backward scan. The backend already has helper
 infrastructure for this:
 
-- `isRegDeadAfter()` in V6CInstrInfo.cpp — used by ADD16 and peephole
-- `isRegDeadAtMI()` in V6CInstrInfo.cpp — used by LOAD8_P/STORE8_P
+- `isRegDeadAfter()` in V6ClangInstrInfo.cpp — used by ADD16 and peephole
+- `isRegDeadAtMI()` in V6ClangInstrInfo.cpp — used by LOAD8_P/STORE8_P
 
 Both compute local BB liveness by walking successors and scanning backward.
 The same mechanism applies here.
 
 ### Implementation
 
-#### 1. Add helper to V6CRegisterInfo
+#### 1. Add helper to V6ClangRegisterInfo
 
 ```cpp
 /// Check if Reg is dead at the point just before II in MBB.
@@ -139,7 +139,7 @@ Replace `XCHG; LHLD; XCHG` with `LHLD addr; XCHG` (HL dead, so
 don't need to restore HL to its original value — just swap into DE).
 Savings: 1B, 4cc.
 
-#### 6. LOAD16_P addr=BC (V6CInstrInfo.cpp line 1159) — HL dead
+#### 6. LOAD16_P addr=BC (V6ClangInstrInfo.cpp line 1159) — HL dead
 
 Replace:
 ```
@@ -151,7 +151,7 @@ MOV H,B; MOV L,C; load                    (5B ~33cc)
 ```
 Savings: 2B, 21cc.
 
-#### 7. LOAD16_G dst=BC (V6CInstrInfo.cpp line 1259) — HL dead
+#### 7. LOAD16_G dst=BC (V6ClangInstrInfo.cpp line 1259) — HL dead
 
 Replace:
 ```
@@ -224,7 +224,7 @@ Two-array summation loop, steps 5–8 (partial sum spill/reload region):
 
 Steps 5–8 shrink from **16B 132cc** to **12B 88cc** (saves **4B, 44cc**).
 
-With `V6CSpillForwarding` fix (O16-adjacent), step 8 can also be
+With `V6ClangSpillForwarding` fix (O16-adjacent), step 8 can also be
 eliminated if the forwarding pass tracks HL across the RELOAD/LOAD
 expansions, giving an additional 3B 16cc savings.
 
@@ -275,7 +275,7 @@ Low.
    skip PUSH/POP when HL is killed by preceding SPILL16
 2. **Single-pointer loop with spill**: Verifies SPILL16-BC skips PUSH/POP
    when HL is dead after a computation
-3. **Dynamic stack variant**: Same patterns but with `-mv6c-no-static-stack`
+3. **Dynamic stack variant**: Same patterns but with `-mv6clang-no-static-stack`
    to verify offset adjustment (+2 → +0) is correct
 4. **HL-live control path**: Verifies PUSH/POP is preserved when HL is
    actually live (no false optimization)

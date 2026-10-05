@@ -135,7 +135,7 @@ weighted_sum:                           ; @weighted_sum
 main:                                   ; @main
 ; %bb.0:
 	XRA	A
-	LXI	H, __v6c_a.main
+	LXI	H, __v6clang_a.main
 .LBB18_1:                               ; =>This Inner Loop Header: Depth=1
 	MOV	M, A
 	INX	H
@@ -143,7 +143,7 @@ main:                                   ; @main
 	CPI	0x40
 	JNZ	.LBB18_1
 ; %bb.2:
-	LXI	D, __v6c_a.main
+	LXI	D, __v6clang_a.main
 	LXI	H, 0
 	LXI	B, 0
 	PUSH	H
@@ -177,7 +177,7 @@ main:                                   ; @main
 	POP	H
 	INX	H
 	INX	D
-	LXI	B, __v6c_a.main+64
+	LXI	B, __v6clang_a.main+64
 	MOV	A, E
 	CMP	C
 	JNZ	.LBB18_3
@@ -206,22 +206,22 @@ main:                                   ; @main
 	MOV	H, A
 	RET
                                         ; -- End function
-	.local	__v6c_a.main                    ; @__v6c_a.main
-	.comm	__v6c_a.main,64,1
+	.local	__v6clang_a.main                    ; @__v6clang_a.main
+	.comm	__v6clang_a.main,64,1
 	.addrsig
 	.addrsig_sym __mulqi3
-	.addrsig_sym __v6c_mulqihi3
+	.addrsig_sym __v6clang_mulqihi3
 	.addrsig_sym __mulhi3
-	.addrsig_sym __v6c_udivmod16_body
+	.addrsig_sym __v6clang_udivmod16_body
 	.addrsig_sym __udivhi3
 	.addrsig_sym __umodhi3
 	.addrsig_sym __udivmodhi4
 	.addrsig_sym __divmodhi4
-	.addrsig_sym __v6c_neg_hl_body
-	.addrsig_sym __v6c_neg_de_body
+	.addrsig_sym __v6clang_neg_hl_body
+	.addrsig_sym __v6clang_neg_de_body
 	.addrsig_sym __divhi3
 	.addrsig_sym __modhi3
 	.addrsig_sym __ashlhi3
 	.addrsig_sym __lshrhi3
 	.addrsig_sym __ashrhi3
-	.addrsig_sym __v6c_a.main
+	.addrsig_sym __v6clang_a.main

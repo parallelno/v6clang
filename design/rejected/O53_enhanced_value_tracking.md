@@ -8,14 +8,14 @@ O53 verification: largely obsolete
 The plan was inspired by jacobly0's RegVal struct. Walking through each proposed pattern against actual -O3 and -Os output (o53_test.c, o53_test.asm, o53_test_os.asm):
 
 Plan pattern	Status	Where
-MVI A,0 → XRA A (flags dead)	✅ Done	O55 in V6CPeephole.cpp:918 — test_mvi_zero emits XRA A
+MVI A,0 → XRA A (flags dead)	✅ Done	O55 in V6ClangPeephole.cpp:918 — test_mvi_zero emits XRA A
 XRI 0FFH → CMA	✅ Done	Direct ISel/tablegen — test_not_u8 (~x) emits a single CMA
-ORA A redundant after ALU	✅ Done	O17 V6CRedundantFlagElim.cpp
+ORA A redundant after ALU	✅ Done	O17 V6ClangRedundantFlagElim.cpp
 CPI imm redundant	✅ Done	O17 + O36 branch-implied propagation; test_redundant_cpi collapses to one ORA A; RNZ
 ANI n; ANI n → ANI n	✅ Done	InstCombine at IR — test_double_and emits one ANI 0xf
 Sub-reg composition (H,L known → HL known)	✅ Done	DAGCombine merges to single LXI — test_subreg_compose emits LXI H,0x3412; SHLD buf
-Immediate ±1, same-value	✅ Done	O13 V6CLoadImmCombine.cpp
-GlobalAddress + offset tracking	⚠️ Partial	O02 V6CLoadStoreOpt.cpp does this, but cost-gated by MaxDelta
+Immediate ±1, same-value	✅ Done	O13 V6ClangLoadImmCombine.cpp
+GlobalAddress + offset tracking	⚠️ Partial	O02 V6ClangLoadStoreOpt.cpp does this, but cost-gated by MaxDelta
 The one observable gap is in test_ga_offset (sum of arr[0..2]):
 
 -Os (MaxDelta=3): LXI H,arr; LDA arr+1; ADD M; INX H; INX H; ADD M ✅
@@ -55,9 +55,9 @@ This enables:
 - Immediate ± 1 folding (already in O13)
 - Same-value elimination (already in O13)
 
-## V6C Adaptation
+## V6CLANG Adaptation
 
-Extend the existing O13 `RegVal` tracking in `V6CPeephole.cpp`:
+Extend the existing O13 `RegVal` tracking in `V6ClangPeephole.cpp`:
 
 ```cpp
 struct RegVal {

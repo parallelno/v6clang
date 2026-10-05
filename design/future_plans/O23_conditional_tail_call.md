@@ -54,14 +54,14 @@ Can become:
 
 The post-RA peephole can only catch cases where CALL+RET appear in the
 final machine code. ISel-level tail call support (`LowerTailCall` in
-`V6CISelLowering.cpp`) can catch tail calls earlier, enabling:
+`V6ClangISelLowering.cpp`) can catch tail calls earlier, enabling:
 - Tail calls where argument registers need minimal shuffling
 - Tail calls to functions with identical argument signatures (sibling calls)
 - The DAG optimizer to skip unnecessary stack frame setup
 
 ## Implementation
 
-### Phase 1: Extend O14 peephole (V6CBranchOpt.cpp or V6CPeephole.cpp)
+### Phase 1: Extend O14 peephole (V6ClangBranchOpt.cpp or V6ClangPeephole.cpp)
 
 The existing O14 pattern matches `CALL; RET`. Extend to match:
 - `CALL; JMP .Lret` where `.Lret:` contains only `RET`
@@ -71,10 +71,10 @@ This catches Patterns A and B above with minimal code change.
 
 ### Phase 2: ISel-level (future)
 
-Add `LowerTailCall()` in `V6CISelLowering.cpp`:
+Add `LowerTailCall()` in `V6ClangISelLowering.cpp`:
 - Check: callee's stack frame ≤ caller's stack frame
 - Check: return value register matches (HL for i16, A for i8)
-- Emit `V6CISD::TAIL_CALL` node instead of `V6CISD::CALL` + `V6CISD::RET`
+- Emit `V6ClangISD::TAIL_CALL` node instead of `V6ClangISD::CALL` + `V6ClangISD::RET`
 - Expand to `JMP target` in ISel
 
 ## Benefit

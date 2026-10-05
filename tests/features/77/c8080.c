@@ -1,7 +1,7 @@
-/* O93: V6C_AND16_IMM / V6C_OR16_IMM / V6C_XOR16_IMM — c8080 reference
+/* O93: V6CLANG_AND16_IMM / V6CLANG_OR16_IMM / V6CLANG_XOR16_IMM — c8080 reference
  *
  * c8080 baseline for 16-bit bitwise ops against constants. Used to compare
- * against v6llvmc's improved output after O93.
+ * against v6clang's improved output after O93.
  *
  * NOTE: c8080 uses 'unsigned int' for 16-bit and 'unsigned char' for 8-bit.
  */
