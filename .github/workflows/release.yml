@@ -83,7 +83,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           V6ASM_TAG: v2026.10.03
-          V6EMUL_TAG: v1.0.0
+          V6EMUL_TAG: v1.0.2
         run: |
           # v6asm and v6emul are reference tools that V6CLANG installs separately and
           # does not bundle. The golden/benchmark suites and validate_dist.ps1
